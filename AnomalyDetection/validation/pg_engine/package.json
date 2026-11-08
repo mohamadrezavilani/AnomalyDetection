@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.14"
+  },
+  "private": true,
+  "name": "anomaly-detection-pg-engine-contract",
+  "version": "1.0.0"
+}

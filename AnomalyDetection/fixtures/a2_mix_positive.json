@@ -1,0 +1,284 @@
+{
+  "format": "AD-FEATURES-v1",
+  "source": {
+    "namespace": "synthetic-two-window-contract",
+    "stream_key": "synthetic-stream",
+    "keys_fingerprint": "synthetic-key-namespace",
+    "runtime_sha256": "84e9dcc984092735dd4785a26b5af02019eda63d0d5d7ee221bb0c84da37e993",
+    "catalog_fingerprint": "1989cf2ed1dbcd7202f76dcfb8f9530ceadef4331ba01ee55bc0e31f88b36fb6",
+    "semantic_schema": "p24-semantic-index-2",
+    "catalog_status": "CURRENT",
+    "semantic_state": "ready",
+    "maintenance": "OFFLINE_FIXTURE",
+    "evidence_mode": "synthetic_feature_fixture",
+    "source_finality": "not_established",
+    "sequence": 1,
+    "generation": 11,
+    "semantic_generation": 11,
+    "captured_at_ns": 1798059900000000000,
+    "consistent_snapshot": true,
+    "global_origin_versions_complete": true
+  },
+  "target_start_ns": 1798008900000000000,
+  "actors": [
+    {
+      "session_key": "00000000000000000000000000000000000000000000000000000000000001f4",
+      "population_complete": true,
+      "first_observed_ns": 1797999899999999999,
+      "windows": [
+        {
+          "start_ns": 1797999900000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798000200000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798000500000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798000800000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798001100000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798001400000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798001700000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798002000000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798002300000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798002600000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798002900000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798003200000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798003500000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798003800000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798004100000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798004400000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798004700000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798005000000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798005300000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798005600000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798005900000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798006200000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798006500000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798006800000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798007100000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798007400000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798007700000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798008000000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798008300000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798008600000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 36,
+            "Services.v2/GasBills": 4
+          }
+        },
+        {
+          "start_ns": 1798008900000000000,
+          "coverage_complete": true,
+          "counts": {
+            "Services.v1/WaterBills": 4,
+            "Services.v2/GasBills": 36
+          },
+          "witnesses": {
+            "Services.v1/WaterBills": "0000000000000000000000000000000000000000000000000000000000000064"
+          }
+        }
+      ]
+    }
+  ],
+  "service_health": {}
+}

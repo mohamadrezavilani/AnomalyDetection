@@ -1,0 +1,370 @@
+{
+  "format": "AD-SNAPSHOT-v1",
+  "source": {
+    "namespace": "synthetic-two-window-contract",
+    "stream_key": "synthetic-stream",
+    "keys_fingerprint": "synthetic-key-namespace",
+    "runtime_sha256": "84e9dcc984092735dd4785a26b5af02019eda63d0d5d7ee221bb0c84da37e993",
+    "catalog_fingerprint": "1989cf2ed1dbcd7202f76dcfb8f9530ceadef4331ba01ee55bc0e31f88b36fb6",
+    "semantic_schema": "p24-semantic-index-2",
+    "catalog_status": "CURRENT",
+    "semantic_state": "ready",
+    "maintenance": "OFFLINE_FIXTURE",
+    "evidence_mode": "synthetic_contract",
+    "source_finality": "not_established",
+    "sequence": 3,
+    "generation": 13,
+    "semantic_generation": 13,
+    "captured_at_ns": 1798000503000000000,
+    "consistent_snapshot": true,
+    "global_origin_versions_complete": true
+  },
+  "scope": {
+    "id": "two-window-small-scope",
+    "request_keys": [
+      "0000000000000000000000000000000000000000000000000000000000000001",
+      "0000000000000000000000000000000000000000000000000000000000000002",
+      "0000000000000000000000000000000000000000000000000000000000000003",
+      "0000000000000000000000000000000000000000000000000000000000000004",
+      "0000000000000000000000000000000000000000000000000000000000000005",
+      "0000000000000000000000000000000000000000000000000000000000000006",
+      "0000000000000000000000000000000000000000000000000000000000000007",
+      "0000000000000000000000000000000000000000000000000000000000000008"
+    ],
+    "complete": true,
+    "population_complete": true,
+    "complete_intervals_ns": [
+      [
+        1797999900000000000,
+        1798000200000000000
+      ],
+      [
+        1798000200000000000,
+        1798000500000000000
+      ]
+    ]
+  },
+  "tables": {
+    "viewer_semantic_occurrences": [
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000001",
+        "anchor_key": "ba1:fda4b6af36dc0401ca4304409796733266ce61b0d47cbad4523a94503bb83948",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "anchor_ns": 1798000199000000000,
+        "kind": "service_execution",
+        "occurrence_key": "bo1:0000000000000000000000000000000000000000000000000000000000000bb9",
+        "root_call": "Services.v1/WaterBills",
+        "root_code": "G00000",
+        "family_id": null,
+        "family_label_fa": null,
+        "category": "business",
+        "initiation": "unknown",
+        "state": "active",
+        "revision": 1,
+        "updated_at": "2026-10-31T00:00:00Z"
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000002",
+        "anchor_key": "ba1:7e8dd37ed536683da57c3836e5f4a7a24ef51f02667ff3feeb12bd5a0b0281ea",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "anchor_ns": 1798000201000000000,
+        "kind": "service_execution",
+        "occurrence_key": "bo1:0000000000000000000000000000000000000000000000000000000000000bba",
+        "root_call": "Services.v1/WaterBills",
+        "root_code": "G00000",
+        "family_id": null,
+        "family_label_fa": null,
+        "category": "business",
+        "initiation": "unknown",
+        "state": "active",
+        "revision": 1,
+        "updated_at": "2026-10-31T00:00:00Z"
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000005",
+        "anchor_key": "ba1:b91327a494f9ca3742e804e8915386837037b9e8efab66e65cd00d5b47180632",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "anchor_ns": 1798000100000000000,
+        "kind": "service_execution",
+        "occurrence_key": "bo1:0000000000000000000000000000000000000000000000000000000000000fa5",
+        "root_call": "Services.v1/TopUpProductPurchase",
+        "root_code": "G00000",
+        "family_id": null,
+        "family_label_fa": null,
+        "category": "business",
+        "initiation": "unknown",
+        "state": "active",
+        "revision": 2,
+        "updated_at": "2026-10-31T00:00:00Z"
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000006",
+        "anchor_key": "ba1:fbd3a38f4dda85a6ee5f6d47ca957cde18db698c73e732f867544b5b297f44d7",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "anchor_ns": 1798000205000000000,
+        "kind": "wallet_funding_execution",
+        "occurrence_key": "bo1:0000000000000000000000000000000000000000000000000000000000000bbe",
+        "root_call": "Core.v1/UserWalletCharge",
+        "root_code": "G00000",
+        "family_id": null,
+        "family_label_fa": null,
+        "category": "business",
+        "initiation": "unknown",
+        "state": "active",
+        "revision": 1,
+        "updated_at": "2026-10-31T00:00:00Z"
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000007",
+        "anchor_key": "ba1:fb52eaac26bf9e1666956676d4f0e3381f81e93db9afcedca6d3482dcd0a6a7b",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "anchor_ns": 1798000206000000000,
+        "kind": "user_management_execution",
+        "occurrence_key": "bo1:0000000000000000000000000000000000000000000000000000000000000bbf",
+        "root_call": "Core.v1/UserProfileUpdate",
+        "root_code": "G00000",
+        "family_id": null,
+        "family_label_fa": null,
+        "category": "user_management",
+        "initiation": "unknown",
+        "state": "active",
+        "revision": 1,
+        "updated_at": "2026-10-31T00:00:00Z"
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000008",
+        "anchor_key": "ba1:16be63bd512dccd8490f7d3f75e9aed5e6355e0aefa53d7aa032151261bed722",
+        "session_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "anchor_ns": 1798000207000000000,
+        "kind": "service_execution",
+        "occurrence_key": "bo1:0000000000000000000000000000000000000000000000000000000000000bc0",
+        "root_call": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+        "root_code": "G00000",
+        "family_id": null,
+        "family_label_fa": null,
+        "category": "business",
+        "initiation": "unknown",
+        "state": "active",
+        "revision": 1,
+        "updated_at": "2026-10-31T00:00:00Z"
+      }
+    ],
+    "viewer_requests": [
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000001",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": "Services.v1/WaterBills",
+        "root_code": "G00000",
+        "started_ns": 1798000199000000000,
+        "ended_ns": 1798000202000000000
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000002",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": "Services.v1/WaterBills",
+        "root_code": "G00000",
+        "started_ns": 1798000201000000000,
+        "ended_ns": 1798000204000000000
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000003",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": "Services.v1/AddUserData",
+        "root_code": "G00000",
+        "started_ns": 1798000202000000000,
+        "ended_ns": 1798000205000000000
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000004",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": "Core.v1/WalletPayment",
+        "root_code": "G00000",
+        "started_ns": 1798000203000000000,
+        "ended_ns": 1798000206000000000
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000005",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": null,
+        "root_code": "G00000",
+        "started_ns": 1798000204000000000,
+        "ended_ns": 1798000207000000000
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000006",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": "Core.v1/UserWalletCharge",
+        "root_code": "G00000",
+        "started_ns": 1798000205000000000,
+        "ended_ns": 1798000208000000000
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000007",
+        "session_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": "Core.v1/UserProfileUpdate",
+        "root_code": "G00000",
+        "started_ns": 1798000206000000000,
+        "ended_ns": 1798000209000000000
+      },
+      {
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000008",
+        "session_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "identity_state": "assigned",
+        "conflicted": 0,
+        "root_call": "Services.v1/InvoiceRegister",
+        "root_code": "G00000",
+        "started_ns": 1798000207000000000,
+        "ended_ns": 1798000210000000000
+      }
+    ],
+    "viewer_contract_observations": [
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003fd",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000008",
+        "at_ns": 1798000290000000000,
+        "callpath": "DBPath.ud_prc_inquiryInvoiceResult2",
+        "axis": "service_dispatch.inquiry_result",
+        "value": "GD2076",
+        "field_path": "statusCode",
+        "authority": "reported"
+      }
+    ],
+    "viewer_contract_edges": [],
+    "viewer_contract_identifiers": [],
+    "viewer_service_roles": [
+      {
+        "service_path": "Services.v1/WaterBills",
+        "role": "business",
+        "initiation": "unknown",
+        "source": "operator",
+        "reviewed": 1,
+        "note": "synthetic contract",
+        "changed_at": "fixture"
+      },
+      {
+        "service_path": "Core.v1/UserWalletCharge",
+        "role": "business",
+        "initiation": "unknown",
+        "source": "operator",
+        "reviewed": 1,
+        "note": "synthetic contract",
+        "changed_at": "fixture"
+      },
+      {
+        "service_path": "Core.v1/UserProfileUpdate",
+        "role": "user_management",
+        "initiation": "unknown",
+        "source": "operator",
+        "reviewed": 1,
+        "note": "synthetic contract",
+        "changed_at": "fixture"
+      },
+      {
+        "service_path": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+        "role": "business",
+        "initiation": "unknown",
+        "source": "operator",
+        "reviewed": 1,
+        "note": "synthetic contract",
+        "changed_at": "fixture"
+      }
+    ],
+    "viewer_events": [
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003e9",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000001",
+        "at_ns": 1798000199000000000,
+        "callpath": "Services.v1/WaterBills",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003ea",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000002",
+        "at_ns": 1798000201000000000,
+        "callpath": "Services.v1/WaterBills",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003eb",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000003",
+        "at_ns": 1798000202000000000,
+        "callpath": "Services.v1/AddUserData",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003ec",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000004",
+        "at_ns": 1798000203000000000,
+        "callpath": "Core.v1/WalletPayment",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003ed",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000005",
+        "at_ns": 1798000204000000000,
+        "callpath": "ClientAyanCoTopUp.ProductReserve",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003ee",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000006",
+        "at_ns": 1798000205000000000,
+        "callpath": "Core.v1/UserWalletCharge",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003ef",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000007",
+        "at_ns": 1798000206000000000,
+        "callpath": "Core.v1/UserProfileUpdate",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003f0",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000008",
+        "at_ns": 1798000207000000000,
+        "callpath": "Services.v1/InvoiceRegister",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003f3",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000001",
+        "at_ns": 1798000202000000000,
+        "callpath": "ClientAyanCoInquiry.WaterBills",
+        "raw_available": true
+      },
+      {
+        "origin_key": "00000000000000000000000000000000000000000000000000000000000003fd",
+        "version_key": "00000000000000000000000000000000000000000000000000000000000007d1",
+        "request_key": "0000000000000000000000000000000000000000000000000000000000000008",
+        "at_ns": 1798000290000000000,
+        "callpath": "DBPath.ud_prc_inquiryInvoiceResult2",
+        "raw_available": true
+      }
+    ]
+  }
+}

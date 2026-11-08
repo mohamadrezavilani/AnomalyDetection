@@ -1,0 +1,1367 @@
+{
+  "mode": "source-derived_schema_from_empty_disposable_SQLite_fixture",
+  "runtime_source_sha256": "9bc58af3b0b75cdb880426560f6c7e69fd0b0d6269ef28ba91f85bc65814a97b",
+  "native_schema_introspection": false,
+  "owner_reported_native_table_names_match": true,
+  "type_note": "BLOB in the offline fixture corresponds to BYTEA on PostgreSQL; PostgreSQL primary-key columns are NOT NULL even where SQLite PRAGMA differs.",
+  "tables": {
+    "viewer_action_history": {
+      "columns": [
+        {
+          "name": "action_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "at_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "status",
+          "declared_type": "TEXT",
+          "primary_key_order": 4,
+          "not_null": true
+        },
+        {
+          "name": "source_request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "source_callpath",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 3,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_actions": {
+      "columns": [
+        {
+          "name": "action_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "session_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "label",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "name",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "category",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "initiation",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "at_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "current_outcome",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "root_request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "target_type",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "target_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "workflow_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "evidence",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        }
+      ]
+    },
+    "viewer_capture_projections": {
+      "columns": [
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "capture_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "canonical_version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "file_hash",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "filename",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "row_number",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "payload",
+          "declared_type": "BLOB",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_contract_edges": {
+      "columns": [
+        {
+          "name": "edge_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "relation_type",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "from_typed_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "to_typed_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "scope",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "evidence_origin",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "evidence_version",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "evidence_path",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "eligibility",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "rule_version",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "confidence",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "observed_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        }
+      ]
+    },
+    "viewer_contract_identifiers": {
+      "columns": [
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "issuer",
+          "declared_type": "TEXT",
+          "primary_key_order": 3,
+          "not_null": true
+        },
+        {
+          "name": "kind",
+          "declared_type": "TEXT",
+          "primary_key_order": 4,
+          "not_null": true
+        },
+        {
+          "name": "scope",
+          "declared_type": "TEXT",
+          "primary_key_order": 5,
+          "not_null": true
+        },
+        {
+          "name": "field_path",
+          "declared_type": "TEXT",
+          "primary_key_order": 6,
+          "not_null": true
+        },
+        {
+          "name": "identity_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 7,
+          "not_null": true
+        },
+        {
+          "name": "raw_value",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_contract_observations": {
+      "columns": [
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "at_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "callpath",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "axis",
+          "declared_type": "TEXT",
+          "primary_key_order": 3,
+          "not_null": true
+        },
+        {
+          "name": "value",
+          "declared_type": "TEXT",
+          "primary_key_order": 4,
+          "not_null": true
+        },
+        {
+          "name": "field_path",
+          "declared_type": "TEXT",
+          "primary_key_order": 5,
+          "not_null": true
+        },
+        {
+          "name": "authority",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_event_captures": {
+      "columns": [
+        {
+          "name": "file_hash",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "capture_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 3,
+          "not_null": true
+        },
+        {
+          "name": "canonical_version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "row_number",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_events": {
+      "columns": [
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "file_hash",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "filename",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "row_number",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "at_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "session_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "ip_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "callpath",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "kind",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "code",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "observation",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        }
+      ]
+    },
+    "viewer_files": {
+      "columns": [
+        {
+          "name": "file_hash",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "filename",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "window_start",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "window_end",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "declared_count",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "record_count",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "new_events",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "duplicate_events",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "conflicting_events",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "imported_at",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "source_claim",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "issue",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        }
+      ]
+    },
+    "viewer_links": {
+      "columns": [
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "link_domain",
+          "declared_type": "TEXT",
+          "primary_key_order": 3,
+          "not_null": true
+        },
+        {
+          "name": "link_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 4,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_live_receipts": {
+      "columns": [
+        {
+          "name": "receipt_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "start_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "end_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "file_hash",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "mode",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "generation",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "records",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "new_events",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "impacted_requests",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "elapsed_seconds",
+          "declared_type": "DOUBLE PRECISION",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "published_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "proof_json",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "capture_seconds",
+          "declared_type": "DOUBLE PRECISION",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "cycle_seconds",
+          "declared_type": "DOUBLE PRECISION",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_live_resumes": {
+      "columns": [
+        {
+          "name": "resume_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "previous_next_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "resumed_from_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "resumed_at_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "stream_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "keys_fingerprint",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "reason",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_live_state": {
+      "columns": [
+        {
+          "name": "id",
+          "declared_type": "INTEGER",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "stream_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "keys_fingerprint",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "start_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "next_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "generation",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "last_publish_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "last_attempt_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "last_success_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "last_error",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "worker_status",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "overlap_windows",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "lag_seconds",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "last_event_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_live_windows": {
+      "columns": [
+        {
+          "name": "start_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "end_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "file_hash",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "records",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "first_publish_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "last_publish_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "rechecked_epoch_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "generation",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_raw_events": {
+      "columns": [
+        {
+          "name": "origin_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "version_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "raw_request_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "raw_session_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "raw_ip",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "payload",
+          "declared_type": "BLOB",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_requests": {
+      "columns": [
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "session_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "identity_state",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "started_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "ended_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "root_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "root_call",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "root_code",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "root_count",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "event_count",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "sql_count",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "provider_count",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "conflicted",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "initiation",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_semantic_checkpoint": {
+      "columns": [
+        {
+          "name": "id",
+          "declared_type": "INTEGER",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "generation",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "indexed_requests",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "state",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_semantic_occurrences": {
+      "columns": [
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "anchor_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "session_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "anchor_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "kind",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "occurrence_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "root_call",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "root_code",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "family_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "family_label_fa",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "category",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "initiation",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "state",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "revision",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_semantic_session_heads": {
+      "columns": [
+        {
+          "name": "session_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "anchor_ns",
+          "declared_type": "BIGINT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_semantic_transitions": {
+      "columns": [
+        {
+          "name": "request_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": true
+        },
+        {
+          "name": "revision",
+          "declared_type": "INTEGER",
+          "primary_key_order": 2,
+          "not_null": true
+        },
+        {
+          "name": "old_kind",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "new_kind",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "old_occurrence_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "new_occurrence_key",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": false
+        },
+        {
+          "name": "transition",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "changed_at",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_service_catalog_state": {
+      "columns": [
+        {
+          "name": "id",
+          "declared_type": "INTEGER",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "fingerprint",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "updated_at",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "changed_paths",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "changed_requests",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "semantic_changes",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_service_role_history": {
+      "columns": [
+        {
+          "name": "change_id",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "service_path",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "old_role",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "new_role",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "old_initiation",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "new_initiation",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "note",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "changed_at",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    },
+    "viewer_service_roles": {
+      "columns": [
+        {
+          "name": "service_path",
+          "declared_type": "TEXT",
+          "primary_key_order": 1,
+          "not_null": false
+        },
+        {
+          "name": "role",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "initiation",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "source",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "reviewed",
+          "declared_type": "INTEGER",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "note",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        },
+        {
+          "name": "changed_at",
+          "declared_type": "TEXT",
+          "primary_key_order": 0,
+          "not_null": true
+        }
+      ]
+    }
+  },
+  "optional_maintenance_objects": {
+    "status": "creation_not_yet_confirmed_by_owner",
+    "tables": {
+      "viewer_retired_origins": [
+        "origin_key",
+        "retired_before_ns"
+      ],
+      "viewer_retention_audit": [
+        "audit_id",
+        "cutoff_ns",
+        "applied_at",
+        "report_json"
+      ]
+    },
+    "function": "viewer_retention_insert_check",
+    "trigger": "viewer_retention_insert_guard",
+    "ownership": "LogManagment maintenance; AnomalyDetection must not alter these"
+  }
+}

@@ -1,0 +1,7 @@
+* text=auto eol=lf
+
+# The release manifests hash the exact bytes, including Windows launcher CRLF.
+AnomalyDetection/** -text
+experiments/p0-audit-selector/** -text
+docs/criteria-stage3/** -text
+docs/p0/evidence/** -text
