@@ -1,38 +1,70 @@
+# Python caches and generated build output
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pyre/
+.pytype/
+
+# Local environments and dependency/build caches
 .venv/
 venv/
+env/
+ENV/
 node_modules/
 build/
 dist/
-releases/
-data/
-reports/
-legacy_code/
-log_dumps/
-captures/
-private/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# IDE / OS temporary files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+*.tmp
+*.temp
+
+# Credentials, local environment overrides and private keys
 .env
 .env.*
+!.env.example
+!.env.sample
+!.env.template
 *.local.py
 *.local.json
 *.local.toml
 *.local.yaml
 *.local.yml
-*.log
-*.har
-*.dump
-*.pgdump
-*.backup
-*.sqlite*
-*.db
-*.zip
-*.tar*
-*.rar
-*.gz
-*.xlsx
 *.pem
 *.key
+*.p12
+*.pfx
+*.p8
+*.ppk
+id_rsa*
+id_ed25519*
+.ssh/
+**/.ssh/
+**/secrets/
+**/credentials/
+*.kdbx
+
+# Deliberately kept trackable for handoff and reproducibility:
+# releases/, data/, reports/, legacy_code/, log_dumps/, captures/, private/
+# *.zip, *.tar*, *.rar, *.gz, *.xlsx, *.har, *.log,
+# *.dump, *.pgdump, *.backup, *.db, *.sqlite*
+#
+# IMPORTANT: this is a PUBLIC repository. Review any staged user data,
+# access tokens, connection strings and oversized binary files before push.
