@@ -1,0 +1,83 @@
+{
+  "status": "PASS",
+  "mode": "owner_market_role_correction_and_bulk_publication",
+  "runtime_source_sha256": "7eb96aac884f3fd9a02643e65f3ff69c8064bfbc3f0c99c437bb03c1636a4fdb",
+  "owner_confirmation_date": "2026-10-27",
+  "owner_main_market_services": {
+    "paths": [
+      "Public.v1/ExchangeCurrency",
+      "Public.v1/ExchangeGold",
+      "Public.v1/ExchangeCrypto"
+    ],
+    "role": "business",
+    "initiation": "unknown"
+  },
+  "owner_homepage_background_calls": {
+    "paths": [
+      "Public.v1/Weather",
+      "Public.v1/AirPollution",
+      "Public.v1/CalendarToday",
+      "Public.v1/CalendarMonth",
+      "Public.v1/CalendarReligiousTimes"
+    ],
+    "role": "support",
+    "initiation": "confirmed_automatic"
+  },
+  "changed_role_policy_paths": 8,
+  "all_other_route_role_policies_preserved": true,
+  "legacy_market_support_upgrades_to_business_automatically": true,
+  "operator_choices_preserved": true,
+  "market_repeated_requests_keep_independent_anchors": true,
+  "unregistered_versions_stay_unknown": true,
+  "bulk_publication": {
+    "tables": [
+      "viewer_events",
+      "viewer_links"
+    ],
+    "transport": "ordered_binary_copy",
+    "memory_spool_limit_bytes": 8388608,
+    "write_chunk_limit_bytes": 1048576,
+    "commit": "same_atomic_publication_transaction",
+    "on_conflict_tables": "unchanged_insert_select",
+    "native_psycopg_wire_validation": "NOT_RUN"
+  },
+  "incremental_reconstruction": {
+    "event_source": "one_materialized_impacted_request_scope",
+    "includes_prior_windows": true,
+    "global_origin_version_conflicts_still_checked": true,
+    "request_key_index_plan_checked": true
+  },
+  "tests": {
+    "local": 281,
+    "postgres_dialect": 37,
+    "binary_codec": 5
+  },
+  "archived_real_replay": {
+    "windows": 6,
+    "counts": {
+      "events": 248351,
+      "origins": 248351,
+      "requests": 55398,
+      "session_ids": 3576,
+      "actions": 6359,
+      "root_calls": 55374,
+      "unknown_calls": 0,
+      "files": 6,
+      "conflicting_origins": 0
+    },
+    "incremental_equals_full_batch": true,
+    "duplicate_recheck_idempotent": true
+  },
+  "latest_owner_before_these_changes": {
+    "records": 63029,
+    "cycle_seconds": 272.578,
+    "merge_seconds": 133.266,
+    "events_merge_seconds": 93.313,
+    "published_to_utc": "2026-10-27T05:20:00+00:00",
+    "generation": 29
+  },
+  "native_new_performance": "NOT_RUN",
+  "native_current_operational_acceptance": "PENDING",
+  "no_speedup_percentage_claimed": true,
+  "production_modified": false
+}

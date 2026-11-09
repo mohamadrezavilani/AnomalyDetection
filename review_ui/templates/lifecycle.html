@@ -1,0 +1,13 @@
+{% if card.lifecycle.markers or card.security_relevant %}
+<section class="panel lifecycle-evidence">
+  <div class="section-heading"><div><h2>شواهد مراحل Session و ورود</h2><p>{{ lifecycle_fa.get(card.lifecycle.flow_evidence_state,'شواهد نیازمند بررسی است') }}</p></div><span class="badge neutral">{{ card.lifecycle.markers|length|fa_number }} مشاهده</span></div>
+  <div class="evidence-list" tabindex="0" aria-label="شواهد مراحل Session و ورود">
+    {% for marker in card.lifecycle.markers %}
+    <details class="operation"><summary><strong>{{ marker.label_fa }}</strong><bdi dir="ltr">{{ marker.time_ns|tehran_time }}</bdi><span class="badge {{ marker.sql_execution_outcome }}">{{ outcomes_fa.get(marker.sql_execution_outcome,'نامشخص') }}</span></summary>
+      <div class="operation-body"><p>نتیجهٔ نمایش‌داده‌شده مربوط به اجرای همان رویهٔ SQL است.</p>{% if marker.timestamp_tied %}<p class="scope-note">چند مشاهده زمان برابر دارند؛ ترتیب اجرای علّی از این زمان‌ها مشخص نمی‌شود.</p>{% endif %}<dl><dt>نسخهٔ شاهد</dt><dd><bdi dir="ltr" class="token mono">{{ marker.source_event_version_id }}</bdi></dd></dl></div>
+    </details>
+    {% else %}<p class="muted">رویهٔ مربوط به این مرحله در شواهد انتخاب‌شده مشاهده نشده است.</p>{% endfor %}
+    <p class="scope-note">ثبت تولید رمز، تحویل پیام را اثبات نمی‌کند. نتیجهٔ SQL و پاسخ کلاینت جدا هستند. اتصال به حساب و مرز خروج در این شواهد تأیید نشده است؛ تغییر IP نیز Session جدید ایجاد نمی‌کند.</p>
+  </div>
+</section>
+{% endif %}

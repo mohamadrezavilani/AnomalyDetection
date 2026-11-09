@@ -1,0 +1,202 @@
+{
+  "project": "LogManagment",
+  "release_id": "d2-prefetch-root-20261027",
+  "runtime_source_sha256": "9eda1ed0b85cfd570aa12b0fed2f5d7435591eb8be783f1f356066673e282491",
+  "status": "LOCAL_PASS_NATIVE_PREFETCH_AND_ROOT_SPEED_PENDING",
+  "owner_parent_evidence": {
+    "filename": "d2_resources_one_window.json",
+    "sha256": "0ce31fd11d0d0fedaab6a1d77b379c1431c4bec5df88c638dd12358ce8898923",
+    "runtime_source_sha256": "f04092f275acf1242976d7b447b4c6a3aace68cccf0dc612e8795954a8e6bf30",
+    "status": "PUBLISHED_UNDER_BUDGET",
+    "result": {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 108452,
+      "new_events": 108452,
+      "window_start_utc": "2026-10-27T06:05:00+00:00",
+      "window_end_utc": "2026-10-27T06:10:00+00:00",
+      "impacted_requests": 24642,
+      "bootstrap": false,
+      "generation": 50,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 210.766,
+      "capture_seconds": 62.5,
+      "total_cycle_seconds": 273.266
+    },
+    "before": {
+      "next_ns": 1793081100000000000,
+      "generation": 48,
+      "receipts": 23
+    },
+    "after": {
+      "next_ns": 1793081400000000000,
+      "generation": 50,
+      "receipts": 24
+    },
+    "checkpoint_consistent": true,
+    "merge_seconds": {
+      "viewer_events": 26.156,
+      "viewer_raw_events": 14.454,
+      "viewer_event_captures": 4.421,
+      "viewer_links": 8.625
+    },
+    "request_root_stage_seconds": 62.125,
+    "active_resource_settings": {
+      "fsync": {
+        "name": "fsync",
+        "setting": "on",
+        "unit": null,
+        "pending_restart": false
+      },
+      "full_page_writes": {
+        "name": "full_page_writes",
+        "setting": "on",
+        "unit": null,
+        "pending_restart": false
+      },
+      "max_wal_size": {
+        "name": "max_wal_size",
+        "setting": "8192",
+        "unit": "MB",
+        "pending_restart": false
+      },
+      "min_wal_size": {
+        "name": "min_wal_size",
+        "setting": "1024",
+        "unit": "MB",
+        "pending_restart": false
+      },
+      "shared_buffers": {
+        "name": "shared_buffers",
+        "setting": "1048576",
+        "unit": "8kB",
+        "pending_restart": false
+      },
+      "synchronous_commit": {
+        "name": "synchronous_commit",
+        "setting": "on",
+        "unit": null,
+        "pending_restart": false
+      },
+      "wal_buffers": {
+        "name": "wal_buffers",
+        "setting": "2048",
+        "unit": "8kB",
+        "pending_restart": false
+      }
+    }
+  },
+  "unit_tests": {
+    "status": "PASS",
+    "tests": 324,
+    "passed": 324,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "elapsed_seconds": 7.795
+  },
+  "sql_qualification": {
+    "status": "PASS",
+    "checks": 31,
+    "engine": "PostgreSQL 18.6 (PGlite 0.5.12) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+    "report": "validation/d2_prefetch_pg_sql.json",
+    "runtime_source_sha256": "9eda1ed0b85cfd570aa12b0fed2f5d7435591eb8be783f1f356066673e282491",
+    "copy_transport": "bound_row_adapter_NATIVE_COPY_NOT_RUN",
+    "native_copy": "NOT_RUN",
+    "multi_client_native_concurrency": "NOT_RUN",
+    "command_exit": 0,
+    "wrapper_exit": 124,
+    "note": "SQL command passed; timeout stopped the Node wrapper after command exit"
+  },
+  "architecture": {
+    "prefetch_depth": 1,
+    "eligible": "next_closed_forward_window_only",
+    "background": "read_only_ES_and_immutable_private_file_no_DB",
+    "database_writers": 1,
+    "publication": "existing_ordered_atomic_transaction_and_contiguous_checkpoint",
+    "max_capture_age_seconds": 300,
+    "age_from": "capture_start",
+    "rechecks": "fresh_traversal",
+    "failure": "cancel_pending_retry_durable_cursor_without_skipping",
+    "process_restart": "no_disk_queue_adoption",
+    "db_reconnect_same_process": "window_and_age_checked_against_durable_cursor",
+    "cache_discard": "one_fresh_capture_no_complete_evidence_deletion",
+    "cancelled_http": "existing_request_timeout_unchanged_cooperative_cleanup_between_pages",
+    "source_finality": "not_established",
+    "late_beyond_overlap": "manual_recheck_required_unchanged"
+  },
+  "root_query": {
+    "change": "incremental_PostgreSQL_global_scalar_origin_COUNT_equals_1",
+    "equivalence": "PK_origin_version_and_retained_event_origin_preserve_global_competing_version_check",
+    "preserved": [
+      "root_sort_order",
+      "cross_request_versions",
+      "SessionID",
+      "logical_RequestID",
+      "payment_relations",
+      "confirmed_roles"
+    ],
+    "tests": "legacy_vs_bounded_root_selection_cross_scope_conflict_and_cross_window_root",
+    "native_plan_and_speed": "NOT_RUN_HYPOTHESIS_NOT_PROVEN"
+  },
+  "timing": {
+    "capture_seconds": "complete_capture_work",
+    "capture_wait_seconds": "current_cycle_wait_for_file",
+    "capture_overlap_seconds": "capture_work_minus_current_wait_clamped_to_zero",
+    "total_cycle_seconds": "current_capture_wait_plus_validation_and_atomic_publication",
+    "parent_only_conditional_overlap_estimate_seconds": 210.766,
+    "estimate_note": "Backlog only; no CPU/disk contention assumed, before any unmeasured root-query improvement; not a native result"
+  },
+  "checks_local": [
+    "one_pending_closed_window",
+    "proof_rejects_incomplete_prefetched_file",
+    "capture_finishes_during_current_transaction_without_early_publication",
+    "failed_publish_keeps_cursor_and_all_projections",
+    "post_commit_disconnect_uses_durable_cursor",
+    "fresh_recheck_admits_late_evidence",
+    "cross_window_Session_IP_and_independent_RequestID_counts",
+    "global_cross_RequestID_version_conflict_preserves_both_raw_versions",
+    "incremental_equals_full_projection",
+    "six_forward_two_fresh_rechecks_real_HTTP_synthetic_source",
+    "same_process_DB_reconnect_preserves_cursor_and_prefetch",
+    "stale_wrong_failed_capture_gets_fresh_attempt",
+    "cancelled_PIT_is_closed_and_partial_file_removed"
+  ],
+  "native_owner_current_runtime": "NOT_RUN",
+  "capacity_800k": "NOT_PROVEN",
+  "operational_acceptance": "PENDING",
+  "remaining_gates": [
+    "native_two_forward_one_recheck_smoke",
+    "native_full_six_forward_two_rechecks",
+    "process_restart_recovery_verified_restore",
+    "native_browser_and_capacity"
+  ],
+  "owner_command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/viewer.ps1 -Action Smoke",
+  "owner_output": "validation/d2_prefetch_smoke.json",
+  "smoke": {
+    "forward_windows": 2,
+    "rechecks": 1,
+    "max_minutes": 12,
+    "cycle_budget_seconds": 300
+  },
+  "owner_probe_reapplies_resources": false,
+  "owner_probe_restarts_postgresql": false,
+  "private_configs_keys_raw_dumps_included": false,
+  "changed_files": [
+    "p24_foundation/viewer_data.py",
+    "p24_foundation/viewer_elastic.py",
+    "p24_foundation/viewer_online.py",
+    "p24_foundation/viewer_prefetch.py",
+    "tools/run_behavior_viewer.py",
+    "tools/run_viewer_pilot.py",
+    "tools/viewer.ps1",
+    "tests/test_viewer_d1_aggregate.py",
+    "tests/test_viewer_prefetch.py",
+    "tests/test_viewer_failure.py",
+    "tests/test_viewer_pilot_integration.py",
+    "Pishkhan24_Project_Roadmap.md",
+    "VIEWER_README_FA.md",
+    "docs/D2_RESOURCES_FIX_FA.md"
+  ],
+  "guide": "docs/D2_RESOURCES_FIX_FA.md"
+}

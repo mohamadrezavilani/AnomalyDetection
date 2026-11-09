@@ -1,0 +1,23 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_REVISION09_OFFLINE",
+  "checks": {
+    "missing_request_evidence_does_not_promote_a_strong_rate": "PASS",
+    "one_qualified_reference_detector_can_require_review_without_second_dimension": "PASS",
+    "fifty_and_forty_with_same_frozen_past_reference_both_require_review": "PASS_SYNTHETIC_CANONICAL_INPUTS",
+    "raw_http_reference_cannot_be_used_for_dispatcher_transport": "PASS",
+    "loss_of_current_origin_evidence_demotes_previous_case": "PASS",
+    "reference_epoch_cas_preserves_concurrent_input_changes": "PASS",
+    "root_reference_never_creates_canonical_facts_or_source_windows": "PASS",
+    "another_service_learns_from_canonical_windows_without_raw_seed": "PASS",
+    "late_semantic_change_taints_owned_reference_point_until_full_replay": "PASS",
+    "known_viewer_retention_preserves_already_qualified_ad_reference": "PASS"
+  },
+  "real_root_experiment": null,
+  "environment": "ISOLATED_POSTGRESQL_WASM",
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "native_case_results": "NOT_RUN",
+  "native_latency": "NOT_MEASURED",
+  "precision_recall": "NOT_EVALUATED"
+}

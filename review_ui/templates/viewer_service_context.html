@@ -1,0 +1,15 @@
+<section class="panel compact" id="service-dispatch-context">
+  <h2>سرویس در مسیر عمومی و پیش‌نیازهای آن</h2>
+  <p>سرویس انتخاب‌شده: <code dir="ltr">{{service_context.service_path}}</code></p>
+  <p class="scope-note">مسیر واقعی HTTP: <code dir="ltr">{{service_context.transport_api}}</code>؛ شناسایی سرویس از action صریح SQL و مسیر تأییدشده در سورس، در همان RequestID است. مسیر خام HTTP تغییر نکرده است.</p>
+  {% set stages={'inquiry_result_reported':'نتیجهٔ استعلام گزارش شده', 'otp_required':'نیاز به OTP گزارش شده؛ نتیجهٔ استعلام در این درخواست مشاهده نشده', 'selection_pending':'فهرست افراد تحت پوشش دریافت شده؛ نتیجهٔ استعلام در این درخواست مشاهده نشده', 'otp_verified_result_pending':'Provider تأیید OTP را موفق گزارش کرده؛ نتیجهٔ استعلام مشاهده نشده', 'otp_verification_failed':'Provider موفقیت تأیید OTP را گزارش نکرده', 'otp_not_required_result_pending':'در این درخواست OTP لازم نبوده؛ نتیجهٔ استعلام مشاهده نشده', 'prerequisite_conflict':'شواهد پیش‌نیاز متعارض‌اند', 'service_stage_unknown':'مرحلهٔ دقیق سرویس از شواهد موجود مشخص نیست'} %}
+  <p><strong>{{stages.get(service_context.phase,service_context.phase)}}</strong></p>
+  <p>کد پاسخ مسیر HTTP: <code>{{service_context.transport_status_code or 'نامشخص'}}</code>؛ این کد به‌تنهایی تکمیل استعلام یا OTP را ثابت نمی‌کند.</p>
+  {% if service_context.inquiry_result_codes %}<p>کدهای نتیجهٔ استعلام: <code>{{service_context.inquiry_result_codes|join(', ')}}</code></p>{% endif %}
+  {% if service_context.otp_validation_codes %}<p>کدهای گزارش تأیید OTP: <code>{{service_context.otp_validation_codes|join(', ')}}</code></p>{% endif %}
+  <p class="scope-note">این مراحل به همین درخواست تعلق دارند. اتصال OTP این درخواست به Invoice یا RequestID دیگر بدون شناسهٔ صریح مشترک تأیید نشده است. نتیجهٔ استعلام، تأیید OTP و پرداخت مستقل از یکدیگرند.</p>
+  {% if service_context_session %}<p><a href="{{url_for('requests_view',session_key=service_context_session,service=service_context.service_path,role='')}}">تمام درخواست‌های این سرویس در همین نشست ←</a> <small>این فهرست، اتصال قطعی درخواست‌ها به یک زنجیرهٔ OTP را ثابت نمی‌کند.</small></p>{% endif %}
+  <details><summary>شواهد نسخه‌دار این تشخیص</summary>
+  {% for e in service_context.evidence %}<p><code>{{e.axis}}</code>: <code>{{e.value}}</code> · <code>{{e.callpath}}</code> · <a href="{{url_for('raw_evidence',origin=e.origin_key,version=e.version_key)}}">شاهد اصلی ←</a></p>{% endfor %}
+  </details>
+</section>

@@ -1,0 +1,33 @@
+{% macro witness(proof, label) -%}
+{% if proof %}<a href="{{url_for('raw_evidence',origin=proof.origin_key,version=proof.version_key)}}">{{label}} ←</a>
+<small dir="ltr">{{proof.callpath}} · {{proof.field_path}}</small>{% endif %}
+{%- endmacro %}
+<section class="panel compact" id="bill-item-journey">
+<h2>ارتباط این قلم قبض</h2>
+<p class="scope-note">مبنای پیوند، شناسهٔ دقیق قلم در شواهد معتبرِ همان Session است. RequestIDها مستقل می‌مانند؛ سبد مشترک، زمان، IP یا مبلغ به‌تنهایی پیوند ایجاد نمی‌کنند. این کارت از استعلام، AddBills و Checkout قابل دسترسی است.</p>
+{% if bill_journey.truncated %}<p class="inline-notice">نمایش ناقص است: جست‌وجو به سقف همسایگی درخواست‌ها یا تعداد استعلام‌های مرتبط رسیده است. نبود یک مرحله در این کارت، نبود رابطه در تمام تاریخچه را اثبات نمی‌کند.</p>{% endif %}
+{% if bill_journey.status=='unresolved' %}
+<p>شناسهٔ قلم یا هویت معتبرِ بدون تعارض برای این نمایش کافی نیست.</p>
+{% else %}
+<p>{{bill_journey.bill_item_count}} شناسهٔ قلم در درخواست جاری مشاهده شد. محدودهٔ جست‌وجو: دو صفحهٔ محدود از درخواست‌های همان Session در اطراف این درخواست؛ تاریخچهٔ کامل فرض نمی‌شود.</p>
+{% for item in bill_journey.inquiries %}
+<div><p>{{item.when_fa}} · <strong dir="ltr">{{item.api}}</strong>
+{% if item.request_key==bill_journey.current_request_key %} · درخواست جاری{% endif %}
+ · <a dir="ltr" href="{{url_for('request_view',key=item.request_key)}}">{{item.raw_request_id}}</a></p>
+{{witness(item.evidence,'شاهد قلم در استعلام')}}</div>
+{% else %}<p>در محدودهٔ جست‌وجوی این کارت، استعلامی با شناسهٔ همین قلم پیدا نشد؛ نبود استعلام در کل تاریخچه احراز نشده است.</p>{% endfor %}
+{% for group in [bill_journey.basket_additions,bill_journey.payment_attempts] %}
+{% for item in group %}<div><p>{{item.when_fa}} · <strong dir="ltr">{{item.api}}</strong>
+{% if item.request_key==bill_journey.current_request_key %} · درخواست جاری{% endif %}
+ · <a dir="ltr" href="{{url_for('request_view',key=item.request_key)}}">{{item.raw_request_id}}</a>
+ · قوی‌ترین شاهد این ردیف: <code>{{item.relation}}</code> · {{item.linked_items}} قلم مشترک، {{item.explicit_selection_item_count}} قلم با انتخاب صریح SQL.</p>
+{{witness(item.inquiry_evidence,'شاهد قلم در استعلام')}}
+{{witness(item.evidence,'شاهد انتخاب صریح SQL' if item.relation=='explicit_item_selection' else 'شاهد خواندن یا ارجاع قلم')}}
+<details><summary>شواهد هر قلم مشترک</summary>{% for entry in item.item_evidence %}
+<p>شناسهٔ قلم: <code dir="ltr">{{entry.item_id}}</code> · نوع شاهد همین قلم: <code>{{entry.relation}}</code></p>
+{% for proof in entry.inquiry_evidence %}{{witness(proof,'شاهد استعلام')}}{% endfor %}
+{% for proof in entry.step_evidence %}{{witness(proof,'شاهد این مرحله')}}{% endfor %}
+{% endfor %}</details></div>{% endfor %}{% endfor %}
+{% endif %}
+<p class="scope-note">انتخاب صریح قلم، حضور در readset حین Checkout و اشتراک سبد، شواهد متفاوت‌اند. این روابط علت کلیک، فهرست نهایی پرداخت، منبع وجه، انتساب شارژ کیف پول یا تسویهٔ قطعی را اثبات نمی‌کنند. تأیید مالی احراز نشده است.</p>
+</section>

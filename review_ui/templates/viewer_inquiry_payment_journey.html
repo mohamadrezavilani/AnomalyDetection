@@ -1,0 +1,24 @@
+<section class="panel compact">
+  <h2>مسیر قبض از استعلام تا پرداخت</h2>
+  <p class="scope-note">این ردیابی بر پایه شناسه یکتای قلم قبض در Cache و درخواست‌های بعدی همان Session است؛ صرف یکسان‌بودن شماره هدف، زمان یا IP ارتباط ایجاد نمی‌کند. هر مرحله RequestID مستقل دارد. موفقیت API با موفقیت مالی متفاوت است.</p>
+  {% if journey.status=='unresolved' %}
+    <p>شناسه قلم قبض یا ارتباط معتبر کافی برای ردیابی این استعلام در لاگ‌ها موجود نیست.</p>
+  {% else %}
+    <p>{{journey.bill_item_count}} قلم قبض با شناسه صریح شناسایی شد.
+    {% if journey.status=='no_downstream_step_observed' %}<strong>موردی از سبد یا پرداختِ همین قلم در داده‌های واردشده مشاهده نشد.</strong> این موضوع اثبات پرداخت‌نشدن نیست.
+    {% elif journey.status=='basket_added' %}<strong>این قلم به سبد افزوده شده است.</strong> درخواست پرداختی با شناسه همین قلم مشاهده نشد.
+    {% else %}<strong>این قلم در شواهد انتخاب یا خواندن سبد در جریان پرداخت دیده شده است؛ وجود قلم در فهرست نهایی پرداخت هنوز لزوماً ثابت نیست.</strong>{% endif %}</p>
+    {% for step in journey.basket_additions %}
+      <p>{{step.when_fa}} — <strong dir="ltr">{{step.service}}</strong> — افزودن {{step.linked_items}} قلم مشترک به سبد.
+      <a href="{{url_for('request_view',key=step.request_key)}}">درخواست {{step.raw_request_id or ''}} ←</a></p>
+    {% endfor %}
+    {% for step in journey.payment_attempts %}
+      <p>{{step.when_fa}} — <strong dir="ltr">{{step.service}}</strong> — مرحله پرداخت / خواندن سبد با {{step.linked_items}} شناسه مشترک (نوع ارتباط: {{step.relation}}؛ manifest قطعی: خیر).
+      روش: <strong>{{'نامشخص (مسیر Provider و منبع وجه جدا بررسی شود)'}}</strong>؛
+      نتیجه API: <span dir="ltr">{{step.root_code or 'نامشخص'}}</span>؛
+      نتیجه مالی: <strong>{{'گزارش موفقیت قلم، بدون سند نهایی تسویه' if step.get('financial_reported') else 'تأیید مالی احراز نشده'}}</strong>.
+      <a href="{{url_for('action_view',key=step.request_key)}}">اقدام پرداخت ←</a> · <a href="{{url_for('request_view',key=step.request_key)}}">شواهد ←</a></p>
+    {% endfor %}
+  {% endif %}
+  <p class="scope-note">تطبیق شناسه قلم، ارتباط آن قلم با درخواست بعدی را اثبات می‌کند؛ به‌تنهایی اثبات نمی‌کند کدام کلیک علت درخواست بوده است. در سبد چندقبضی، تأیید مالی کل سبد به معنی تأیید تک‌تک قبض‌ها نیست مگر مدل مالی برای آن‌ها شاهد معتبر داشته باشد.</p>
+</section>

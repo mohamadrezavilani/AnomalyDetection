@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "mode": "integrated_market_roles_bulk_publication",
+  "source": {
+    "status": "PASS",
+    "checked_files": 249,
+    "mismatches": []
+  },
+  "private_config_excluded": true,
+  "keys_excluded": true,
+  "core_reference_excluded": true,
+  "windows_execution": "NOT_RUN",
+  "native_current_build_acceptance": "NOT_RUN",
+  "runtime_source_sha256": "7eb96aac884f3fd9a02643e65f3ff69c8064bfbc3f0c99c437bb03c1636a4fdb",
+  "powershell_launcher_regression": "PASS_12_CASES_LINUX_ENGINE_WINDOWS_NOT_RUN",
+  "source_pinned_local_tests": 281,
+  "postgres_dialect_checks": 42,
+  "cumulative_patch_byte_exact": true
+}

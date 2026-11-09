@@ -1,0 +1,90 @@
+{
+  "status": "PASS_LOCAL_DISPLAY_FIX_NATIVE_UI_NOT_RUN",
+  "scope": "four_display_templates_only",
+  "runtime_source_sha256": "21e38ef0dcbfc4a952c8dc965718cc3f1e0574789403b7228c6097711c398b00",
+  "parent_runtime_source_sha256": "9eda1ed0b85cfd570aa12b0fed2f5d7435591eb8be783f1f356066673e282491",
+  "changed_runtime_files": [
+    "review_ui/templates/viewer_home.html",
+    "review_ui/templates/viewer_session_behavior.html",
+    "review_ui/templates/viewer_service_journey.html",
+    "review_ui/templates/viewer_services.html"
+  ],
+  "processing_python_files_unchanged": 111,
+  "catalog_files_unchanged": true,
+  "schema_change": false,
+  "migration_or_rebuild_required": false,
+  "owner_database_modified_by_this_fix": false,
+  "owner_settings_or_keys_included": false,
+  "unit_tests": {
+    "status": "PASS",
+    "tests": 17,
+    "modules": [
+      "tests.test_viewer_install_regressions",
+      "tests.test_viewer_final_semantic_index",
+      "tests.test_viewer_requests_index",
+      "tests.test_viewer_inquiry_journey"
+    ]
+  },
+  "render_checks": {
+    "status": "PASS_LOCAL_UI_RENDER",
+    "checks": {
+      "flask_local_pages_without_errors": 8,
+      "original_api_names_versions_displayed": true,
+      "existing_translated_labels_not_used_as_names": true,
+      "persian_interface_preserved": true,
+      "read_models_roles_raw_checkpoint_unchanged_by_reads": true,
+      "rootless_evidence_not_given_invented_service_name": true,
+      "html_escape_preserved": true,
+      "unchanged_processing_python_files": 111,
+      "only_four_templates_changed": true
+    },
+    "native_windows_browser": "NOT_RUN",
+    "native_postgresql_after_template_change": "NOT_RUN",
+    "processing_code_changed": false
+  },
+  "native_parent_profile": {
+    "status": "PUBLISHED_UNDER_BUDGET",
+    "runtime_source_sha256": "9eda1ed0b85cfd570aa12b0fed2f5d7435591eb8be783f1f356066673e282491",
+    "result": {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 102670,
+      "new_events": 102670,
+      "window_start_utc": "2026-10-27T09:20:00+00:00",
+      "window_end_utc": "2026-10-27T09:25:00+00:00",
+      "impacted_requests": 23199,
+      "bootstrap": false,
+      "generation": 131,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 176.218,
+      "capture_seconds": 47.641,
+      "capture_wait_seconds": 47.641,
+      "capture_overlap_seconds": 0,
+      "total_cycle_seconds": 223.859
+    },
+    "before_to_after_commit_seconds": 0.375,
+    "scope": "one_forward_window_including_fresh_capture_not_sustained_capacity"
+  },
+  "performance_evidence": {
+    "prior_over_budget_receipts_seconds": [
+      317.547,
+      383.094
+    ],
+    "cause_of_prior_spikes": "NOT_PROVEN",
+    "latest_ingest_merge_seconds": 41.594,
+    "latest_contract_candidate_metadata_seconds": 17.703,
+    "latest_unseparated_request_conflict_to_action_build_seconds": 21.953,
+    "wal_checkpointer_counters_are_cluster_wide": true,
+    "performance_sql_or_settings_changed_in_this_fix": false
+  },
+  "remaining_gates": {
+    "non_financial_acceptance": "CONDITIONAL",
+    "bill_item_relation_navigation_and_exact_evidence_pointer": "PENDING_FIX",
+    "native_postgresql_crash": "NOT_RUN",
+    "restore": "NOT_RUN",
+    "native_late_evidence": "NOT_RUN",
+    "logical_requests_800k_per_hour": "NOT_RUN",
+    "financial": "DEFERRED_BACKEND_LOGS_INCOMPLETE"
+  },
+  "deployment": "Extract this patch in the existing project root after stopping only the Viewer web process, then restart the web process. No database initialization or checkpoint change."
+}

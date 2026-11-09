@@ -1,0 +1,22 @@
+{
+  "build_id": "AD-PRODUCT-20261105-23",
+  "status": "PASS_CATALOG_AWARE_STARTUP_AND_LOCK_RETRY_SQL",
+  "checks": {
+    "fresh_install_creates_missing_owned_tables_indexes_columns_and_markers": "PASS_SQL",
+    "complete_existing_install_issues_zero_ddl_under_injected_ddl_lock_conflict": "PASS_111_STATEMENTS_SKIPPED_AFTER_CATALOG_CHECK",
+    "restart_keeps_existing_facts_and_cursor_unchanged": "PASS",
+    "missing_index_upgrade_creates_only_that_index_without_redundant_table_alters": "PASS",
+    "missing_additive_column_is_repaired_with_original_default_without_replaying_other_ddl": "PASS",
+    "startup_lock_has_exact_phase_safe_statement_fingerprint_and_explicit_waiting_state": "PASS_SQL55P03_INJECTED_NOT_NATIVE_CONCURRENT_LOCK",
+    "required_migration_retries_after_lock_clears_and_worker_evaluates_existing_jobs": "PASS_SYNTHETIC_SOURCE_PACKETS",
+    "source_fixture_and_unrelated_owned_cursor_survive_upgrade_and_retry": "PASS",
+    "existing_object_names_do_not_bypass_column_type_validation": "PASS_FAIL_CLOSED"
+  },
+  "owner_connections": 0,
+  "production_source_writes": 0,
+  "lock_timeout_increased": false,
+  "old_schema_reset": false,
+  "native_windows_postgresql22": "NOT_RUN",
+  "native_two_session_lock_test": "NOT_RUN",
+  "production_precision_recall_capacity": "NOT_MEASURED"
+}

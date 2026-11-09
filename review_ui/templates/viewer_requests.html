@@ -1,0 +1,42 @@
+{% extends 'viewer_base.html' %}{% block body %}
+<section class="page-heading"><div><p class="eyebrow">مرور مستقل / RequestID</p><h1>فهرست درخواست‌ها</h1>
+<p class="lead">هر ردیف یک RequestID مستقل است؛ حتی دو استعلام از یک قبضِ یکسان، دو درخواست جدا هستند.</p>
+<p class="scope-note">این فهرست در حالت بدون Session شامل درخواست‌های تمام نشست‌هاست؛ اندازه صفحه به معنی شمار فعالیت یک شخص نیست.</p><p class="scope-note">با فیلتر Session و «عملیات تجاری»، خط زمانی همان نشست را در همین صفحه می‌بینید. پیش‌فرض فقط درخواست‌های دارای API اصلی را نشان می‌دهد. نقش تجاری، پشتیبان، مدیریتی، سیستمی و ناشناخته قابل فیلتر است. خطوط SQL و Cache همان درخواست در جزئیات آن دیده می‌شوند.</p></div></section>
+<section class="panel"><div class="section-heading"><div><h2>فیلتر درخواست‌ها</h2><p>شناسه کامل نشست یا RequestID را وارد کنید. زمان‌ها به وقت تهران‌اند و بازه از شامل / تا غیرشامل است.</p></div></div>
+<form method="get" style="padding:0 22px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+{% if session_key|default('') %}<p class="scope-note">فیلتر نشست با شناسه داخلی فعال است. <a href="{{url_for('requests_view')}}">مشاهده همه نشست‌ها</a></p><input type="hidden" name="session_key" value="{{session_key}}">{% endif %}
+{% if service_path_filter|default('') %}<p class="scope-note">فیلتر دقیق API: <b dir="ltr">{{service_path_filter}}</b></p><input type="hidden" name="service_path" value="{{service_path_filter}}">{% endif %}
+<label>Session <input name="session" value="{{session}}" placeholder="Session دقیق" size="35" autocomplete="off"></label>
+<label>RequestID <input name="request_id" value="{{request_id}}" placeholder="RequestID دقیق" size="37" autocomplete="off"></label>
+<label>هدف استعلام <input name="target" value="{{target|default('')}}" placeholder="شناسه هدف دقیق" size="22"></label>
+<label>سرویس <input name="service" value="{{service}}" placeholder="ElectricBills" size="22"></label>
+<label>نقش <select name="role"><option value="">همه</option>
+{% for val,label in [('business','عملیات تجاری'),('user_management','مدیریتی کاربر'),('support','پشتیبان'),('system','پیگیری سیستمی'),('unknown','ناشناخته')] %}
+<option value="{{val}}" {% if role==val %}selected{% endif %}>{{label}}</option>{% endfor %}</select></label>
+<label>نتیجه <select name="outcome"><option value="">همه</option>
+{% for val,label in [('success','کد API موفق'),('failure','کد API ناموفق'),('unknown','نامشخص')] %}
+<option value="{{val}}" {% if outcome==val %}selected{% endif %}>{{label}}</option>{% endfor %}</select></label>
+<label>از <input name="from" type="datetime-local" value="{{start}}"></label>
+<label>تا <input name="to" type="datetime-local" value="{{end}}"></label>
+<label><input name="internal" value="1" type="checkbox" {% if internal %}checked{% endif %}> شامل RequestIDهای بدون API اصلی</label>
+<button>اعمال فیلتر</button><a class="button secondary" href="{{url_for('requests_view')}}">پاک‌کردن</a>
+</form>
+<div class="table-scroll"><table><thead><tr><th>زمان مشاهده / پایان API (تهران)</th><th>RequestID</th><th>Session</th><th>سرویس / API اصلی</th><th>هدف شناخته‌شده</th><th>پیشرفت تا پرداخت</th><th>نقش</th><th>نتیجه</th><th>ردیف لاگ</th><th>جزئیات</th></tr></thead><tbody>
+{% for r in result['items'] %}<tr>
+<td dir="ltr">{{r.when_fa}}</td>
+<td dir="ltr"><a href="{{url_for('request_view',key=r.request_key)}}">{{r.raw_request_id or r.request_key}}</a></td>
+<td>{% if r.session_key %}<a href="{{url_for('requests_view',session_key=r.session_key,role='business')}}">درخواست‌های تجاری نشست</a>{% else %}بدون Session{% endif %}</td>
+<td><strong dir="ltr">{{r.service_name}}</strong><small dir="ltr">{{r.root_call or ('ریشه HTTP مبهم / شواهد متعارض' if r.identity_state=='conflicting' else 'بدون HTTP root ثبت‌شده')}}</small></td>
+<td>{% if r.target_key %}<span dir="ltr">{{r.target_type or 'ناشناخته'}}: {{r.raw_target or r.target_key}}</span>{% else %}نامشخص{% endif %}</td>
+<td>{% if r.service_journey %}{% if r.service_journey.truncated %}نمایش بخشی از مراحل مرتبط (محدودیت پیمایش){% elif r.service_journey.status=='related_steps_observed' %}مراحل دارای مرجع مشترک دیده شد؛ پرداخت قطعی نامشخص{% else %}ارتباط صریح با درخواست دیگر مشاهده نشد{% endif %}{% elif r.inquiry_journey %}{% set j = r.inquiry_journey %}{% if j.status=='payment_stage_reference_observed' %}مرحله پرداخت/خواندن سبد مرتبط؛ manifest نهایی نامشخص{% elif j.status=='basket_added' %}به سبد افزوده شده{% elif j.status=='no_downstream_step_observed' %}پرداخت مرتبط مشاهده نشد{% else %}شواهد کافی نیست{% endif %}{% else %}—{% endif %}</td>
+<td>{{'عملیات تجاری' if r.category=='business' else 'مدیریتی کاربر' if r.category=='user_management' else 'پشتیبان' if r.category=='support' else 'پیگیری سیستمی' if r.category=='system' else 'ناشناخته'}}</td>
+<td>{{'موفق' if r.root_code=='G00000' else 'ناموفق' if r.root_code else 'نامشخص'}}<small dir="ltr">{{r.root_code or '—'}}</small></td>
+<td>{{r.event_count}}</td>
+<td><a href="{{url_for('request_view',key=r.request_key)}}">شواهد ←</a>{% if r.action_key %} · <a href="{{url_for('action_view',key=r.action_key)}}">اقدام ←</a>{% endif %}</td>
+</tr>{% else %}<tr><td colspan="10" class="empty-state">درخواستی مطابق فیلتر وجود ندارد.</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="pagination"><span>{{result.total}} درخواست · صفحه {{page}} · {{result['items']|length}} نتیجه در این صفحه</span><div>
+{% if page>1 %}<a class="button secondary" href="{{url_for('requests_view',page=page-1,limit=limit,session=session,session_key=session_key|default(''),request_id=request_id,target=target|default(''),service=service,service_path=service_path_filter|default(''),role=role,outcome=outcome,internal='1' if internal else '0',**{'from':start,'to':end})}}">قبلی</a>{% endif %}
+{% if page*limit<result.total %}<a class="button" href="{{url_for('requests_view',page=page+1,limit=limit,session=session,session_key=session_key|default(''),request_id=request_id,target=target|default(''),service=service,service_path=service_path_filter|default(''),role=role,outcome=outcome,internal='1' if internal else '0',**{'from':start,'to':end})}}">بعدی</a>{% endif %}
+</div></div></section>
+{% endblock %}

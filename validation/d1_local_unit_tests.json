@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "mode": "sqlite_focused_unittest",
+  "tests": 50,
+  "failures": 0,
+  "errors": 0,
+  "python": "3.13.5",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "native_postgresql": "NOT_RUN",
+  "flask_web_tests": "NOT_RUN_DEPENDENCY_MISSING",
+  "source_sha256": "bc699845175b019cd312940cee59b49b82892dacc6cf23bfae9b1e0397e0d953",
+  "modules": [
+    "tests.test_viewer_d1_aggregate",
+    "tests.test_viewer_bulk_publication",
+    "tests.test_viewer_bulk_ingest",
+    "tests.test_viewer_online",
+    "tests.test_viewer_service_catalog",
+    "tests.test_viewer_final_semantic_index",
+    "tests.test_viewer_contract_r5"
+  ]
+}

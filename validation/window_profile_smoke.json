@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "mode": "canonical_cli_synthetic_pit_sqlite",
+  "window_status": "PUBLISHED_UNDER_BUDGET",
+  "published": {
+    "status": "PUBLISHED",
+    "mode": "forward",
+    "records": 3,
+    "new_events": 3,
+    "impacted_requests": 3,
+    "bootstrap": true,
+    "generation": 2,
+    "capture_method": "pit_search_after",
+    "elapsed_seconds": 0.005,
+    "capture_seconds": 0.002,
+    "total_cycle_seconds": 0.007
+  },
+  "progress_records": 19,
+  "report_written": true,
+  "live_elasticsearch": "NOT_RUN",
+  "native_postgresql": "NOT_RUN"
+}

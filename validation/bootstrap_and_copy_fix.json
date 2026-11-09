@@ -1,0 +1,40 @@
+{
+  "status": "PASS_LOCAL_NATIVE_RETEST_REQUIRED",
+  "tests_passed": 232,
+  "owner_observation": {
+    "window_events": 81859,
+    "ingest_completed_elapsed_seconds": 332.9,
+    "root_bearing_historical_requests": 467576,
+    "contract_candidates_scanned": 813617,
+    "semantic_scanned_at_last_attached_line": 352500,
+    "attached_last_elapsed_seconds": 2771.2,
+    "owner_reported_runtime_over_one_hour": true
+  },
+  "semantic_bootstrap": {
+    "one_server_cursor": true,
+    "previous_anchor_join": true,
+    "one_final_session_head_refresh": true,
+    "incremental_session_refresh": "one_set_after_all_batches",
+    "preserves_anchor_identity_and_revisions": true
+  },
+  "ingestion": {
+    "transport": "PostgreSQL COPY to bounded temporary staging and merge",
+    "batch_size": 500,
+    "commits_inside_ingest": false,
+    "revision_deduplication_unchanged": true
+  },
+  "pilot_deadline": {
+    "wall_clock_cancel": true,
+    "cpu_progress_check": true,
+    "sql_statement_timeout_seconds": 300
+  },
+  "synthetic_sqlite_500k_bootstrap_seconds": 21.934,
+  "staged_merge_postgresql_dialect": "PASS_WITH_BOUND_ROW_COPY_ADAPTER",
+  "native_postgresql_copy_transport": "NOT_RUN",
+  "native_owner_performance": "NOT_RUN",
+  "real_archived_six_windows": "PASS",
+  "configuration_changed": false,
+  "checkpoint_reset": false,
+  "private_credentials_included": false,
+  "production_modified": false
+}

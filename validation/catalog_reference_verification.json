@@ -1,0 +1,7 @@
+{
+  "role_policy_unchanged": true,
+  "policy_sha256": "c4368f3bdfe5630d8ec4d170a6e760d75dfb625aeb7ebc8f5e567a47b0e8cee6",
+  "contract_methods_verified": 249,
+  "paths_with_facade_reference": 253,
+  "archived_qualification_reusable": "Only source method/reference metadata corrected; role/initiation/semantic/family policy identical"
+}

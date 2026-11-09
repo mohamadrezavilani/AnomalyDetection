@@ -1,0 +1,30 @@
+{
+  "build_id": "AD-FAMILY-AUDIT-20261108",
+  "unit_tests": {
+    "status": "PASS",
+    "count": 192,
+    "environment": "ISOLATED_LINUX"
+  },
+  "sql_environment": "ISOLATED_POSTGRESQL_WASM",
+  "targeted_checks": {
+    "profile_contract_excludes_stale_targets_and_peer_cohorts": "PASS",
+    "historical_profile_pass_advances_despite_new_arrivals": "PASS",
+    "context_read_timeout_retries_only_its_methods_and_preserves_rate_proof": "PASS"
+  },
+  "suite_statuses": {
+    "revision18": "PASS_PRIMARY_EVIDENCE_AND_SECONDARY_RETRY_SQL",
+    "revision19": "PASS_CONTENT_NETWORK_SCENARIO_PIPELINE_SQL",
+    "revision25": "PASS_LONGITUDINAL_NOC_AND_FEEDBACK_SQL",
+    "input_subjects": "PASS_ISOLATED_POSTGRESQL_WASM",
+    "export17": "PASS_ISOLATED_POSTGRESQL_WASM",
+    "PASS_CONTINUOUS_AND_STABLE_CASE_SQL_ISOLATED": {
+      "checks": 11
+    },
+    "PASS_UNIFIED_CASES_AND_RESERVED_LANES_SQL": {
+      "checks": 11
+    }
+  },
+  "native_windows_postgresql": "NOT_RUN_FOR_THIS_BUILD",
+  "production_latency_capacity_and_detection_accuracy": "NOT_MEASURED",
+  "financial_settlement_acceptance": "BLOCKED_BACKEND_EVIDENCE"
+}

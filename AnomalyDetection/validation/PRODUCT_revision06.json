@@ -1,0 +1,23 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "environment": "POSTGRESQL_WASM_ISOLATED",
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "checks": {
+    "F03_dirty_cached_context_invalidated": "PASS",
+    "stale_fetch_cannot_adopt_new_version": "PASS",
+    "F02a_real_peer_consumer_requeued": "PASS",
+    "F02b_absent_replacement_not_stale_eligible": "PASS",
+    "peer_input_CAS_before_first_dependency_commit": "PASS",
+    "cross_session_context_input_requeued": "PASS",
+    "family_abstention_defers_previous_service_finding": "PASS",
+    "partial_window_and_snapshot_restart_not_complete": "PASS",
+    "all_canonical_kinds_and_no_technical_double_count": "PASS",
+    "window_replay_deduplicated": "PASS",
+    "window_cursor_summaries_and_cohort_atomic_rollback": "PASS",
+    "pinned_viewer_delegation_no_init_no_sqlite_select_only": "NOT_RUN_NO_VIEWER_PROJECT",
+    "unmapped_root_survives_source_projection_without_false_normal": "PASS",
+    "F01_retention_never_becomes_verified_zero_or_benign": "PASS"
+  },
+  "status": "PASS_TARGETED_REGRESSION_NOT_NATIVE_ACCEPTANCE"
+}

@@ -1,0 +1,49 @@
+{
+  "status": "PASS",
+  "mode": "recent_start_preservation_and_visible_coverage_gap",
+  "local_regression_tests": 11,
+  "local_suite_tests": 275,
+  "postgres_dialect_new_checks": 8,
+  "preserves": [
+    "raw_events",
+    "request_and_session_identity",
+    "payment_relations",
+    "semantic_evidence",
+    "operator_choices",
+    "private_keys",
+    "configured_start"
+  ],
+  "changed_metadata": [
+    "durable_next_cursor",
+    "worker_status",
+    "append_only_resume_receipt"
+  ],
+  "rollback_atomic": true,
+  "restart_preserved": true,
+  "backfill_can_reduce_gap": true,
+  "repeats_do_not_rewind": true,
+  "active_worker_refused": true,
+  "live_es_contacted_by_seek": false,
+  "http_gap_notices": [
+    "home",
+    "session_behavior",
+    "request"
+  ],
+  "owner_latest_observation": {
+    "catalog_paths_changed": 86,
+    "catalog_requests_changed": 50663,
+    "catalog_semantic_changes": 5217,
+    "published_events": 77170,
+    "published_to_utc": "2026-10-26T09:50:00+00:00",
+    "cycle_seconds": 299.094,
+    "events_merge_seconds": 93.578,
+    "total_merge_seconds": 142.203,
+    "next_window_events": 79908,
+    "next_events_merge_seconds": 93.391
+  },
+  "one_window_check_budget_minutes": 6,
+  "full_pilot_still_required_for_acceptance": true,
+  "runtime_source_sha256": "00af7d4080a875333ad18ac320eb7b30a7c3477b25572fd7ac7d4e6c5f509e51",
+  "native_owner_recent_start": "NOT_RUN",
+  "production_modified": false
+}

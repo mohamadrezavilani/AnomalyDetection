@@ -1,0 +1,179 @@
+{
+  "status": "QUICK_CHECKS_PASS_FINAL_ACCEPTANCE_PENDING",
+  "mode": "finite_native_synthetic_qualification",
+  "checks": {
+    "real_d5_bidirectional_and_sql_witness": {
+      "status": "PASS",
+      "three_real_entry_points": true,
+      "sql_evidence_pointer": true,
+      "three_local_flask_page_seconds": [
+        0.297,
+        0.109,
+        0.094
+      ],
+      "scope": "real_sample_readonly_not_browser_or_load_p95"
+    },
+    "native_copy_sql_and_preservation": {
+      "status": "PASS",
+      "mode": "native_postgresql_finite_sql",
+      "engine": "PostgreSQL 17.7 on x86_64-windows, compiled by msvc-19.44.35221, 64-bit",
+      "checks": {
+        "bootstrap_published": true,
+        "postgres_staging_merge_crossed_500_event_batches": true,
+        "one_final_merge_and_stage_reset_per_table_per_capture": true,
+        "copy_buffers_remain_bounded_at_500_source_events": true,
+        "contract_server_cursor_crossed_400_events": true,
+        "history_relation_preserved_for_snapshot_readers": true,
+        "rollback_preserved_all_projections": true,
+        "incremental_dependency_scope": true,
+        "unchanged_scoped_rebuild_preserves_permanent_row_versions": true,
+        "no_permanent_work_relations": true,
+        "checkpoint_advanced_once": true,
+        "scoped_event_cache_excludes_unrelated_history": true,
+        "scoped_fetch_plan_uses_request_key_index": true,
+        "duplicate_recheck_idempotent": true,
+        "role_and_summary_atomic": true,
+        "incremental_equals_full_batch": true,
+        "scoped_fetch_crosses_400_bodies_in_read_only_transaction": true,
+        "scoped_reader_preserves_all_projections": true,
+        "scoped_payload_plan_uses_raw_primary_key": true,
+        "home_raw_session_and_request_aliases_preserved": true,
+        "home_raw_aliases_use_primary_key_lookups_without_global_raw_scan": true,
+        "bounded_read_only_probe_matches_original_first_400_events": true,
+        "staging_preserves_duplicates_projection_and_revision": true,
+        "multiple_files_in_one_transaction_reuse_stages_without_remerging_old_rows": true,
+        "failure_between_table_merges_rolls_back_already_merged_events": true,
+        "staging_error_after_first_batch_rolls_back": true,
+        "source_catalog_upgrade_failure_rolls_back_all_projections": true,
+        "source_catalog_updates_retained_actions_across_500_request_batches": true,
+        "source_catalog_preserves_operator_role_raw_events_and_live_cursor": true,
+        "source_catalog_repeat_is_idempotent": true,
+        "source_catalog_status_reads_inside_read_only_transaction": true
+      },
+      "live_elasticsearch": "NOT_RUN",
+      "copy_transport": "native_psycopg_copy",
+      "multi_client_native_concurrency": "NOT_RUN",
+      "owner_windows": "NOT_RUN",
+      "production_modified": false
+    },
+    "two_connection_atomic_snapshot": {
+      "status": "PASS"
+    },
+    "publisher_cut_after_ingest": {
+      "point": "after_ingest",
+      "status": "PASS",
+      "checkpoint_safe": true
+    },
+    "publisher_cut_after_requests": {
+      "point": "after_requests",
+      "status": "PASS",
+      "checkpoint_safe": true
+    },
+    "publisher_cut_after_relations": {
+      "point": "after_relations",
+      "status": "PASS",
+      "checkpoint_safe": true
+    },
+    "publisher_cut_after_semantics": {
+      "point": "after_semantics",
+      "status": "PASS",
+      "checkpoint_safe": true
+    },
+    "publisher_cut_before_commit": {
+      "point": "before_commit",
+      "status": "PASS",
+      "checkpoint_safe": true
+    },
+    "publisher_cut_after_commit": {
+      "point": "after_commit",
+      "status": "PASS",
+      "checkpoint_safe": true
+    },
+    "six_publisher_hard_cuts": {
+      "status": "PASS",
+      "cases": [
+        {
+          "point": "after_ingest",
+          "status": "PASS",
+          "checkpoint_safe": true
+        },
+        {
+          "point": "after_requests",
+          "status": "PASS",
+          "checkpoint_safe": true
+        },
+        {
+          "point": "after_relations",
+          "status": "PASS",
+          "checkpoint_safe": true
+        },
+        {
+          "point": "after_semantics",
+          "status": "PASS",
+          "checkpoint_safe": true
+        },
+        {
+          "point": "before_commit",
+          "status": "PASS",
+          "checkpoint_safe": true
+        },
+        {
+          "point": "after_commit",
+          "status": "PASS",
+          "checkpoint_safe": true
+        }
+      ],
+      "scope": "actual_process_exit_on_native_postgresql_not_server_crash"
+    },
+    "test_incremental_late_root_repeat_ip_and_batch_parity": {
+      "test": "test_incremental_late_root_repeat_ip_and_batch_parity",
+      "status": "PASS"
+    },
+    "test_conflict_retracts_old_and_new_request_with_payment_dependency": {
+      "test": "test_conflict_retracts_old_and_new_request_with_payment_dependency",
+      "status": "PASS"
+    },
+    "test_duplicate_capture_keeps_counts_roles_keys_and_restart_cursor": {
+      "test": "test_duplicate_capture_keeps_counts_roles_keys_and_restart_cursor",
+      "status": "PASS"
+    },
+    "test_reverse_late_rechecks_match_chronological_batch": {
+      "test": "test_reverse_late_rechecks_match_chronological_batch",
+      "status": "PASS"
+    },
+    "test_changed_payment_origin_invalidates_old_group_and_session_head": {
+      "test": "test_changed_payment_origin_invalidates_old_group_and_session_head",
+      "status": "PASS"
+    },
+    "test_capture_proof_and_corruption_rejected_without_database_changes": {
+      "test": "test_capture_proof_and_corruption_rejected_without_database_changes",
+      "status": "PASS"
+    },
+    "synthetic_logical_restore": {
+      "status": "PASS",
+      "full_viewer_table_row_hashes_match": true,
+      "fresh_recheck_and_forward": true,
+      "scope": "small_synthetic_fixture_not_owner_backup"
+    }
+  },
+  "runtime_source_sha256": "a9f5a0e19ef1df4a482004441cf56bc28aac2027db1f7ccf5ba3231129599575",
+  "owner_viewer_database_written_by_runner": false,
+  "server_crash": "NOT_RUN",
+  "owner_actual_backup_restore": "NOT_RUN",
+  "capacity_800k_logical_requests_per_hour": "NOT_RUN",
+  "financial": "DEFERRED_BACKEND_LOGS_INCOMPLETE",
+  "server_version": "17.7",
+  "stage": "complete",
+  "created_synthetic_databases": [
+    "p24_design_native_81c38931_sql_qualification",
+    "p24_design_native_81c38931_snapshot_qualification",
+    "p24_design_native_81c38931_recovery_qualification",
+    "p24_design_native_81c38931_late3_qualification",
+    "p24_design_native_81c38931_late4_qualification",
+    "p24_design_native_81c38931_late5_qualification",
+    "p24_design_native_81c38931_late6_qualification",
+    "p24_design_native_81c38931_late7_qualification",
+    "p24_design_native_81c38931_late8_qualification",
+    "p24_design_native_81c38931_restore_qualification"
+  ]
+}

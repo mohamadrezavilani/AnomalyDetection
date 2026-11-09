@@ -1,0 +1,15 @@
+{
+  "status": "PASS_RAW_RETENTION_POSTGRESQL_FIXTURE",
+  "build_id": "AD-PRODUCT-20261107-27",
+  "postgresql": "16.2",
+  "owner_windows": "NOT_RUN",
+  "checks": {
+    "seek_cursor_alone_does_not_prove_publication": "PASS",
+    "fault_after_truncate_restores_both_tables_and_no_receipt": "PASS",
+    "rejects_foreign_dependency_before_deletion": "PASS",
+    "old_payloads_only_and_exact_bytes_preserved_for_required_rows": "PASS",
+    "request_event_payment_baseline_checkpoint_preserved": "PASS",
+    "physical_relation_bytes_reclaimed": 1990656,
+    "atomic_receipt_and_idempotent_retry": "PASS"
+  }
+}

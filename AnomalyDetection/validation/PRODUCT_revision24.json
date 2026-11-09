@@ -1,0 +1,12 @@
+{
+  "build_id": "AD-PRODUCT-20261106-25",
+  "status": "PASS_NESTED_STATEMENT_BUDGET_RESTORATION",
+  "checks": {
+    "original_successful_savepoint_leaks_200ms_into_parent": "REPRODUCED_SQL",
+    "successful_and_cancelled_nested_budget_restore_parent": "PASS",
+    "statistics_progress_and_page_preserve_3s_in_readonly_parent": "PASS"
+  },
+  "owner_connections": 0,
+  "native_windows_postgresql24": "NOT_RUN",
+  "production_accuracy": "NOT_MEASURED"
+}

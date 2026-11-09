@@ -1,0 +1,51 @@
+{
+  "build_id": "AD-20261108-WINSTART",
+  "unit_tests": 192,
+  "startup_regressions": 8,
+  "real_distinct_pid_wrapper_test": "PASS_LINUX_OS_LOCKS_WEB_AND_DB_FIXTURED",
+  "native_previous_attempt": {
+    "build_id": "AD-20261108-RELEASE",
+    "startup_seconds": 240,
+    "matching_process": false,
+    "last_observed_health": "RUNNING",
+    "status": "INSTALL_FAILED",
+    "recovery_status": "PREVIOUS_CODE_RESTORED",
+    "recovery_build_id": "AD-INPUT-PUBLICATION-20261108",
+    "launcher_and_worker_pid_recorded": false
+  },
+  "isolated_postgresql_wasm": {
+    "profile_and_context": {
+      "profile_contract_excludes_stale_targets_and_peer_cohorts": "PASS",
+      "historical_profile_pass_advances_despite_new_arrivals": "PASS",
+      "context_read_timeout_retries_only_its_methods_and_preserves_rate_proof": "PASS"
+    },
+    "water_subject_replay": {
+      "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+      "synthetic_input_requests": 10,
+      "verified_input_subjects": 10,
+      "peer_sessions": 8216,
+      "reference_max": 38,
+      "conservative_tail_bound": 0.004016064257028112,
+      "R3_existing_evidence_reaudit": "PASS",
+      "proof_matches_case_and_members": "PASS",
+      "actual_pinned_viewer_raw_reader_and_audit": "PASS",
+      "ready_case_rendered_in_service_actor_and_case_lists": "PASS",
+      "reference_change_invalidates_input_finding": "PASS",
+      "native_server": "NOT_RUN"
+    },
+    "primary_and_secondary_checks": 11
+  },
+  "native_windows_acceptance": "PENDING",
+  "production_performance_and_detection_accuracy": "NOT_EVALUATED",
+  "linux_install_and_recovery": {
+    "status": "PASS_LINUX_REAL_PROCESS_LOCKS",
+    "install_both_exact_previous_builds": "PASS",
+    "delayed_stop_and_readiness": "PASS",
+    "diagnostic_timeout_does_not_rollback": "PASS",
+    "old_pid_gate_reproduced_and_token_gate_passes": "PASS",
+    "automatic_rollback_on_exit_with_original_diagnostic_and_restart": "PASS",
+    "explicit_code_rollback_and_owned_data_viewer_preservation": "PASS",
+    "database_and_web_readiness": "FIXTURED_FOR_THIS_PROCESS_TEST",
+    "native_windows": "NOT_RUN"
+  }
+}

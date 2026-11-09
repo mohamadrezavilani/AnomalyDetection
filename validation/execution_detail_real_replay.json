@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "samples": [
+    {
+      "source_sha256": "eb2bb2b8ae8d18047f31883851ba4b46a29737b9e471af68e58159dbe3df2f1a",
+      "supplied_records": 34,
+      "logical_requests": 3,
+      "request_pages": 3,
+      "final_outcome": "success",
+      "persisted_rows_unchanged": true,
+      "cross_request_otp": "NOT_INFERRED",
+      "mode": "SQLite partial Kibana sample, not a complete capture or native PostgreSQL"
+    },
+    {
+      "source_sha256": "b34a1b76c3555a7706a6fcc752d4900e299d9d6f98009470591b5bc089b7f87e",
+      "supplied_records": 30,
+      "logical_requests": 5,
+      "request_pages": 5,
+      "final_outcome": "failure",
+      "persisted_rows_unchanged": true,
+      "cross_request_otp": "NOT_INFERRED",
+      "mode": "SQLite partial Kibana sample, not a complete capture or native PostgreSQL"
+    }
+  ],
+  "previous_payment_sample": {
+    "records": 574,
+    "service_pages": 5,
+    "payment_journeys_unchanged": true,
+    "persisted_read_models_unchanged": true
+  },
+  "native_owner_postgresql": "NOT_RUN",
+  "actual_browser": "NOT_RUN",
+  "runtime_source_sha256": "0eced4ef05423c66e6c36ae945c900bf1307b393b41b2c37dca56bf55b2b28eb"
+}

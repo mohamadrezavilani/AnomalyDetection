@@ -1,0 +1,45 @@
+{
+  "build_id": "AD-20261108-RELEASE",
+  "unit_tests": 192,
+  "startup_regressions": 5,
+  "linux_install_and_recovery": {
+    "status": "PASS_LINUX_REAL_PROCESS_LOCKS",
+    "install_both_exact_previous_builds": "PASS",
+    "delayed_stop_and_readiness": "PASS",
+    "diagnostic_timeout_does_not_rollback": "PASS",
+    "automatic_rollback_on_exit_with_original_diagnostic_and_restart": "PASS",
+    "explicit_code_rollback_and_owned_data_viewer_preservation": "PASS",
+    "database_and_web_readiness": "FIXTURED_FOR_THIS_PROCESS_TEST",
+    "native_windows": "NOT_RUN"
+  },
+  "isolated_postgresql_wasm": {
+    "profile_and_context": {
+      "profile_contract_excludes_stale_targets_and_peer_cohorts": "PASS",
+      "historical_profile_pass_advances_despite_new_arrivals": "PASS",
+      "context_read_timeout_retries_only_its_methods_and_preserves_rate_proof": "PASS"
+    },
+    "water_subject_replay": {
+      "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+      "synthetic_input_requests": 10,
+      "verified_input_subjects": 10,
+      "peer_sessions": 8216,
+      "reference_max": 38,
+      "conservative_tail_bound": 0.004016064257028112,
+      "R3_existing_evidence_reaudit": "PASS",
+      "proof_matches_case_and_members": "PASS",
+      "actual_pinned_viewer_raw_reader_and_audit": "PASS",
+      "ready_case_rendered_in_service_actor_and_case_lists": "PASS",
+      "reference_change_invalidates_input_finding": "PASS",
+      "native_server": "NOT_RUN"
+    },
+    "secondary_suites": {
+      "PASS_PRIMARY_EVIDENCE_AND_SECONDARY_RETRY_SQL": 11,
+      "PASS_CONTENT_NETWORK_SCENARIO_PIPELINE_SQL": 14,
+      "PASS_UNIFIED_CASES_AND_RESERVED_LANES_SQL": 11,
+      "PASS_LONGITUDINAL_NOC_AND_FEEDBACK_SQL": 13
+    }
+  },
+  "native_windows_install": "NOT_RUN",
+  "production_capacity_and_accuracy": "NOT_MEASURED",
+  "financial_settlement_acceptance": "BLOCKED_BACKEND_EVIDENCE"
+}

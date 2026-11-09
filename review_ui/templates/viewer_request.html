@@ -1,0 +1,67 @@
+{% extends 'viewer_base.html' %}{% set execution=execution|default({}) %}
+{% block body %}
+<nav class="breadcrumb"><a href="{{url_for('home')}}">نشست‌ها</a>{% if card.session_key %} ← <a href="{{url_for('session_behavior_view',key=card.session_key)}}">رفتارهای نشست</a> · <a href="{{url_for('requests_view',session_key=card.session_key,role='business')}}">درخواست‌های نشست</a>{% endif %}</nav>
+<div class="execution-page">
+{% if execution %}
+<section class="page-heading execution-heading"><div><p class="execution-eyebrow">جزئیات اجرای مشاهده‌شده</p><h1 dir="ltr">{{execution.service or 'درخواست بدون ریشهٔ HTTP'}}</h1></div><a class="button secondary" href="#execution-steps">دیدن مراحل ↓</a></section>
+<section class="panel execution-overview" id="execution-overview">
+  <div class="execution-verdict {{execution.result_status}}"><span>{{execution.result_basis}}</span><strong>{{execution.result_label}}</strong><span dir="ltr">{{execution.result_codes|join(' · ') or 'کد نتیجه مشاهده نشده'}}</span></div>
+  <div class="execution-facts">
+    <div><span>زمان تهران</span><strong>شروع: <bdi>{{card.from_fa}}</bdi></strong><strong>آخرین لاگ: <bdi>{{card.to_fa}}</bdi></strong>{% if execution.duration_seconds %}<small>فاصلهٔ اولین تا آخرین لاگ: {{execution.duration_seconds}} ثانیه</small>{% endif %}</div>
+    <div><span>RequestID</span><strong dir="ltr">{{card.get('raw_request_id') or 'دادهٔ خام در دسترس نیست'}}</strong></div>
+    <div><span>Session</span><strong dir="ltr">{{card.get('raw_session_id') or 'مشاهده نشده'}}</strong></div>
+    {% if execution.invoices %}<div><span>Invoice</span>{% for invoice in execution.invoices %}<strong dir="ltr">{{invoice}}</strong>{% endfor %}</div>{% endif %}
+    {% for highlight in execution.highlights %}<div><span>{{highlight.label}}</span><strong dir="auto">{{highlight.value}}</strong><small><a href="{{url_for('raw_evidence',origin=highlight.proof.origin_key,version=highlight.proof.version_key)}}">شاهد مقدار ←</a></small></div>{% endfor %}
+  </div>
+  <div class="execution-notes">
+    {% if execution.transport and execution.transport!=execution.service %}<span>مسیر HTTP: <bdi>{{execution.transport}}</bdi> · پاسخ: <bdi>{{card.root_code or 'نامشخص'}}</bdi></span>{% endif %}
+  </div>
+  {% if execution.conflicted %}<p class="inline-notice">شواهد این درخواست متعارض‌اند؛ نتیجهٔ قطعی به آن نسبت داده نمی‌شود.</p>{% endif %}
+  {% if execution.incomplete %}<p class="inline-notice">نمای مراحل یا ارتباط‌ها به سقف خواندن رسیده است. فهرست کاملِ لاگ‌های همین درخواست از بخش فنی پایین صفحه قابل ورق‌زدن است؛ نبود یک مرحله یا ارتباط در این نما قطعی نیست.</p>{% endif %}
+</section>
+<section class="panel compact flow-payment-summary" id="payment-progress"><h2>وضعیت پرداخت‌های مرتبط</h2>
+{% for payment in execution.payment_cards %}<article class="flow-payment-card {{payment.status}}"><div><strong>{{payment.title}}</strong><span>{{payment.label}}</span></div><div>{% if payment.payment_key %}<small>PaymentKey</small><bdi>{{payment.payment_key}}</bdi>{% endif %}{% if payment.status_values %}<small>گزارش Backend: <bdi>{{payment.status_values|join(' · ')}}</bdi></small>{% endif %}{% if payment.targets %}<small>{{payment.targets|length}} شناسهٔ قبض در ارتباط این پرداخت ثبت شده است.</small>{% endif %}</div></article>
+{% else %}<p><strong>نتیجهٔ پرداخت در شواهد فعلی مشاهده نشده است.</strong></p><p class="scope-note">استعلام و ثبت Invoice در مراحل پایین جدا دیده می‌شوند. نبود گزارش پرداخت، به معنی پرداخت‌نشدن یا رایگان‌بودن خدمت نیست.</p>{% endfor %}
+</section>
+<section class="panel execution-steps" id="execution-steps">
+  <div class="section-heading"><div><h2>مراحل ثبت‌شدهٔ روال</h2><p>درخواست اصلی و مراحل مرتبطِ مستند؛ هر ردیف برای دیدن نتیجه و شاهد اصلی باز می‌شود.</p></div><span>{{execution.steps|length}} ردیف · {{execution.linked_request_count}} درخواست مرتبط<br><a href="{{url_for('request_view',key=card.request_key)}}">تازه‌سازی مراحل ↻</a></span></div>
+  <div class="execution-step-list">
+  {% for step in execution.steps %}
+    <details class="execution-step {{step.status}}" data-step-kind="{{step.kind}}">
+      <summary><span class="execution-step-number">{{loop.index}}</span><span class="execution-step-name"><strong>{{step.title}}</strong>{% if step.related %}<small class="flow-related-tag">درخواست مرتبط</small>{% endif %}{% if step.api %}<small dir="ltr">{{step.api}}</small>{% endif %}</span><span class="execution-step-time" dir="ltr">{{step.when}}</span><span class="execution-step-status">{{step.status_label}}{% if step.code %}<bdi>{{step.code}}</bdi>{% endif %}</span></summary>
+      <div class="execution-step-body">
+        {% if step.related %}<p><a href="{{url_for('request_view',key=step.request_key)}}">باز کردن درخواست مرتبط ←</a>{% if step.raw_request_id %} · <bdi>{{step.raw_request_id}}</bdi>{% endif %}</p>{% endif %}
+        {% if step.description %}<p>{{step.description}}</p>{% endif %}
+        {% if step.fields %}<dl>{% for label,value in step.fields %}<div><dt>{{label}}</dt><dd dir="auto">{{value}}</dd></div>{% endfor %}</dl>{% endif %}
+        {% for proof in step.proofs %}<p class="execution-proof"><a href="{{url_for('raw_evidence',origin=proof.origin_key,version=proof.version_key)}}">باز کردن شاهد اصلی ←</a><small dir="ltr">{{proof.callpath or ''}}{% if proof.field_path %} · {{proof.field_path}}{% endif %}</small></p>{% endfor %}
+        {% if not step.proofs %}<p>شاهد این مرحله در صفحهٔ فعلی فهرست فنی نیست؛ برای ورق‌زدن لاگ‌ها <a href="#request-technical">بخش فنی</a> را باز کنید.</p>{% endif %}
+      </div>
+    </details>
+  {% else %}<p class="execution-empty">برای ساخت مراحل این درخواست، شاهد کافی در نمای فعلی وجود ندارد. لاگ‌های ثبت‌شده در بخش فنی در دسترس‌اند.</p>{% endfor %}
+  </div>
+  <p class="execution-scope">ترتیب، زمان ثبت مشاهدات است؛ ترتیب علّی رخدادهای هم‌زمان و تعداد کلیک‌های کاربر از آن تعیین نمی‌شود.</p>
+</section>
+{% if execution.has_payments or execution.has_bill_items %}
+<details class="panel execution-extra" id="execution-payments"><summary>قبض، سبد و پرداخت‌های مرتبط — نمایش جزئیات</summary><div class="execution-extra-body">
+  {% if card.get('service_payments') %}{% set service_payments=card.service_payments %}{% include 'viewer_service_payments.html' %}{% endif %}
+  {% if execution.has_bill_items %}{% set bill_journey=card.bill_item_journey %}{% include 'viewer_bill_item_journey.html' %}{% endif %}
+</div></details>
+{% endif %}
+{% if execution.otp_observed %}<p class="execution-scope">مراحل OTP فقط با RequestID یا مرجع صریح مشترک متصل می‌شوند؛ هم‌نشست‌بودن، رابطهٔ OTP ایجاد نمی‌کند.</p>{% endif %}
+<p class="execution-scope">ندیدن ارتباط پرداخت، رایگان‌بودن خدمت یا پرداخت‌نشدن آن را ثابت نمی‌کند. نتیجهٔ استعلام، گزارش پرداخت و تسویهٔ مالی مستقل‌اند.</p>
+{% else %}
+<section class="page-heading"><div><h1>شواهد درخواست</h1><p dir="ltr">RequestID: {{card.get('raw_request_id') or 'دادهٔ خام در دسترس نیست'}}</p><p dir="ltr">{{card.root_call or 'ریشه HTTP مشاهده نشده'}} · {{card.root_code or 'نامشخص'}}</p></div></section>
+{% endif %}
+<details class="panel execution-extra" id="request-technical"{% if page>1 %} open{% endif %}><summary>جزئیات فنی و لاگ‌های خام — {{card.event_count}} رویداد، {{card.sql_count}} SQL، {{card.provider_count}} Provider</summary><div class="execution-extra-body">
+  {% if card.get('service_context') %}{% set service_context=card.service_context %}{% set service_context_session=card.session_key %}{% include 'viewer_service_context.html' %}{% endif %}
+  {% if card.get('service_journey') %}<details class="execution-diagnostic"><summary>گراف خدمت و تشخیص ارتباط‌های ثبت‌شده</summary>{% set service_journey=card.service_journey %}{% include 'viewer_service_journey.html' %}</details>{% endif %}
+  <details class="execution-diagnostic"><summary>مدل فنی پرداخت و روابط قرارداد</summary>
+    {% if card.get('payment_contract') %}{% set contract_card=card.payment_contract %}{% include 'viewer_payment_contract.html' %}{% endif %}
+    {% if card.get('bill_item_journey') and not (execution and execution.has_bill_items) %}{% set bill_journey=card.bill_item_journey %}{% include 'viewer_bill_item_journey.html' %}{% endif %}
+    {% if card.get('inquiry_journey') and not card.get('bill_item_journey') %}{% set journey=card.inquiry_journey %}{% include 'viewer_inquiry_payment_journey.html' %}{% endif %}
+  </details>
+  <section class="execution-raw" id="request-raw"><h2>تمام رویدادهای درخواست</h2><div class="table-scroll"><table><thead><tr><th>زمان تهران</th><th>لایه</th><th>CallPath</th><th>کد / مشاهده</th><th>شاهد</th></tr></thead><tbody>{% for e in evidence['items'] %}<tr><td dir="ltr">{{e.when_fa}}</td><td>{{e.kind}}</td><td dir="ltr">{{e.callpath}}</td><td>{{e.code or e.observation or 'نامشخص'}}{% if e.variant_count>1 %}<small>نسخه‌های متعارض</small>{% endif %}</td><td>{% if e.get('origin_key') and e.get('version_key') %}<a href="{{url_for('raw_evidence',origin=e.origin_key,version=e.version_key)}}">باز کردن ورودی / خروجی ←</a>{% endif %}<small dir="ltr">{{e.filename}}#logs[{{e.row_number}}]</small></td></tr>{% else %}<tr><td colspan="5">شواهدی ثبت نشده است.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="pagination"><span>{{evidence.total}} رکورد · صفحه {{page}}</span><div>{% if page>1 %}<a class="button secondary" href="{{url_for('request_view',key=card.request_key,page=page-1,limit=limit)}}#request-technical">قبلی</a>{% endif %}{% if page*limit<evidence.total %}<a class="button" href="{{url_for('request_view',key=card.request_key,page=page+1,limit=limit)}}#request-technical">بعدی</a>{% endif %}</div></div></section>
+</div></details>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{
+  "project": "LogManagment",
+  "evidence_type": "owner_native_d1_one_window",
+  "source_filename": "d1_one_window.json",
+  "source_sha256": "7399174a0af72d597486372ea4795a080a592e16fbb4754849c01082fc9f4d6f",
+  "runtime_source_sha256": "bc699845175b019cd312940cee59b49b82892dacc6cf23bfae9b1e0397e0d953",
+  "status": "PUBLISHED_UNDER_BUDGET",
+  "window_start_utc": "2026-10-27T05:45:00+00:00",
+  "window_end_utc": "2026-10-27T05:50:00+00:00",
+  "events": 65284,
+  "impacted_request_ids": 15689,
+  "capture_seconds": 28.532,
+  "publication_seconds": 216.828,
+  "total_cycle_seconds": 245.36,
+  "budget_seconds": 300,
+  "stages": {
+    "merge_viewer_events": 97.406,
+    "merge_viewer_raw_events": 17.281,
+    "merge_viewer_event_captures": 4.0,
+    "merge_viewer_links": 15.641,
+    "aggregate_seconds": 6.719,
+    "contract_processing_seconds": 19.454
+  },
+  "query_plans": {
+    "legacy_global_scope": {
+      "root_cost": 765455.1,
+      "scans": [
+        {
+          "node": "Seq Scan",
+          "relation": "viewer_events",
+          "index": null,
+          "estimated_rows": 3623702
+        },
+        {
+          "node": "Seq Scan",
+          "relation": "viewer_projection_scope",
+          "index": null,
+          "estimated_rows": 15689
+        },
+        {
+          "node": "Index Only Scan",
+          "relation": "viewer_events",
+          "index": "viewer_events_pkey",
+          "estimated_rows": 1
+        }
+      ]
+    },
+    "bounded_origin_index": {
+      "root_cost": 582155.91,
+      "scans": [
+        {
+          "node": "Seq Scan",
+          "relation": "viewer_projection_events",
+          "index": null,
+          "estimated_rows": 336
+        },
+        {
+          "node": "Index Only Scan",
+          "relation": "viewer_events",
+          "index": "vei_origin_request",
+          "estimated_rows": 1
+        }
+      ]
+    }
+  },
+  "d0_from_owner_message": {
+    "failed_window_observed_published": true,
+    "header_count": 1,
+    "receipt_count": 1,
+    "checkpoint_utc": "2026-10-27T05:45:00+00:00",
+    "generation": 40,
+    "history_gap_windows": 230,
+    "catalog_paths_aligned": 8
+  },
+  "d1_conclusion": "PASS_NATIVE_SINGLE_WINDOW_BOUNDED_AGGREGATE",
+  "d2_six_forward_two_rechecks": "NOT_RUN_OWNER",
+  "d3_concurrency_and_http": "NOT_RUN_OWNER",
+  "d4_process_restart_and_isolated_restore": "NOT_RUN_OWNER",
+  "d5_browser_and_manual_roles": "NOT_RUN_OWNER",
+  "capacity_800k_request_ids_per_hour": "NOT_PROVEN",
+  "postgres_query_plan_note": "EXPLAIN without ANALYZE; planner estimates are not measured timing",
+  "post_failure_recovery_note": "Later publication of 05:20 window confirmed in D0; original failed attempt not itself successful"
+}

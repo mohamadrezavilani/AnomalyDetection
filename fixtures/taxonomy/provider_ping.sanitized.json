@@ -1,0 +1,14 @@
+{
+  "_index": "fixture-pasted-provider",
+  "_id": "provider-ping-sample",
+  "_source": {
+    "@timestamp": "2026-10-20T02:23:19.1313774+03:30",
+    "level": "Error",
+    "message": "provider operation failed (GR0010 | ServiceUnavailable)",
+    "RequestID": "SYNTHETIC-PROVIDER-PING",
+    "IP": "N/A",
+    "Session": "N/A",
+    "ExecutionTime": "6.7605",
+    "CallPath": "EwanoApi.Ping Line:262"
+  }
+}

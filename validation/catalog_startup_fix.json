@@ -1,0 +1,93 @@
+{
+  "status": "LOCAL_PASS_NATIVE_ONE_PUBLICATION_PENDING",
+  "runtime_source_sha256": "9bc58af3b0b75cdb880426560f6c7e69fd0b0d6269ef28ba91f85bc65814a97b",
+  "parent_runtime_source_sha256": "6775da6f9080580ae7525f7205fe62ec27f8bcf1a75854970b6b41ccbeb10310",
+  "created_at_utc": "2026-10-31T08:50:44.660294+00:00",
+  "owner_snapshot": {
+    "source_zip_sha256": "fd739276632ecb8a12905f09e7b563a074f90b6e961c8bf1e099e03e7cbc024c",
+    "observed_at_tehran": "2026-10-31 12:06:09",
+    "installed_source": "6775da6f9080580ae7525f7205fe62ec27f8bcf1a75854970b6b41ccbeb10310",
+    "catalog_backend_pid": 40120,
+    "catalog_statement_fingerprint": "5ba86397d1b5692c219634e39d697261a61599550fb7d607327360a8bdaba6aa",
+    "statement_matches_parent_source": true,
+    "query_kind": "UPDATE",
+    "tables": [
+      "viewer_actions",
+      "viewer_catalog_requests"
+    ],
+    "wait_event_type": "IO",
+    "wait_event": "DataFileRead",
+    "query_age_seconds": 513.371852,
+    "transaction_age_seconds": 1081.229567,
+    "worker_backend_pid": 41360,
+    "worker_holds_singleton_lock": true,
+    "worker_waits_for_catalog_writer_lock": true,
+    "copy_in_progress": false,
+    "web_initializer_identity": "inferred_from_two_process_modes_and_worker_singleton_lock",
+    "evidence_scope": "one_read_only_instantaneous_snapshot_not_a_query_plan"
+  },
+  "proven": {
+    "owner_current_stall": "catalog_action_update_and_worker_advisory_lock_wait",
+    "exact_sql_matched": true,
+    "offline_transport_role_overwrite_reproduced": true
+  },
+  "not_proven": {
+    "owner_physical_query_plan": "NOT_CAPTURED",
+    "native_speedup": "NOT_RUN",
+    "all_historical_slow_cycles_same_cause": "NOT_ESTABLISHED"
+  },
+  "changes": [
+    "catalog actions staged by their actual primary key, including legacy noncanonical root references",
+    "UPDATE FROM unique staged action keys, only where category or initiation actually differ",
+    "ANALYZE temporary route, action and request scopes on PostgreSQL",
+    "HTTP InvoiceRegister role no longer overwrites the selected service action",
+    "previous transport-role overwrites repaired through existing fenced service-context resolver",
+    "catalog policy fingerprint changed to apply repair on previously committed installations",
+    "web startup emits nonblocking phase progress; writer serialization remains intact"
+  ],
+  "regressions": "validation/catalog_startup_regressions.json",
+  "real_payment_replay": "validation/catalog_startup_real_replay.json",
+  "offline_checks": {
+    "status": "PASS",
+    "tests": 414,
+    "passed": 414,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "elapsed_seconds": 11.675
+  },
+  "preservation": {
+    "raw_events": true,
+    "raw_bodies": true,
+    "request_boundaries": true,
+    "session_ids": true,
+    "typed_payment_relations": true,
+    "global_version_conflicts": true,
+    "late_evidence": true,
+    "operator_roles_and_unknown": true,
+    "atomic_role_semantic_commit": true,
+    "writer_lock": true,
+    "publication_transaction_unchanged": true,
+    "database_settings_unchanged": true,
+    "timeouts_not_increased": true,
+    "persistent_schema_unchanged": true,
+    "capture_ingest_algorithm_unchanged": true
+  },
+  "native_postgresql": "NOT_RUN",
+  "owner_browser": "NOT_RUN",
+  "local_visual_browser": "NOT_RUN_BROWSER_BINARY_UNAVAILABLE",
+  "owner_next_check": {
+    "install": "stop both Worker and Web with Ctrl+C, extract into same project, Start_Viewer.cmd",
+    "scope": "one normal recent forward publication; no new pilot/capacity/recovery run",
+    "read_only_report": "python tools/inspect_viewer_request.py --request-id 0546b72b-b601-48cf-b4b7-3f7850a30e67",
+    "acceptance": [
+      "new startup receipt matches installed source",
+      "first new forward receipt actually committed",
+      "unreviewed UserWidgetsSetDefault support role synchronized",
+      "publication error and cycle time inspected"
+    ]
+  },
+  "cross_request_otp": "WAITING_FOR_BACKEND_SHARED_INVOICE_OR_EXPLICIT_MAPPING",
+  "capacity_and_long_stability": "OUT_OF_SCOPE_BY_OWNER",
+  "cancelled_recovery": "NOT_RESTARTED"
+}

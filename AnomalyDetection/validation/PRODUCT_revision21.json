@@ -1,0 +1,23 @@
+{
+  "build_id": "AD-20261108-RELEASE",
+  "status": "PASS_UNIFIED_CASES_AND_RESERVED_LANES_SQL",
+  "checks": {
+    "one_range_aggregate_preserves_model_id_maxima_span_point_count_invalid_actor_exclusion_and_past_cutoff": "PASS_EXACT_EQUALITY_TO_RELEASE20_SQL",
+    "aggregate_does_not_bypass_20000_raw_point_limit": "PASS_20001_QUALIFIED_POINTS",
+    "actual_rate_and_content_cases_render_together_legacy_scenario_url_is_same_view_and_get_cannot_write": "PASS_READ_ONLY_SQL_AND_RTL_HTML",
+    "unified_progress_timeout_is_unknown_not_zero_and_preserves_connection": "PASS_REAL_SQL57014_SAVEPOINT",
+    "single_snapshot_request_sample_queues_response_and_workflow_without_census_fake_zero_or_actor_inference": "PASS_32_REAL_SQL_ROWS",
+    "finite_sample_does_not_replace_complete_census_or_reinvalidate_existing_complete_response_job": "PASS",
+    "unavailable_window_retracts_sample_qualification_and_requeues_affected_decisions": "PASS_NO_STALE_CURRENT_SAMPLE",
+    "source_timeout_does_not_starve_profiles_and_scenario_evaluation_or_reconnect": "PASS_REAL_SQL57014_SYNTHETIC_SOURCE_ONE_WRITER",
+    "primary_timeout_does_not_starve_profiles_and_scenario_evaluation_or_reconnect": "PASS_REAL_SQL57014_SYNTHETIC_SOURCE_ONE_WRITER",
+    "audit_selection_timeout_does_not_starve_profiles_and_scenario_evaluation_or_reconnect": "PASS_REAL_SQL57014_SYNTHETIC_SOURCE_ONE_WRITER",
+    "maintenance_timeout_does_not_starve_profiles_and_scenario_evaluation_or_reconnect": "PASS_REAL_SQL57014_SYNTHETIC_SOURCE_ONE_WRITER"
+  },
+  "owner_connections": 0,
+  "source_writes": 0,
+  "native_windows_postgresql21": "NOT_RUN",
+  "native_latency_capacity_precision_recall": "NOT_MEASURED",
+  "financial_acceptance": "BLOCKED_EXTERNAL_DEPENDENCY",
+  "browser_visual_test": "NOT_RUN"
+}

@@ -1,0 +1,113 @@
+{
+  "project": "LogManagment",
+  "release_id": "d2-resources-v2-20261027",
+  "runtime_source_sha256": "f04092f275acf1242976d7b447b4c6a3aace68cccf0dc612e8795954a8e6bf30",
+  "status": "LOCAL_PASS_NATIVE_RESOURCE_RETRY_PENDING",
+  "owner_authorization": {
+    "shared_instance_resource_changes": true,
+    "restart_shared_postgresql": true,
+    "date": "2026-10-27"
+  },
+  "global_changes": {
+    "shared_buffers": "8GB",
+    "wal_buffers": "16MB",
+    "max_wal_size": "8GB",
+    "min_wal_size": "1GB"
+  },
+  "query_changes": [
+    "ANALYZE private request rows before anti-join",
+    "indexed global origin COUNT>1 invalidation",
+    "separate missing-request and conflict phase timers"
+  ],
+  "unit_tests": {
+    "status": "PASS",
+    "tests": 312,
+    "passed": 312,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "elapsed_seconds": 6.664
+  },
+  "sql_qualification": {
+    "status": "PASS_ON_PARENT",
+    "checks_passed": 31,
+    "checks": 31,
+    "engine": "PostgreSQL 18.6 (PGlite 0.5.12) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+    "copy_transport": "bound_row_adapter_NATIVE_COPY_NOT_RUN",
+    "native_copy": "NOT_RUN",
+    "command_exit": 0,
+    "wrapper_exit": 124,
+    "note": "31 SQL checks passed on the Resources parent; only the Windows resource administration helper changed in v2",
+    "tested_runtime_source_sha256": "9770511739c883574e4ad806e3ce3e7bbf20c5c87920252fa67549356634a3d4",
+    "rerun": "NOT_RUN_UNCHANGED_PROCESSING_SOURCE"
+  },
+  "native_windows_service_restart": "NOT_RUN",
+  "owner_speed_this_runtime": "NOT_RUN",
+  "capacity_800k": "NOT_PROVEN",
+  "parent_real_replay": {
+    "runtime_source_sha256": "1f77dbfa5d700cb614eb8af116a1184aafc540222ae5fb89883f3344d30b81f0",
+    "status": "PASS_ON_PARENT",
+    "records": 248351,
+    "forward_windows": 6,
+    "rechecks": 2,
+    "note": "Archived SQLite differential not repeated for PostgreSQL-only query/resource changes"
+  },
+  "owner_prior_runtime_result": {
+    "status": "TIME_BUDGET_EXCEEDED",
+    "seconds": 360.125,
+    "checkpoint_generation_before_after": 48,
+    "receipt_count_before_after": 23
+  },
+  "changed_files": [
+    "Pishkhan24_Project_Roadmap.md",
+    "docs/D2_FINALIZED_WRITES_HANDOFF_FA.md",
+    "docs/D2_RESOURCES_FIX_FA.md",
+    "p24_foundation/viewer_contract.py",
+    "p24_foundation/viewer_data.py",
+    "p24_foundation/viewer_projection_writes.py",
+    "tests/test_viewer_d1_aggregate.py",
+    "tests/test_viewer_finalized_projection.py",
+    "tests/test_viewer_postgres_resources.py",
+    "tools/apply_postgres_resources.py",
+    "tools/benchmark_viewer_pg_writes.py",
+    "tools/qualify_finalized_projection.py",
+    "tools/qualify_viewer_postgres.py",
+    "tools/run_finalized_projection_probe.py",
+    "tools/viewer.ps1",
+    "tools/viewer_pg_observer.py"
+  ],
+  "guide": "docs/D2_RESOURCES_FIX_FA.md",
+  "owner_command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/viewer.ps1 -Action Resources",
+  "owner_output": "validation/d2_resources_probe.json",
+  "owner_prior_resource_apply": {
+    "runtime_source_sha256": "9770511739c883574e4ad806e3ce3e7bbf20c5c87920252fa67549356634a3d4",
+    "status": "FAILED",
+    "error_code": "new_postgres_config_error",
+    "resource_status": "ROLLED_BACK_BEFORE_RESTART",
+    "probe": "NOT_RUN",
+    "checkpoint_before": {
+      "next_ns": 1793081100000000000,
+      "generation": 48,
+      "receipts": 23
+    },
+    "exact_config_error_rows": "NOT_CAPTURED_BY_PARENT_HELPER"
+  },
+  "resource_validation_fix": {
+    "confirmed_code_defect": "Parent rejected every pg_file_settings error, including valid postmaster changes that require restart",
+    "exact_owner_failure_cause": "NOT_PROVEN_ERROR_ROWS_NOT_CAPTURED",
+    "accept_restart_only_after_four_successful_alter_system_statements": true,
+    "exact_parameter_value_file_final_entry_context_and_error_checked": true,
+    "syntax_other_parameter_wrong_value_shadow_missing_error_rejected": true,
+    "unnecessary_reload_before_restart": "REMOVED",
+    "config_diagnostics": "SANITIZED_NO_VALUES_OR_RAW_ERROR_TEXT",
+    "focused_resource_tests": 16,
+    "full_apply_restart_and_active_settings": "PASS_MOCK_WINDOWS_AND_POSTGRES_INTERFACES",
+    "full_apply_invalid_config_rolls_back_without_restart": "PASS_MOCK_WINDOWS_AND_POSTGRES_INTERFACES",
+    "native_windows_postgresql_17_restart": "NOT_RUN",
+    "changed_runtime_files_vs_owner_installed": [
+      "tools/apply_postgres_resources.py"
+    ],
+    "processing_sources_equal_to_owner_installed": true,
+    "worker_transaction_checkpoint_roles_and_time_budget": "UNCHANGED"
+  }
+}

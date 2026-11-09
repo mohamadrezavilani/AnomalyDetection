@@ -1,0 +1,122 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_SYNTHETIC_SCENARIO_FAMILY_TESTS_NOT_NATIVE_ACCEPTANCE",
+  "unit_tests_total": 148,
+  "scenario_tests_total": 34,
+  "owner_scenarios": [
+    {
+      "number": 1,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_wrong_negative_response_with_success_code_and_same_schema_is_detected",
+        "test_changed_schema_is_detected",
+        "test_diverse_result_collapsing_to_one_negative_message_is_detected",
+        "test_candidate_selected_samples_and_unlogged_outputs_do_not_pass_as_service_census",
+        "test_one_heavy_actor_cannot_create_a_service_wide_content_or_outage_incident",
+        "test_result_records_collapse_to_empty_even_when_personal_fields_are_omitted",
+        "test_distinct_sparse_output_values_skip_expensive_exact_tail_tests"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 2,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_outage_requires_comparable_reported_outcomes_and_has_normal_control",
+        "test_candidate_selected_samples_and_unlogged_outputs_do_not_pass_as_service_census",
+        "test_one_heavy_actor_cannot_create_a_service_wide_content_or_outage_incident"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 3,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_service_volume_checks_both_increase_and_decrease",
+        "test_no_traffic_is_not_zero_without_complete_coverage",
+        "test_anonymous_calls_count_as_requests_without_inventing_sessions"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 4,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_many_typed_subjects_can_be_detected_without_personal_history",
+        "test_new_session_usual_behavior_is_not_flagged_for_newness",
+        "test_bulk_ids_keep_typed_identity_but_not_array_position",
+        "test_unclassified_subject_fields_use_input_topics_without_claiming_people"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 5,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_usual_access_stage_disappears_but_optional_stage_does_not",
+        "test_missing_session_does_not_hide_request_level_workflow_evidence",
+        "test_missing_profile_or_reference_is_unknown"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 6,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_ip_changes_need_behavioral_corroboration_for_independent_review",
+        "test_multi_session_volume_has_ordinary_and_anomalous_controls",
+        "test_profile_uses_client_root_ip_not_backend_provider_ip"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 7,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_ip_rotation_and_traversal_are_seen_across_services_in_same_session",
+        "test_ip_changes_need_behavioral_corroboration_for_independent_review",
+        "test_missing_reference_ip_and_target_fields_are_not_zero_baselines"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 8,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_new_session_usual_behavior_is_not_flagged_for_newness",
+        "test_many_typed_subjects_can_be_detected_without_personal_history",
+        "test_missing_profile_or_reference_is_unknown"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    },
+    {
+      "number": 9,
+      "implemented": true,
+      "synthetic_family_tests": "PASS",
+      "tests": [
+        "test_shared_target_can_change_without_total_service_traffic_changing",
+        "test_multi_session_volume_has_ordinary_and_anomalous_controls",
+        "test_candidate_selected_samples_and_unlogged_outputs_do_not_pass_as_service_census"
+      ],
+      "native_owner_scenario": "NOT_RUN"
+    }
+  ],
+  "same_original_bill_repeat_tests": [
+    "test_same_bill_different_trace_and_auth_has_same_business_fingerprint",
+    "test_20_same_bill_is_not_20_different_bills",
+    "test_legitimate_usual_retries_are_not_promoted_from_count_alone",
+    "test_repeated_failed_inquiry_has_retry_context_without_independent_customer_accusation",
+    "test_repeat_crosses_source_window_and_midnight_without_new_actor_baseline"
+  ],
+  "financial_truth": "BLOCKED_EXTERNAL_EVIDENCE",
+  "production_precision_recall_capacity": "NOT_MEASURED",
+  "automatic_thresholds": "EXPLICIT_FIXED_POLICIES_PLUS_LEARNED_REFERENCES_NOT_ZERO_CONFIGURATION_CLAIM"
+}

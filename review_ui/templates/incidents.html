@@ -1,0 +1,6 @@
+{% extends 'base.html' %}{% block content %}
+<section class="page-heading"><div><h1>پرونده‌های بررسی</h1><p class="lead">شواهد پرونده به نسخهٔ انتخاب‌شده متصل است؛ تصمیم اپراتور، سیاست جاری بررسی است.</p></div></section>
+<section class="panel"><div class="evidence-list workflow-evidence-list" tabindex="0" aria-label="پرونده‌های بررسی">
+{% for item in page['items'] %}<article class="operation"><h2><bdi dir="ltr">{{ item.result.pattern_key }}</bdi></h2><p>{{ item.result.distinct_client_http_requests|fa_number }} درخواست HTTP متمایز · {{ item.result.occurrence_count|fa_number }} نوبت مشاهده</p><p>{{ 'بررسی‌شده / کم‌نمایش' if item.review.visibility=='reviewed' else 'در فهرست فعال' }} · {{ item.review.verdict }}</p><a href="{{ url_for('incident_detail',key=item.incident_id,publication=p.publication,revision=item.revision_id) }}">بررسی شواهد این نسخه</a></article>{% else %}<p>برای این نسخه، پرونده‌ای ثبت نشده است. نبود پرونده، کامل بودن بررسی یا سلامت سامانه را ثابت نمی‌کند.</p>{% endfor %}
+</div>{% if page.next_cursor %}<a class="button" href="{{ url_for('incident_list',publication=p.publication,limit=p.limit,cursor=page.next_cursor) }}">صفحهٔ بعد</a>{% endif %}</section>
+{% endblock %}

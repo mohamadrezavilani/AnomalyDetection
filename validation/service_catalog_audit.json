@@ -1,0 +1,439 @@
+{
+  "status": "SOURCE_AUDIT_COMPLETE_LOCAL_VALIDATION",
+  "mode": "private_source_and_archived_root_api_inventory",
+  "sample_files": 17,
+  "sample_events": 1003562,
+  "distinct_observed_root_apis": 162,
+  "before": {
+    "unknown_api_paths": 65,
+    "unknown_root_log_rows": 20642
+  },
+  "after_unreviewed_defaults": {
+    "unknown_api_paths": 0,
+    "roles": {
+      "business": 72,
+      "support": 65,
+      "system": 11,
+      "user_management": 14
+    }
+  },
+  "scope_note": "Root API inventory uses the existing Viewer root recognizer; counts are API paths/log rows, not independent customer actions. Owner database manual reviews are not present in this input.",
+  "source_archive_sha256": "2b6c4d9fb19dcb1d65d011ca7bb5e34dc85b22b39ac3821118d655ef4ccc35f5",
+  "registered_source_paths": 256,
+  "source_role_proposals": 250,
+  "unresolved_source_paths": [
+    "Proxy.CarTaxInquiry",
+    "Proxy.CarTaxRegistration",
+    "Proxy.MotorTaxInquiry",
+    "Proxy.SettlementCertificateCarAnnualTax",
+    "Proxy.TechnicalExaminationCertificateInquiry",
+    "Proxy.TechnicalExaminationCertificateRegistration"
+  ],
+  "reclassified_sample_paths": [
+    {
+      "path": "Files.Download",
+      "root_log_rows": 3722,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v2/DeviceRegister",
+      "root_log_rows": 3587,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "PaymentRedirect.PaymentRedirect",
+      "root_log_rows": 2348,
+      "proposal": "system",
+      "initiation": "system_followup"
+    },
+    {
+      "path": "Public.v1/CalendarReligiousTimes",
+      "root_log_rows": 1154,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/CalendarToday",
+      "root_log_rows": 1141,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserWidgetsSetDefault",
+      "root_log_rows": 1127,
+      "proposal": "user_management",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/Weather",
+      "root_log_rows": 1124,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/AirPollution",
+      "root_log_rows": 1090,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/ServiceIconUrls",
+      "root_log_rows": 1051,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserSurvey",
+      "root_log_rows": 941,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserTransactions",
+      "root_log_rows": 873,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/DeviceRegister",
+      "root_log_rows": 678,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/SfaraCoupon",
+      "root_log_rows": 218,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/BankIbanInfoPrerequisites",
+      "root_log_rows": 215,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/ExchangeGold",
+      "root_log_rows": 198,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/MetricsSearch",
+      "root_log_rows": 126,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/ConfigBusinessInfo",
+      "root_log_rows": 99,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Ewano.v1/EwanoCreateOrder",
+      "root_log_rows": 84,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/PostTrackingExtended",
+      "root_log_rows": 77,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v3/LandLinePhoneBillsExport",
+      "root_log_rows": 53,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v3/ElectricBillsExport",
+      "root_log_rows": 48,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/SfaraCouponGetOrderDetail",
+      "root_log_rows": 45,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TopUpOperatorsInternetPackage",
+      "root_log_rows": 40,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserPublicKey",
+      "root_log_rows": 40,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/ExchangeCurrency",
+      "root_log_rows": 39,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/CnpgGetCardList",
+      "root_log_rows": 39,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/LandLinePhoneBillsDetails",
+      "root_log_rows": 37,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Ewano.v1/EwanoPayment",
+      "root_log_rows": 36,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TopUpProductsInternetPackage",
+      "root_log_rows": 36,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/CnpgPayment",
+      "root_log_rows": 34,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/GetServiceNameListByFeature",
+      "root_log_rows": 31,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/SfaraCouponGetOrderOtp",
+      "root_log_rows": 30,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/ShaparakBankListService",
+      "root_log_rows": 29,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/Cities",
+      "root_log_rows": 28,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/CnpgRequestOtp",
+      "root_log_rows": 27,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserMessages",
+      "root_log_rows": 25,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TopUpOperatorsCharge",
+      "root_log_rows": 21,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/MetricsSurvey",
+      "root_log_rows": 19,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TrafficFinesImages",
+      "root_log_rows": 15,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/SocialSecurityInsuranceElectronicPrescriptionDetails",
+      "root_log_rows": 12,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TopUpProductsCharge",
+      "root_log_rows": 12,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/TrafficFinesImages",
+      "root_log_rows": 12,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/CalendarMonth",
+      "root_log_rows": 11,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TopUpPurchaseInfo",
+      "root_log_rows": 10,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/EducationalExemption",
+      "root_log_rows": 8,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Public.v1/ExchangeCrypto",
+      "root_log_rows": 7,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/WaterBillsExport",
+      "root_log_rows": 7,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserVouchers",
+      "root_log_rows": 6,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/GasBillsExport",
+      "root_log_rows": 4,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TopUpChargeCustomConfig",
+      "root_log_rows": 4,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/GovernmentRetirementReceipt",
+      "root_log_rows": 3,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/GovernmentSubventionHistory",
+      "root_log_rows": 3,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TrafficFinesWithImageInquiryGetImage",
+      "root_log_rows": 2,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v3/SocialSecurityInsuranceMedicalCredit",
+      "root_log_rows": 2,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/TopUpOperators",
+      "root_log_rows": 2,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserSessions",
+      "root_log_rows": 2,
+      "proposal": "support",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/UserDelete",
+      "root_log_rows": 2,
+      "proposal": "user_management",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/SocialSecurityInsuranceRetirement",
+      "root_log_rows": 1,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/CarAnnualTaxFileRegistrationRequest",
+      "root_log_rows": 1,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v2/CellPhoneMciBillsDetails",
+      "root_log_rows": 1,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v3/LandLinePhoneBillsDetails",
+      "root_log_rows": 1,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/PersonStatus",
+      "root_log_rows": 1,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v1/GovernmentRetirement",
+      "root_log_rows": 1,
+      "proposal": "business",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Core.v1/CnpgRemoveCard",
+      "root_log_rows": 1,
+      "proposal": "user_management",
+      "initiation": "unknown"
+    },
+    {
+      "path": "Services.v3/VehicleAuthenticity",
+      "root_log_rows": 1,
+      "proposal": "business",
+      "initiation": "unknown"
+    }
+  ],
+  "findings": [
+    "Role catalogue and source family projection previously disagreed for unclassified service facades.",
+    "Known technical catalogue/status/precondition APIs now have explicit roles without asserting manual initiation.",
+    "UserSurvey reads an available survey; its name is not interpreted as submitting user feedback.",
+    "TrafficFinesImages v1 is an existing-bill image read; v2 has an invoice/settlement contract. Roles differ by exact version.",
+    "Bill export APIs can invoke a separate invoice/provider service; Export is not treated as generic file delivery.",
+    "Retained actions and semantic heads migrate atomically at startup; ingestion cursor, request identities, raw evidence and payment relationships are preserved.",
+    "Reviewed operator choices, including unknown and legacy operator rows with reviewed=0, take priority over automatic role proposals."
+  ],
+  "classifier_kind_rules_changed": false,
+  "core_modified": false,
+  "operational_database_modified": false,
+  "owner_native_catalog_migration": "NOT_RUN",
+  "owner_native_speed_acceptance": "PENDING_FINAL_CURRENT_SOURCE",
+  "historical_policy_note": "Historical audit; Public role proposals are superseded by explicit owner confirmations dated 2026-10-27 in market_bulk_fix.json. Counts of source events remain historical evidence."
+}

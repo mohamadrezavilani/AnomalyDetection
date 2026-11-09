@@ -1,0 +1,61 @@
+{
+  "status": "NO_CAPTURED_CANDIDATES",
+  "runtime_source_sha256": "4909540be9b597e26379e8e5aa1b62cfc9503876d56dc59a77a484ddf8ee3920",
+  "since_ns": 1793172600000000000,
+  "live_es": "NOT_RUN",
+  "capacity": "NOT_RUN_OUT_OF_CURRENT_SCOPE",
+  "stage": "complete",
+  "release": {
+    "status": "PASS",
+    "checked_files": 280,
+    "mismatches": []
+  },
+  "native_functional": {
+    "status": "PASS",
+    "database": "p24_design_corr_7c98aa2f_qualification",
+    "checks": {
+      "free_lookup": true,
+      "free_inquiry_bill": true,
+      "paid_inquiry_only": true,
+      "paid_inquiry_three_bills": true,
+      "payments_do_not_add_home_behaviors": true,
+      "late_sessionless_status_preserves_cursor_and_anchors": true,
+      "duplicate_recheck_idempotent": true,
+      "new_relationships_rollback_atomically": true,
+      "incremental_equals_full_projection": true
+    },
+    "created_empty_database": true,
+    "scope": "small_native_functional_only_not_capacity_recovery_or_financial_settlement"
+  },
+  "request_ids": 0,
+  "checkpoint": {
+    "next_ns": 1793169600000000000,
+    "generation": 143
+  },
+  "raw_written": false,
+  "roles_written": false,
+  "future_capture": "normal_worker_indexes_new_messages",
+  "known_real_samples": [
+    {
+      "api": "Services.v1/TrafficFinesCarNoDetails",
+      "status": "NOT_CAPTURED_YET"
+    },
+    {
+      "api": "Services.v1/WaterBills",
+      "status": "NOT_CAPTURED_YET"
+    },
+    {
+      "api": "Services.v1/CellPhoneBills",
+      "status": "NOT_CAPTURED_YET"
+    },
+    {
+      "api": "Services.v1/ElectricBills",
+      "status": "NOT_CAPTURED_YET"
+    },
+    {
+      "api": "Services.v1/MunicipalityCarTollBills",
+      "status": "NOT_CAPTURED_YET"
+    }
+  ],
+  "ui_native_browser": "NOT_RUN"
+}

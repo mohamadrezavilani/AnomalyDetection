@@ -1,0 +1,82 @@
+{
+  "status": "PUBLISHED_OVER_BUDGET",
+  "source_runtime_sha256": "797cbe6a952dd707143a589a96a5aea255217ad5dfcf29af3954d1def7876d9e",
+  "window": {
+    "start": "2026-10-27T06:00:00+00:00",
+    "end": "2026-10-27T06:05:00+00:00",
+    "records": 100563,
+    "impacted_requests": 22849,
+    "generation": 48
+  },
+  "cycle_seconds": 316.672,
+  "cycle_gate_seconds": 300,
+  "capture_seconds": 48.703,
+  "copy_final_events": {
+    "stage": "ingest_bulk_copy_completed",
+    "table": "viewer_events",
+    "export_seconds": 1.203,
+    "upload_and_finish_seconds": 58.422,
+    "spool_bytes": 59735621,
+    "bytes_uploaded": 59735621,
+    "spool_disk_rollover": true
+  },
+  "merge_final_events": {
+    "stage": "ingest_merge_complete",
+    "table": "viewer_events",
+    "rows": 100563,
+    "seconds": 59.64,
+    "method": "copy_binary"
+  },
+  "copy_final_links": {
+    "stage": "ingest_bulk_copy_completed",
+    "table": "viewer_links",
+    "export_seconds": 0.546,
+    "upload_and_finish_seconds": 25.5,
+    "spool_bytes": 17290210,
+    "bytes_uploaded": 17290210,
+    "spool_disk_rollover": true
+  },
+  "merge_other": {
+    "viewer_raw_events": {
+      "stage": "ingest_merge_complete",
+      "table": "viewer_raw_events",
+      "rows": 100563,
+      "seconds": 31.547,
+      "method": "insert_select"
+    },
+    "viewer_event_captures": {
+      "stage": "ingest_merge_complete",
+      "table": "viewer_event_captures",
+      "rows": 100563,
+      "seconds": 6.188,
+      "method": "insert_select"
+    }
+  },
+  "request_aggregate": {
+    "stage": "rebuild_requests_aggregate_complete",
+    "seconds": 13.484
+  },
+  "observed_wait_counts": {
+    "Client/ClientRead": 39,
+    "none/none": 35,
+    "IO/DataFileExtend": 1,
+    "IO/WalWrite": 45,
+    "LWLock/WALWrite": 7,
+    "IO/DataFileRead": 9,
+    "IO/WalInitSync": 19,
+    "IO/DataFileWrite": 3,
+    "IO/WalInitWrite": 1
+  },
+  "global_cluster_wal_delta": {
+    "wal_records": 2151491,
+    "wal_fpi": 378889,
+    "wal_bytes": 2852132001.0
+  },
+  "limitations": [
+    "wal totals are across entire cluster",
+    "sampled wait events are not elapsed time",
+    "one native window cannot prove improvement",
+    "600? no: threshold remains 300 seconds",
+    "full-page-image sizes are variable and already compressed WAL is possible"
+  ]
+}

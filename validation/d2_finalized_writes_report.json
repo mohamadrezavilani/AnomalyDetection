@@ -1,0 +1,63 @@
+{
+  "project": "LogManagment",
+  "release_id": "d2-finalized-writes-20261027",
+  "runtime_source_sha256": "1f77dbfa5d700cb614eb8af116a1184aafc540222ae5fb89883f3344d30b81f0",
+  "parent_runtime_source_sha256": "5bef9e81acb5b106eea94a01b37b671e84dfdd122ffd8df4dd53dc48b504fe95",
+  "status": "LOCAL_CORRECTNESS_PASS_OWNER_SPEED_PENDING",
+  "changed_files": [
+    "Pishkhan24_Project_Roadmap.md",
+    "docs/D2_FINALIZED_WRITES_HANDOFF_FA.md",
+    "p24_foundation/viewer_contract.py",
+    "p24_foundation/viewer_data.py",
+    "p24_foundation/viewer_projection_writes.py",
+    "tests/test_viewer_finalized_projection.py",
+    "tools/benchmark_viewer_pg_writes.py",
+    "tools/qualify_finalized_projection.py",
+    "tools/qualify_viewer_postgres.py",
+    "tools/run_finalized_projection_probe.py",
+    "tools/viewer_pg_observer.py"
+  ],
+  "unit_tests": {
+    "status": "PASS",
+    "tests": 296,
+    "passed": 296,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "postgres_sql_qualification": {
+    "status": "PASS",
+    "passed_checks": 31,
+    "checks": 31,
+    "engine": "PostgreSQL 18.6 (PGlite 0.5.12) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+    "copy_transport": "bound_row_adapter_NATIVE_COPY_NOT_RUN",
+    "native_postgresql": "NOT_RUN",
+    "note": "PostgreSQL 18.6 WASM SQL qualification; not owner PostgreSQL 17 or native COPY"
+  },
+  "real_replay": {
+    "status": "PASS",
+    "forward_windows": 6,
+    "rechecks": 2,
+    "all_eight_read_models_equal_legacy": true,
+    "raw_and_capture_provenance_equal_legacy": true,
+    "records": 248351
+  },
+  "performance_claims": {
+    "owner_postgresql_speed": "NOT_RUN",
+    "logged_AB_native": "NOT_RUN",
+    "capacity_800k_request_ids_hour": "NOT_PROVEN"
+  },
+  "constraints_preserved": [
+    "one_atomic_publication_transaction",
+    "raw_origin_version_capture_receipts",
+    "global_conflict_checks",
+    "SessionID_and_RequestID",
+    "cross_window_late_and_old_payment_group_invalidation",
+    "owner_roles_and_manual_decisions",
+    "all_permanent_indexes_and_PK",
+    "private_config_keys_and_LIVE_START_UTC",
+    "existing_checkpoint_and_history_gaps"
+  ],
+  "owner_probe": "python tools/run_finalized_projection_probe.py --config viewer_config.local.py --out validation/d2_finalized_probe.json",
+  "developer_handoff": "docs/D2_FINALIZED_WRITES_HANDOFF_FA.md"
+}

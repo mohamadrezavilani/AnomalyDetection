@@ -1,0 +1,26 @@
+{
+  "status": "LOCAL_VERIFIED_NATIVE_STARTUP_PENDING",
+  "changed_routes": [
+    "Core.v1/UserWidgetsSetDefault"
+  ],
+  "registered_routes": 256,
+  "before": {
+    "user_management": 29,
+    "support": 80,
+    "business": 132,
+    "system": 9,
+    "unknown": 6
+  },
+  "after": {
+    "user_management": 28,
+    "support": 81,
+    "business": 132,
+    "system": 9,
+    "unknown": 6
+  },
+  "widget_role": "support",
+  "widget_initiation": "unknown",
+  "manual_reviews_preserved": true,
+  "evidence": "UserWidgetsSetDefaultCommand base(Module.Metrics); handler only DataBase.UserWidgetsSetDefault",
+  "raw_requests_and_checkpoint_preserved_in_upgrade_test": true
+}

@@ -1,0 +1,16 @@
+{
+  "build_id": "AD-PRODUCT-20261105-23",
+  "status": "PASS_GROUPED_REVIEW_AND_QUALIFICATION_SQL",
+  "checks": {
+    "same_service_is_one_group_and_overlapping_issue_evidence_is_counted_once": "PASS_20_NOT_40_EXECUTIONS",
+    "rare_within_reference_is_observation_and_dirty_case_is_recheck_before_migration": "PASS",
+    "service_and_user_views_and_all_case_drilldown_show_explicit_readiness": "PASS_HTML",
+    "bounded_policy_migration_preserves_case_identity_membership_and_versions": "PASS",
+    "missing_job_is_unknown_not_current_reviewable": "PASS",
+    "old_method_results_requeue_in_finite_pages_and_current_policy_results_stay_current": "PASS",
+    "latest_population_work_has_reserved_progress_while_oldest_lane_is_preserved": "PASS"
+  },
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "production_precision_recall": "NOT_MEASURED"
+}

@@ -1,0 +1,88 @@
+{
+  "mode": "archived_sqlite_retained_catalog_migration",
+  "live_elasticsearch": "NOT_RUN",
+  "native_postgresql": "NOT_RUN",
+  "operational_capacity": "NOT_QUALIFIED",
+  "production_modified": false,
+  "migration_seconds_sqlite": 0.233,
+  "preserved_raw_requests_contract_and_live_cursor": true,
+  "repeat_idempotent": true,
+  "migration_equals_full_batch": true,
+  "windows": 6,
+  "events": 248351,
+  "requests": 55398,
+  "before": {
+    "role_totals": {
+      "business": 36,
+      "user_management": 10,
+      "support": 26,
+      "system": 8,
+      "unknown": 52
+    },
+    "active_anchors": 4898
+  },
+  "after": {
+    "role_totals": {
+      "business": 51,
+      "user_management": 13,
+      "support": 59,
+      "system": 9,
+      "unknown": 0
+    },
+    "active_anchors": 5231
+  },
+  "migration": {
+    "status": "UPDATED",
+    "changed_paths": 52,
+    "changed_requests": 6170,
+    "semantic_changes": 548,
+    "live_capture_cursor_unchanged": true
+  },
+  "preserved_tables": {
+    "viewer_events": {
+      "rows": 248351,
+      "sha256": "c48f39c4481db6a2df772563ebb102b9274bb9c6a9bdd5e2b4b0ff6b53e9bba2"
+    },
+    "viewer_raw_events": {
+      "rows": 248351,
+      "sha256": "48b9c8785b68f6b2bad4b9c79862bfcbacc19f7d8ecef451a8c28038b493bef8"
+    },
+    "viewer_links": {
+      "rows": 148086,
+      "sha256": "dad3071f1952954aeed7522f9e41382a7727f0132665041449b6e99ff0db723e"
+    },
+    "viewer_event_captures": {
+      "rows": 248351,
+      "sha256": "8bb19dd2d14e98be5760d33d54e8fb2186af71f88294a52ff7e02fb90f24ae42"
+    },
+    "viewer_capture_projections": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "viewer_requests": {
+      "rows": 55398,
+      "sha256": "46fced22b6477c1eff3d6c856a53e59ab631386033b4439809e02ff874215464"
+    },
+    "viewer_contract_identifiers": {
+      "rows": 63665,
+      "sha256": "4dd9fcf7a7830bfa0f105a371f60a0b550e2202e72b2848f7173ea088b16a55c"
+    },
+    "viewer_contract_edges": {
+      "rows": 62586,
+      "sha256": "f635019250d837de75ed3eb136d91f33625f27c36648f46d3c6b0f0872073461"
+    },
+    "viewer_contract_observations": {
+      "rows": 4394,
+      "sha256": "e7b98051af628ca2c9fae4535ddc57fafcf5118740b7a2c65b4607809b775855"
+    },
+    "viewer_live_state": {
+      "rows": 1,
+      "sha256": "9a9025987c180820a981aca3495ace36960294e4e9cf8516de4ad48f75c6ec99"
+    },
+    "viewer_live_receipts": {
+      "rows": 6,
+      "sha256": "e77ca2b9dba40f90b636775d99c6dddf25a82baaaebbbbec5fa32f60c375f599"
+    }
+  },
+  "status": "PASS"
+}

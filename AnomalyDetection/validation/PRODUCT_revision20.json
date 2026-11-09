@@ -1,0 +1,19 @@
+{
+  "build_id": "AD-PRODUCT-20261105-24",
+  "status": "PASS_OPTIONAL_STATISTICS_FAILURE_ISOLATION_SQL",
+  "checks": {
+    "exact_native_failing_query_is_cancelled_without_losing_other_sections_or_connection": "PASS_REAL_SQL57014_SAVEPOINT",
+    "unknown_queue_count_stays_null_and_owned_statement_timeout_is_restored": "PASS",
+    "cached_count_keeps_original_timestamp_and_is_not_labelled_current": "PASS",
+    "partial_statistics_are_read_only_and_the_rtl_dashboard_explains_missing_counts": "PASS_HTML",
+    "statistics_start_budget_defers_remaining_sections_without_running_them": "PASS",
+    "non_timeout_schema_failures_still_propagate_and_rollback": "PASS",
+    "persistent_statistics_timeouts_do_not_reconnect_or_block_source_primary_profiles_and_scenario_jobs": "PASS_ONE_WRITER_CONNECTION_SYNTHETIC_SOURCE_PACKETS",
+    "content_profiles_and_scenario_results_are_persisted_despite_the_statistics_failure": "PASS"
+  },
+  "native19_failure_statement": "523fc7dc5c10cad5",
+  "new_source_writes": 0,
+  "owner_connections": 0,
+  "native_windows_postgresql20": "NOT_RUN",
+  "production_precision_recall_capacity": "NOT_MEASURED"
+}

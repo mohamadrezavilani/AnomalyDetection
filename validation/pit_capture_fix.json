@@ -1,0 +1,13 @@
+{
+  "status": "PASS_LOCAL",
+  "focused_tests": 7,
+  "viewer_tests_passed": 220,
+  "actual_owner_observation": "scroll_terminated_early_true_no_timeout_or_shard_failure",
+  "changed_path": "PIT/search_after",
+  "strict_early_termination_guard_preserved": true,
+  "full_record_count_and_terminal_empty_page_required": true,
+  "native_owner_pit": "NOT_RUN",
+  "config_overwritten": false,
+  "checkpoint_reset": false,
+  "private_credentials_included": false
+}

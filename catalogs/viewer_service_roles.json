@@ -1,0 +1,5179 @@
+{
+  "version": "p24-source-service-roles-1",
+  "unknown_route_policy": "unknown_until_evidenced",
+  "manual_decisions": "preserved_including_explicit_unknown",
+  "source_files_sha256": {
+    "Core/WebServices/Contracts/ICore.cs": "0751877ee18990518e6a9d25a6dce358f37b8253bdce2e09362e821c2ee4f9eb",
+    "Core/WebServices/Core.svc.cs": "a21f6d44afe85ea48c926a21efb1944876d0cfe38677bce1c9c79e3b287112e4",
+    "Core/WebServices/Contracts/IEwano.cs": "48761880c048c49d4f10bd6991eac63d491d1c566885fcda01a2968bcb414057",
+    "Core/WebServices/Ewano.svc.cs": "617cc10287eadca77aa86b048bbe35f85e86f07fd47a490bfe658ac51225fc79",
+    "Core/WebServices/Contracts/IJob.cs": "1fdbe96f2f9ba46a2de9a6ff6fe9480c6797af2481a2148e812d64b42d2284fd",
+    "Core/WebServices/Job.svc.cs": "3cfe20acbafddd5e350b5b8fb9f27e8c3cdfd48fc1cd0715df9765b4f440b843",
+    "Core/WebServices/Contracts/IProxy.cs": "bc98b12675897c6b05e299f3037d1accbf2cd10c1ac2e14deab7eba5c7666820",
+    "Core/WebServices/Proxy.svc.cs": "4badd85d2f5edee50581293e7feea5e0ba1f17e937b9aa61c6cd5da82b55b50d",
+    "Core/WebServices/Contracts/IPublic.cs": "7b0040618a17f51ea064a8b0ef83eea557f600a1c9662971a5e5676f11e86913",
+    "Core/WebServices/Public.svc.cs": "55ce66a22a68be5b0e6998bbaf57b12c1b94c40b5fd01e6dcee21f4be07e34c4",
+    "Core/WebServices/Contracts/IServices.cs": "dcfe699766913f3c6fe9c6b1a6225e013f15665b89419c86d276fd7053c848e1",
+    "Core/WebServices/Services.svc.cs": "7681770b34bbecc893f9fbbbe1a35850c1eeba6041f7ce9b525e1413acb55994",
+    "Core/WebServices/Contracts/IWebhook.cs": "22c2b3a4c91018e4f96cf62c2861567719338ff98fd253ab381d45f69faad83b",
+    "Core/WebServices/Webhook.svc.cs": "64b2a0e5788a6767cc7db43a2a07ddcc141221082e9f30488cac72cda175c618",
+    "Core/Pages/Files.aspx.cs": "d75034d6412dd8eecb9dd265c71ccc324824765ca71143a5462998efc4101fcb",
+    "Core/Pages/PaymentRedirect.aspx.cs": "f2860dd8ecd1e71ce203767f41c3116c1edff1427e021625b0b97aace5aa3577",
+    "Core/Pages/PaymentCallback.aspx.cs": "791ff17782a531903079ee6f82b4358689daab301e1a163dff742539fb2c3105",
+    "Core/Intermediate/Modules/Services/Energy/Commands/Electric/ElectricBillsExport/v3/ElectricBillsExportHandler.cs": "49e5a4619fb9448e0f98b9ac074a477e1e045db8dc52c78c61d7f7c216095ec9",
+    "Core/Intermediate/Modules/Services/Vehicle/Commands/TrafficFines/TrafficFinesImage/v1/TrafficFinesImagesHandler.cs": "48de47552f09efdee9c8641426fbcad9a201159f88fc42f92718b2955be08b7c",
+    "Core/Intermediate/Modules/Services/Vehicle/Commands/TrafficFines/TrafficFinesImage/v2/TrafficFinesImagesHandler.cs": "d870b23f75a03b0037e26fac4309812f0f549a2a04424d52f800e5bbe129905b",
+    "Core/Intermediate/Modules/Services/Finance/Commands/Iban/BankIbanInfoPrerequisitesHandler.cs": "2b9c48d963b7554495531452cc49df4c88f59adaddaf23e56a7cba28ff3c9c8d",
+    "Core/Intermediate/Modules/Services/SfaraCoupon/Commands/GetOrderDetail/SfaraCouponGetOrderDetailHandler.cs": "dbac98ed0c050cd5268e51efea799bc238c5791c68377912b0786874dc662e04",
+    "Core/Intermediate/Modules/Services/SocialSecurity/Commands/Insurance/ElectronicPrescription/SocialSecurityInsuranceElectronicPrescriptionDetailsHandler.cs": "353bdae07d69758e144c40c56f798709500c3d138153baaad8c08a60d804ba2b",
+    "Core/Intermediate/Modules/User/Commands/Survey/UserSurveyHandler.cs": "f667d1f11289f5d6afd979278a1eeef54e4617525ec2a62bf3d4a1f145ce5ba4",
+    "Core/Intermediate/Modules/User/Commands/Widget/UserWidgetsSetDefaultHandler.cs": "421052e9537cd5fe745af45269a2c48d9b1fd266485a48b666feac832f593fd8",
+    "Core/Intermediate/Modules/Services/Ewano/Commands/CreateOrder/EwanoCreateOrderHandler.cs": "b66d9400afb4fb41ecaa9158537584cd52b8e095aa991d1cc5990ce4ecca4bff"
+  },
+  "owner_role_confirmations": {
+    "date": "2026-10-27",
+    "main_market_services": [
+      "Public.v1/ExchangeCrypto",
+      "Public.v1/ExchangeCurrency",
+      "Public.v1/ExchangeGold"
+    ],
+    "automatic_homepage_calls": [
+      "Public.v1/AirPollution",
+      "Public.v1/CalendarMonth",
+      "Public.v1/CalendarReligiousTimes",
+      "Public.v1/CalendarToday",
+      "Public.v1/Weather"
+    ],
+    "role_does_not_establish_individual_manual_initiation": true
+  },
+  "routes": {
+    "Core.v1/AutoPayAddOrUpdateFreewayToll": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "freeway_toll",
+      "family_label_fa": "عوارض آزادراهی",
+      "source_method": "v1_AutoPayAddOrUpdateFreewayToll",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 374
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1950
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/AutoPayDelete": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_AutoPayDelete",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 379
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 2031
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/AutoPayGet": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_AutoPayGet",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 364
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1977
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/AutoPayUpdateStatus": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_AutoPayUpdateStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 384
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 2058
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/BillsInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_BillsInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 274
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1458
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/BillsPayment": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "اجرای پرداخت یا تأمین موجودی؛ آغاز دستی و نتیجهٔ نهایی مالی از نقش استنتاج نمی‌شود.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_BillsPayment",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 269
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1431
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/BillsPaymentChannels": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_BillsPaymentChannels",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 264
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1404
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/Cities": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_Cities",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 58
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 282
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/CnpgGetCardList": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_CnpgGetCardList",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 294
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1540
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/CnpgPayment": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "اجرای پرداخت یا تأمین موجودی؛ آغاز دستی و نتیجهٔ نهایی مالی از نقش استنتاج نمی‌شود.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_CnpgPayment",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 284
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1513
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/CnpgRemoveCard": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_CnpgRemoveCard",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 299
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1567
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/CnpgRequestOtp": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_CnpgRequestOtp",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 289
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1594
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/ConfigBasic": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_ConfigBasic",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 38
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 147
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/ConfigBusinessInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_ConfigBusinessInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 43
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 174
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/ConfigSearch": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_ConfigSearch",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 48
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 201
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/ConfigService": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_ConfigService",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 53
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 255
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/DeviceRegister": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_DeviceRegister",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 13
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 9
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/GetBillServiceName": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_GetBillServiceName",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 359
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1921
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/GetServiceNameListByFeature": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_GetServiceNameListByFeature",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 389
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 2086
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/InvoiceDiscounts": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InvoiceDiscounts",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 254
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1350
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/InvoiceInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InvoiceInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 259
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1296
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/InvoicePayment": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "اجرای پرداخت یا تأمین موجودی؛ آغاز دستی و نتیجهٔ نهایی مالی از نقش استنتاج نمی‌شود.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InvoicePayment",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 244
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1323
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/LoginByGoogle": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_LoginByGoogle",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 33
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 120
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/LoginByOTP": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_LoginByOTP",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 23
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 63
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/LoginByUserCredential": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_LoginByUserCredential",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 28
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 93
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/MetricsSearch": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_MetricsSearch",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 68
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 309
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/MetricsSurvey": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_MetricsSurvey",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 63
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 336
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/NotifyMeAdd": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_NotifyMeAdd",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 394
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 2114
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/Ocr": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_Ocr",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 314
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1677
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/PaymentInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_PaymentInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 249
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1377
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/PhoneNumberValidator": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_PhoneNumberValidator",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 309
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1650
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/ShaparakBankListService": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_ShaparakBankListService",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 304
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1623
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserBasketAddBills": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserBasketAddBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 334
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1785
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserBasketDelete": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserBasketDelete",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 339
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1812
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserBasketDeleteItems": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserBasketDeleteItems",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 344
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1839
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserBasketGet": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserBasketGet",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 329
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1758
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserBasketGetItemCount": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserBasketGetItemCount",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 354
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1894
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserBasketPayment": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "اجرای پرداخت یا تأمین موجودی؛ آغاز دستی و نتیجهٔ نهایی مالی از نقش استنتاج نمی‌شود.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserBasketPayment",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 349
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1867
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserBillsPaymentSummary": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserBillsPaymentSummary",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 324
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1731
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserCredentialAdd": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserCredentialAdd",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 103
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 552
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserCredentialChangePassword": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserCredentialChangePassword",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 108
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 582
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserCredentialClearPassword": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserCredentialClearPassword",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 113
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 612
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserCredentialInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserCredentialInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 118
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 639
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserDelete": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserDelete",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 239
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1269
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserInvoicePaymentSummary": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserInvoicePaymentSummary",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 319
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1704
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserLogOut": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserLogOut",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 399
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 2143
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserMessageRead": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserMessageRead",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 188
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 995
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserMessageRemove": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserMessageRemove",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 193
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1022
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserMessages": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserMessages",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 183
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 968
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserProfile": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserProfile",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 123
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 667
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserProfileUpdateFinancialInfo": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserProfileUpdateFinancialInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 138
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 748
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserProfileUpdateLocation": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserProfileUpdateLocation",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 133
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 721
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserProfileUpdatePersonalInfo": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserProfileUpdatePersonalInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 128
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 694
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserPublicKey": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserPublicKey",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 279
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1486
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserQuickAccessItems": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserQuickAccessItems",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 148
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 805
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserQuickAccessItemsUpdate": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserQuickAccessItemsUpdate",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 153
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 833
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserServiceQueries": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserServiceQueries",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 158
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 860
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserServiceQueryBookmark": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserServiceQueryBookmark",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 168
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 914
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserServiceQueryDelete": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserServiceQueryDelete",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 173
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 941
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserServiceQueryNote": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserServiceQueryNote",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 163
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 887
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserServicesRecentlyUsed": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserServicesRecentlyUsed",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 178
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 228
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserSessionInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserSessionInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 88
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 525
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserSessionUpdateInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserSessionUpdateInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 93
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 471
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserSessions": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserSessions",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 73
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 390
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserSessionsTerminate": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserSessionsTerminate",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 78
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 417
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserSessionsTerminateAllOthers": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تغییر حساب، تنظیمات، احراز هویت یا امکانات کاربر؛ دستی‌بودن هنوز نیازمند شاهد است.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserSessionsTerminateAllOthers",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 83
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 444
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserSurvey": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserSurvey",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 234
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1242
+        },
+        {
+          "file": "Core/Intermediate/Modules/User/Commands/Survey/UserSurveyHandler.cs",
+          "line": 13
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserTransactions": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_UserTransactions",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 224
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1188
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserVouchers": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserVouchers",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 229
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1215
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserWalletBalance": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "wallet",
+      "family_label_fa": "کیف پول",
+      "source_method": "v1_UserWalletBalance",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 208
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1105
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserWalletCharge": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "wallet_funding",
+      "reason_fa": "اجرای پرداخت یا تأمین موجودی؛ آغاز دستی و نتیجهٔ نهایی مالی از نقش استنتاج نمی‌شود.",
+      "family_id": "wallet",
+      "family_label_fa": "کیف پول",
+      "source_method": "v1_UserWalletCharge",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 219
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1159
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserWalletChargeChannels": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "wallet",
+      "family_label_fa": "کیف پول",
+      "source_method": "v1_UserWalletChargeChannels",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 214
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1132
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserWallets": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "wallet",
+      "family_label_fa": "کیف پول",
+      "source_method": "v1_UserWallets",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 198
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1051
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/UserWidgetsSetDefault": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "ثبت Widget در Module.Metrics و DataBase.UserWidgetsSetDefault؛ مرحلهٔ کمکی رابط کاربری است، نه اجرای مستقل خدمت. آغاز دستی یا خودکار تعیین نشده است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_UserWidgetsSetDefault",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 143
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 778
+        },
+        {
+          "file": "Core/Intermediate/Modules/User/Commands/Widget/UserWidgetsSetDefaultHandler.cs",
+          "line": 11
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v1/WalletPayment": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "اجرای پرداخت یا تأمین موجودی؛ آغاز دستی و نتیجهٔ نهایی مالی از نقش استنتاج نمی‌شود.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_WalletPayment",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 203
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 1078
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v2/AutoPayGet": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v2_AutoPayGet",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 369
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 2004
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v2/DeviceRegister": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v2_DeviceRegister",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 18
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 36
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Core.v2/UserSessionUpdateInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "خواندن اطلاعات کمکی، آماده‌سازی دستگاه، فهرست‌ها یا ثبت telemetry؛ عملیات تجاری مستقل نیست.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v2_UserSessionUpdateInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/ICore.cs",
+          "line": 98
+        },
+        {
+          "file": "Core/WebServices/Core.svc.cs",
+          "line": 498
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Ewano.v1/EwanoBillPayment": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "مرحلهٔ سفارش یا اجرای پرداخت ایوانو؛ از استعلام خدمت جدا و با شواهد پرداخت مرتبط است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_EwanoBillPayment",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IEwano.cs",
+          "line": 27
+        },
+        {
+          "file": "Core/WebServices/Ewano.svc.cs",
+          "line": 89
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Ewano.v1/EwanoCreateOrder": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "مرحلهٔ سفارش یا اجرای پرداخت ایوانو؛ از استعلام خدمت جدا و با شواهد پرداخت مرتبط است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_EwanoCreateOrder",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IEwano.cs",
+          "line": 17
+        },
+        {
+          "file": "Core/WebServices/Ewano.svc.cs",
+          "line": 35
+        },
+        {
+          "file": "Core/Intermediate/Modules/Services/Ewano/Commands/CreateOrder/EwanoCreateOrderHandler.cs",
+          "line": 25
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Ewano.v1/EwanoLogin": {
+      "role": "user_management",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "ورود و احراز هویت در مسیر ایوانو.",
+      "family_id": "account",
+      "family_label_fa": "حساب کاربری",
+      "source_method": "v1_EwanoLogin",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IEwano.cs",
+          "line": 12
+        },
+        {
+          "file": "Core/WebServices/Ewano.svc.cs",
+          "line": 8
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Ewano.v1/EwanoPayment": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": "payment_execution",
+      "reason_fa": "مرحلهٔ سفارش یا اجرای پرداخت ایوانو؛ از استعلام خدمت جدا و با شواهد پرداخت مرتبط است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_EwanoPayment",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IEwano.cs",
+          "line": 22
+        },
+        {
+          "file": "Core/WebServices/Ewano.svc.cs",
+          "line": 62
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Ewano.v1/EwanoUserBillsPaymentSummary": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن خلاصهٔ پرداخت‌های قبلی.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_EwanoUserBillsPaymentSummary",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IEwano.cs",
+          "line": 32
+        },
+        {
+          "file": "Core/WebServices/Ewano.svc.cs",
+          "line": 116
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Files.Download": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "تحویل فایل یا نتیجهٔ موجود؛ به‌تنهایی استعلام تازه یا پرداخت نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": null,
+      "evidence": [
+        {
+          "file": "Core/Pages/Files.aspx.cs",
+          "line": 26
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Job.DoJob": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "DoJob",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IJob.cs",
+          "line": 11
+        },
+        {
+          "file": "Core/WebServices/Job.svc.cs",
+          "line": 9
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "PaymentCallback.PaymentCallback": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": null,
+      "evidence": [
+        {
+          "file": "Core/Pages/PaymentCallback.aspx.cs",
+          "line": 18
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "PaymentRedirect.PaymentRedirect": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": null,
+      "evidence": [
+        {
+          "file": "Core/Pages/PaymentRedirect.aspx.cs",
+          "line": 19
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.CarAnnualTaxGetFixedParametersConfig": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "CarAnnualTaxGetFixedParametersConfig",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 77
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 359
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.CarTaxCheckUserRegistrationStatus": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": "external_vehicle_tax",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "source_method": "CarTaxCheckUserRegistrationStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 22
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 62
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.CarTaxForgetPassword": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": "external_vehicle_tax",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "source_method": "CarTaxForgetPassword",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 27
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 89
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.CarTaxInquiry": {
+      "role": "unknown",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "مسیر در سورس ثبت شده است؛ نقش رفتاری آن هنوز به بررسی اختصاصی نیاز دارد.",
+      "family_id": "external_vehicle_tax",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "source_method": "CarTaxInquiry",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 32
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 116
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.CarTaxRegistration": {
+      "role": "unknown",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "مسیر در سورس ثبت شده است؛ نقش رفتاری آن هنوز به بررسی اختصاصی نیاز دارد.",
+      "family_id": "external_vehicle_tax",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "source_method": "CarTaxRegistration",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 37
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 143
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.CarTaxRequestOtp": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": "external_vehicle_tax",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "source_method": "CarTaxRequestOtp",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 42
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 170
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.GetCardOcrResult": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "GetCardOcrResult",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 17
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 35
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.MotorTaxInquiry": {
+      "role": "unknown",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "مسیر در سورس ثبت شده است؛ نقش رفتاری آن هنوز به بررسی اختصاصی نیاز دارد.",
+      "family_id": "external_vehicle_tax",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "source_method": "MotorTaxInquiry",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 67
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 305
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.SettlementCertificateCarAnnualTax": {
+      "role": "unknown",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "مسیر در سورس ثبت شده است؛ نقش رفتاری آن هنوز به بررسی اختصاصی نیاز دارد.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "SettlementCertificateCarAnnualTax",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 72
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 332
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.TechnicalExaminationCertificateCheckUserRegistrationStatus": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": "technical_examination",
+      "family_label_fa": "معاینه فنی",
+      "source_method": "TechnicalExaminationCertificateCheckUserRegistrationStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 47
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 197
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.TechnicalExaminationCertificateInquiry": {
+      "role": "unknown",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "مسیر در سورس ثبت شده است؛ نقش رفتاری آن هنوز به بررسی اختصاصی نیاز دارد.",
+      "family_id": "technical_examination",
+      "family_label_fa": "معاینه فنی",
+      "source_method": "TechnicalExaminationCertificateInquiry",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 52
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 224
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.TechnicalExaminationCertificateRegistration": {
+      "role": "unknown",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "مسیر در سورس ثبت شده است؛ نقش رفتاری آن هنوز به بررسی اختصاصی نیاز دارد.",
+      "family_id": "technical_examination",
+      "family_label_fa": "معاینه فنی",
+      "source_method": "TechnicalExaminationCertificateRegistration",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 57
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 251
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.TechnicalExaminationCertificateRequestOtp": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": "technical_examination",
+      "family_label_fa": "معاینه فنی",
+      "source_method": "TechnicalExaminationCertificateRequestOtp",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 62
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 278
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Proxy.UploadNewCardOcrImage": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "واسط OCR، تنظیمات یا احراز دسترسیِ خدمت؛ به‌تنهایی استعلام کسب‌وکاری یا اقدام دستی مستقل را ثابت نمی‌کند.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "UploadNewCardOcrImage",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IProxy.cs",
+          "line": 12
+        },
+        {
+          "file": "Core/WebServices/Proxy.svc.cs",
+          "line": 8
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Public.v1/AirPollution": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": null,
+      "reason_fa": "فراخوانی خودکار پس‌زمینه هنگام ورود به صفحهٔ اول؛ تأیید صریح مالک در 2026-10-27.",
+      "family_id": "air_pollution",
+      "family_label_fa": "کیفیت هوا",
+      "source_method": "v1_AirPollution",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 18
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 35
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Public.v1/CalendarMonth": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": null,
+      "reason_fa": "فراخوانی خودکار پس‌زمینه هنگام ورود به صفحهٔ اول؛ تأیید صریح مالک در 2026-10-27.",
+      "family_id": "calendar",
+      "family_label_fa": "تقویم",
+      "source_method": "v1_CalendarMonth",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 28
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 89
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Public.v1/CalendarReligiousTimes": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": null,
+      "reason_fa": "فراخوانی خودکار پس‌زمینه هنگام ورود به صفحهٔ اول؛ تأیید صریح مالک در 2026-10-27.",
+      "family_id": "religious_times",
+      "family_label_fa": "اوقات شرعی",
+      "source_method": "v1_CalendarReligiousTimes",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 33
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 116
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Public.v1/CalendarToday": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": null,
+      "reason_fa": "فراخوانی خودکار پس‌زمینه هنگام ورود به صفحهٔ اول؛ تأیید صریح مالک در 2026-10-27.",
+      "family_id": "calendar",
+      "family_label_fa": "تقویم",
+      "source_method": "v1_CalendarToday",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 23
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 62
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Public.v1/ExchangeCrypto": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "سرویس اصلی نرخ ارز، طلا یا رمزارز؛ تأیید صریح مالک در 2026-10-27. عمومی‌بودن API یا نامشخص‌بودن آغاز دستی، نقش تجاری را نفی نمی‌کند.",
+      "family_id": "crypto_rates",
+      "family_label_fa": "نرخ رمزارز",
+      "source_method": "v1_ExchangeCrypto",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 38
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 143
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Public.v1/ExchangeCurrency": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "سرویس اصلی نرخ ارز، طلا یا رمزارز؛ تأیید صریح مالک در 2026-10-27. عمومی‌بودن API یا نامشخص‌بودن آغاز دستی، نقش تجاری را نفی نمی‌کند.",
+      "family_id": "currency_rates",
+      "family_label_fa": "نرخ ارز",
+      "source_method": "v1_ExchangeCurrency",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 43
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 170
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Public.v1/ExchangeGold": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "سرویس اصلی نرخ ارز، طلا یا رمزارز؛ تأیید صریح مالک در 2026-10-27. عمومی‌بودن API یا نامشخص‌بودن آغاز دستی، نقش تجاری را نفی نمی‌کند.",
+      "family_id": "gold_rates",
+      "family_label_fa": "نرخ طلا",
+      "source_method": "v1_ExchangeGold",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 48
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 197
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Public.v1/ServiceIconUrls": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "دریافت نشانی آیکون سرویس‌ها برای نمایش رابط کاربری؛ نقش با مسیر دقیق تعیین شده است.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_ServiceIconUrls",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 53
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 224
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Public.v1/Weather": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": null,
+      "reason_fa": "فراخوانی خودکار پس‌زمینه هنگام ورود به صفحهٔ اول؛ تأیید صریح مالک در 2026-10-27.",
+      "family_id": "weather",
+      "family_label_fa": "آب‌وهوا",
+      "source_method": "v1_Weather",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IPublic.cs",
+          "line": 13
+        },
+        {
+          "file": "Core/WebServices/Public.svc.cs",
+          "line": 8
+        }
+      ],
+      "authority": "owner_confirmed_role_with_exact_source_route"
+    },
+    "Services.v1/AddUserData": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": "support",
+      "reason_fa": "عملیات پشتیبان خودکار؛ تأیید صریح مالک سامانه.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_AddUserData",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 671
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3539
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/BankChequeStatusSayad": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "cheque_status",
+      "family_label_fa": "وضعیت چک صیادی",
+      "source_method": "v1_BankChequeStatusSayad",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 477
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2508
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/BankIbanInfo": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "bank_iban",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی",
+      "source_method": "v1_BankIbanInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 497
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2616
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/BankIbanInfoPrerequisites": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "bank_iban",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی",
+      "source_method": "v1_BankIbanInfoPrerequisites",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 492
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2589
+        },
+        {
+          "file": "Core/Intermediate/Modules/Services/Finance/Commands/Iban/BankIbanInfoPrerequisitesHandler.cs",
+          "line": 12
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/CarAnnualTaxBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "v1_CarAnnualTaxBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 422
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2237
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/CarAnnualTaxFileRegistration": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "v1_CarAnnualTaxFileRegistration",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 612
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3242
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/CarAnnualTaxFileRegistrationRequest": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "v1_CarAnnualTaxFileRegistrationRequest",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 651
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3458
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/CarAnnualTaxGetSettlementCertificate": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "v1_CarAnnualTaxGetSettlementCertificate",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 462
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2155
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/CellPhoneBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "mobile_bill",
+      "family_label_fa": "قبض تلفن همراه",
+      "source_method": "v1_CellPhoneBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 382
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1985
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/CellPhoneBillsDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_CellPhoneMciBillsDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 392
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2039
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/CellPhoneMciBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "mobile_bill",
+      "family_label_fa": "قبض تلفن همراه",
+      "source_method": "v1_CellPhoneMciBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 387
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2012
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/DrivingAccidents": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "driving_accidents",
+      "family_label_fa": "سوابق تصادفات",
+      "source_method": "v1_DrivingAccidents",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 487
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2562
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/DrivingLicenseNegativePoint": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "driving_license",
+      "family_label_fa": "گواهینامه و نمره منفی",
+      "source_method": "v1_DrivingLicenseNegativePoint",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 117
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 594
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/DrivingLicenseStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "driving_license",
+      "family_label_fa": "گواهینامه و نمره منفی",
+      "source_method": "v1_DrivingLicenseStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 112
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 567
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/EducationalExemption": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "educational_exemption",
+      "family_label_fa": "معافیت تحصیلی",
+      "source_method": "v1_EducationalExemption",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 661
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3485
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/ElectricBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "electric_bill",
+      "family_label_fa": "قبض برق",
+      "source_method": "v1_ElectricBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 302
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1597
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/ElectricBillsDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "electric_bill",
+      "family_label_fa": "قبض برق",
+      "source_method": "v1_ElectricBillsDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 322
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1705
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/ElectricBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "electric_bill",
+      "family_label_fa": "قبض برق",
+      "source_method": "v1_ElectricBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 307
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1624
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/ExitBanStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "exit_ban",
+      "family_label_fa": "ممنوع‌الخروجی",
+      "source_method": "v1_ExitBanStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 132
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 675
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/Facility": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "bank_facilities",
+      "family_label_fa": "تسهیلات و تعهدات بانکی",
+      "source_method": "v1_Facility",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 686
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3621
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/FreewayTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "freeway_toll",
+      "family_label_fa": "عوارض آزادراهی",
+      "source_method": "v1_FreewayTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 402
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2073
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/FreewayTollBillsDetailed": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "freeway_toll",
+      "family_label_fa": "عوارض آزادراهی",
+      "source_method": "v1_FreewayTollBillsDetailed",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 656
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2127
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/GasBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "gas_bill",
+      "family_label_fa": "قبض گاز",
+      "source_method": "v1_GasBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 327
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1732
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/GasBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "gas_bill",
+      "family_label_fa": "قبض گاز",
+      "source_method": "v1_GasBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 337
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1759
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/GetUserData": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": "support",
+      "reason_fa": "عملیات پشتیبان خودکار؛ تأیید صریح مالک سامانه.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_GetUserData",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 676
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3566
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/GovernmentRetirement": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "government_retirement",
+      "family_label_fa": "بازنشستگی کشوری",
+      "source_method": "v1_GovernmentRetirement",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 267
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1407
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/GovernmentRetirementReceipt": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "government_retirement",
+      "family_label_fa": "بازنشستگی کشوری",
+      "source_method": "v1_GovernmentRetirementReceipt",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 272
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1434
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/GovernmentSubventionHistory": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "subvention_history",
+      "family_label_fa": "سوابق یارانه",
+      "source_method": "v1_GovernmentSubventionHistory",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 277
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1461
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/HusbandOrGuardianConsent": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "guardian_consent",
+      "family_label_fa": "رضایت همسر یا ولی",
+      "source_method": "v1_HusbandOrGuardianConsent",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 557
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2944
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/IdentificationDocumentsStatusCar": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_documents",
+      "family_label_fa": "وضعیت مدارک خودرو و موتور",
+      "source_method": "v1_IdentificationDocumentsStatusCar",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 102
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 513
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/IdentificationDocumentsStatusMotorcycle": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_documents",
+      "family_label_fa": "وضعیت مدارک خودرو و موتور",
+      "source_method": "v1_IdentificationDocumentsStatusMotorcycle",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 107
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 540
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/InsurancePolicies": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "insurance_policies",
+      "family_label_fa": "بیمه‌نامه‌ها",
+      "source_method": "v1_InsurancePolicies",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 572
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3026
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/InvoiceRegister": {
+      "role": "support",
+      "initiation": "confirmed_automatic",
+      "semantic_role": "support",
+      "reason_fa": "عملیات پشتیبان خودکار؛ تأیید صریح مالک سامانه.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InvoiceRegister",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 12
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 10
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/JudicialTransactionCredit": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "judicial_transaction_credit",
+      "family_label_fa": "اعتبار معاملاتی قضایی",
+      "source_method": "v1_JudicialTransactionCredit",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 617
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3269
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/JusticeSharesPortfolio": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "justice_shares",
+      "family_label_fa": "سهام عدالت",
+      "source_method": "v1_JusticeSharesPortfolio",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 47
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 214
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/LandLinePhoneBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "landline_bill",
+      "family_label_fa": "قبض تلفن ثابت",
+      "source_method": "v1_LandLinePhoneBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 347
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1840
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/LandLinePhoneBillsDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "landline_bill",
+      "family_label_fa": "قبض تلفن ثابت",
+      "source_method": "v1_LandLinePhoneBillsDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 352
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1867
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/LandLinePhoneBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "landline_bill",
+      "family_label_fa": "قبض تلفن ثابت",
+      "source_method": "v1_LandLinePhoneBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 367
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1904
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/LivelihoodInformation": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "livelihood_information",
+      "family_label_fa": "اطلاعات معیشتی",
+      "source_method": "v1_LivelihoodInformation",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 527
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2778
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MilitaryCardIssuanceStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "military_card",
+      "family_label_fa": "وضعیت کارت نظام وظیفه",
+      "source_method": "v1_MilitaryCardIssuanceStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 666
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3512
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityCarAnnualTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "v1_MunicipalityCarAnnualTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 412
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2183
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityCarParkTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "parking_toll",
+      "family_label_fa": "عوارض پارک خودرو",
+      "source_method": "v1_MunicipalityCarParkTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 432
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2291
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityCarTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "municipal_vehicle_toll",
+      "family_label_fa": "عوارض شهری خودرو",
+      "source_method": "v1_MunicipalityCarTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 427
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2264
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityPropertySafetyTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "property_safety_toll",
+      "family_label_fa": "عوارض ایمنی ملک",
+      "source_method": "v1_MunicipalityPropertySafetyTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 447
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2372
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityPropertyTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "property_toll",
+      "family_label_fa": "عوارض ملک",
+      "source_method": "v1_MunicipalityPropertyTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 442
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2345
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityPropertyTollBillsBarcodeInfo": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "property_toll",
+      "family_label_fa": "عوارض ملک",
+      "source_method": "v1_MunicipalityPropertyTollBillsBarcodeInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 437
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2318
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityTaxiFaresBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "taxi_fares",
+      "family_label_fa": "کرایه تاکسی",
+      "source_method": "v1_MunicipalityTaxiFaresBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 457
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2426
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MunicipalityTaxiFaresBillsBarcodeInfo": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "taxi_fares",
+      "family_label_fa": "کرایه تاکسی",
+      "source_method": "v1_MunicipalityTaxiFaresBillsBarcodeInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 452
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2399
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/MyGovRegister": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "mygov_registration",
+      "family_label_fa": "ثبت‌نام پنجره ملی دولت",
+      "source_method": "v1_MyGovRegister",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 641
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3404
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/NationalCardReceiveTracking": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "national_card_tracking",
+      "family_label_fa": "پیگیری کارت ملی",
+      "source_method": "v1_NationalCardReceiveTracking",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 587
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3107
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/NationalInfo": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "national_information",
+      "family_label_fa": "اطلاعات هویتی",
+      "source_method": "v1_NationalInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 636
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3377
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/PassportStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "passport_status",
+      "family_label_fa": "وضعیت گذرنامه",
+      "source_method": "v1_PassportStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 122
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 621
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/PassportStatusExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "passport_status",
+      "family_label_fa": "وضعیت گذرنامه",
+      "source_method": "v1_PassportStatusExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 681
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3593
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/PersonStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "person_status",
+      "family_label_fa": "وضعیت شخص",
+      "source_method": "v1_PersonStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 631
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3350
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/PlateNumberHistory": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_plates",
+      "family_label_fa": "پلاک‌های خودرو و سابقه پلاک",
+      "source_method": "v1_PlateNumberHistory",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 582
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3080
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/PostPackagesStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "postal_tracking",
+      "family_label_fa": "رهگیری مرسوله پستی",
+      "source_method": "v1_PostPackagesStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 467
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2454
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/PostTrackingExtended": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "postal_tracking",
+      "family_label_fa": "رهگیری مرسوله پستی",
+      "source_method": "v1_PostTrackingExtended",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 472
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2481
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/PostalCodeToAddress": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "postal_address",
+      "family_label_fa": "نشانی از کد پستی",
+      "source_method": "v1_PostalCodeToAddress",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 646
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3431
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/RealEstateContract": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "real_estate_contract",
+      "family_label_fa": "قرارداد املاک",
+      "source_method": "v1_RealEstateContract",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 517
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2724
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SettlementCertificateRequest": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "municipal_settlement_certificate",
+      "family_label_fa": "مفاصاحساب شهرداری",
+      "source_method": "v1_SettlementCertificateRequest",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 577
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3053
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SfaraCoupon": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "sfara_coupon",
+      "family_label_fa": "کالابرگ و خدمات سفرا",
+      "source_method": "v1_SfaraCoupon",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 602
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3134
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SfaraCouponGetOrderDetail": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن نتیجهٔ قبلی، جزئیات سفارش یا مرحلهٔ تأیید همان خدمت؛ درخواست خام جدا حفظ می‌شود.",
+      "family_id": "sfara_coupon",
+      "family_label_fa": "کالابرگ و خدمات سفرا",
+      "source_method": "v1_SfaraCouponGetOrderDetail",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 607
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3215
+        },
+        {
+          "file": "Core/Intermediate/Modules/Services/SfaraCoupon/Commands/GetOrderDetail/SfaraCouponGetOrderDetailHandler.cs",
+          "line": 19
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SfaraCouponGetOrderOtp": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن نتیجهٔ قبلی، جزئیات سفارش یا مرحلهٔ تأیید همان خدمت؛ درخواست خام جدا حفظ می‌شود.",
+      "family_id": "sfara_coupon",
+      "family_label_fa": "کالابرگ و خدمات سفرا",
+      "source_method": "v1_SfaraCouponGetOrderOtp",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 592
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3161
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceElectronicPrescription": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "electronic_prescription",
+      "family_label_fa": "نسخه الکترونیکی تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceElectronicPrescription",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 257
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1351
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceElectronicPrescriptionDetails": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن نتیجهٔ قبلی، جزئیات سفارش یا مرحلهٔ تأیید همان خدمت؛ درخواست خام جدا حفظ می‌شود.",
+      "family_id": "electronic_prescription",
+      "family_label_fa": "نسخه الکترونیکی تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceElectronicPrescriptionDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 262
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1378
+        },
+        {
+          "file": "Core/Intermediate/Modules/Services/SocialSecurity/Commands/Insurance/ElectronicPrescription/SocialSecurityInsuranceElectronicPrescriptionDetailsHandler.cs",
+          "line": 18
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceHistory": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "social_insurance_history",
+      "family_label_fa": "سوابق بیمه تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceHistory",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 192
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1000
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalCredit": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "medical_credit",
+      "family_label_fa": "اعتبار درمانی تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceMedicalCredit",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 222
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1162
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalPrescription": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "medical_prescription",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceMedicalPrescription",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 237
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1243
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalPrescriptionDetails": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن نتیجهٔ قبلی، جزئیات سفارش یا مرحلهٔ تأیید همان خدمت؛ درخواست خام جدا حفظ می‌شود.",
+      "family_id": "medical_prescription",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceMedicalPrescriptionDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 247
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1297
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceRetirement": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "social_insurance_retirement",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceRetirement",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 202
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1054
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/SocialSecurityInsuranceRetirementReceipt": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "social_insurance_retirement",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی",
+      "source_method": "v1_SocialSecurityInsuranceRetirementReceipt",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 212
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1108
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TechnicalExaminationCertificate": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "technical_examination",
+      "family_label_fa": "معاینه فنی",
+      "source_method": "v1_TechnicalExaminationCertificate",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 142
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 729
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TechnicalExaminationCertificateByVin": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "technical_examination",
+      "family_label_fa": "معاینه فنی",
+      "source_method": "v1_TechnicalExaminationCertificateByVin",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 147
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 756
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TelecomRegisteredLines": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "registered_lines",
+      "family_label_fa": "خطوط ارتباطی ثبت‌شده",
+      "source_method": "v1_TelecomRegisteredLines",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 512
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2697
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpChargeCustomConfig": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": "v1_TopUpChargeCustomConfig",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 42
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 186
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpOperators": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": "v1_TopUpOperators",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 17
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 39
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpOperatorsCharge": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": null,
+      "evidence": [
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 46
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpOperatorsInternetPackage": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": null,
+      "evidence": [
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 47
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpProductPurchase": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": "v1_TopUpProductPurchase",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 27
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 105
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpProducts": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": "v1_TopUpProducts",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 22
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 72
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpProductsCharge": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": null,
+      "evidence": [
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 79
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpProductsInternetPackage": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": null,
+      "evidence": [
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 80
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpPurchaseInfo": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن نتیجهٔ قبلی، جزئیات سفارش یا مرحلهٔ تأیید همان خدمت؛ درخواست خام جدا حفظ می‌شود.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": "v1_TopUpPurchaseInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 32
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 132
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TopUpRoamingInternetPackageProducts": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_catalog_lookup",
+      "reason_fa": "فهرست محصولات، اپراتورها، تنظیمات یا پیش‌نیاز خدمت؛ خرید یا استعلام مستقل نیست.",
+      "family_id": "topup",
+      "family_label_fa": "خرید شارژ و بسته",
+      "source_method": "v1_TopUpRoamingInternetPackageProducts",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 37
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 159
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesCar": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesCar",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 52
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 242
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesCarNoDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesCarNoDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 62
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 296
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesCarTotalDebt": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesCarTotalDebt",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 567
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2999
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesCarWithImage": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesCarWithImage",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 57
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 269
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesImages": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "نسخهٔ v1 تصویر قبض موجود را می‌خواند؛ با v2 دارای قرارداد صورتحساب/settlement یکسان فرض نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesImages",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 82
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 404
+        },
+        {
+          "file": "Core/Intermediate/Modules/Services/Vehicle/Commands/TrafficFines/TrafficFinesImage/v1/TrafficFinesImagesHandler.cs",
+          "line": 13
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesMotorcycle": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesMotorcycle",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 67
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 323
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesMotorcycleNoDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesMotorcycleNoDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 77
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 377
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesMotorcycleWithImage": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesMotorcycleWithImage",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 72
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 350
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TrafficFinesWithImageInquiryGetImage": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v1_TrafficFinesWithImageInquiryGetImage",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 92
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 458
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TransferTax": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v1_TransferTax",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 152
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 783
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TransferTaxCar": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v1_TransferTaxCar",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 157
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 810
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TransferTaxGetSettlementCertificate": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v1_TransferTaxGetSettlementCertificate",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 187
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 972
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/TransferTaxMotorcycle": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v1_TransferTaxMotorcycle",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 162
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 891
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/VehicleAuthenticity": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_authenticity",
+      "family_label_fa": "اصالت خودرو",
+      "source_method": "v1_VehicleAuthenticity",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 532
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2805
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/VehicleLeaseStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_lease",
+      "family_label_fa": "وضعیت لیزینگ خودرو",
+      "source_method": "v1_VehicleLeaseStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 547
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2886
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/VehiclePlateNumbers": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_plates",
+      "family_label_fa": "پلاک‌های خودرو و سابقه پلاک",
+      "source_method": "v1_VehiclePlateNumbers",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 97
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 486
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/VehicleTheftStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_theft",
+      "family_label_fa": "وضعیت سرقت خودرو",
+      "source_method": "v1_VehicleTheftStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 552
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2915
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/VehicleThirdPartyInsurance": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_third_party_insurance",
+      "family_label_fa": "بیمه شخص ثالث خودرو",
+      "source_method": "v1_VehicleThirdPartyInsurance",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 482
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2535
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/VehicleThirdPartyInsuranceStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_third_party_insurance",
+      "family_label_fa": "بیمه شخص ثالث خودرو",
+      "source_method": "v1_VehicleThirdPartyInsuranceStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 562
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2972
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/WaterBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "water_bill",
+      "family_label_fa": "قبض آب",
+      "source_method": "v1_WaterBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 287
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1516
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v1/WaterBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "water_bill",
+      "family_label_fa": "قبض آب",
+      "source_method": "v1_WaterBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 292
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1543
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/BankIbanInfo": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "bank_iban",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی",
+      "source_method": "v2_BankIbanInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 502
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2643
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/CellPhoneMciBillsDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "mobile_bill",
+      "family_label_fa": "قبض تلفن همراه",
+      "source_method": "v2_CellPhoneMciBillsDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 397
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2045
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/ElectricBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "electric_bill",
+      "family_label_fa": "قبض برق",
+      "source_method": "v2_ElectricBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 312
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1651
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/ExitBanStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "exit_ban",
+      "family_label_fa": "ممنوع‌الخروجی",
+      "source_method": "v2_ExitBanStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 137
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 702
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/FreewayTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "freeway_toll",
+      "family_label_fa": "عوارض آزادراهی",
+      "source_method": "v2_FreewayTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 407
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2100
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/GasBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "gas_bill",
+      "family_label_fa": "قبض گاز",
+      "source_method": "v2_GasBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 332
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1813
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/GasBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "gas_bill",
+      "family_label_fa": "قبض گاز",
+      "source_method": "v2_GasBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 342
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1786
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/GovernmentSubventionHistory": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "subvention_history",
+      "family_label_fa": "سوابق یارانه",
+      "source_method": "v2_GovernmentSubventionHistory",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 282
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1488
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/JudicialTransactionCredit": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "judicial_transaction_credit",
+      "family_label_fa": "اعتبار معاملاتی قضایی",
+      "source_method": "v2_JudicialTransactionCredit",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 621
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3296
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/LandLinePhoneBillsDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "landline_bill",
+      "family_label_fa": "قبض تلفن ثابت",
+      "source_method": "v2_LandLinePhoneBillsDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 357
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1872
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/LandLinePhoneBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "landline_bill",
+      "family_label_fa": "قبض تلفن ثابت",
+      "source_method": "v2_LandLinePhoneBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 372
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1931
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/MunicipalityCarAnnualTollBills": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "annual_vehicle_tax",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "source_method": "v2_MunicipalityCarAnnualTollBills",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 417
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2210
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/PassportStatus": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "passport_status",
+      "family_label_fa": "وضعیت گذرنامه",
+      "source_method": "v2_PassportStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 127
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 648
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/RealEstateContract": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "real_estate_contract",
+      "family_label_fa": "قرارداد املاک",
+      "source_method": "v2_RealEstateContract",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 522
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2751
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/SfaraCouponGetOrderOtp": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن نتیجهٔ قبلی، جزئیات سفارش یا مرحلهٔ تأیید همان خدمت؛ درخواست خام جدا حفظ می‌شود.",
+      "family_id": "sfara_coupon",
+      "family_label_fa": "کالابرگ و خدمات سفرا",
+      "source_method": "v2_SfaraCouponGetOrderOtp",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 597
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3188
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/SocialSecurityInsuranceHistory": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "social_insurance_history",
+      "family_label_fa": "سوابق بیمه تأمین اجتماعی",
+      "source_method": "v2_SocialSecurityInsuranceHistory",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 197
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1027
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalCredit": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "medical_credit",
+      "family_label_fa": "اعتبار درمانی تأمین اجتماعی",
+      "source_method": "v2_SocialSecurityInsuranceMedicalCredit",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 227
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1189
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalPrescription": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "medical_prescription",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی",
+      "source_method": "v2_SocialSecurityInsuranceMedicalPrescription",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 242
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1270
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalPrescriptionDetails": {
+      "role": "support",
+      "initiation": "unknown",
+      "semantic_role": "support_status_lookup",
+      "reason_fa": "خواندن نتیجهٔ قبلی، جزئیات سفارش یا مرحلهٔ تأیید همان خدمت؛ درخواست خام جدا حفظ می‌شود.",
+      "family_id": "medical_prescription",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی",
+      "source_method": "v2_SocialSecurityInsuranceMedicalPrescriptionDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 252
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1324
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/SocialSecurityInsuranceRetirement": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "social_insurance_retirement",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی",
+      "source_method": "v2_SocialSecurityInsuranceRetirement",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 207
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1081
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/SocialSecurityInsuranceRetirementReceipt": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "social_insurance_retirement",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی",
+      "source_method": "v2_SocialSecurityInsuranceRetirementReceipt",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 217
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1135
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/TrafficFinesImages": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "traffic_fines",
+      "family_label_fa": "خلافی خودرو و موتور",
+      "source_method": "v2_TrafficFinesImages",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 87
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 431
+        },
+        {
+          "file": "Core/Intermediate/Modules/Services/Vehicle/Commands/TrafficFines/TrafficFinesImage/v2/TrafficFinesImagesHandler.cs",
+          "line": 29
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/TransferTaxCar": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v2_TransferTaxCar",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 167
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 837
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/TransferTaxMotorcycle": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v2_TransferTaxMotorcycle",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 177
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 918
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/VehicleAuthenticity": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_authenticity",
+      "family_label_fa": "اصالت خودرو",
+      "source_method": "v2_VehicleAuthenticity",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 537
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2832
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v2/WaterBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "water_bill",
+      "family_label_fa": "قبض آب",
+      "source_method": "v2_WaterBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 297
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1570
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/BankIbanInfo": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "bank_iban",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی",
+      "source_method": "v3_BankIbanInfo",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 507
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2670
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/ElectricBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "electric_bill",
+      "family_label_fa": "قبض برق",
+      "source_method": "v3_ElectricBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 317
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1678
+        },
+        {
+          "file": "Core/Intermediate/Modules/Services/Energy/Commands/Electric/ElectricBillsExport/v3/ElectricBillsExportHandler.cs",
+          "line": 43
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/JudicialTransactionCredit": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "judicial_transaction_credit",
+      "family_label_fa": "اعتبار معاملاتی قضایی",
+      "source_method": "v3_JudicialTransactionCredit",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 626
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 3323
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/LandLinePhoneBillsDetails": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "landline_bill",
+      "family_label_fa": "قبض تلفن ثابت",
+      "source_method": "v3_LandLinePhoneBillsDetails",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 362
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1877
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/LandLinePhoneBillsExport": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "landline_bill",
+      "family_label_fa": "قبض تلفن ثابت",
+      "source_method": "v3_LandLinePhoneBillsExport",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 377
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1958
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/SocialSecurityInsuranceMedicalCredit": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "medical_credit",
+      "family_label_fa": "اعتبار درمانی تأمین اجتماعی",
+      "source_method": "v3_SocialSecurityInsuranceMedicalCredit",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 232
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 1216
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/TransferTaxCar": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v3_TransferTaxCar",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 172
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 864
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/TransferTaxMotorcycle": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "transfer_tax",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+      "source_method": "v3_TransferTaxMotorcycle",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 182
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 945
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Services.v3/VehicleAuthenticity": {
+      "role": "business",
+      "initiation": "unknown",
+      "semantic_role": null,
+      "reason_fa": "اجرای مستقل API خدمت در قرارداد و handler؛ حتی تکرار هدف با RequestID دیگر جداست. دستی‌بودن یا قطعیت مالی تأیید نمی‌شود.",
+      "family_id": "vehicle_authenticity",
+      "family_label_fa": "اصالت خودرو",
+      "source_method": "v3_VehicleAuthenticity",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IServices.cs",
+          "line": 542
+        },
+        {
+          "file": "Core/WebServices/Services.svc.cs",
+          "line": 2859
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Webhook.v1/InformBillsPaymentStatus": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InformBillsPaymentStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IWebhook.cs",
+          "line": 10
+        },
+        {
+          "file": "Core/WebServices/Webhook.svc.cs",
+          "line": 9
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Webhook.v1/InformCarAnnualTaxFileRegistrationRequest": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InformCarAnnualTaxFileRegistrationRequest",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IWebhook.cs",
+          "line": 26
+        },
+        {
+          "file": "Core/WebServices/Webhook.svc.cs",
+          "line": 137
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Webhook.v1/InformCarAnnualTaxStatus": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InformCarAnnualTaxStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IWebhook.cs",
+          "line": 22
+        },
+        {
+          "file": "Core/WebServices/Webhook.svc.cs",
+          "line": 105
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Webhook.v1/InformPurchaseStatus": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InformPurchaseStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IWebhook.cs",
+          "line": 18
+        },
+        {
+          "file": "Core/WebServices/Webhook.svc.cs",
+          "line": 73
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Webhook.v1/InformTransferTaxStatus": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v1_InformTransferTaxStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IWebhook.cs",
+          "line": 30
+        },
+        {
+          "file": "Core/WebServices/Webhook.svc.cs",
+          "line": 169
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    },
+    "Webhook.v2/InformBillsPaymentStatus": {
+      "role": "system",
+      "initiation": "system_followup",
+      "semantic_role": "system_followup",
+      "reason_fa": "پیگیری یا هدایت سیستمیِ عملیات قبلی؛ اقدام مستقل مشتری نیست.",
+      "family_id": null,
+      "family_label_fa": null,
+      "source_method": "v2_InformBillsPaymentStatus",
+      "evidence": [
+        {
+          "file": "Core/WebServices/Contracts/IWebhook.cs",
+          "line": 14
+        },
+        {
+          "file": "Core/WebServices/Webhook.svc.cs",
+          "line": 41
+        }
+      ],
+      "authority": "source_registered_proposal_not_manual_initiation_proof"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+  "checks": {
+    "zero_coverage_completion_neither_creates_targets_nor_dirties_real_control": "PASS",
+    "qualified_zero_windows_remain_available_for_learning": "PASS",
+    "old_schema_upgrade_preserves_rows_and_defers_classification_to_bounded_pages": "PASS",
+    "release13_counterexample": "PASS_REPRODUCED_BEFORE_2_TARGETS_AFTER_5_WITHOUT_NEW_BEHAVIOR",
+    "late_real_behavior_creates_target_and_invalidates_future_consumer": "PASS",
+    "finite_restartable_upgrade_classifies_600_empty_rows_without_deleting_or_evaluating_anything": "PASS",
+    "unknown_unmapped_assessed_withdrawn_incident_feedback_and_unavailable_windows_are_protected": "PASS",
+    "classification_fault_rolls_back_and_new_arrivals_cannot_extend_frozen_pass": "PASS",
+    "all_scheduling_lanes_skip_coverage_metadata_without_calling_it_normal": "PASS",
+    "late_fact_reactivates_a_previously_coverage_only_target_automatically": "PASS",
+    "real_target_with_empty_replacement_still_requires_reassessment": "PASS"
+  },
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "native_queue_drain_rate": "NOT_MEASURED",
+  "source_modified": false,
+  "legacy_thresholds_and_models": "LEGACY_SCHEMA_CONTRACT_PRESERVED_REVIEW_AND_HOUR_QUALIFICATION_UPDATED_IN_RELEASE17"
+}

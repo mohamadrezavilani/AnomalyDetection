@@ -1,0 +1,158 @@
+{
+  "mode": "archived_real_windows",
+  "live_elasticsearch": "NOT_RUN",
+  "owner_windows_native_postgresql": "NOT_RUN",
+  "operational_capacity": "NOT_QUALIFIED",
+  "full_r5_acceptance": 0,
+  "production_modified": false,
+  "windows": [
+    {
+      "ordinal": 0,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 35893,
+      "new_events": 35893,
+      "impacted_requests": 8037,
+      "bootstrap": true,
+      "generation": 2,
+      "elapsed_seconds": 13.718,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 13.718
+    },
+    {
+      "ordinal": 1,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 38397,
+      "new_events": 38397,
+      "impacted_requests": 8574,
+      "bootstrap": false,
+      "generation": 4,
+      "elapsed_seconds": 20.124,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 20.124
+    },
+    {
+      "ordinal": 2,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 37935,
+      "new_events": 37935,
+      "impacted_requests": 8464,
+      "bootstrap": false,
+      "generation": 6,
+      "elapsed_seconds": 22.618,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 22.618
+    },
+    {
+      "ordinal": 3,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 44255,
+      "new_events": 44255,
+      "impacted_requests": 9820,
+      "bootstrap": false,
+      "generation": 8,
+      "elapsed_seconds": 38.415,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 38.415
+    },
+    {
+      "ordinal": 4,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 44286,
+      "new_events": 44286,
+      "impacted_requests": 9932,
+      "bootstrap": false,
+      "generation": 10,
+      "elapsed_seconds": 31.218,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 31.218
+    },
+    {
+      "ordinal": 5,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 47585,
+      "new_events": 47585,
+      "impacted_requests": 10796,
+      "bootstrap": false,
+      "generation": 12,
+      "elapsed_seconds": 30.425,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 30.425
+    }
+  ],
+  "pre_commit_restart_preserved": true,
+  "duplicate_recheck_idempotent": true,
+  "incremental_equals_full_batch": true,
+  "derived_tables": {
+    "viewer_requests": {
+      "rows": 55398,
+      "sha256": "b80bd95bfff2b3f5fd93a3d8b489c586d5634dac81eb75ba66f984f3167978ad"
+    },
+    "viewer_actions": {
+      "rows": 55374,
+      "sha256": "b63b809b1712ae0442984cbe39382f45a52f524de25562c5052269df79bc1466"
+    },
+    "viewer_action_history": {
+      "rows": 103,
+      "sha256": "93337fb209fa49363ab417b80690ca026c0f5eef31fbaa3b47840425ccd07dde"
+    },
+    "viewer_contract_identifiers": {
+      "rows": 63665,
+      "sha256": "fe4693390a7d254315cb2b52b72f97e910a5494934fc088c89489fabd2d9ac1a"
+    },
+    "viewer_contract_edges": {
+      "rows": 62586,
+      "sha256": "c465cfb57f60ea8d815b36d603715c78a1db24faf3efda1cddf81262638712f4"
+    },
+    "viewer_contract_observations": {
+      "rows": 4394,
+      "sha256": "c149ce16eb21bcac9942d0b36a9c00aaeb69665aec8c792dc619610dc6ae38d4"
+    },
+    "viewer_semantic_occurrences": {
+      "rows": 4898,
+      "sha256": "61348df69fe9c5ab00a7e52121191d529ed43d3abb75024bb2e6310fedea0c3d"
+    },
+    "viewer_semantic_session_heads": {
+      "rows": 2128,
+      "sha256": "ae1a55f45d082a83ac2df2c5cccfc2676c6b7a56cd8c48bcb733364ec174b211"
+    }
+  },
+  "counts": {
+    "events": 248351,
+    "origins": 248351,
+    "requests": 55398,
+    "session_ids": 3576,
+    "actions": 5780,
+    "root_calls": 55374,
+    "unknown_calls": 5763,
+    "files": 6,
+    "conflicting_origins": 0
+  },
+  "semantic_anchors": 4898,
+  "elapsed_seconds": 206.384,
+  "cpu_seconds": 204.906,
+  "process_peak_rss_kib": 269596,
+  "flask_ui": [
+    {
+      "route": "home",
+      "max_seconds": 0.0285,
+      "samples": 5
+    },
+    {
+      "route": "session",
+      "max_seconds": 0.0104,
+      "samples": 5
+    },
+    {
+      "route": "request",
+      "max_seconds": 0.0367,
+      "samples": 5
+    }
+  ],
+  "status": "PASS"
+}

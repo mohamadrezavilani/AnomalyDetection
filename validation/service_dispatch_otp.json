@@ -1,0 +1,146 @@
+{
+  "status": "OFFLINE_PASS_NATIVE_REPAIR_PENDING_CROSS_REQUEST_OTP_BLOCKED",
+  "created_at_utc": "2026-10-28T12:57:36.491755+00:00",
+  "runtime_source_sha256": "36def3d36753b25d54d3640afcdb71304bc34f132c8150fb8802a6f36fc7bb0a",
+  "parent_runtime_source_sha256": "e945a4f68f48f10e422dfdd90544df028dc3b8648b03fe0fe0c68e64a543dfee",
+  "problem": {
+    "proven": "all three source requests use the InvoiceRegister transport, whose owner-confirmed support role suppressed the selected service",
+    "selected_api": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+    "provider_operation": "ClientAyanCoInquiry.ElectronicPrescriptionInquiry",
+    "owner_coverage_includes_test": true,
+    "owner_status_runtime_fingerprint": "NOT_REPORTED"
+  },
+  "changes": [
+    "source-compiled 110-route dispatch allowlist; no prefix/version inheritance",
+    "same-RequestID access action plus invoice-request context identifies selected service without replacing actual HTTP root",
+    "named OTP, verification, under-covered and inquiry-result observations retain origin/version proof",
+    "only reported inquiry results count as completed service executions; OTP prerequisites remain technical requests",
+    "request, action, session, home, service search, service/payment journey and coverage use the same selected-service context",
+    "bounded repair of exactly three already captured RequestIDs; no ES capture or forward seek",
+    "original reviewed/owner roles preserved; existing unclassified unreviewed seeds may use the existing source proposal",
+    "existing correlation sync also reconciles dispatcher semantic anchors in its transaction; bounded work-table request index prevents repeated scans"
+  ],
+  "correctness": {
+    "raw_request_session_and_origin_versions_unchanged": true,
+    "actual_http_root_and_status_unchanged": true,
+    "typed_payment_relationships_preserved": true,
+    "global_cross_request_version_conflicts_preserved": true,
+    "manual_unknown_preserved": true,
+    "duplicate_recheck_and_bounded_repair_idempotent": true,
+    "atomic_rollback_tested": true,
+    "incremental_full_parity_tested": true,
+    "source_databases_or_durability_settings_changed": false,
+    "timeout_increase": false,
+    "new_database_schema": false
+  },
+  "offline_regressions": {
+    "status": "PASS",
+    "tests": 389,
+    "passed": 389,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "supplied_case": {
+    "status": "PASS",
+    "runtime_source_sha256": "36def3d36753b25d54d3640afcdb71304bc34f132c8150fb8802a6f36fc7bb0a",
+    "mode": "supplied 34-record partial Kibana replay on SQLite; not native or complete windows",
+    "source_sha256": "eb2bb2b8ae8d18047f31883851ba4b46a29737b9e471af68e58159dbe3df2f1a",
+    "raw_events": 34,
+    "logical_requests": 3,
+    "before_service_occurrences": 0,
+    "after_service_occurrences": 1,
+    "raw_events_links_unchanged": true,
+    "http_roots_unchanged": true,
+    "incremental_equals_full": true,
+    "detail_pages_rendered": 6,
+    "home_service_visible": true,
+    "coverage_and_session_and_journey_agree": true,
+    "cases": [
+      {
+        "request_id": "e8a40768-f9ec-4dc6-8b99-126e16fa187e",
+        "phase": "otp_required",
+        "service": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+        "transport": "Services.v1/InvoiceRegister",
+        "inquiry_result_codes": [],
+        "otp_validation_codes": [],
+        "cross_request_otp_link": "NOT_ESTABLISHED"
+      },
+      {
+        "request_id": "27661051-9b74-49c2-87b6-fb6a75de2d51",
+        "phase": "selection_pending",
+        "service": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+        "transport": "Services.v1/InvoiceRegister",
+        "inquiry_result_codes": [],
+        "otp_validation_codes": [
+          "G00000"
+        ],
+        "cross_request_otp_link": "NOT_ESTABLISHED"
+      },
+      {
+        "request_id": "d5f7a094-9468-4dc6-84a3-7c1d376ca18e",
+        "phase": "inquiry_result_reported",
+        "service": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+        "transport": "Services.v1/InvoiceRegister",
+        "inquiry_result_codes": [
+          "G00000"
+        ],
+        "otp_validation_codes": [],
+        "cross_request_otp_link": "NOT_ESTABLISHED"
+      }
+    ],
+    "cross_request_otp_link": "BLOCKED_NO_SHARED_FLOW_ID_IN_SUPPLIED_LOGS"
+  },
+  "payment_preservation": {
+    "status": "PASS",
+    "runtime_source_sha256": "36def3d36753b25d54d3640afcdb71304bc34f132c8150fb8802a6f36fc7bb0a",
+    "mode": "previous 574-record payment sample on SQLite; not native",
+    "payment_journeys_unchanged": true,
+    "logical_requests_actions_unchanged": true,
+    "raw_events": 574,
+    "detail_pages_rendered": 10,
+    "new_dispatch_identifiers_do_not_create_payment_or_session_relationships": true
+  },
+  "source_audit": {
+    "status": "PASS_SOURCE_REGISTRATION_AUDIT",
+    "source_cs_files": 1396,
+    "registered_routes": 256,
+    "catalog_routes": 256,
+    "missing_registered_routes": [],
+    "unchanged_existing_role_catalog": true,
+    "dispatcher_routes": 110,
+    "unmapped_dispatch_service_names": [
+      "v1_InquiryMunicipalityPropertySafetyTollBills"
+    ],
+    "mapped_routes_without_role_proposal": [
+      "Services.v1/TopUpProductReserve"
+    ],
+    "runtime_execution_coverage": "NOT_IMPLIED_BY_SOURCE_REGISTRATION",
+    "helper_dispatch_source_sha256": {
+      "Core/Main/Helper/HelperHttpContext.cs": "7c082d3f3836ad47bb58aa1686531c430f2a028d04c2769ec555e88eb3893d71",
+      "Core/Intermediate/Modules/Sales/Commands/Register/InvoiceRegisterHandler.cs": "686502af1fbd24bbc0a2d7ed1848be4b74c90b302a995468071d170bbaf1ed2f",
+      "Core/WebServices/Services.svc.cs": "7681770b34bbecc893f9fbbbe1a35850c1eeba6041f7ce9b525e1413acb55994"
+    },
+    "otp_scope": "MyGovRequestOtp, MyGovLogin and TaminUnderCoveredInquiry inside InvoiceRegister; other OTP providers not qualified",
+    "source_condition": "API registration coverage is not full workflow qualification"
+  },
+  "native_current_source": "NOT_RUN",
+  "actual_owner_browser": "NOT_RUN",
+  "historical_reindex": "ONLY_THREE_EXPLICIT_REQUESTS; older retained dispatcher requests are not claimed globally reindexed",
+  "future_capture": "automatic indexed observation and context reconciliation inside the existing publication transaction",
+  "cross_request_otp": {
+    "status": "BLOCKED_NO_SHARED_FLOW_ID",
+    "evidence": "three distinct invoices; OTP request Input has no TraceNumber/ChallengeID; verification TraceNumber identifies only middle invoice; final inquiry has no shared auth/flow ID",
+    "prohibited_inference": [
+      "same Session",
+      "same phone",
+      "same ViewerUniqueID",
+      "temporal proximity"
+    ],
+    "required_backend_change": "log one non-secret ServiceFlowID for the same service workflow on OTP request, OTP verification, subsequent prerequisite requests and final inquiry, alongside RequestID and InvoiceID; resend/new-flow semantics must be explicit",
+    "otp_value_required": false
+  },
+  "owner_next_command": "python .\\tools\\sync_viewer_service_dispatch.py --config .\\viewer_config.local.py; .\\Start_Viewer.cmd",
+  "capacity_and_long_stability": "OUT_OF_SCOPE_BY_OWNER",
+  "cancelled_recovery": "NOT_RESTARTED"
+}

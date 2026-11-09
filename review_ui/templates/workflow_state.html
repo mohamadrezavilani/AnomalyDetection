@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="breadcrumb"><a href="{{ url_for('workflow_evidence',publication=p.publication) }}">شواهد فرایند و تحویل</a><span>/</span><span>شواهد نتیجه</span></div>
+<section class="page-heading"><div><h1>شواهد نتیجهٔ فرایند</h1><p>{{ 'موضوع مستقل' if page.state.state_scope=='subject' else 'کل فرایند' }} · <span class="badge {{ page.state.published_state }}">{{ outcomes_fa.get(page.state.published_state,'نامشخص') }}</span></p></div></section>
+<section class="panel compact"><p>قرارداد: <bdi dir="ltr">{{ page.state.contract_version }}</bdi></p><p>تعداد کل مشاهدات در همین نسخه: {{ page.total_observations|fa_number }}</p><div class="evidence-list workflow-evidence-list" tabindex="0" aria-label="مشاهدات نتیجهٔ فرایند">
+{% for row in page['items'] %}<details class="operation"><summary><span>{{ roles_fa.get(row.source_role,'نامشخص') }}</span><bdi dir="ltr">{{ row.source_time_ns|tehran_time }}</bdi><span class="badge {{ row.outcome }}">{{ outcomes_fa.get(row.outcome,'نامشخص') }}</span></summary><div class="operation-body"><p>مقدار حالت: <bdi dir="ltr">{{ row.state_key }}</bdi></p><p>مسیر شاهد: <bdi dir="ltr">{{ row.field_path }}</bdi></p><p>نسخهٔ منبع: <bdi dir="ltr" class="token mono">{{ row.source_version_id }}</bdi></p><p>شناسهٔ شاهد: <bdi dir="ltr" class="token mono">{{ row.state_fact_id }}</bdi></p>{% if row.request_key %}<a href="{{ url_for('request_detail',key=row.request_key,publication=p.publication) }}">بررسی شواهد RequestID مرتبط</a>{% endif %}</div></details>{% endfor %}</div>
+{% if page.next_cursor %}<a class="button" href="{{ url_for('workflow_state',key=page.state_publication_id,publication=p.publication,limit=p.limit,cursor=page.next_cursor) }}">صفحهٔ بعد شواهد</a>{% endif %}
+<p class="scope-note">مقادیر و نسخه‌های منبع متعلق به همین نتیجهٔ ذخیره‌شده‌اند. تفسیر نتیجهٔ کسب‌وکار به قرارداد و راستی‌آزمایی معتبر نیاز دارد.</p></section>
+{% endblock %}

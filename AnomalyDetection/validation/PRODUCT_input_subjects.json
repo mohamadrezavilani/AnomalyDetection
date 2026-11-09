@@ -1,0 +1,65 @@
+{
+  "build_id": "AD-R3-INPUT-20261108",
+  "base_build_id": "AD-QUALIFICATION-20261107-R3",
+  "unit_tests": {
+    "status": "PASS",
+    "tests": 192
+  },
+  "isolated_postgresql_wasm": {
+    "check_input_subjects": "PASS_ISOLATED_POSTGRESQL_WASM",
+    "check_revision10": "PASS_REVISION10_OFFLINE",
+    "check_revision16": "PASS_CONTINUOUS_AND_STABLE_CASE_SQL_ISOLATED",
+    "check_revision18": "PASS_PRIMARY_EVIDENCE_AND_SECONDARY_RETRY_SQL",
+    "check_revision19": "PASS_CONTENT_NETWORK_SCENARIO_PIPELINE_SQL",
+    "check_revision25": "PASS_LONGITUDINAL_NOC_AND_FEEDBACK_SQL",
+    "check_export17": "PASS_ISOLATED_POSTGRESQL_WASM"
+  },
+  "input_publication_and_proof": {
+    "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+    "synthetic_input_requests": 10,
+    "verified_input_subjects": 10,
+    "peer_sessions": 8216,
+    "reference_max": 38,
+    "conservative_tail_bound": 0.004016064257028112,
+    "R3_existing_evidence_reaudit": "PASS",
+    "proof_matches_case_and_members": "PASS",
+    "actual_pinned_viewer_raw_reader_and_audit": "PASS",
+    "ready_case_rendered_in_service_actor_and_case_lists": "PASS",
+    "reference_change_invalidates_input_finding": "PASS",
+    "native_server": "NOT_RUN"
+  },
+  "real_october_capture_contract_replay": {
+    "status": "PASS",
+    "capture_files": 4,
+    "qualified_distinct_requests": 1290,
+    "requests_by_service": {
+      "Services.v1/WaterBills": 444,
+      "Services.v1/ElectricBills": 257,
+      "Services.v1/GasBills": 64,
+      "Services.v2/GasBills": 362,
+      "Services.v1/LandLinePhoneBills": 110,
+      "Services.v1/CellPhoneBills": 53
+    }
+  },
+  "november_water_case_replay": {
+    "request_anchors": 10,
+    "observed_span_seconds": 11.8438966,
+    "peer_sessions": 8216,
+    "peer_reference_max": 38,
+    "original_export_without_provider_input_witnesses": "INSUFFICIENT_DATA",
+    "controlled_distinct_inputs": {
+      "status": "CANDIDATE",
+      "distinct_inputs": 10,
+      "eligible_for_review": true,
+      "rank_upper_bound": 0.004016064257028112
+    },
+    "controlled_repeated_input": {
+      "status": "NO_DEVIATION_OBSERVED",
+      "distinct_inputs": 1,
+      "eligible_for_subject_review": false
+    }
+  },
+  "native_windows_postgresql": "NOT_RUN",
+  "live_browser": "NOT_RUN",
+  "production_capacity_precision_recall": "NOT_EVALUATED"
+}

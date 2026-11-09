@@ -1,0 +1,38 @@
+{% macro proof(item) -%}
+<a href="{{url_for('raw_evidence',origin=item.origin_key,version=item.version_key)}}">شاهد خام ←</a>
+<a dir="ltr" href="{{url_for('request_view',key=item.request_key)}}">{{item.raw_request_id}}</a>
+<small dir="ltr">{{item.when_fa}} · {{item.field_path}}</small>
+{%- endmacro %}
+{% macro payment(item) -%}
+<article style="padding:10px 0"><p>PaymentKey: <code dir="ltr">{{item.payment_key}}</code>
+ · {{'موفق' if item.outcome=='success' else 'ناموفق' if item.outcome=='failed' else 'وضعیت مشاهده نشده' if item.outcome=='unobserved' else 'نمای وضعیت ناقص است' if item.outcome=='partial_evidence' else 'چند وضعیت ثبت شده؛ نتیجهٔ نهایی نیازمند بررسی است' if item.outcome=='multiple_statuses' else 'معنای وضعیت هنوز مشخص نشده'}}</p>
+{% if item.targets %}<p>قبض‌های همین Invoice در این پرداخت:
+{% for target in item.targets %}<code dir="ltr">{{target}}</code>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+<details><summary>شواهد اتصال و نتیجهٔ این پرداخت</summary>
+{% for item_proof in item.evidence %}<p>{{proof(item_proof)}}</p>{% endfor %}
+{% for observed in item.statuses %}<p>وضعیت ثبت‌شدهٔ Backend: <code dir="ltr">{{observed.value}}</code> · {{proof(observed.evidence)}}</p>
+{% else %}<p>شاهد وضعیت برای این PaymentKey در نمای فعلی پیدا نشد.</p>{% endfor %}
+</details></article>
+{%- endmacro %}
+<section class="panel compact" id="service-payment-journey">
+<h2>استعلام، قبض و پرداخت‌های مرتبط</h2>
+<p class="scope-note">اتصال بر اساس InvoiceID، BillUniqueID و PaymentKey ثبت‌شده در لاگ‌های Backend است. درخواست‌ها مستقل‌اند و پرداخت‌ها مراحل مرتبط با رفتار اصلی سرویس هستند. نتیجهٔ هر PaymentKey جدا نمایش داده می‌شود.</p>
+{% if service_payments.truncated %}<p class="inline-notice">نمایش به سقف خواندن رسیده و ناقص است؛ فهرست قبض‌ها، پرداخت‌ها یا وضعیت‌ها ممکن است کامل نباشد.</p>{% endif %}
+{% for group in service_payments.invoices %}
+<div style="padding:12px 0"><h3>Invoice: <code dir="ltr">{{group.invoice_id}}</code></h3>
+{% for source in group.sources %}<p>سرویس اصلی: <strong dir="ltr">{{source.api}}</strong> ·
+<a dir="ltr" href="{{url_for('request_view',key=source.request_key)}}">{{source.raw_request_id}}</a></p>
+{% else %}<p class="inline-notice">در شواهد فعلی، درخواست سرویس اصلی این Invoice شناسایی نشده است.</p>{% endfor %}
+<h4>پرداخت هزینهٔ استعلام</h4>
+{% for item in group.inquiry_payments %}{{payment(item)}}{% else %}<p class="muted">رابطهٔ صریحی برای پرداخت هزینهٔ این استعلام در نمای فعلی دیده نشد.</p>{% endfor %}
+<h4>قبض‌های حاصل از استعلام</h4>
+{% for item in group.bills %}<p>BillUniqueID: <code dir="ltr">{{item.bill_unique_id}}</code>
+{% for item_proof in item.evidence %} · {{proof(item_proof)}}{% endfor %}</p>
+{% else %}<p class="muted">رابطهٔ صریحی با قبض در نمای فعلی دیده نشد.</p>{% endfor %}
+<h4>پرداخت قبض‌ها</h4>
+{% for item in group.bill_payments %}{{payment(item)}}{% else %}<p class="muted">رابطهٔ صریحی برای پرداخت این قبض‌ها در نمای فعلی دیده نشد.</p>{% endfor %}
+</div>{% endfor %}
+{% if service_payments.unresolved_payments %}<h3>پرداخت‌های در انتظار شناسایی مبدأ سرویس</h3>
+{% for item in service_payments.unresolved_payments %}{{payment(item)}}{% endfor %}{% endif %}
+<p class="scope-note">نمای فعلی شواهد ممکن است کامل نباشد. نبود یک رابطه، رایگان‌بودن استعلام یا پرداخت‌نشدن قطعی قبض را ثابت نمی‌کند. موفقیت Payment، نتیجهٔ همان پرداخت ثبت‌شده در Backend است؛ نتیجهٔ استعلام و وضعیت تسویهٔ سرویس‌دهنده شواهد جدا دارند.</p>
+</section>

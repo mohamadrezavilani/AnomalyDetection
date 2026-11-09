@@ -1,0 +1,18 @@
+{
+  "status": "PASS",
+  "mode": "chromium_134_headless_synthetic_sqlite",
+  "checks": {
+    "homepage_four_columns": true,
+    "homepage_semantic_order": true,
+    "homepage_one_session_link_per_row": true,
+    "request_raw_evidence_folded": true,
+    "details_do_not_auto_refresh": true,
+    "stale_cursor_409_with_restart": true,
+    "live_home_refreshes_without_navigation": true,
+    "mobile_has_scrollable_table": true,
+    "no_javascript_errors": true
+  },
+  "owner_windows": "NOT_RUN",
+  "live_elasticsearch": "NOT_RUN",
+  "production_modified": false
+}

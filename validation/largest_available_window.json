@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "mode": "largest_available_legacy_file_import_and_projection",
+  "filename": "12-logs_20261020_082000.json.gz",
+  "compressed_bytes": 6368143,
+  "uncompressed_bytes": 63036172,
+  "rows": 88337,
+  "counts": {
+    "events": 88337,
+    "origins": 88337,
+    "requests": 19882,
+    "session_ids": 1491,
+    "actions": 1972,
+    "root_calls": 19871,
+    "unknown_calls": 1600,
+    "files": 1,
+    "conflicting_origins": 0
+  },
+  "ingest_seconds": 21.787,
+  "total_seconds": 27.987,
+  "cpu_seconds": 27.847,
+  "process_peak_rss_kib": 280012,
+  "source_query_verification": "NOT_AVAILABLE_IN_LEGACY_FILE",
+  "live_elasticsearch": "NOT_RUN",
+  "native_postgresql": "NOT_RUN",
+  "operational_800k_per_hour_capacity": "NOT_QUALIFIED"
+}

@@ -1,0 +1,50 @@
+{
+  "status": "PASS",
+  "runtime_source_sha256": "36def3d36753b25d54d3640afcdb71304bc34f132c8150fb8802a6f36fc7bb0a",
+  "mode": "supplied 34-record partial Kibana replay on SQLite; not native or complete windows",
+  "source_sha256": "eb2bb2b8ae8d18047f31883851ba4b46a29737b9e471af68e58159dbe3df2f1a",
+  "raw_events": 34,
+  "logical_requests": 3,
+  "before_service_occurrences": 0,
+  "after_service_occurrences": 1,
+  "raw_events_links_unchanged": true,
+  "http_roots_unchanged": true,
+  "incremental_equals_full": true,
+  "detail_pages_rendered": 6,
+  "home_service_visible": true,
+  "coverage_and_session_and_journey_agree": true,
+  "cases": [
+    {
+      "request_id": "e8a40768-f9ec-4dc6-8b99-126e16fa187e",
+      "phase": "otp_required",
+      "service": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+      "transport": "Services.v1/InvoiceRegister",
+      "inquiry_result_codes": [],
+      "otp_validation_codes": [],
+      "cross_request_otp_link": "NOT_ESTABLISHED"
+    },
+    {
+      "request_id": "27661051-9b74-49c2-87b6-fb6a75de2d51",
+      "phase": "selection_pending",
+      "service": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+      "transport": "Services.v1/InvoiceRegister",
+      "inquiry_result_codes": [],
+      "otp_validation_codes": [
+        "G00000"
+      ],
+      "cross_request_otp_link": "NOT_ESTABLISHED"
+    },
+    {
+      "request_id": "d5f7a094-9468-4dc6-84a3-7c1d376ca18e",
+      "phase": "inquiry_result_reported",
+      "service": "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+      "transport": "Services.v1/InvoiceRegister",
+      "inquiry_result_codes": [
+        "G00000"
+      ],
+      "otp_validation_codes": [],
+      "cross_request_otp_link": "NOT_ESTABLISHED"
+    }
+  ],
+  "cross_request_otp_link": "BLOCKED_NO_SHARED_FLOW_ID_IN_SUPPLIED_LOGS"
+}

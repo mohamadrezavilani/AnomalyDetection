@@ -1,0 +1,13 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_LARGE_ACTOR_AND_WEEKLY_SQL_CONTRACT",
+  "checks": {
+    "over_8192_actor_events_are_counted_exactly_by_database_not_clipped": "PASS_8300_CANONICAL_EXECUTIONS",
+    "weekly_rolling_span_retains_six_day_old_events_and_matches_exact_in_memory_result": "PASS",
+    "weekly_reference_uses_same_duration_past_other_actors_and_full_span_evidence": "PASS",
+    "production_detector_uses_exact_fallback_and_insufficient_rank_resolution_is_not_normal": "PASS"
+  },
+  "owner_connections": 0,
+  "production_capacity": "NOT_MEASURED",
+  "source_modified": false
+}

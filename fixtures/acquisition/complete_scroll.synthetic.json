@@ -1,0 +1,154 @@
+{
+  "acquisition": {
+    "version": "p24-scroll-capture.1",
+    "window_start": "2026-10-20T07:25:00Z",
+    "window_end": "2026-10-20T07:30:00Z",
+    "started_at": "2026-10-20T07:30:30Z",
+    "finished_at": "2026-10-20T07:31:00Z",
+    "index_pattern": "fixture-*",
+    "expected_slices": 1,
+    "attempt_budget": 3,
+    "query": {
+      "scope": "window_only",
+      "time_field": "@timestamp",
+      "range_mode": "gte_lt",
+      "level_filter": []
+    }
+  },
+  "slices": [
+    {
+      "id": 0,
+      "attempts": [
+        {
+          "number": 1,
+          "initial_request": {
+            "index": "fixture-*",
+            "scroll": "10m",
+            "body": {
+              "query": {
+                "bool": {
+                  "filter": [
+                    {
+                      "range": {
+                        "@timestamp": {
+                          "gte": "2026-10-20T07:25:00Z",
+                          "lt": "2026-10-20T07:30:00Z"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "sort": [
+                "_doc"
+              ],
+              "size": 10000,
+              "_source": true
+            }
+          },
+          "pages": [
+            {
+              "ordinal": 0,
+              "request_cursor": null,
+              "received_at": "2026-10-20T07:30:31.000000Z",
+              "response": {
+                "timed_out": false,
+                "_shards": {
+                  "total": 1,
+                  "successful": 1,
+                  "failed": 0
+                },
+                "_scroll_id": "SYNTHETIC_CURSOR_0",
+                "hits": {
+                  "total": {
+                    "value": 2,
+                    "relation": "eq"
+                  },
+                  "hits": [
+                    {
+                      "_index": "fixture-index",
+                      "_id": "capture-origin-A",
+                      "_source": {
+                        "@timestamp": "2026-10-20T07:29:59Z",
+                        "RequestID": "capture-A",
+                        "Session": "SESSION_A",
+                        "IP": "198.51.100.2",
+                        "CallPath": "Core.v1/ConfigBasic Line:153",
+                        "ExecutionTime": "1.2",
+                        "ProcessID": "7",
+                        "ThreadID": "2",
+                        "Counter": "1",
+                        "message": "POST https://fixture.invalid/config HTTP/1.1 (G00000 | successful)",
+                        "level": "Info"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "ordinal": 1,
+              "request_cursor": "SYNTHETIC_CURSOR_0",
+              "received_at": "2026-10-20T07:30:31.000001Z",
+              "response": {
+                "timed_out": false,
+                "_shards": {
+                  "total": 1,
+                  "successful": 1,
+                  "failed": 0
+                },
+                "_scroll_id": "SYNTHETIC_CURSOR_1",
+                "hits": {
+                  "total": {
+                    "value": 2,
+                    "relation": "eq"
+                  },
+                  "hits": [
+                    {
+                      "_index": "fixture-index",
+                      "_id": "capture-origin-B",
+                      "_source": {
+                        "@timestamp": "2026-10-20T07:29:59Z",
+                        "RequestID": "capture-B",
+                        "Session": "SESSION_A",
+                        "IP": "198.51.100.2",
+                        "CallPath": "Core.v1/ConfigBasic Line:153",
+                        "ExecutionTime": "1.2",
+                        "ProcessID": "7",
+                        "ThreadID": "2",
+                        "Counter": "1",
+                        "message": "POST https://fixture.invalid/config HTTP/1.1 (G00000 | successful)",
+                        "level": "Info"
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "ordinal": 2,
+              "request_cursor": "SYNTHETIC_CURSOR_1",
+              "received_at": "2026-10-20T07:30:32Z",
+              "response": {
+                "timed_out": false,
+                "_shards": {
+                  "total": 1,
+                  "successful": 1,
+                  "failed": 0
+                },
+                "_scroll_id": "SYNTHETIC_CURSOR_FINAL",
+                "hits": {
+                  "total": {
+                    "value": 2,
+                    "relation": "eq"
+                  },
+                  "hits": []
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

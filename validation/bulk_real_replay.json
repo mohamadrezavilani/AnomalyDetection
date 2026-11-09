@@ -1,0 +1,164 @@
+{
+  "mode": "archived_real_windows",
+  "live_elasticsearch": "NOT_RUN",
+  "owner_windows_native_postgresql": "NOT_RUN",
+  "operational_capacity": "NOT_QUALIFIED",
+  "full_r5_acceptance": 0,
+  "production_modified": false,
+  "windows": [
+    {
+      "ordinal": 0,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 35893,
+      "new_events": 35893,
+      "impacted_requests": 8037,
+      "bootstrap": true,
+      "generation": 2,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 16.374,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 16.374
+    },
+    {
+      "ordinal": 1,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 38397,
+      "new_events": 38397,
+      "impacted_requests": 8574,
+      "bootstrap": false,
+      "generation": 4,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 17.372,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 17.372
+    },
+    {
+      "ordinal": 2,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 37935,
+      "new_events": 37935,
+      "impacted_requests": 8464,
+      "bootstrap": false,
+      "generation": 6,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 25.488,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 25.488
+    },
+    {
+      "ordinal": 3,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 44255,
+      "new_events": 44255,
+      "impacted_requests": 9820,
+      "bootstrap": false,
+      "generation": 8,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 27.265,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 27.265
+    },
+    {
+      "ordinal": 4,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 44286,
+      "new_events": 44286,
+      "impacted_requests": 9932,
+      "bootstrap": false,
+      "generation": 10,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 22.227,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 22.227
+    },
+    {
+      "ordinal": 5,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 47585,
+      "new_events": 47585,
+      "impacted_requests": 10796,
+      "bootstrap": false,
+      "generation": 12,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 33.43,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 33.43
+    }
+  ],
+  "pre_commit_restart_preserved": true,
+  "duplicate_recheck_idempotent": true,
+  "incremental_equals_full_batch": true,
+  "derived_tables": {
+    "viewer_requests": {
+      "rows": 55398,
+      "sha256": "6b5f8571e17b73b4d4f63dfe267a99ecc2ec022c36462e9e9acae8379e952593"
+    },
+    "viewer_actions": {
+      "rows": 55374,
+      "sha256": "8f76c76b00ce1580d8f78b60709e92e342f6b737c4ad15080871c37ec654e945"
+    },
+    "viewer_action_history": {
+      "rows": 103,
+      "sha256": "3eba0b8854daa0076f8450691a698a247cf7ba9e356aaf2ad3bf775928c5c36c"
+    },
+    "viewer_contract_identifiers": {
+      "rows": 63665,
+      "sha256": "40f10a6525c7bd43caabf3d72a899fd13318419f3d08c89155a0b3e9b4b52491"
+    },
+    "viewer_contract_edges": {
+      "rows": 62586,
+      "sha256": "1fe1145ed2c4fe0063632d48d25b8871f2fac51e69879738b91824b32bfc3c79"
+    },
+    "viewer_contract_observations": {
+      "rows": 4394,
+      "sha256": "9040d135cf324aa69908d4dd31b8353b09740116786b20e4fec1f2c43c50be53"
+    },
+    "viewer_semantic_occurrences": {
+      "rows": 4898,
+      "sha256": "5a92d3e4624c5c54babfa6174ccd9cef354029b700ef76df09fd0b3d31c68bfa"
+    },
+    "viewer_semantic_session_heads": {
+      "rows": 2128,
+      "sha256": "e475b01873cbe732865bdbec55e41b246ee5715fcc527509876ef31b64127fc2"
+    }
+  },
+  "counts": {
+    "events": 248351,
+    "origins": 248351,
+    "requests": 55398,
+    "session_ids": 3576,
+    "actions": 5780,
+    "root_calls": 55374,
+    "unknown_calls": 5763,
+    "files": 6,
+    "conflicting_origins": 0
+  },
+  "semantic_anchors": 4898,
+  "elapsed_seconds": 202.364,
+  "cpu_seconds": 199.869,
+  "process_peak_rss_kib": 279960,
+  "flask_ui": [
+    {
+      "route": "home",
+      "max_seconds": 0.0599,
+      "samples": 5
+    },
+    {
+      "route": "session",
+      "max_seconds": 0.0338,
+      "samples": 5
+    },
+    {
+      "route": "request",
+      "max_seconds": 0.1168,
+      "samples": 5
+    }
+  ],
+  "status": "PASS"
+}

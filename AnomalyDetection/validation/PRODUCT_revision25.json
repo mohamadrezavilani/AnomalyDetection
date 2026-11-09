@@ -1,0 +1,27 @@
+{
+  "build_id": "AD-20261108-RELEASE",
+  "status": "PASS_LONGITUDINAL_NOC_AND_FEEDBACK_SQL",
+  "checks": {
+    "ordinary_daily_one_bill_but_three_day_distinct_bill_pattern": "PASS_1000_COMPLETE_OTHER_ACTOR_SQL_COHORTS",
+    "sql_reference_aggregation_transfers_actor_metrics_not_3000_profile_bodies": "PASS_EXACT_SQL_DISTINCT_AND_COMPLETENESS",
+    "same_case_and_same_revision_on_identical_longitudinal_replay": "PASS",
+    "historical_partition_gap_invalidates_long_case_and_completion_rechecks_it": "PASS_NO_FALSE_NORMAL",
+    "longitudinal_input_cas_rejects_outdated_result": "PASS_INJECTED_INTERLEAVING_NOT_NATIVE_CONCURRENCY",
+    "partial_reference_is_not_a_small_normal_actor_and_missing_profile_is_queued": "PASS",
+    "one_bill_100_requests_three_client_ips_with_readonly_noc_drilldown": "PASS_EXACT_REQUEST_MEMBERSHIP",
+    "dashboard_unified_list_coverage_case_and_method_pages_readonly_and_budget_restored": "PASS_SQL_HTML_NOT_BROWSER",
+    "stale_input_receipt_is_rejected_before_case_revision_has_been_rebuilt": "PASS_SQL_NO_FEEDBACK_INSERTED",
+    "feedback_is_revision_checked_and_benign_training_permission_does_not_cover_later_evidence": "PASS_SQL",
+    "volume_feedback_quarantine_respects_count_scope_and_survives_token_only_replay_but_not_changed_evidence": "PASS_SQL",
+    "automatic_seeding_includes_low_rate_singleton_actor_windows": "PASS_KEYSET_SEED",
+    "sql_tehran_day_boundary_preserves_nanosecond_before_midnight": "PASS_INTEGER_SECOND_PROJECTION"
+  },
+  "owner_connections": 0,
+  "engine": "PGlite PostgreSQL WASM single-session fixture",
+  "native_windows_postgresql": "NOT_RUN",
+  "browser_layout": "NOT_RUN",
+  "production_precision_recall_and_capacity": "NOT_MEASURED",
+  "cross_session_person_resolution": "BLOCKED_NO_VERIFIED_STABLE_PRINCIPAL_IN_PINNED_SOURCE",
+  "financial_acceptance": "BLOCKED_EXTERNAL_DEPENDENCY",
+  "source_modified": false
+}

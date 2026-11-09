@@ -1,0 +1,85 @@
+# نقشهٔ جاری پروژه — تحویل Viewer یکپارچه
+
+**تحویل جاری — اجرای پیوسته با پروفایل حافظه (۲۰۲۶/۱۱/۲):** آزمون مالک با سورس هستهٔ `9bc58af3b0b75cdb880426560f6c7e69fd0b0d6269ef28ba91f85bc65814a97b` و سازگارکنندهٔ مستقل، ۶۰٬۲۷۹ رویداد را در ۲۲۱٫۶۸۸ ثانیه منتشر کرد؛ دریافت ۲۸٫۸۲۸ و پردازش/انتشار ۱۹۲٫۸۶ ثانیه، بدون seek در آزمون، با فعال‌بودن مقادیر واقعی حافظه و باقی‌ماندن دو spool در RAM. PASS فقط برای همان تک‌پنجره است؛ A/B همسان، ظرفیت و راه‌انداز پیوستهٔ تازه هنوز NOT_RUN هستند. Worker روزمره اکنون از همان سازگارکننده استفاده می‌کند؛ Web و هسته/قواعد داده قبلی‌اند. تنظیم‌های سراسری، دوام، کنترل تعارض، محافظ retention، schema و Anomaly تغییر نکرده‌اند. انتظار غالب باقی‌مانده WAL است؛ افزایش Timeout یا knob آزمایش‌نشده اعمال نشده. ۱۷ کنترل آفلاین و ۱۱ regression مرتبط PASS؛ مرجع `validation/memory_profile_adoption.json` و دستور جاری `Start_Viewer.cmd` است. شروع اخیرِ مجاز همچنان فاصله را ثبت می‌کند؛ ادامهٔ دقیق با `-ResumeCheckpoint`. پایلوت‌های طولانی لغوشده احیا نمی‌شوند. پاراگراف‌های بعدی سابقه‌اند.
+
+**اصلاح جاری — توقف راه‌اندازی کاتالوگ (۲۰۲۶/۱۰/۳۱):** Snapshot مالک در ۱۲:۰۶ تهران، UPDATE کاتالوگ روی viewer_actions با انتظار DataFileRead و انتظار Worker پشت قفل writer همان تراکنش را ثبت کرد؛ اثر انگشت SQL با سورس والد تطبیق دارد. طرح واقعی SQL و سرعت اصلاح بومی هنوز NOT_RUN هستند. هماهنگی نقش‌ها اکنون با کلید اصلی واقعی action و فقط تفاوت category/initiation انجام می‌شود؛ جدول‌های موقت آمار دارند. نقش عمومی InvoiceRegister روی رفتارِ سرویس انتخاب‌شده نوشته نمی‌شود؛ آسیب احتمالی نسخهٔ قبلی فقط با همان Resolver نسخه‌دار و معتبر بازسازی می‌شود. تصمیم اپراتور، تعارض، خام، روابط، cursor و اتمیک‌بودن انتشار حفظ‌اند. ۴۱۴ آزمون آفلاین و حفظ روابط نمونهٔ واقعی ۵۷۴رکوردی PASS؛ برای این اصلاح فقط یک انتشار عادی و گزارش خواندنی مالک باقی است، بدون پایلوت تازه یا احیای تست‌های لغوشده. مرجع جاری `validation/catalog_startup_fix.json`؛ پاراگراف‌های بعدی سابقه‌اند.
+
+**وضعیت جاری — نمایش یکپارچهٔ مراحل، پرداخت و شروع اخیر:** مراحل درخواست اصلی، ارتباط قبض، پرداخت هزینهٔ استعلام، پرداخت قبض، سبد و گزارش نتیجهٔ هر PaymentKey در یک فهرست زمان‌مند و بازشدنی دیده می‌شوند؛ ارتباط‌ها فقط از مدل نوع‌دار موجود می‌آیند. استعلام موفق، ثبت Invoice، API موفق و گزارش پرداخت مستقل‌اند. وضعیت چندگانه و نمای ناقص نتیجهٔ قطعی نمی‌سازند. زمان‌های خواندنی Viewer از جمله پوشش و فاصله‌ها تهران‌اند؛ خام و API UTC تغییر نکرده‌اند. UserWidgetsSetDefault فقط در پیشنهاد پیش‌فرض support/unknown شد، با شاهد Module.Metrics؛ آغاز خودکار حدس زده نمی‌شود و بازبینی دستی حفظ است. لانچر عادی اکنون --debug-recent-start را صریح می‌دهد تا تنظیم قدیمی False آن را خنثی نکند؛ ادامهٔ Checkpoint انتخاب صریح جداست. بازبینی overlap و retry همان پنجرهٔ ناموفق حفظ‌اند. علت بومیِ گزارش‌شدهٔ گیرکردن هنوز معلوم نیست؛ گزارش‌گیر محدود و فقط‌خواندنی startup، backlog، سه پنجرهٔ آخر و وضعیت همین درخواست را جمع می‌کند. بسته مهاجرت schema یا پایلوت طولانی ندارد؛ اصلاح کاتالوگ در startup اتمیک است. نتایج محلی و محدودیت‌ها در `validation/flow_display.json`؛ native و مرورگر این نسخه تا اجرای مالک NOT_RUN هستند. بخش‌های بعدی سابقه‌اند.
+
+**آخرین وضعیت — D2 Prefetch و Root Fence:** نتیجهٔ بومی Resources v2 با runtime `f04092f275acf1242976d7b447b4c6a3aace68cccf0dc612e8795954a8e6bf30`، ۱۰۸٬۴۵۲ رویداد را در ۲۷۳٫۲۶۶ ثانیه منتشر کرد: Capture=۶۲٫۵، اعتبارسنجی/انتشار=۲۱۰٫۷۶۶، checkpoint از ۰۶:۰۵ به ۰۶:۱۰ UTC و receipt از ۲۳ به ۲۴؛ PASS تک‌پنجره‌ای و نه پذیرش ظرفیت. کاندید جاری Capture یک پنجرهٔ بسته‌شدهٔ بعدی را هم‌زمان با انتشار فعلی اجرا می‌کند؛ فقط یک writer و همان تراکنش اتمیک داریم. فایل بیش از ۳۰۰ ثانیه از شروع دریافت، فایل پنجرهٔ دیگر و cache پس از restart پذیرفته نمی‌شوند؛ recheck همیشه تازه است. گلوگاه بومی ریشهٔ درخواست ۶۲٫۱۲۵ ثانیه بود؛ فقط در incremental PostgreSQL بررسی نسخهٔ رقیب آن به scalar COUNT جهانی و محدود به origin تغییر کرد، با حفظ PK و تعارض بین RequestIDها. سرعت این دو تغییر روی سیستم مالک هنوز NOT_RUN است. فرمان کوتاه جاری `tools/viewer.ps1 -Action Smoke` دو forward و یک recheck با سقف کل ۱۲ دقیقه اجرا می‌کند؛ تنظیم منابع/سرویس را تغییر نمی‌دهد. شواهد جاری `validation/d2_prefetch_report.json` و راهنما `docs/D2_RESOURCES_FIX_FA.md` است. پاراگراف‌های قدیمی زیر، سابقه‌اند.
+
+**آخرین وضعیت — D2 Resources v2:** اجرای مالک در نسخهٔ Resources با `new_postgres_config_error` پیش از restart متوقف و rollback گزارش شد؛ probe اجرا نشد. ابزار قبلی تمام خطاهای `pg_file_settings` را نامعتبر می‌دانست، در حالی که این view نیاز تنظیم postmaster به restart را هم خطا گزارش می‌کند. علت دقیق ردیفِ اجرای گذشته ثبت نشده و قطعی نیست. نسخهٔ جاری فقط دو تغییرِ دقیق و تأییدشده با ALTER SYSTEM در shared_buffers/wal_buffers را برای restart می‌پذیرد؛ خطای واقعی، مقدار/فایل متفاوت، override و تنظیم دیگر همچنان مانع‌اند. reload غیرضروری پیش از restart حذف و تشخیص بدون محتوای خصوصی به JSON افزوده شد. مرجع جاری `docs/D2_RESOURCES_FIX_FA.md` و `validation/d2_resource_fix_report.json` است. بومیِ v2 و سرعت آن NOT_RUN؛ شواهد SQL/بازپخش قبلی مربوط به سورس والد و تغییرنکردهٔ پردازش هستند. تنظیمات، شواهد خصوصی و checkpoint حفظ می‌شوند.
+
+**وضعیت جاری ۲۰۲۶/۱۰/۲۷، پس از آزمون ناموفق WAL:** مبنای توسعه کاندید `D2_Finalized_Writes` است. pglz بهبود بومی تأییدشده ندارد و در اجرای جدید فعال نمی‌شود. درخواست‌ها و قرارداد پرداخت در مسیر incremental ابتدا در جدول موقت ساخته و سپس فقط تفاوت نهایی با یک تراکنش منتشر می‌شوند؛ raw، تعارض، نقش‌ها و checkpoint محفوظ‌اند. آزمون‌ها و بازپخش این سورس در `validation/d2_finalized_writes_report.json` و تحویل در `docs/D2_FINALIZED_WRITES_HANDOFF_FA.md` ثبت می‌شوند. بهبود سرعت PostgreSQL مالک، پذیرش D2 تا D6 و ظرفیت هدف هنوز بازند. پاراگراف‌های قدیمی زیر سابقه‌اند و پذیرش نسخهٔ جاری محسوب نمی‌شوند.
+
+دامنهٔ این تحویل Viewer با دریافت خواندنی ES و دیتابیس مستقل p24_design_* است. Core، Collector عملیاتی و موتور Anomaly تغییر نکرده‌اند. کلیدها، شواهد خام، نقش‌های کاربر، مرز RequestID و پیوستگی Session حفظ می‌شوند.
+
+| بخش | وضعیت | شاهد / شرط پایان |
+|---|---|---|
+| نمایش آخرین رفتار، anchor ثابت و تاریخچه | پیاده‌سازی و آزمون محلی کامل | regressionها و قالب‌های مرورگر قبلی |
+| دریافت بستهٔ ES و proof کامل | پیاده‌سازی کامل؛ انتشار بومی مشاهده شد | PIT/search_after و رد صفحات ناقص |
+| ورود افزایشی و انتشار اتمیک | پیاده‌سازی کامل | شش پنجرهٔ مالک منتشر شده؛ برابری هشت جدول در بازپخش آرشیوی |
+| Checkpoint / Restart / Recheck | محلی کامل؛ اتصال مجدد بومی تأیید شد | دو recheck بومی در آزمون قبلی به پایان نرسیدند |
+| کندی ingest و reader | نوشتن گروهی و cache درخواست متأثر افزوده شد | COPY باینری مرتب برای events/links، رخدادهای محدود با ایندکس، حفظ تعارض سراسری؛ زمان بومی تغییر جدید هنوز NOT_RUN |
+| خروجی اجرا و راهبر پذیرش | تکمیل شد | خروجی غیرمسدودکننده، JSON اتمیک، شش انتشار و دو بازبینی الزامی |
+| دسته‌بندی و مدیریت سرویس‌ها | سه Exchange تجاری اصلاح و پنج فراخوانی پس‌زمینه تأیید شد | اصلاح نقش با تأیید مالک، تفکیک initiation، ارتقای اتمیک تاریخچه و آزمون تکرار مستقل |
+| نصب و اجرای روزمره | خطای انتخاب Python اصلاح شد | check خواندنی؛ ۱۲ حالت بررسی با موتور PowerShell لینوکس؛ اجرای Windows خود راه‌انداز NOT_RUN |
+| شروع نزدیک زمان حال به درخواست مالک | پیاده‌سازی و آزمون محلی/SQL کامل | جابه‌جایی اتمیک cursor با رسید فاصله، حفظ داده‌ها، هشدار پوشش و ادامه پس از restart؛ دستور live-recent |
+| پذیرش H در محیط مالک | باز است | PASS پایلوت همین سورس با چرخه‌های حداکثر ۳۰۰ ثانیه، HTTP، recheck و backlog |
+| ظرفیت ۸۰۰هزار RequestID در ساعت / مالی کامل / L1 تازه | خارج از ادعای پذیرش این بسته | به شاهد و آزمون اختصاصی نیاز دارد |
+
+تصمیم: کد یکپارچه برای تحویل و آزمون نهایی آماده است؛ پذیرش عملیاتی هنوز باز است. گزارش کامل مالک شش انتشار و حفظ checkpoint پس از اتصال مجدد را تأیید می‌کند. زمان‌ها 338.766، 303.156، 306.985، 274.766، 293.796 و 275.016 ثانیه بوده‌اند. خطای پایانی pilot_time_budget_exceeded هنگام شروع بازبینی پس از سقف ۳۰ دقیقه رخ داده است. سقف کل پایلوت به ۴۵ دقیقه اصلاح شد؛ معیار ۳۰۰ ثانیه برای هر چرخه ثابت است.
+
+خواندن aliasهای صفحهٔ اصلی در PostgreSQL با جست‌وجوی کلید اصلی محدود شده و طرح SQL آن بررسی شده است. چاپ کند کنسول دیگر در مسیر تراکنش Worker نیست. این دو تغییر پس از شاهد بومی بالا اعمال شده‌اند؛ برای سرعت نسخهٔ حاضر نتیجهٔ بومی ادعا نمی‌شود.
+
+کار بعدی مالک توقف Worker/وب، نصب ZIP تازه و بررسی تک‌پنجره‌ای با بودجهٔ ۶ دقیقه است. شروع اخیر در محیط مالک قبلاً انجام شده؛ live-recent دوباره اجرا نشود. تنظیمات، کلید و زمان شروع را دستی تغییر ندهد. پس از بررسی سرعت، پایلوت کامل معیار پذیرش نهایی باقی می‌ماند. Start_Viewer.cmd راه‌انداز روزمرهٔ Worker و سایت است. راهنما: VIEWER_README_FA.md؛ وضعیت A تا H: validation/final_acceptance.json.
+
+اصلاح کاتالوگ پس از تحویل یکپارچه: source_catalog شامل ۲۵۶ مسیر دقیق با شاهد سورس است. روی ۱۷ فایل موجود، ۶۵ ناشناخته از ۱۶۲ API اصلی در پیش‌فرض بازبینی‌نشده طبقه‌بندی شدند؛ مسیرهای بدون شاهد و تصمیم دستی unknown حفظ می‌شوند. به‌روزرسانی تاریخچه در startup به‌صورت یک تراکنش انجام می‌شود، بدون تغییر raw، مرز RequestID، روابط مالی یا cursor دریافت. انتخاب unknown اپراتور در نمای نشست، Journey و ایندکس رفتاری نیز رعایت می‌شود. ۲۶۴ آزمون، ۲۷ بررسی SQL و مهاجرت/بازپخش واقعی محلی تأیید شده‌اند؛ اجرای بومی کاتالوگ و سرعت همین نسخه روی محیط مالک هنوز NOT_RUN است.
+
+گزارش نصب مالک: صحت ۲۴۷ فایل تأیید شده و checkpoint نسل ۱۸ تا ۰۹:۴۵ UTC حفظ است. UPDATE_PENDING کاتالوگ پیش از startup طبیعی است. فرمان Pilot در لانچر قبلی پیش از اجرای Python شکست خورد؛ نتیجهٔ FAILED چاپ‌شده از پایلوت قدیمی بود. انتخاب Python اصلاح شد و محیط فعال والد پروژه بر سایر نصب‌ها اولویت دارد. هستهٔ Python، کاتالوگ و cursor در این اصلاح تغییر نکرده‌اند؛ شاهد ۲۶۴ آزمون و بازپخش قبلی برای همان هسته معتبر است. پایلوت بومی جاری همچنان لازم است.
+
+شاهد تازهٔ مالک: کاتالوگ در حدود ۲۶ ثانیه ارتقا یافت (۸۶ مسیر، ۵۰٬۶۶۳ درخواست و ۵٬۲۱۷ تغییر معنایی). یک پنجرهٔ ۷۷٬۱۷۰ رویدادی تا ۰۹:۵۰ UTC در 299.094 ثانیه منتشر شد؛ ادعای حاشیهٔ سرعت کافی نداریم. کندی عمده در merge رویدادها مشاهده شد؛ query plan و علت دقیق I/O بدون شاهد بومی حدس زده نمی‌شوند. مجموعهٔ جاری ۲۷۵ آزمون و ۳۵ بررسی SQL موفق دارد. تغییر شروع اخیر هیچ بهینه‌سازی ingest یا اثبات ظرفیت تازه‌ای ادعا نمی‌کند.
+
+مرحلهٔ جاری: مالک شروع اخیر را تا ۰۵:۱۵ UTC جابه‌جا کرده و پنجرهٔ ۶۳٬۰۲۹ رویدادی تا ۰۵:۲۰ UTC در 272.578 ثانیه منتشر شده است؛ فاصلهٔ ۲۳۰ پنجرهٔ قدیمی ثبت شده و دادهٔ قبلی حفظ است. اکنون ۲۸۱ آزمون و ۴۲ بررسی SQL/قالب باینری محلی موفق‌اند. سه Public Exchange پس از تصحیح مالک business هستند؛ پنج API عمومی پس‌زمینه پس از پاسخ صریح او support/confirmed_automatic هستند. cache درخواست متأثر و COPY باینری جایگزین دو insert گروهی شده‌اند؛ صحت با آزمون و بازپخش بررسی می‌شود و بهبود زمان بومی به اجرای مالک نیاز دارد. هیچ تضمین ظرفیت یا پایان پذیرش عملیاتی از این تغییر نتیجه گرفته نمی‌شود.
+
+## ادامهٔ توسعه‌دهندهٔ جدید — D0/D1، ۲۰۲۶-۱۰-۲۷
+
+- مبنای جدید، همان Handoff با `release_id=p24-viewer-online-1-market-bulk-20261027` است.
+- شکست تازهٔ بومی `TIME_BUDGET_EXCEEDED`, `SQLSTATE=57014` در تجمیع RequestID برای پنجرهٔ ۰۵:۲۰–۰۵:۲۵ UTC با ۷۱٬۲۲۱ رویداد: **مانع بازِ D1**. اجرای قبلی ۲۷۲٫۵۷۸ ثانیه روی پنجرهٔ دیگر، مقایسهٔ کنترل‌شده نیست.
+- D0: ابزار فقط‌خواندنی post-failure آماده؛ `NOT_RUN_OWNER`، به‌خصوص checkpoint بعد از لغو هنوز مجهول است.
+- D1: کاندید تغییر محدود Query و طرح مقایسهٔ دو EXPLAIN آماده؛ `NOT_VERIFIED_NATIVE`. `COUNT(version)=1` بر مبنای کل `viewer_events` و PK، لذا تعارض نسخه حتی خارج از Scope محفوظ است. فقط probe یک‌پنجره‌ای نیاز است؛ budget/roles/keys/collector ثابت.
+- D2 تا D6: در انتظار بستهٔ D1 تأییدشدهٔ بومی؛ شش forward، دو recheck، UI/p95، restart/restore و ظرفیت واقعی بدون شاهد جدید `NOT_RUN` هستند.
+- شرح و گزارش سنجش همین سورس: `docs/D0_D1_NATIVE_AGGREGATION.md` و `validation/d0_d1_developer_report.json`.
+
+## نتیجهٔ بومی D0/D1 با runtime ثابت — ۲۰۲۶-۱۰-۲۷
+
+- D0 مالک (`06:54 UTC`): نسل ۴۰، checkpoint ساعت ۰۵:۴۵ UTC، برای پنجرهٔ ۰۵:۲۰ یک header و یک receipt منتشرشده؛ هشت مسیر تأییدشده همگی aligned. بازهٔ تاریخی ۲۳۰ پنجره‌ای همچنان ناتمام است. D0 مشاهدهٔ محدود است و معادل برابری کامل Projectionها نیست.
+- D1 مالک: runtime SHA `bc699845175b019cd312940cee59b49b82892dacc6cf23bfae9b1e0397e0d953`، پنجرهٔ ۰۵:۴۵–۰۵:۵۰ UTC، ۶۵۲۸۴ رویداد و ۱۵۶۸۹ RequestID متأثر، `PUBLISHED_UNDER_BUDGET` در ۲۴۵٫۳۶ ثانیه از ۳۰۰. تجمیع اول ۶٫۷۱۹ ثانیه؛ EXPLAIN پیشنهادی به `viewer_projection_events` و `vei_origin_request` محدود شد، در برابر Seq Scan میلیون‌ردیفی نسخهٔ پیشین. EXPLAIN بدون ANALYZE است.
+- کندی عمدهٔ باقی‌مانده در همین نمونه: merge نهایی `viewer_events` حدود ۹۷٫۴۰۶ ثانیه و مجموع mergeهای ingest حدود ۱۳۴٫۳۲۸ ثانیه؛ این مقادیر دلیل بهینه‌سازی یا درصد بهبود نسخه‌ها محسوب نمی‌شوند.
+- **D1: PASS_NATIVE_SINGLE_WINDOW**؛ **D2: NOT_RUN_NATIVE** تا شش forward/دو recheck، backlog و p95/HTTP آزموده شوند. D3 atomicity، D4 restart واقعی و restore، D5 مرورگر و ظرفیت ۸۰۰هزار RequestID در ساعت همچنان بازند. وضعیت کلی **NOT_ACCEPTED**.
+- شواهد خلاصه‌شدهٔ D1 نزد توسعه‌دهنده: `owner_observations/d1_20261027_verified_from_upload.json` (برای بستهٔ یکپارچهٔ بعدی به Validation الحاق می‌شود). محتوای خصوصی و کلید در آن نیست.
+
+## D2 — مسیر سریع توسعه، کاندید ۲۰۲۶-۱۰-۲۷ (پس از تأیید D1 تک‌پنجره‌ای)
+
+- تقاضای مالک: اجرای ۴۵ دقیقه و ۶ پنجره برای هر دور توسعه بسیار پرهزینه است.
+- `run_viewer_pilot.py --smoke --windows 2 --rechecks 0 --max-minutes 12`، یک **تست توسعه‌ای** است: دو forward متوالی، قطع/اتصال دوبارهٔ DB و حفظ Checkpoint، پایش HTTP و سقف ۳۰۰ ثانیه برای هر چرخه. هیچ گام پرش Checkpoint، حذف تشخیص تعارض، تغییر live-start یا افزایش timeout در آن نیست.
+- خروجی این مسیر صرفاً `SMOKE_PASS / SMOKE_CONDITIONAL / FAILED` است؛ شمار شش forward و دو recheck برای پذیرش رسمی تغییری نکرده است. `--rechecks 1` در مرحلهٔ مناسب برای تست دیررس استفاده می‌شود و اکنون صفر است تا feedback سریع‌تر باشد.
+- وضع فعلی D2 سریع: `AWAITING_OWNER_NATIVE_SMOKE`. D2 کامل: `NOT_RUN`، D3..D6 `NOT_ACCEPTED`. آزمون پایداری restart واقعی، restore و ظرفیت ۸۰۰هزار RequestID/ساعت از smoke قابل اثبات نیستند.
+- بستهٔ توسعه، خلاصهٔ بی‌اطلاعات خصوصی نتایج D0 و D1، نتیجهٔ آزمون‌های محلی سریع و Manifest به‌روزشده را با همان سورس نگه می‌دارد.
+
+## 2026-10-27 — D2-A / D2-B diagnosis candidate (not accepted)
+
+Evaluator's architecture/performance plan received via Library. D2 Fast Smoke native FAILED: window 05:55–06:00 UTC 102433 events published in 414.625s, exceeding 300s; the following window was not confirmed published. Main measured cost: final PostgreSQL COPY to viewer_events 144.312s. Prior D1 native one-window publication (65284 events, 245.360s) remains valid but not a capacity result.
+
+- D2-A: add phase-separated COPY/spool metrics and read-only, separate-connection PostgreSQL wait/WAL/IO observer to one-window profile. Locally qualified in focused tests, NOT_RUN on owner PostgreSQL.
+- D2-B: controlled server INSERT SELECT alternatives and TEMP qualification-only synthetic A/B; regular publisher still uses native binary COPY. **NOT_RUN native; no chosen speed fix**.
+- D2-C: future one-window prefetch considered, NOT_STARTED. Publisher atomic transaction, owner roles, manual decisions, source gaps and late recheck unchanged.
+- D2-D/D3-D6: pending acceptance. Owner's next one-window diagnostic must report actual cycle time, query waits and correctness; do not claim 800k logical RequestIDs/hour from affected-request counts.
+- See `docs/D2_AB_IMPLEMENTATION_FA.md`, `validation/d2_fast_smoke_owner_evidence.json`, `validation/d2_ab_local_tests.json`.
+
+## D2-B / ۲۰۲۶-۱۰-۲۷ — شواهد WAL و کاندید transaction-local (در انتظار native)
+
+- Probe مالک: پنجرهٔ ۱۰۰۵۶۳ رویداد، **PUBLISHED_OVER_BUDGET** در ۳۱۶٫۶۷۲s؛ انتظارهای مکرر WalWrite/WalInitSync و cluster-wide WAL حدود ۲٫۸۵ GB. سهم انحصاری Viewer از این عدد ثابت نیست و Compression فعلی سرور معلوم نیست.
+- تغییر محدود: flag انتخابی `--wal-compression pglz` با `SET LOCAL` در تراکنش Viewer و preflight فقط‌خواندنی، بدون تغییر تنظیمات جهانی، کلید، سند role، checkpoint، payload یا semantics.
+- حالت پیش‌فرض و مسیر COPY دست‌نخورده؛ ۹۷ آزمون محلی PASS (۱ skip)، native جدید `NOT_RUN`. اگر compression از قبل روشن باشد، ابزار قبل از Capture توقف می‌کند.
+- D2-A telemetry DONE_NATIVE؛ D2-B WAL trial AWAIT_OWNER؛ D2-C prefetch NOT_STARTED؛ D3-D6 PENDING، ظرفیت NOT_PROVEN. مرجع: `docs/D2_B_WAL_FAST_FIX_FA.md` و `validation/d2_ab_native_probe_summary.json`.

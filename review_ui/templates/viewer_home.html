@@ -1,0 +1,30 @@
+{% extends 'viewer_base.html' %}{% block body %}{% set live=live|default({'status':'NOT_STARTED'}) %}
+<section class="page-heading"><div><h1>آخرین رفتار مشاهده‌شده در هر نشست</h1>
+<p class="lead">نشست‌ها به ترتیب زمان آخرین رفتار معنی‌دار؛ برای دیدن مراحل مرتبط، تاریخچهٔ نشست را باز کنید.</p></div></section>
+<div id="live-banner" class="panel live-banner" role="status">
+{% if live.status=='NOT_STARTED' %}<strong>دریافت آنلاین شروع نشده</strong><span>داده‌های واردشدهٔ موجود نمایش داده می‌شوند.</span>
+{% else %}<strong>{{ {'CURRENT':'دریافت فعال','CATCHING_UP':'در حال دریافت پنجره‌های عقب‌مانده','STALE':'وضعیت دریافت قدیمی است','ERROR':'خطا در دریافت؛ آخرین انتشار سالم نمایش داده می‌شود'}.get(live.status,live.status) }}</strong>
+<span>آخرین پنجرهٔ کامل تا <b dir="ltr">{{live.last_complete_window_utc|tehran_time if live.last_complete_window_utc else 'هنوز منتشر نشده'}}</b> تهران · {{live.backlog_windows}} پنجره در انتظار</span>
+<details><summary>جزئیات پوشش</summary><p>شروع تنظیم‌شده: <span dir="ltr">{{live.started_from_utc|tehran_time}}</span> · شروع بازهٔ پیوستهٔ جاری: <span dir="ltr">{{live.get('continuous_published_from_utc',live.started_from_utc)|tehran_time}}</span> · آخرین انتشار: <span dir="ltr">{{live.last_publish_utc|tehran_time}}</span> · پوشش پیش از شروع کامل فرض نمی‌شود. لاگ‌های جدیدتر ممکن است در بازبینی بعدی به پنجره‌های قبلی اضافه شوند.</p></details>{% endif %}
+<small id="refresh-note">فهرست هر ۳۰ ثانیه تازه می‌شود؛ زمان‌ها در جدول به تهران‌اند.</small></div>
+<section class="panel"><div class="section-heading"><h2>جست‌وجوی نشست</h2></div>
+<form method="get" class="viewer-search">
+<input name="session" value="{{search}}" placeholder="شناسه کامل Session" size="40" autocomplete="off">
+<input name="ip" value="{{ip}}" placeholder="IP (اختیاری، نه شناسه کاربر)" size="20" autocomplete="off">
+<label>از <input name="from" value="{{start}}" type="datetime-local"></label>
+<label>تا <input name="to" value="{{end}}" type="datetime-local"></label>
+<button type="submit">جست‌وجو</button></form>
+<div id="behavior-list" data-generation="{{result.get('generation','')}}" data-page="{{page}}">
+{% if result.get('index_ready', True) == False %}<p class="inline-notice">نمای رفتار هنوز آماده نیست. دریافت‌کننده در اولین انتشار آن را می‌سازد؛ این پیام به معنی نبود فعالیت کاربران نیست.</p>{% else %}
+<div class="table-scroll"><table><thead><tr><th>نشست</th><th>آخرین رفتار (تهران)</th><th>خدمت / عملیات</th><th>تاریخچه</th></tr></thead><tbody>
+{% for s in result['items'] %}<tr>
+<td dir="ltr">{{s.alias}}</td><td dir="ltr">{{s.get('when_fa')}}</td>
+<td>{% if s.get('root_call') %}<strong dir="ltr">{{s.root_call.split(' Line:')[0]}}</strong>{% else %}<span>ریشه HTTP مشاهده نشده</span>{% endif %}</td>
+<td><a href="{{url_for('session_behavior_view',key=s.session_key,generation=result.get('generation', 'نامشخص'))}}">اجرای رفتارهای نشست ←</a></td></tr>
+{% else %}<tr><td colspan="4" class="empty-state">در این محدوده، رفتار معنی‌دار قابل انتساب به نشست مشاهده نشد.</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="pagination"><span>{{result.total}} نشست دارای اجرای معنادار مشاهده‌شده · صفحه {{page}}</span>
+<div>{% if page>1 %}<a class="button secondary" href="{{url_for('home',page=page-1,limit=limit,session=search,ip=ip,**{'from':start,'to':end})}}">قبلی</a>{% endif %}
+{% if page*limit<result.total %}<a class="button" href="{{url_for('home',page=page+1,limit=limit,session=search,ip=ip,**{'from':start,'to':end})}}">بعدی</a>{% endif %}</div></div>
+{% endif %}</div></section>{% endblock %}
+{% block scripts %}<script src="{{url_for('static',filename='viewer_live.js')}}" defer></script>{% endblock %}

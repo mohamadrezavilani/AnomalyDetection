@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "mode": "postgresql_wasm_binary_copy_codec",
+  "checks": {
+    "binary_copy_preserves_full_normalized_rows": true,
+    "bigint_null_unicode_and_control_characters_preserved": true,
+    "primary_key_order_retained": true,
+    "duplicate_primary_key_still_rejected": true,
+    "rollback_preserves_preexisting_rows": true
+  },
+  "transport": "PGlite /dev/blob instead of native psycopg wire",
+  "native_psycopg_copy": "NOT_RUN",
+  "native_performance": "NOT_RUN",
+  "production_modified": false
+}

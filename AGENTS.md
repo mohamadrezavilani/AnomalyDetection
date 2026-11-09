@@ -1,8 +1,14 @@
-# دستور کار ایجنت AnomalyDetection
+# Current Viewer phase override
 
-- مطالعه را از `README.md`، `docs/AGENT_ONBOARDING_FA.md`، `docs/p0/STATUS_FA.md` و ماتریس ۳۰ معیار شروع کن. سورس Runtime مرجع در `AnomalyDetection/anomaly_detection/` و کاندیدای P0 در `experiments/` جدا هستند. تغییر کاندیدا را با تغییر نسخهٔ عملیاتی یکی نگیر.
-- Viewer و Backend منبع شاهدند. AD فقط با مجوز محدود از Viewer می‌خواند و تغییرات خود را در schema `anomaly_detection` نگه می‌دارد. تغییر Checkpoint، داده، ایندکس، نقش، تنظیم PostgreSQL یا رفتار Backend به‌عنوان بخشی از رفع AD مجاز نیست.
-- SessionID مرجع هویت در نشست ورود است و با IP جدید تغییر نمی‌کند. RequestID اجرای منطقی را مشخص می‌کند. مراحل فنی و خودکار را با منشأ شاهد نگه دار. اجرای خودکار را به‌عنوان اقدام دستی نشمار. رخدادهای دیررس ومیان‌پنجره‌ای باید بدون تکرار با همان درخواست وصل شوند. برای دادهٔ ناقص حالت مجهول ثبت کن.
-- برای هر معیار، منشأ Elasticsearch→Viewer→AD، هویت، کیفیت پوشش، Baseline و آستانه، تست مثبت/منفی/مرزی، Late Data، چندپنجره‌ای و چندروزه، تکرار، Rollback و پرونده/UI را جدا کنترل کن. وضعیت `PASS`، `FAIL`، `INSUFFICIENT_DATA` و `BLOCKED` را با دامنهٔ شواهد ثبت کن. پذیرش مالی به تکمیل شاهد Backend وابسته است.
-- برای P0 ابتدا هم‌زمانی، Crash/Restart و عدم جاافتادن Due، سپس برابری خروجی بازپخش واقعی را در DB ایزوله بسنج. تست مصنوعی فقط Fixtureهای اجراشده را پوشش می‌دهد. نصب عملیاتی مسیر تأیید جدا با شاهد و Rollback دارد.
-- دادهٔ مشتری، لاگ خام، HAR، payload، خروجی پرونده با شناسهٔ واقعی و تنظیمات اتصال را در Git نگذار. ممیزی، علت‌یابی و آزمون را با سورس و شاهد مجاز انجام بده و نتیجه را در مخزن ثبت کن.
+Follow Pishkhan24_Project_Roadmap.md and VIEWER_README_FA.md. The current deliverable excludes detector, incident, collector and production cutover. Keep all evidence private, unknown semantics unknown, and guarded p24_design_* database. All native/browser tests not actually run MUST be NOT_RUN.
+
+# Project execution rules
+
+- Read the current roadmap, then only the assigned milestone/work package and relevant code/tests. Do not read archived checkpoints by default.
+- Work toward the four milestone gates. Do not invent small checklist items, UI polish or documentation batches to substitute for collector integration, detectors, operator workflows or operational qualification.
+- Default assignment is Luna Medium for bounded implementation against fixed contracts. Sol 6.1 Medium reviews architecture, identity/evidence meaning, detector design, transaction/concurrency changes and release gates. A model switch requires actual selection; do not claim it happened automatically.
+- Continue authorized isolated development. A missing environment or contract blocks only affected work. Request one exact user action when genuinely necessary; otherwise continue unblocked work. Do not start collectors or modify production implicitly.
+- Preserve authoritative Session continuity, logical RequestID counts, cross-window/late evidence, historical pins, causal cutoffs, separated outcomes, privacy and human state. Unknown semantics remain unknown. Keep existing database/namespace guards.
+- Test changed behavior and concrete integration risks. Keep verbose logs outside model context; use compact machine results and reuse matching prior evidence for docs-only edits.
+- Maintain the single current roadmap in place. No per-turn release/versioned Markdown copies or routine ZIPs. User-facing messages are needed for an actionable dependency, major milestone or final delivery; keep any platform-required progress signals minimal.
+- Before cutover, require current native/browser/recovery/capacity results, preservation reconciliation, verified restore and explicit approval of the concrete plan. No evidence/database deletion is authorized.

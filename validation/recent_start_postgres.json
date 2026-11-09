@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "mode": "postgresql_dialect_wasm_recent_start",
+  "checks": {
+    "cursor_and_audit_rollback_together": true,
+    "explicit_recent_start_commits": true,
+    "real_gap_count_and_recent_backlog": true,
+    "original_start_keys_and_generation_preserved": true,
+    "repeat_is_noop": true,
+    "gap_metadata_reads_inside_read_only_transaction": true,
+    "real_rechecks_close_gap": true,
+    "gap_rechecks_do_not_rewind_recent_cursor": true
+  },
+  "previous_sql_checks": 29,
+  "runtime_source_sha256": "7eb96aac884f3fd9a02643e65f3ff69c8064bfbc3f0c99c437bb03c1636a4fdb",
+  "native_owner_postgresql": "NOT_RUN",
+  "native_copy_transfer": "NOT_RUN",
+  "production_modified": false,
+  "owner_history_modified": false
+}

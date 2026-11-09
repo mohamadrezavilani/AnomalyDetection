@@ -1,0 +1,22 @@
+{
+  "build_id": "AD-PRODUCT-20261107-27",
+  "postgresql": "16.2",
+  "environment": "ISOLATED_LINUX_POSTGRESQL_FIXTURE",
+  "native_windows_owner": "NOT_RUN",
+  "status": "PASS_HISTORY_RESET_AND_SCOPED_INGEST",
+  "checks": {
+    "read_only_plan_and_verified_data_volume": "PASS",
+    "blocks_removal_of_current_human_review": "PASS",
+    "blocks_when_preflight_disk_reserve_is_unavailable": "PASS",
+    "active_ad_writer_refuses_reset": "PASS",
+    "external_foreign_key_refuses_reset": "PASS",
+    "fault_after_truncate_rolls_back_rows_and_boundary": "PASS",
+    "real_relation_bytes_reclaimed_and_current_facts_profiles_kept": 18120704,
+    "viewer_and_legacy_rows_and_source_binding_preserved": "PASS",
+    "old_packet_cannot_restore_pre_boundary_facts": "PASS",
+    "all_source_lanes_wait_when_published_checkpoint_precedes_boundary": "PASS",
+    "next_published_window_and_scoped_semantic_cursor_work": "PASS",
+    "unchanged_session_summary_not_rewritten_on_new_receipt": "PASS",
+    "same_cutoff_retry_keeps_new_processing": "PASS"
+  }
+}

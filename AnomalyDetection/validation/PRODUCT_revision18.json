@@ -1,0 +1,21 @@
+{
+  "build_id": "AD-20261108-WINSTART",
+  "status": "PASS_PRIMARY_EVIDENCE_AND_SECONDARY_RETRY_SQL",
+  "checks": {
+    "20_vs_411_reference_sessions_without_audit_is_visible_evidence_pending_not_ready": "PASS_20_VS_MAX3_RANK_1_OVER_412",
+    "primary_path_reads_target_only_and_queues_13_secondary_methods_independently": "PASS_QUERY_SCOPE_ASSERTION_NOT_CAPACITY_MEASUREMENT",
+    "all_20_evidence_audits_finish_despite_newer_arrivals_and_store_restart": "PASS_NO_TEST_IDS_IN_PRODUCTION_SELECTOR",
+    "injected_continuous_sqlstate_57014_retries_its_method_without_hiding_completed_peer_finding": "PASS_FULL_PIPELINE",
+    "other_session_context_audit_does_not_invalidate_canonical_count_reference": "PASS_PRIMARY_TOKEN_UNCHANGED",
+    "stale_historical_signal_does_not_hide_current_signal_or_duplicate_case": "PASS_ONE_STABLE_CASE_LATEST_CURRENT50",
+    "normal_control_and_unknown_service_are_not_forced_into_anomalies": "PASS_SYNTHETIC_CONTROLS",
+    "presentation_receipt_recomputes_saved_rank_and_matches_summary_facts_audit_and_display": "PASS_READ_ONLY_HTML_AND_JSON",
+    "presentation_receipt_succeeds_in_enforced_read_only_snapshot": "PASS",
+    "oversized_canonical_target_uses_exact_sql_counts_and_qualification_not_clipped_sample": "PASS_2050_EXACT_NOT_2048",
+    "real_reference_correction_stales_primary_and_old_commit_is_rejected": "PASS_VERSION_AND_DEPENDENCY_FENCE"
+  },
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "production_precision_recall_and_capacity": "NOT_MEASURED",
+  "source_modified": false
+}

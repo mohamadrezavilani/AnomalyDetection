@@ -1,0 +1,234 @@
+{
+  "version": "p24-action-api-reconciliation-candidate.1",
+  "status": "unpublished_candidate_reconciliation",
+  "interpretation": "literal API route comparison only; Postman examples and same-RequestID observations do not establish runtime authority or target execution",
+  "semantic_classifications_inferred": false,
+  "source_counts_must_not_be_summed": "source fixtures can overlap; no cross-source union is asserted",
+  "sources": [
+    {
+      "source": "boundary.sanitized.json",
+      "source_sha256": "342edcd6d22a77d9411baba74d5d2c13f08bfc72c47b6bc0a986d26938840b80",
+      "pairs": [
+        {
+          "client_http_endpoint": "Services.v3/ElectricBillsExport",
+          "access_check_action": "v3/ElectricBillsExport",
+          "distinct_client_http_requests": 1,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "request_name_match_version_or_path_unresolved",
+          "postman_candidates": [
+            {
+              "collection": "Services",
+              "item_path": "/item/10",
+              "request_name": "ElectricBillsExport",
+              "method": "POST",
+              "endpoint": "/services.svc/v2/ElectricBillsExport",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        }
+      ],
+      "pair_count": 1
+    },
+    {
+      "source": "ip_activity.sanitized.json",
+      "source_sha256": "9207404f71bcc7978a2fc573376b82aba3bfa2b2a3401394f40cd81ccdc7afc8",
+      "pairs": [
+        {
+          "client_http_endpoint": "Core.v1/ConfigBasic",
+          "access_check_action": "v1/ConfigBasic",
+          "distinct_client_http_requests": 5,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "exact_documented_path_suffix_candidate",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/6",
+              "request_name": "ConfigBasic",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/ConfigBasic",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByOTP",
+          "access_check_action": "v1/LoginByOTP",
+          "distinct_client_http_requests": 1,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "exact_documented_path_suffix_candidate",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/13",
+              "request_name": "LoginByOTP",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByOTP",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByUserCredential",
+          "access_check_action": "v1/LoginByUserCredential",
+          "distinct_client_http_requests": 4,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "exact_documented_path_suffix_candidate",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/14",
+              "request_name": "LoginByUserCredential",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByUserCredential",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v2/DeviceRegister",
+          "access_check_action": "v2/DeviceRegister",
+          "distinct_client_http_requests": 1,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "request_name_match_version_or_path_unresolved",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/10",
+              "request_name": "DeviceRegister",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/DeviceRegister",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        }
+      ],
+      "pair_count": 4
+    },
+    {
+      "source": "provider_ping.sanitized.json",
+      "source_sha256": "5d11099eaa6f98791d235b0eb9dd6f2b8558f8158ab7971009b1856b9ebc0b1c",
+      "pairs": [],
+      "pair_count": 0
+    },
+    {
+      "source": "registration.sanitized.json",
+      "source_sha256": "baf23894a1fb2d11963ed20a4e3a215577bb4e5648843555c905942f0fd66707",
+      "pairs": [
+        {
+          "client_http_endpoint": "Core.v1/DeviceRegister",
+          "access_check_action": "v1/DeviceRegister",
+          "distinct_client_http_requests": 1,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "exact_documented_path_suffix_candidate",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/10",
+              "request_name": "DeviceRegister",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/DeviceRegister",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v2/DeviceRegister",
+          "access_check_action": "v2/DeviceRegister",
+          "distinct_client_http_requests": 1,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "request_name_match_version_or_path_unresolved",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/10",
+              "request_name": "DeviceRegister",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/DeviceRegister",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        }
+      ],
+      "pair_count": 2
+    },
+    {
+      "source": "session_activity.sanitized.json",
+      "source_sha256": "cf281cfe59736cd2e2abaf842aa85ac9e96ad22dbcba13a0664a324950b7d044",
+      "pairs": [
+        {
+          "client_http_endpoint": "Core.v1/ConfigBasic",
+          "access_check_action": "v1/ConfigBasic",
+          "distinct_client_http_requests": 5,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "exact_documented_path_suffix_candidate",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/6",
+              "request_name": "ConfigBasic",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/ConfigBasic",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByOTP",
+          "access_check_action": "v1/LoginByOTP",
+          "distinct_client_http_requests": 1,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "exact_documented_path_suffix_candidate",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/13",
+              "request_name": "LoginByOTP",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByOTP",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByUserCredential",
+          "access_check_action": "v1/LoginByUserCredential",
+          "distinct_client_http_requests": 4,
+          "endpoint_action_relation": "same_suffix_candidate",
+          "postman_candidate_state": "exact_documented_path_suffix_candidate",
+          "postman_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/14",
+              "request_name": "LoginByUserCredential",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByUserCredential",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "authority": "candidate_only",
+          "execution_proven": "no"
+        }
+      ],
+      "pair_count": 3
+    }
+  ],
+  "identity_values_or_payloads_exported": false
+}

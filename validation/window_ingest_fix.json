@@ -1,0 +1,53 @@
+{
+  "status": "LOCAL_FIX_READY_NATIVE_THROUGHPUT_PENDING",
+  "owner_before_fix": {
+    "log_name": "viewer_one_window.log",
+    "sha256": "af77f9daecafb1375cba763898e8ae1014698332bf08c40a0777625ef140600c",
+    "result": {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 86972,
+      "new_events": 86972,
+      "impacted_requests": 17427,
+      "bootstrap": false,
+      "generation": 4,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 323.0,
+      "capture_seconds": 52.625,
+      "total_cycle_seconds": 375.625
+    },
+    "ingest": {
+      "progress": {
+        "stage": "ingest",
+        "processed": 86972,
+        "total": 86972,
+        "lookup_seconds": 4.908,
+        "stage_copy_merge_seconds": 224.369,
+        "parse_encode_other_seconds": 22.145
+      },
+      "elapsed_seconds": 307.5
+    },
+    "contract_seconds": 30.8,
+    "reader_probe": "READERS_MATCH_400_ROWS",
+    "cache_controlled": false
+  },
+  "change": {
+    "copy_batch_source_events": 500,
+    "stage_lifetime": "one_capture_in_current_publication_transaction",
+    "target_merge": "once_per_table_per_capture_ordered_by_primary_key",
+    "revision_cache_scope": "one_capture_only_raw_rows_referenced_without_reencoding",
+    "conflict_rules_unchanged": true,
+    "atomic_publication_unchanged": true,
+    "config_changed": false,
+    "checkpoint_reset": false
+  },
+  "local_qualification": {
+    "viewer_regressions": "validation/release_viewer_tests.json",
+    "postgres_sql": "validation/postgres_sql_dialect.json",
+    "archived_real_replay": "validation/window_ingest_real_replay.json",
+    "native_copy_transport": "NOT_RUN_IN_DEVELOPMENT_PGLITE_USES_BOUND_ROW_ADAPTER"
+  },
+  "native_after_fix": "NOT_RUN",
+  "online_capacity": "NOT_ACCEPTED",
+  "next_command": "python tools/profile_viewer_window.py --config viewer_config.local.py --max-minutes 10 --out validation/viewer_one_window.json"
+}

@@ -1,0 +1,773 @@
+{
+  "version": "p24-evidence-matrix-candidate.1",
+  "status": "unpublished_source_scoped_evidence_candidates",
+  "interpretation": "exact-source-and-context alignment of independently derived candidates",
+  "source_join_basis": "same_locator_and_source_sha256",
+  "context_join_basis": "exact_client_endpoint_and_exact_access_action",
+  "counts_across_layers_must_not_be_summed": true,
+  "business_service_ownership_authoritative": false,
+  "response_semantics_authoritative": false,
+  "causality_execution_or_workflow_finality_proven": false,
+  "sources": [
+    {
+      "source": "boundary.sanitized.json",
+      "source_sha256": "342edcd6d22a77d9411baba74d5d2c13f08bfc72c47b6bc0a986d26938840b80",
+      "request_chain_catalog_present": true,
+      "api_reconciliation_catalog_present": true,
+      "error_operation_catalog_present": true,
+      "request_projection_count": 1,
+      "capture_coverage": {
+        "input_format": "kibana_response",
+        "returned_record_count": 14,
+        "source_query_complete": false,
+        "source_query_total_relation": "unknown",
+        "source_window_complete": false,
+        "capture_coverage_status": "partial_or_unverified_capture",
+        "source_finality": "not_established",
+        "time_coverage": "formatted_fields_only"
+      },
+      "capture_finality": "not_established",
+      "ambiguous_outcome_context_count": 0,
+      "unpaired_outcome_observations": [],
+      "route_outcome_pairs": [
+        {
+          "client_http_endpoint": "Services.v3/ElectricBillsExport",
+          "access_check_action": "v3/ElectricBillsExport",
+          "observed_chain_request_count": 1,
+          "crosswalk_request_count": 1,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "request_name_match_version_or_path_unresolved",
+          "api_route_candidates": [
+            {
+              "collection": "Services",
+              "item_path": "/item/10",
+              "request_name": "ElectricBillsExport",
+              "method": "POST",
+              "endpoint": "/services.svc/v2/ElectricBillsExport",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Services.v3/ElectricBillsExport",
+              "code": "GD2016",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "failure",
+              "recorded_symbol": "ElectricityBillInquiryFailed",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "single_code_and_symbol_candidate",
+              "codebook_candidates": [
+                {
+                  "code_system": "WebCrawler",
+                  "source_file": "WebCrawler-ErrorCodes.xlsx",
+                  "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5",
+                  "source_sheet": "WebCrawler",
+                  "source_row": 17,
+                  "definition_state": "complete_definition",
+                  "technical_symbol": "ElectricityBillInquiryFailed",
+                  "symbol_matches_observation": true,
+                  "operation_binding_state": "not_established_by_workbook"
+                }
+              ],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "provider",
+              "operation_callpath": "ClientAyanCoInquiry.ElectricityBillInquiryGetBillImage",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "provider",
+              "operation_callpath": "ClientAyanCoInquiry.ElectricityBillInquiryGetBillImage",
+              "code": "GD2016",
+              "evidence_layer": "provider_body",
+              "recorded_outcome": "failure",
+              "recorded_symbol": null,
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "single_code_entry_symbol_unavailable",
+              "codebook_candidates": [
+                {
+                  "code_system": "WebCrawler",
+                  "source_file": "WebCrawler-ErrorCodes.xlsx",
+                  "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5",
+                  "source_sheet": "WebCrawler",
+                  "source_row": 17,
+                  "definition_state": "complete_definition",
+                  "technical_symbol": "ElectricityBillInquiryFailed",
+                  "symbol_matches_observation": false,
+                  "operation_binding_state": "not_established_by_workbook"
+                }
+              ],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "sql",
+              "operation_callpath": "DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2",
+              "code": "GD2016",
+              "evidence_layer": "workflow_body",
+              "recorded_outcome": "unknown",
+              "recorded_symbol": "ElectricityBillInquiryFailed",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "single_code_and_symbol_candidate",
+              "codebook_candidates": [
+                {
+                  "code_system": "WebCrawler",
+                  "source_file": "WebCrawler-ErrorCodes.xlsx",
+                  "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5",
+                  "source_sheet": "WebCrawler",
+                  "source_row": 17,
+                  "definition_state": "complete_definition",
+                  "technical_symbol": "ElectricityBillInquiryFailed",
+                  "symbol_matches_observation": true,
+                  "operation_binding_state": "not_established_by_workbook"
+                }
+              ],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "sql",
+              "operation_callpath": "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequestResult",
+              "code": "G00000",
+              "evidence_layer": "workflow_body",
+              "recorded_outcome": "unknown",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        }
+      ],
+      "pair_count": 1,
+      "cross_source_counts_must_not_be_summed": true
+    },
+    {
+      "source": "ip_activity.sanitized.json",
+      "source_sha256": "9207404f71bcc7978a2fc573376b82aba3bfa2b2a3401394f40cd81ccdc7afc8",
+      "request_chain_catalog_present": true,
+      "api_reconciliation_catalog_present": true,
+      "error_operation_catalog_present": true,
+      "request_projection_count": 11,
+      "capture_coverage": {
+        "input_format": "kibana_response",
+        "returned_record_count": 36,
+        "source_query_complete": false,
+        "source_query_total_relation": "unknown",
+        "source_window_complete": false,
+        "capture_coverage_status": "partial_or_unverified_capture",
+        "source_finality": "not_established",
+        "time_coverage": "formatted_fields_only"
+      },
+      "capture_finality": "not_established",
+      "ambiguous_outcome_context_count": 0,
+      "unpaired_outcome_observations": [],
+      "route_outcome_pairs": [
+        {
+          "client_http_endpoint": "Core.v1/ConfigBasic",
+          "access_check_action": "v1/ConfigBasic",
+          "observed_chain_request_count": 5,
+          "crosswalk_request_count": 5,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "exact_documented_path_suffix_candidate",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/6",
+              "request_name": "ConfigBasic",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/ConfigBasic",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v1/ConfigBasic",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 5,
+              "group_distinct_request_count": 5,
+              "context_distinct_request_count": 5,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByOTP",
+          "access_check_action": "v1/LoginByOTP",
+          "observed_chain_request_count": 1,
+          "crosswalk_request_count": 1,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "exact_documented_path_suffix_candidate",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/13",
+              "request_name": "LoginByOTP",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByOTP",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v1/LoginByOTP",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "provider",
+              "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "provider",
+              "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+              "code": "G00000",
+              "evidence_layer": "provider_body",
+              "recorded_outcome": "unknown",
+              "recorded_symbol": null,
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByUserCredential",
+          "access_check_action": "v1/LoginByUserCredential",
+          "observed_chain_request_count": 4,
+          "crosswalk_request_count": 4,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "exact_documented_path_suffix_candidate",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/14",
+              "request_name": "LoginByUserCredential",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByUserCredential",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v1/LoginByUserCredential",
+              "code": "GR0054",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "failure",
+              "recorded_symbol": "IsNotValidUserCredential",
+              "observed_event_count": 4,
+              "group_distinct_request_count": 4,
+              "context_distinct_request_count": 4,
+              "codebook_candidate_state": "single_code_and_symbol_candidate",
+              "codebook_candidates": [
+                {
+                  "code_system": "Pishkhan24",
+                  "source_file": "Pishkhan24-ErrorCodes.xlsx",
+                  "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2",
+                  "source_sheet": "Sheet1",
+                  "source_row": 55,
+                  "definition_state": "complete_definition",
+                  "technical_symbol": "IsNotValidUserCredential",
+                  "symbol_matches_observation": true,
+                  "operation_binding_state": "not_established_by_workbook"
+                }
+              ],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        },
+        {
+          "client_http_endpoint": "Core.v2/DeviceRegister",
+          "access_check_action": "v2/DeviceRegister",
+          "observed_chain_request_count": 1,
+          "crosswalk_request_count": 1,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "request_name_match_version_or_path_unresolved",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/10",
+              "request_name": "DeviceRegister",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/DeviceRegister",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v2/DeviceRegister",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        }
+      ],
+      "pair_count": 4,
+      "cross_source_counts_must_not_be_summed": true
+    },
+    {
+      "source": "provider_ping.sanitized.json",
+      "source_sha256": "5d11099eaa6f98791d235b0eb9dd6f2b8558f8158ab7971009b1856b9ebc0b1c",
+      "request_chain_catalog_present": true,
+      "api_reconciliation_catalog_present": true,
+      "error_operation_catalog_present": true,
+      "request_projection_count": 1,
+      "capture_coverage": {
+        "input_format": "document",
+        "returned_record_count": 1,
+        "source_query_complete": false,
+        "source_query_total_relation": "unknown",
+        "source_window_complete": false,
+        "capture_coverage_status": "partial_or_unverified_capture",
+        "source_finality": "not_established",
+        "time_coverage": "mixed_or_source"
+      },
+      "capture_finality": "not_established",
+      "ambiguous_outcome_context_count": 0,
+      "unpaired_outcome_observations": [
+        {
+          "operation_role": "provider",
+          "operation_callpath": "EwanoApi.Ping",
+          "code": "GR0010",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "unknown",
+          "recorded_symbol": "ServiceUnavailable",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "single_code_and_symbol_candidate",
+          "codebook_candidates": [
+            {
+              "code_system": "Pishkhan24",
+              "source_file": "Pishkhan24-ErrorCodes.xlsx",
+              "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2",
+              "source_sheet": "Sheet1",
+              "source_row": 11,
+              "definition_state": "complete_definition",
+              "technical_symbol": "ServiceUnavailable",
+              "symbol_matches_observation": true,
+              "operation_binding_state": "not_established_by_workbook"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no",
+          "link_state": "no_client_endpoint_action_context_observed"
+        }
+      ],
+      "route_outcome_pairs": [],
+      "pair_count": 0,
+      "cross_source_counts_must_not_be_summed": true
+    },
+    {
+      "source": "registration.sanitized.json",
+      "source_sha256": "baf23894a1fb2d11963ed20a4e3a215577bb4e5648843555c905942f0fd66707",
+      "request_chain_catalog_present": true,
+      "api_reconciliation_catalog_present": true,
+      "error_operation_catalog_present": true,
+      "request_projection_count": 2,
+      "capture_coverage": {
+        "input_format": "document_array",
+        "returned_record_count": 6,
+        "source_query_complete": false,
+        "source_query_total_relation": "unknown",
+        "source_window_complete": false,
+        "capture_coverage_status": "partial_or_unverified_capture",
+        "source_finality": "not_established",
+        "time_coverage": "mixed_or_source"
+      },
+      "capture_finality": "not_established",
+      "ambiguous_outcome_context_count": 0,
+      "unpaired_outcome_observations": [],
+      "route_outcome_pairs": [
+        {
+          "client_http_endpoint": "Core.v1/DeviceRegister",
+          "access_check_action": "v1/DeviceRegister",
+          "observed_chain_request_count": 1,
+          "crosswalk_request_count": 1,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "exact_documented_path_suffix_candidate",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/10",
+              "request_name": "DeviceRegister",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/DeviceRegister",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v1/DeviceRegister",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        },
+        {
+          "client_http_endpoint": "Core.v2/DeviceRegister",
+          "access_check_action": "v2/DeviceRegister",
+          "observed_chain_request_count": 1,
+          "crosswalk_request_count": 1,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "request_name_match_version_or_path_unresolved",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/10",
+              "request_name": "DeviceRegister",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/DeviceRegister",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v2/DeviceRegister",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        }
+      ],
+      "pair_count": 2,
+      "cross_source_counts_must_not_be_summed": true
+    },
+    {
+      "source": "session_activity.sanitized.json",
+      "source_sha256": "cf281cfe59736cd2e2abaf842aa85ac9e96ad22dbcba13a0664a324950b7d044",
+      "request_chain_catalog_present": true,
+      "api_reconciliation_catalog_present": true,
+      "error_operation_catalog_present": true,
+      "request_projection_count": 10,
+      "capture_coverage": {
+        "input_format": "kibana_response",
+        "returned_record_count": 33,
+        "source_query_complete": false,
+        "source_query_total_relation": "unknown",
+        "source_window_complete": false,
+        "capture_coverage_status": "partial_or_unverified_capture",
+        "source_finality": "not_established",
+        "time_coverage": "formatted_fields_only"
+      },
+      "capture_finality": "not_established",
+      "ambiguous_outcome_context_count": 0,
+      "unpaired_outcome_observations": [],
+      "route_outcome_pairs": [
+        {
+          "client_http_endpoint": "Core.v1/ConfigBasic",
+          "access_check_action": "v1/ConfigBasic",
+          "observed_chain_request_count": 5,
+          "crosswalk_request_count": 5,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "exact_documented_path_suffix_candidate",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/6",
+              "request_name": "ConfigBasic",
+              "method": "POST",
+              "endpoint": "/core.svc/v1/ConfigBasic",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v1/ConfigBasic",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 5,
+              "group_distinct_request_count": 5,
+              "context_distinct_request_count": 5,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByOTP",
+          "access_check_action": "v1/LoginByOTP",
+          "observed_chain_request_count": 1,
+          "crosswalk_request_count": 1,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "exact_documented_path_suffix_candidate",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/13",
+              "request_name": "LoginByOTP",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByOTP",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v1/LoginByOTP",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "provider",
+              "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+              "code": "G00000",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "success",
+              "recorded_symbol": "successful",
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            },
+            {
+              "operation_role": "provider",
+              "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+              "code": "G00000",
+              "evidence_layer": "provider_body",
+              "recorded_outcome": "unknown",
+              "recorded_symbol": null,
+              "observed_event_count": 1,
+              "group_distinct_request_count": 1,
+              "context_distinct_request_count": 1,
+              "codebook_candidate_state": "no_literal_codebook_entry",
+              "codebook_candidates": [],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByUserCredential",
+          "access_check_action": "v1/LoginByUserCredential",
+          "observed_chain_request_count": 4,
+          "crosswalk_request_count": 4,
+          "chain_crosswalk_count_relation": "equal_in_this_capture",
+          "endpoint_action_relation": "same_suffix_candidate",
+          "api_candidate_state": "exact_documented_path_suffix_candidate",
+          "api_route_candidates": [
+            {
+              "collection": "Core",
+              "item_path": "/item/14",
+              "request_name": "LoginByUserCredential",
+              "method": "POST",
+              "endpoint": "/Core.svc/v1/LoginByUserCredential",
+              "endpoint_state": "resolved"
+            }
+          ],
+          "api_candidate_states": [
+            "unknown"
+          ],
+          "outcome_observations": [
+            {
+              "operation_role": "client_http",
+              "operation_callpath": "Core.v1/LoginByUserCredential",
+              "code": "GR0054",
+              "evidence_layer": "platform_log",
+              "recorded_outcome": "failure",
+              "recorded_symbol": "IsNotValidUserCredential",
+              "observed_event_count": 4,
+              "group_distinct_request_count": 4,
+              "context_distinct_request_count": 4,
+              "codebook_candidate_state": "single_code_and_symbol_candidate",
+              "codebook_candidates": [
+                {
+                  "code_system": "Pishkhan24",
+                  "source_file": "Pishkhan24-ErrorCodes.xlsx",
+                  "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2",
+                  "source_sheet": "Sheet1",
+                  "source_row": 55,
+                  "definition_state": "complete_definition",
+                  "technical_symbol": "IsNotValidUserCredential",
+                  "symbol_matches_observation": true,
+                  "operation_binding_state": "not_established_by_workbook"
+                }
+              ],
+              "semantic_authority": "unverified_candidate",
+              "operation_binding_proven": "no",
+              "link_basis": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_classification": "unresolved",
+          "execution_or_causality_proven": false
+        }
+      ],
+      "pair_count": 3,
+      "cross_source_counts_must_not_be_summed": true
+    }
+  ]
+}

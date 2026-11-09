@@ -1,0 +1,18 @@
+{
+  "build_id": "AD-PRODUCT-20261105-21",
+  "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+  "checks": {
+    "empty_evidence_query_before_fix_scans_50004_facts_after_fix_zero": "PASS_EXPLAIN_ANALYZE",
+    "indexed_and_previous_queries_return_identical_evidence_and_reject_stale_revision": "PASS",
+    "assessed_and_positive_targets_are_schedulable_before_the_global_scope_cursor_reaches_them": "PASS",
+    "early_promotion_preserves_versions_decisions_dirty_flags_and_global_cursor": "PASS",
+    "real_sql_cancellation_after_result_writes_rolls_back_the_whole_owned_commit": "PASS",
+    "evaluation_sql_timeout_defers_only_that_target_and_other_work_commits_without_reconnect": "PASS",
+    "failure_stage_and_bounded_statement_fingerprints_are_saved_without_sql_or_parameters": "PASS"
+  },
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "native_timeout_statement_identity": "NOT_PRESENT_IN_RELEASE14_REPORT",
+  "legacy_models_and_thresholds": "LEGACY_SCHEMA_CONTRACT_PRESERVED_REVIEW_AND_HOUR_QUALIFICATION_UPDATED_IN_RELEASE17",
+  "new_index_scope": "anomaly_detection.adp_facts_ONLY"
+}

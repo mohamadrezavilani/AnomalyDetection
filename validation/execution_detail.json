@@ -1,0 +1,41 @@
+{
+  "status": "LOCAL_VERIFIED_OWNER_UI_REVIEW_PENDING",
+  "created_at_utc": "2026-10-31T06:42:24.378834+00:00",
+  "runtime_source_sha256": "0eced4ef05423c66e6c36ae945c900bf1307b393b41b2c37dca56bf55b2b28eb",
+  "parent_runtime_source_sha256": "36def3d36753b25d54d3640afcdb71304bc34f132c8150fb8802a6f36fc7bb0a",
+  "scope": "read-only request execution presentation",
+  "schema_changes": false,
+  "publisher_or_ingest_changed": false,
+  "request_ids_session_ids_roles_and_raw_preserved": true,
+  "authoritative_summary": "indexed inquiry result; otherwise observed prerequisite phase or explicitly labelled HTTP API result",
+  "provider_transport_and_business_codes_separate": true,
+  "financial_settlement_inferred": false,
+  "relationships_inferred_from_session_ip_time_or_target": false,
+  "bounded_reads": {
+    "events": 240,
+    "provider_payloads": 32,
+    "invoice_labels": 8,
+    "related_rows": 32,
+    "provider_compressed_bytes": 262144,
+    "provider_decoded_bytes": 2097152
+  },
+  "raw_evidence_paginated_and_preserved": true,
+  "postal_summary_mapping": "exact PostPackagesStatus / PostTrackingInquiry Input.PackageNumber; no identifier joins",
+  "local_regressions": "validation/execution_detail_regressions.json",
+  "real_replays": "validation/execution_detail_real_replay.json",
+  "parent_owner_native_repair": "validation/owner_service_dispatch_20261031.json",
+  "current_native_postgresql": "NOT_RUN",
+  "current_owner_browser": "NOT_RUN",
+  "current_local_visual_browser": "NOT_RUN",
+  "cross_request_otp": "BLOCKED_PENDING_SHARED_INVOICE_OR_EXPLICIT_INVOICE_MAPPING",
+  "capacity_and_long_stability": "OUT_OF_SCOPE_BY_OWNER",
+  "cancelled_recovery": "NOT_RESTARTED",
+  "installation": "extract into same project, Start_Viewer.cmd, refresh the same captured request; no sync or migration",
+  "offline_checks": {
+    "status": "PASS",
+    "tests": 398,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

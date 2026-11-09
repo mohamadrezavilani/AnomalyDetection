@@ -1,0 +1,51 @@
+{
+  "status": "PASS_LOCAL_NATIVE_READER_PROBE_PENDING",
+  "owner_observed": {
+    "worker_pid": 40096,
+    "samples": 5,
+    "state": "active",
+    "sql_command": "FETCH",
+    "wait_event_type": null,
+    "wait_event": null,
+    "blocked_by": [],
+    "native_incremental_cycle_over_300_seconds": true,
+    "window_events": 86972,
+    "contract_events_at_last_log": 12000,
+    "contract_seconds_at_last_log": 519.8
+  },
+  "strategy": {
+    "scoped_metadata_materialized_once": true,
+    "raw_payload_batch_limit": 400,
+    "postgres_payload_read": "primary_key_lookup_per_origin_version_with_lateral_fence",
+    "scope_statistics_refreshed": true,
+    "financial_and_revision_predicates_unchanged": true,
+    "atomic_publication_unchanged": true
+  },
+  "qualification": {
+    "regressions": 236,
+    "archived_six_windows": "PASS",
+    "postgresql_dialect_wasm": "PASS",
+    "raw_payload_primary_key_plan": "PASS",
+    "readonly_first_400_matches_original": "PASS",
+    "native_windows_postgresql": "NOT_RUN",
+    "operational_capacity": "NOT_QUALIFIED"
+  },
+  "diagnostic": {
+    "command": "python tools/diagnose_viewer_fetch.py --config viewer_config.local.py --out validation/viewer_sql_fetch.json",
+    "global_budget_seconds": 60,
+    "statement_timeout_seconds": 20,
+    "permanent_data_modified": false,
+    "elasticsearch_capture": false,
+    "setup_writes": "connection_local_temporary_tables_only",
+    "comparison_reads": "repeatable_read_read_only_transactions",
+    "cache_controlled": false
+  },
+  "ingestion_timing_fields": [
+    "lookup_seconds",
+    "stage_copy_merge_seconds",
+    "parse_encode_other_seconds"
+  ],
+  "configuration_changed": false,
+  "checkpoint_reset": false,
+  "private_credentials_included": false
+}

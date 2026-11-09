@@ -1,0 +1,577 @@
+{
+  "rawResponse": {
+    "timed_out": false,
+    "_shards": {
+      "total": 40,
+      "successful": 40,
+      "skipped": 38,
+      "failed": 0
+    },
+    "hits": {
+      "hits": [
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "eLY3WKEB9fbQWEof8bX_",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:30:23.608Z"
+            ],
+            "level": [
+              "Error"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103412403
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              40080.4
+            ],
+            "CallPath": [
+              "Services.v3/ElectricBillsExport Line:1684"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v3/ElectricBillsExport HTTP/1.1 (GD2016 | ElectricityBillInquiryFailed)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "drY3WKEB9fbQWEof8bX_",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:30:23.608Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103412401
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              22.3336
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2"
+            ],
+            "message": [
+              "(Command Text: ud_prc_inquiryInvoiceResult2)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000001 @requestid=394186e2-6b88-40dc-8523-08688e41b4b1 @invoiceuniqueid=[REDACTED_VALUE] @invoicesettlementuniqueid=[REDACTED_VALUE] @statuscode=GD2016 @statusname=ElectricityBillInquiryFailed @statusmessage=ارتباط با سرور شرکت توزیع برق برقرار نشد. لطفا لحظاتی دیگر مجددا سعی کنید. @queryindex=[REDACTED_VALUE] @queryindexhash=[REDACTED_VALUE] @queryparameters=[REDACTED_VALUE] @queryparametershash=[REDACTED_VALUE] @querynote= @queryresult= @queryresulthash= @queryresultbills= @cachecorekey= @extrainfo= @isfromservicecache=False)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "c7Y3WKEB9fbQWEof8bX_",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:30:23.576Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103412398
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              40038.41
+            ],
+            "CallPath": [
+              "ClientAyanCoInquiry.ElectricityBillInquiryGetBillImage Line:496"
+            ],
+            "message": [
+              "https://fixture.invalid/provider (G00000 | successful) Input:[{\"ElectricityBillID\": \"[REDACTED_VALUE]\", \"Cycle\": \"[REDACTED_VALUE]\", \"TraceNumber\": \"[REDACTED_VALUE]\", \"MobileNumber\": \"[REDACTED_VALUE]\"}] Output:[{\"Parameters\": null, \"Status\": {\"Code\": \"GD2016\", \"Description\": \"ارتباط با سرور شرکت توزیع برق برقرار نشد. لطفا لحظاتی دیگر مجددا سعی کنید.\"}}]"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "vLQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399454
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              2.8326
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequestResult"
+            ],
+            "message": [
+              "(Command Text: ud_prc_invoiceSettlementRequestResult)(Code: 1)(Result: OK)(SQL Parameters: @invoicesettlementkey=[REDACTED_VALUE] @statuscode=G00000 @statusname=successful @statusmessage=درخواست با موفقیت انجام شد. @extrainfo=)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "uLQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399450
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              2.5179
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequest"
+            ],
+            "message": [
+              "(Command Text: ud_prc_invoiceSettlementRequest)(Code: 1)(Result: Ok)(SQL Parameters: @invoiceuniqueid=[REDACTED_VALUE] @gatewayid=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "s7Q3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399445
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              0.4148
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequired"
+            ],
+            "message": [
+              "(Command Text: ud_prc_invoiceSettlementRequired)(Code: 1)(Result: ok)(SQL Parameters: @invoiceuniqueid=[REDACTED_VALUE] @gatewayid=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "srQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399444
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              0.5703
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_mobileVerificationReview"
+            ],
+            "message": [
+              "(Command Text: ud_prc_mobileVerificationReview)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000001 @serviceid=[REDACTED_VALUE] @mobilenumber=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "sbQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399443
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              0.4169
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_persistentCacheReadServiceData2"
+            ],
+            "message": [
+              "(Command Text: ud_prc_persistentCacheReadServiceData2)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000001 @serviceid=[REDACTED_VALUE] @queryindexhash=[REDACTED_VALUE] @queryparametershash=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "sLQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399442
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              0.3826
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_invoiceQueryInfo"
+            ],
+            "message": [
+              "(Command Text: ud_prc_invoiceQueryInfo)(Code: 1)(Result: Ok)(SQL Parameters: @invoiceuniqueid=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "r7Q3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399441
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              0.3992
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_queryInfo"
+            ],
+            "message": [
+              "(Command Text: ud_prc_queryInfo)(Code: 1)(Result: Ok)(SQL Parameters: @queryuniqueid=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "rrQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.542Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399440
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              1.1938
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_invoiceInfo"
+            ],
+            "message": [
+              "(Command Text: ud_prc_invoiceInfo)(Code: 1)(Result: Ok)(SQL Parameters: @invoiceuniqueid=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "rbQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.527Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399439
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              0.435
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_invoiceBelongs"
+            ],
+            "message": [
+              "(Command Text: ud_prc_invoiceBelongs)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000001 @invoiceuniqueid=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "rLQ3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.527Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399438
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              0.402
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_invoiceExists"
+            ],
+            "message": [
+              "(Command Text: ud_prc_invoiceExists)(Code: 1)(Result: OK)(SQL Parameters: @invoiceuniqueid=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "q7Q3WKEB9fbQWEofVQCR",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:29:43.527Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103399437
+            ],
+            "RequestID": [
+              "394186e2-6b88-40dc-8523-08688e41b4b1"
+            ],
+            "IP": [
+              "198.51.100.10"
+            ],
+            "Session": [
+              "00000000000000000000000000000001"
+            ],
+            "ExecutionTime": [
+              1.5285
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000001 @action=v3/ElectricBillsExport @ipaddress=198.51.100.10 @useragent=Mozilla/5.0 (Linux; Android 0; REDACTED_MODEL) AppleWebKit/537.36 Chrome/0 Mobile Safari/537.36)"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "isPartial": false,
+  "isRunning": false
+}

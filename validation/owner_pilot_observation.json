@@ -1,0 +1,114 @@
+{
+  "source": "owner_final_json_message_2026_10_26",
+  "build_observed": "installed_P24_Viewer_Window_Ingest_Fix.zip_BEFORE_current_final_build",
+  "mode": "live_owner_postgresql_pilot",
+  "status": "FAILED",
+  "windows": [
+    {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 87598,
+      "new_events": 87598,
+      "impacted_requests": 18049,
+      "bootstrap": false,
+      "generation": 8,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 299.719,
+      "capture_seconds": 39.047,
+      "total_cycle_seconds": 338.766
+    },
+    {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 90085,
+      "new_events": 90085,
+      "impacted_requests": 18895,
+      "bootstrap": false,
+      "generation": 10,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 262.515,
+      "capture_seconds": 40.641,
+      "total_cycle_seconds": 303.156
+    },
+    {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 86369,
+      "new_events": 86369,
+      "impacted_requests": 18177,
+      "bootstrap": false,
+      "generation": 12,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 267.688,
+      "capture_seconds": 39.297,
+      "total_cycle_seconds": 306.985
+    },
+    {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 83351,
+      "new_events": 83351,
+      "impacted_requests": 17637,
+      "bootstrap": false,
+      "generation": 14,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 235.734,
+      "capture_seconds": 39.032,
+      "total_cycle_seconds": 274.766
+    },
+    {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 85104,
+      "new_events": 85104,
+      "impacted_requests": 17725,
+      "bootstrap": false,
+      "generation": 16,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 255.343,
+      "capture_seconds": 38.453,
+      "total_cycle_seconds": 293.796
+    },
+    {
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 78799,
+      "new_events": 78799,
+      "impacted_requests": 16700,
+      "bootstrap": false,
+      "generation": 18,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 238.875,
+      "capture_seconds": 36.141,
+      "total_cycle_seconds": 275.016
+    }
+  ],
+  "rechecks": [],
+  "restart_performed": true,
+  "restart_checkpoint_preserved": true,
+  "failure": {
+    "stage": "publication",
+    "code": "pilot_time_budget_exceeded"
+  },
+  "max_minutes": 30,
+  "before": {
+    "generation": 6,
+    "continuous_published_to_utc": "2026-10-26T09:15:00+00:00",
+    "backlog_windows": 57
+  },
+  "after": "NOT_PROVIDED",
+  "aggregate": {
+    "published_windows": 6,
+    "events": 511306,
+    "mean_cycle_seconds": 298.748,
+    "max_cycle_seconds": 338.766,
+    "cycles_over_300": 3
+  },
+  "separate_one_window": {
+    "status": "PUBLISHED_UNDER_BUDGET",
+    "records": 81459,
+    "total_cycle_seconds": 212.515
+  },
+  "current_final_build_native_acceptance": "NOT_RUN",
+  "production_modified": false
+}

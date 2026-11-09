@@ -1,0 +1,137 @@
+{
+  "version": "p24-detector-scope.1",
+  "reviewed_date": "2026-10-22",
+  "review_kind": "targeted_legacy_interface_and_scope_review",
+  "usefulness_acceptance": "NOT_RUN",
+  "m2_a_complete": false,
+  "source_archive": {
+    "library_file_id": "libfile_2de2de9574388191a545b0a1b5b880bf",
+    "name": "Pishkhan24_PostgreSQL_primary_pg_3_8.zip",
+    "sha256": "28cfbb2b3b0676f19d5886a4b7485e2db2973cda379585f28aed5a527cebb667",
+    "baseline_only_not_asserted_current_installation": true
+  },
+  "families": [
+    {
+      "family": "detect_ip",
+      "decision": "replace",
+      "scope": "Network context only; move personal activity to Session/route history.",
+      "legacy_evidence": "Legacy FEATURE_COLS and per-IP score_row combine volume, operational and network features.",
+      "release_gate": "Session identity must survive IP changes; no network-only abuse claim.",
+      "source_sha256": "da2256140123be5b49f38059e7fe55b82139f1dbe3d339dc10c5a1aec8c4069c",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_endpoint",
+      "decision": "retain_operational",
+      "scope": "Endpoint health remains separate from customer behavior.",
+      "legacy_evidence": "Legacy load_history and error_rate_support use endpoint feature windows.",
+      "release_gate": "Compare exposure and outcome layers; require held-out service-health cases.",
+      "source_sha256": "a97cad27ff50099d1a6f0ccca9c95fea168e028b1b1a126d6a3f236dfefbfd79",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_endpoint_abuse",
+      "decision": "merge",
+      "scope": "Merge justified activity features into Session/route models.",
+      "legacy_evidence": "Legacy endpoint_ip_features supplies IP/endpoint measurements.",
+      "release_gate": "The first volume candidate uses personal Session history; no inherited legacy score.",
+      "source_sha256": "a3a13d916dc4b97cea431493d1af529392cd0a9059e14791d9c463cf22d44488",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_sequence",
+      "decision": "replace",
+      "scope": "Use cross-window Session journeys and partial ordering.",
+      "legacy_evidence": "Legacy detect groups current requests by IP, requires MIN_REQUESTS/MIN_ENDPOINTS and scores transition novelty.",
+      "release_gate": "No fixed count gate or timestamp tie may imply suspicious intent.",
+      "source_sha256": "89be7e1f7647c179473932f2558b615caf8c6833399b251a85df2205500f99b1",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_shape",
+      "decision": "retain_integrity",
+      "scope": "Evaluate endpoint/version structural integrity, outside customer abuse.",
+      "legacy_evidence": "Legacy schema-field-evidence-v3 compares endpoint fields to earlier schema references.",
+      "release_gate": "Require version-matched exposure and response contracts; absent fields are not fraud.",
+      "source_sha256": "f25d35d9d31b9fd01136275cb7b489acd719a11c60243d9c37b882ec9110343a",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_multi_ip_session",
+      "decision": "retain_context",
+      "scope": "Keep measured network diversity as Session context.",
+      "legacy_evidence": "Legacy session_id groups and cohort/reference statistics measure network diversity.",
+      "release_gate": "Session continuity is authoritative; changed IP is not account compromise.",
+      "source_sha256": "41c2f719cdeb8ab121e0187867847b959e567442122fc4ef242b229dc2038007",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_session_abuse",
+      "decision": "replace",
+      "scope": "Use independent personal Session observation families.",
+      "legacy_evidence": "Legacy session population baselines and shape/volume measurements mix families.",
+      "release_gate": "Initial implementation: observed active five-minute Session/route logical-request counts.",
+      "source_sha256": "63fc0fb7b7ab1cda54a5aa72071d09f55bff43d3d6087cb20d910d0e720888a9",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_distributed_crawler",
+      "decision": "replace",
+      "scope": "Require typed actor/subject support for distributed patterns.",
+      "legacy_evidence": "Legacy endpoint_ip_features aggregates traffic across IPs.",
+      "release_gate": "Shared network or endpoint is not common identity or automation proof.",
+      "source_sha256": "3e45a9c6a9afde727ed5f2163995ff3d954f2a4bec07f7fdb05e26614a82ea1a",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_entity",
+      "decision": "retain_typed",
+      "scope": "Keep justified subject analysis after actor/target field review.",
+      "legacy_evidence": "Legacy entity_type/hour/feature baselines aggregate typed field observations.",
+      "release_gate": "Queried identifiers are subjects, not authenticated users; no wealth or location rarity accusations.",
+      "source_sha256": "c7dc675ea298e6a8be56c11747daadec4c959d0f3ba8d9564acee35635f49354",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_graph",
+      "decision": "defer",
+      "scope": "Defer release until typed edges and incremental value are evaluated.",
+      "legacy_evidence": "Legacy graph_features and graph_baselines aggregate IP/entity relationships.",
+      "release_gate": "Shared subjects cannot prove common actor, coordination or root cause.",
+      "source_sha256": "a2e5d8a88399247bde4958357ab70f3b046934e526807570ab042049d1613123",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_markov",
+      "decision": "shadow_only",
+      "scope": "Keep outside released decisions until it beats simpler causal sequence models.",
+      "legacy_evidence": "Legacy markov_transitions and held-out length calibration estimate order rarity.",
+      "release_gate": "Compare against transition counts/prefix novelty with cross-window ordering and leakage checks.",
+      "source_sha256": "18c3d479b338445fac474e3be1870ec2ea75a17e07d4712335f9e217e6cd191d",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_session_purpose",
+      "decision": "replace",
+      "scope": "Use only reviewed purpose labels inferable from the observed prefix.",
+      "legacy_evidence": "Legacy purpose/hour baselines and _aggregate_segment operate on segment prefixes.",
+      "release_gate": "No future suffix, whole-session duration or unreviewed purpose meaning may train/score a target.",
+      "source_sha256": "4029398719cdb30265699306fc46b4f52db09a8e444099363edabbc8eb897060",
+      "real_held_out_evaluation": "NOT_RUN"
+    },
+    {
+      "family": "detect_payload",
+      "decision": "retain_integrity",
+      "scope": "Keep reviewed field/provenance integrity; exclude population personal-value rarity.",
+      "legacy_evidence": "Legacy payload-outcome-schema-v3 explicitly excludes personal attributes and portfolio wealth as abuse.",
+      "release_gate": "Bind exact operation, field owner/version and separate provider/body outcomes; unknown meaning abstains.",
+      "source_sha256": "3cb49ec86011275cdd6f2b0d2dd08374b84b88025d1d89beee707babf7a739be",
+      "real_held_out_evaluation": "NOT_RUN"
+    }
+  ],
+  "additional_legacy_module": {
+    "name": "detect_longitudinal.py",
+    "treatment": "Supporting long-window model outside the recorded 13-family inventory; preserve and review separately before release.",
+    "source_sha256": "541a7c0fc6e66948abdf47c45bf086ba2336accd76f44d9c88fb7140446cb86f"
+  }
+}

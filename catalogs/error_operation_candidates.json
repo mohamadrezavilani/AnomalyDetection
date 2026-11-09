@@ -1,0 +1,857 @@
+{
+  "version": "p24-observed-code-operation-candidate.1",
+  "status": "unpublished_observed_code_operation_candidates",
+  "interpretation": "code meaning and operation/version binding are separate; same-RequestID context is co-observation only",
+  "code_systems_globally_assumed": false,
+  "source_counts_must_not_be_summed": "fixture sources overlap; no cross-source traffic union is asserted",
+  "raw_request_ids_ips_sessions_parameters_or_payloads_exported": false,
+  "sources": [
+    {
+      "version": "p24-observed-code-operation-candidate.1",
+      "locator": "boundary.sanitized.json",
+      "source_sha256": "342edcd6d22a77d9411baba74d5d2c13f08bfc72c47b6bc0a986d26938840b80",
+      "code_catalog_content_sha256": "3955fe83fc0d9924d20a6a26ffe886089c2e571e16de9086cdc8c89a70d890aa",
+      "code_catalog_source_files": [
+        {
+          "code_system": "CarAnnualTax",
+          "source_file": "CarAnnualTax-ErrorCodes.xlsx",
+          "source_sha256": "c33ed1a79e9f22885d886a921ee57c99a76e8b29c36789915a157264a30ca879"
+        },
+        {
+          "code_system": "CarToll",
+          "source_file": "CarToll-ErrorCodes.xlsx",
+          "source_sha256": "9afd3951d0e0091fa3ce0064ee7c8bb912c8d89c762aab42ff365d3570bbf739"
+        },
+        {
+          "code_system": "NajiServices",
+          "source_file": "NajiServices-ErrorCodes.xlsx",
+          "source_sha256": "836ba069300f539e5ad60fe445a38827d3075b2e25864b6685e99372f093ced3"
+        },
+        {
+          "code_system": "PaymentGateway",
+          "source_file": "PaymentGateway-ErrorCodes.xlsx",
+          "source_sha256": "f53e070814a00238258a7f9fa8029927a07dfc31688f15bec6b531758df25152"
+        },
+        {
+          "code_system": "Pishkhan24",
+          "source_file": "Pishkhan24-ErrorCodes.xlsx",
+          "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2"
+        },
+        {
+          "code_system": "TehranMunicipality",
+          "source_file": "TehranMunicipality-ErrorCodes.xlsx",
+          "source_sha256": "494e3e48811937f590c0ac2531308c8049a682d97457fcb92483ff9c655c6bbd"
+        },
+        {
+          "code_system": "TopUp",
+          "source_file": "TopUp-ErrorCodes.xlsx",
+          "source_sha256": "9299ad3e339cb77ece746f6d46069aee26ec6924589a8733c8a1ae0804ae31c1"
+        },
+        {
+          "code_system": "WebCrawler",
+          "source_file": "WebCrawler-ErrorCodes.xlsx",
+          "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5"
+        }
+      ],
+      "source_record_count": 14,
+      "normalized_record_count": 14,
+      "unresolved_record_count": 0,
+      "code_observation_count": 5,
+      "groups": [
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Services.v3/ElectricBillsExport",
+          "code": "GD2016",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "failure",
+          "recorded_symbol": "ElectricityBillInquiryFailed",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "single_code_and_symbol_candidate",
+          "codebook_candidates": [
+            {
+              "code_system": "WebCrawler",
+              "source_file": "WebCrawler-ErrorCodes.xlsx",
+              "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5",
+              "source_sheet": "WebCrawler",
+              "source_row": 17,
+              "definition_state": "complete_definition",
+              "technical_symbol": "ElectricityBillInquiryFailed",
+              "symbol_matches_observation": true,
+              "operation_binding_state": "not_established_by_workbook"
+            }
+          ],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Services.v3/ElectricBillsExport"
+              ],
+              "access_check_actions": [
+                "v3/ElectricBillsExport"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "provider",
+          "operation_callpath": "ClientAyanCoInquiry.ElectricityBillInquiryGetBillImage",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Services.v3/ElectricBillsExport"
+              ],
+              "access_check_actions": [
+                "v3/ElectricBillsExport"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "provider",
+          "operation_callpath": "ClientAyanCoInquiry.ElectricityBillInquiryGetBillImage",
+          "code": "GD2016",
+          "evidence_layer": "provider_body",
+          "recorded_outcome": "failure",
+          "recorded_symbol": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "single_code_entry_symbol_unavailable",
+          "codebook_candidates": [
+            {
+              "code_system": "WebCrawler",
+              "source_file": "WebCrawler-ErrorCodes.xlsx",
+              "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5",
+              "source_sheet": "WebCrawler",
+              "source_row": 17,
+              "definition_state": "complete_definition",
+              "technical_symbol": "ElectricityBillInquiryFailed",
+              "symbol_matches_observation": false,
+              "operation_binding_state": "not_established_by_workbook"
+            }
+          ],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Services.v3/ElectricBillsExport"
+              ],
+              "access_check_actions": [
+                "v3/ElectricBillsExport"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "sql",
+          "operation_callpath": "DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2",
+          "code": "GD2016",
+          "evidence_layer": "workflow_body",
+          "recorded_outcome": "unknown",
+          "recorded_symbol": "ElectricityBillInquiryFailed",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "single_code_and_symbol_candidate",
+          "codebook_candidates": [
+            {
+              "code_system": "WebCrawler",
+              "source_file": "WebCrawler-ErrorCodes.xlsx",
+              "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5",
+              "source_sheet": "WebCrawler",
+              "source_row": 17,
+              "definition_state": "complete_definition",
+              "technical_symbol": "ElectricityBillInquiryFailed",
+              "symbol_matches_observation": true,
+              "operation_binding_state": "not_established_by_workbook"
+            }
+          ],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Services.v3/ElectricBillsExport"
+              ],
+              "access_check_actions": [
+                "v3/ElectricBillsExport"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "sql",
+          "operation_callpath": "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequestResult",
+          "code": "G00000",
+          "evidence_layer": "workflow_body",
+          "recorded_outcome": "unknown",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Services.v3/ElectricBillsExport"
+              ],
+              "access_check_actions": [
+                "v3/ElectricBillsExport"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        }
+      ],
+      "group_count": 5,
+      "code_systems_globally_assumed": false,
+      "raw_request_ids_ips_sessions_parameters_or_payloads_exported": false
+    },
+    {
+      "version": "p24-observed-code-operation-candidate.1",
+      "locator": "ip_activity.sanitized.json",
+      "source_sha256": "9207404f71bcc7978a2fc573376b82aba3bfa2b2a3401394f40cd81ccdc7afc8",
+      "code_catalog_content_sha256": "3955fe83fc0d9924d20a6a26ffe886089c2e571e16de9086cdc8c89a70d890aa",
+      "code_catalog_source_files": [
+        {
+          "code_system": "CarAnnualTax",
+          "source_file": "CarAnnualTax-ErrorCodes.xlsx",
+          "source_sha256": "c33ed1a79e9f22885d886a921ee57c99a76e8b29c36789915a157264a30ca879"
+        },
+        {
+          "code_system": "CarToll",
+          "source_file": "CarToll-ErrorCodes.xlsx",
+          "source_sha256": "9afd3951d0e0091fa3ce0064ee7c8bb912c8d89c762aab42ff365d3570bbf739"
+        },
+        {
+          "code_system": "NajiServices",
+          "source_file": "NajiServices-ErrorCodes.xlsx",
+          "source_sha256": "836ba069300f539e5ad60fe445a38827d3075b2e25864b6685e99372f093ced3"
+        },
+        {
+          "code_system": "PaymentGateway",
+          "source_file": "PaymentGateway-ErrorCodes.xlsx",
+          "source_sha256": "f53e070814a00238258a7f9fa8029927a07dfc31688f15bec6b531758df25152"
+        },
+        {
+          "code_system": "Pishkhan24",
+          "source_file": "Pishkhan24-ErrorCodes.xlsx",
+          "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2"
+        },
+        {
+          "code_system": "TehranMunicipality",
+          "source_file": "TehranMunicipality-ErrorCodes.xlsx",
+          "source_sha256": "494e3e48811937f590c0ac2531308c8049a682d97457fcb92483ff9c655c6bbd"
+        },
+        {
+          "code_system": "TopUp",
+          "source_file": "TopUp-ErrorCodes.xlsx",
+          "source_sha256": "9299ad3e339cb77ece746f6d46069aee26ec6924589a8733c8a1ae0804ae31c1"
+        },
+        {
+          "code_system": "WebCrawler",
+          "source_file": "WebCrawler-ErrorCodes.xlsx",
+          "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5"
+        }
+      ],
+      "source_record_count": 36,
+      "normalized_record_count": 36,
+      "unresolved_record_count": 0,
+      "code_observation_count": 13,
+      "groups": [
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v1/ConfigBasic",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 5,
+          "distinct_request_count": 5,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/ConfigBasic"
+              ],
+              "access_check_actions": [
+                "v1/ConfigBasic"
+              ],
+              "distinct_request_count": 5,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v1/LoginByOTP",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByOTP"
+              ],
+              "access_check_actions": [
+                "v1/LoginByOTP"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v1/LoginByUserCredential",
+          "code": "GR0054",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "failure",
+          "recorded_symbol": "IsNotValidUserCredential",
+          "observed_event_count": 4,
+          "distinct_request_count": 4,
+          "codebook_candidate_state": "single_code_and_symbol_candidate",
+          "codebook_candidates": [
+            {
+              "code_system": "Pishkhan24",
+              "source_file": "Pishkhan24-ErrorCodes.xlsx",
+              "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2",
+              "source_sheet": "Sheet1",
+              "source_row": 55,
+              "definition_state": "complete_definition",
+              "technical_symbol": "IsNotValidUserCredential",
+              "symbol_matches_observation": true,
+              "operation_binding_state": "not_established_by_workbook"
+            }
+          ],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByUserCredential"
+              ],
+              "access_check_actions": [
+                "v1/LoginByUserCredential"
+              ],
+              "distinct_request_count": 4,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v2/DeviceRegister",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v2/DeviceRegister"
+              ],
+              "access_check_actions": [
+                "v2/DeviceRegister"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "provider",
+          "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByOTP"
+              ],
+              "access_check_actions": [
+                "v1/LoginByOTP"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "provider",
+          "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+          "code": "G00000",
+          "evidence_layer": "provider_body",
+          "recorded_outcome": "unknown",
+          "recorded_symbol": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByOTP"
+              ],
+              "access_check_actions": [
+                "v1/LoginByOTP"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        }
+      ],
+      "group_count": 6,
+      "code_systems_globally_assumed": false,
+      "raw_request_ids_ips_sessions_parameters_or_payloads_exported": false
+    },
+    {
+      "version": "p24-observed-code-operation-candidate.1",
+      "locator": "provider_ping.sanitized.json",
+      "source_sha256": "5d11099eaa6f98791d235b0eb9dd6f2b8558f8158ab7971009b1856b9ebc0b1c",
+      "code_catalog_content_sha256": "3955fe83fc0d9924d20a6a26ffe886089c2e571e16de9086cdc8c89a70d890aa",
+      "code_catalog_source_files": [
+        {
+          "code_system": "CarAnnualTax",
+          "source_file": "CarAnnualTax-ErrorCodes.xlsx",
+          "source_sha256": "c33ed1a79e9f22885d886a921ee57c99a76e8b29c36789915a157264a30ca879"
+        },
+        {
+          "code_system": "CarToll",
+          "source_file": "CarToll-ErrorCodes.xlsx",
+          "source_sha256": "9afd3951d0e0091fa3ce0064ee7c8bb912c8d89c762aab42ff365d3570bbf739"
+        },
+        {
+          "code_system": "NajiServices",
+          "source_file": "NajiServices-ErrorCodes.xlsx",
+          "source_sha256": "836ba069300f539e5ad60fe445a38827d3075b2e25864b6685e99372f093ced3"
+        },
+        {
+          "code_system": "PaymentGateway",
+          "source_file": "PaymentGateway-ErrorCodes.xlsx",
+          "source_sha256": "f53e070814a00238258a7f9fa8029927a07dfc31688f15bec6b531758df25152"
+        },
+        {
+          "code_system": "Pishkhan24",
+          "source_file": "Pishkhan24-ErrorCodes.xlsx",
+          "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2"
+        },
+        {
+          "code_system": "TehranMunicipality",
+          "source_file": "TehranMunicipality-ErrorCodes.xlsx",
+          "source_sha256": "494e3e48811937f590c0ac2531308c8049a682d97457fcb92483ff9c655c6bbd"
+        },
+        {
+          "code_system": "TopUp",
+          "source_file": "TopUp-ErrorCodes.xlsx",
+          "source_sha256": "9299ad3e339cb77ece746f6d46069aee26ec6924589a8733c8a1ae0804ae31c1"
+        },
+        {
+          "code_system": "WebCrawler",
+          "source_file": "WebCrawler-ErrorCodes.xlsx",
+          "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5"
+        }
+      ],
+      "source_record_count": 1,
+      "normalized_record_count": 1,
+      "unresolved_record_count": 0,
+      "code_observation_count": 1,
+      "groups": [
+        {
+          "operation_role": "provider",
+          "operation_callpath": "EwanoApi.Ping",
+          "code": "GR0010",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "unknown",
+          "recorded_symbol": "ServiceUnavailable",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "single_code_and_symbol_candidate",
+          "codebook_candidates": [
+            {
+              "code_system": "Pishkhan24",
+              "source_file": "Pishkhan24-ErrorCodes.xlsx",
+              "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2",
+              "source_sheet": "Sheet1",
+              "source_row": 11,
+              "definition_state": "complete_definition",
+              "technical_symbol": "ServiceUnavailable",
+              "symbol_matches_observation": true,
+              "operation_binding_state": "not_established_by_workbook"
+            }
+          ],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [],
+              "access_check_actions": [],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        }
+      ],
+      "group_count": 1,
+      "code_systems_globally_assumed": false,
+      "raw_request_ids_ips_sessions_parameters_or_payloads_exported": false
+    },
+    {
+      "version": "p24-observed-code-operation-candidate.1",
+      "locator": "registration.sanitized.json",
+      "source_sha256": "baf23894a1fb2d11963ed20a4e3a215577bb4e5648843555c905942f0fd66707",
+      "code_catalog_content_sha256": "3955fe83fc0d9924d20a6a26ffe886089c2e571e16de9086cdc8c89a70d890aa",
+      "code_catalog_source_files": [
+        {
+          "code_system": "CarAnnualTax",
+          "source_file": "CarAnnualTax-ErrorCodes.xlsx",
+          "source_sha256": "c33ed1a79e9f22885d886a921ee57c99a76e8b29c36789915a157264a30ca879"
+        },
+        {
+          "code_system": "CarToll",
+          "source_file": "CarToll-ErrorCodes.xlsx",
+          "source_sha256": "9afd3951d0e0091fa3ce0064ee7c8bb912c8d89c762aab42ff365d3570bbf739"
+        },
+        {
+          "code_system": "NajiServices",
+          "source_file": "NajiServices-ErrorCodes.xlsx",
+          "source_sha256": "836ba069300f539e5ad60fe445a38827d3075b2e25864b6685e99372f093ced3"
+        },
+        {
+          "code_system": "PaymentGateway",
+          "source_file": "PaymentGateway-ErrorCodes.xlsx",
+          "source_sha256": "f53e070814a00238258a7f9fa8029927a07dfc31688f15bec6b531758df25152"
+        },
+        {
+          "code_system": "Pishkhan24",
+          "source_file": "Pishkhan24-ErrorCodes.xlsx",
+          "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2"
+        },
+        {
+          "code_system": "TehranMunicipality",
+          "source_file": "TehranMunicipality-ErrorCodes.xlsx",
+          "source_sha256": "494e3e48811937f590c0ac2531308c8049a682d97457fcb92483ff9c655c6bbd"
+        },
+        {
+          "code_system": "TopUp",
+          "source_file": "TopUp-ErrorCodes.xlsx",
+          "source_sha256": "9299ad3e339cb77ece746f6d46069aee26ec6924589a8733c8a1ae0804ae31c1"
+        },
+        {
+          "code_system": "WebCrawler",
+          "source_file": "WebCrawler-ErrorCodes.xlsx",
+          "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5"
+        }
+      ],
+      "source_record_count": 6,
+      "normalized_record_count": 6,
+      "unresolved_record_count": 0,
+      "code_observation_count": 2,
+      "groups": [
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v1/DeviceRegister",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/DeviceRegister"
+              ],
+              "access_check_actions": [
+                "v1/DeviceRegister"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v2/DeviceRegister",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v2/DeviceRegister"
+              ],
+              "access_check_actions": [
+                "v2/DeviceRegister"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        }
+      ],
+      "group_count": 2,
+      "code_systems_globally_assumed": false,
+      "raw_request_ids_ips_sessions_parameters_or_payloads_exported": false
+    },
+    {
+      "version": "p24-observed-code-operation-candidate.1",
+      "locator": "session_activity.sanitized.json",
+      "source_sha256": "cf281cfe59736cd2e2abaf842aa85ac9e96ad22dbcba13a0664a324950b7d044",
+      "code_catalog_content_sha256": "3955fe83fc0d9924d20a6a26ffe886089c2e571e16de9086cdc8c89a70d890aa",
+      "code_catalog_source_files": [
+        {
+          "code_system": "CarAnnualTax",
+          "source_file": "CarAnnualTax-ErrorCodes.xlsx",
+          "source_sha256": "c33ed1a79e9f22885d886a921ee57c99a76e8b29c36789915a157264a30ca879"
+        },
+        {
+          "code_system": "CarToll",
+          "source_file": "CarToll-ErrorCodes.xlsx",
+          "source_sha256": "9afd3951d0e0091fa3ce0064ee7c8bb912c8d89c762aab42ff365d3570bbf739"
+        },
+        {
+          "code_system": "NajiServices",
+          "source_file": "NajiServices-ErrorCodes.xlsx",
+          "source_sha256": "836ba069300f539e5ad60fe445a38827d3075b2e25864b6685e99372f093ced3"
+        },
+        {
+          "code_system": "PaymentGateway",
+          "source_file": "PaymentGateway-ErrorCodes.xlsx",
+          "source_sha256": "f53e070814a00238258a7f9fa8029927a07dfc31688f15bec6b531758df25152"
+        },
+        {
+          "code_system": "Pishkhan24",
+          "source_file": "Pishkhan24-ErrorCodes.xlsx",
+          "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2"
+        },
+        {
+          "code_system": "TehranMunicipality",
+          "source_file": "TehranMunicipality-ErrorCodes.xlsx",
+          "source_sha256": "494e3e48811937f590c0ac2531308c8049a682d97457fcb92483ff9c655c6bbd"
+        },
+        {
+          "code_system": "TopUp",
+          "source_file": "TopUp-ErrorCodes.xlsx",
+          "source_sha256": "9299ad3e339cb77ece746f6d46069aee26ec6924589a8733c8a1ae0804ae31c1"
+        },
+        {
+          "code_system": "WebCrawler",
+          "source_file": "WebCrawler-ErrorCodes.xlsx",
+          "source_sha256": "559ee31240a6554076affa08cdc1763b5698da4669b191e422938b66660534b5"
+        }
+      ],
+      "source_record_count": 33,
+      "normalized_record_count": 33,
+      "unresolved_record_count": 0,
+      "code_observation_count": 12,
+      "groups": [
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v1/ConfigBasic",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 5,
+          "distinct_request_count": 5,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/ConfigBasic"
+              ],
+              "access_check_actions": [
+                "v1/ConfigBasic"
+              ],
+              "distinct_request_count": 5,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v1/LoginByOTP",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByOTP"
+              ],
+              "access_check_actions": [
+                "v1/LoginByOTP"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "client_http",
+          "operation_callpath": "Core.v1/LoginByUserCredential",
+          "code": "GR0054",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "failure",
+          "recorded_symbol": "IsNotValidUserCredential",
+          "observed_event_count": 4,
+          "distinct_request_count": 4,
+          "codebook_candidate_state": "single_code_and_symbol_candidate",
+          "codebook_candidates": [
+            {
+              "code_system": "Pishkhan24",
+              "source_file": "Pishkhan24-ErrorCodes.xlsx",
+              "source_sha256": "b1b0a24ee625418b4d056461d29d3a6ace769544ab84e00fc8666631a1242aa2",
+              "source_sheet": "Sheet1",
+              "source_row": 55,
+              "definition_state": "complete_definition",
+              "technical_symbol": "IsNotValidUserCredential",
+              "symbol_matches_observation": true,
+              "operation_binding_state": "not_established_by_workbook"
+            }
+          ],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByUserCredential"
+              ],
+              "access_check_actions": [
+                "v1/LoginByUserCredential"
+              ],
+              "distinct_request_count": 4,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "provider",
+          "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+          "code": "G00000",
+          "evidence_layer": "platform_log",
+          "recorded_outcome": "success",
+          "recorded_symbol": "successful",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByOTP"
+              ],
+              "access_check_actions": [
+                "v1/LoginByOTP"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        },
+        {
+          "operation_role": "provider",
+          "operation_callpath": "ClientAyanCoMessage.SendShortMessage",
+          "code": "G00000",
+          "evidence_layer": "provider_body",
+          "recorded_outcome": "unknown",
+          "recorded_symbol": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "codebook_candidate_state": "no_literal_codebook_entry",
+          "codebook_candidates": [],
+          "same_request_contexts": [
+            {
+              "client_http_endpoints": [
+                "Core.v1/LoginByOTP"
+              ],
+              "access_check_actions": [
+                "v1/LoginByOTP"
+              ],
+              "distinct_request_count": 1,
+              "link_state": "same_request_co_observation_candidate"
+            }
+          ],
+          "semantic_authority": "unverified_candidate",
+          "operation_binding_proven": "no"
+        }
+      ],
+      "group_count": 5,
+      "code_systems_globally_assumed": false,
+      "raw_request_ids_ips_sessions_parameters_or_payloads_exported": false
+    }
+  ]
+}

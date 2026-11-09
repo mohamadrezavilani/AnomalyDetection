@@ -1,0 +1,24 @@
+{% if contract_card.identifiers or contract_card.observations or contract_card.edges %}
+<section class="panel compact">
+  <h2>شواهد قرارداد ارتباط پرداخت — R5</h2>
+  <p class="scope-note">این بخش شواهد واقعی همان RequestID را نشان می‌دهد. هیچ PaymentKey برابر با اجرای مستقل یا برداشت مالی فرض نمی‌شود. کانال انتخابی کاربر، مسیر سرویس‌دهنده، منبع پول مشتری و نتیجه مالی مستقل‌اند. مقادیر زیر گزارش مشاهده‌شده‌اند، نه گواه تسویه بانکی.</p>
+  <p>روش انتخابی کاربر: <strong>{{contract_card.method_axes.user_selected_channel}}</strong> · مسیر اجرا: <strong>{{contract_card.method_axes.execution_route}}</strong> · منبع وجه کاربر: <strong>{{contract_card.method_axes.customer_funds_source}}</strong> · تأیید مالی طبق قرارداد: <strong>{{contract_card.financial_confirmation}}</strong></p>
+  {% if contract_card.observations %}
+  <h3>مشاهدات وضعیت، به تفکیک محور</h3>
+  <div class="table-scroll"><table><thead><tr><th>محور</th><th>گزارش</th><th>منشأ</th><th>شاهد خام</th></tr></thead><tbody>
+  {% for x in contract_card.observations %}<tr><td dir="ltr">{{x.axis}}</td><td dir="ltr">{{x.value}}</td><td dir="ltr">{{x.field_path}} · {{x.callpath}}</td><td><a href="{{url_for('raw_evidence',origin=x.origin_key,version=x.version_key)}}">مشاهده ←</a></td></tr>{% endfor %}
+  </tbody></table></div>
+  {% endif %}
+  {% if contract_card.identifiers %}
+  <h3>شناسه‌های نوع‌دار و دامنه آنها</h3>
+  <div class="table-scroll"><table><thead><tr><th>صادرکننده و نوع</th><th>مقدار</th><th>مسیر</th><th>شاهد</th></tr></thead><tbody>
+  {% for x in contract_card.identifiers %}<tr><td dir="ltr">{{x.issuer}} / {{x.kind}}{% if x.scope %} / {{x.scope}}{% endif %}</td><td dir="ltr">{{x.raw_value}}</td><td dir="ltr">{{x.field_path}}</td><td><a href="{{url_for('raw_evidence',origin=x.origin_key,version=x.version_key)}}">خام ←</a></td></tr>{% endfor %}
+  </tbody></table></div>
+  {% endif %}
+  {% if contract_card.related_requests %}<h3>درخواست‌های دارای مرجع نوع‌دار مشترک</h3><p class="scope-note">اشتراک فاکتور یا شیء پرداخت به معنی یکی‌بودن اجرای پرداخت، برداشت دوباره، یا موفقیت مالی نیست.</p>{% for x in contract_card.related_requests %}<p><span dir="ltr">{{x.relation}} — {{x.root_call or 'root unknown'}}</span> · <a href="{{url_for('request_view',key=x.request_key)}}">درخواست مرتبط ←</a></p>{% endfor %}{% endif %}
+  {% if contract_card.edges %}<h3>روابطِ دارای شاهد</h3>
+  {% for x in contract_card.edges %}<p><span dir="ltr">{{x.relation_type}} · {{x.scope}}</span> — درجه شاهد {{x.confidence}} / {{x.eligibility}} · <a href="{{url_for('raw_evidence',origin=x.evidence_origin,version=x.evidence_version)}}">ردیف مستند ←</a></p>{% endfor %}
+  {% endif %}
+  <p class="scope-note">عدم مشاهدهٔ نتیجه به معنی شکست نیست. Paid نزد Provider، Finalized سفارش و ثبت برداشت کیف پول سه محور مستقل‌اند. تنها وجود مانده/شناسهٔ سبد نیز اثبات برداشت یا manifest کامل نمی‌کند.</p>
+</section>
+{% endif %}

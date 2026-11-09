@@ -1,0 +1,5 @@
+{% extends 'viewer_base.html' %}{% block body %}
+<section class="page-heading"><h1>رکورد کامل Elasticsearch</h1><p>محتوای بدون ماسک از دیتابیس محلی؛ شامل ورودی، خروجی و تمام فیلدهای لاگ</p></section>
+{% if observed_time is defined %}<p>زمان رخداد در تهران: <bdi>{{observed_time}}</bdi> · متن اصلی رکورد در پایین بدون تغییر نگهداری شده است.</p>{% endif %}
+<section class="panel" style="padding:24px"><pre dir="ltr" style="white-space:pre-wrap;overflow-wrap:anywhere;text-align:left;font-size:13px">{{raw}}</pre></section>
+{% endblock %}

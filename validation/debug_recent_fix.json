@@ -1,0 +1,121 @@
+{
+  "status": "OFFLINE_PASS_OWNER_ONE_WINDOW_AND_REAL_UI_PENDING",
+  "created_utc": "2026-10-28T11:07:38.522062+00:00",
+  "runtime_source_sha256": "e945a4f68f48f10e422dfdd90544df028dc3b8648b03fe0fe0c68e64a543dfee",
+  "parent_runtime_source_sha256": "4909540be9b597e26379e8e5aa1b62cfc9503876d56dc59a77a484ddf8ee3920",
+  "owner_authorization": "2026-10-28 explicit request: every debug program launch starts near now or one window back",
+  "debug_start": {
+    "default_for_existing_config": true,
+    "entry_points": [
+      "Start_Viewer.cmd",
+      "tools/viewer.ps1 -Action Start",
+      "tools/viewer.ps1 -Action Worker",
+      "run_behavior_viewer.py live"
+    ],
+    "selection": "floor((now - configured lag) / 5min) * 5min - 5min; latest eligible fully closed window",
+    "per_process_only": true,
+    "retry_same_checkpoint": true,
+    "never_rewinds": true,
+    "skipped_history": "append-only viewer_live_resumes receipt, atomic with forward cursor seek",
+    "retained_raw_roles_keys_request_session_relationships": "preserved",
+    "original_live_start_and_stream_binding": "unchanged",
+    "publication_generation": "not advanced by startup seek; only real publications advance it",
+    "opt_out": "Start_Viewer.cmd -ResumeCheckpoint or LIVE.debug_recent_start=False",
+    "one_shot_and_manual_recheck": "checkpoint preserved by default"
+  },
+  "projection_fix": {
+    "status": "OFFLINE_PASS_NATIVE_NOT_RUN",
+    "changes": [
+      "batch root-conflict evidence query replaces per-RequestID SQL loop; exact path/code comparison retained",
+      "bounded scalar count of global competing versions retains even cross-request conflicts",
+      "access-session link assertions probed by exact origin/version index",
+      "incremental payment index uses per-request lateral lookup including retained old-window links",
+      "payment outcome link lookup bounded by scoped event origin/version",
+      "separate timed progress for roots, access assertions, roles, payment index and outcomes"
+    ],
+    "native_speed": "NOT_RUN",
+    "exact_previous_wait_cause": "NOT_OBSERVED",
+    "database_schema_or_global_settings_changed": false,
+    "timeouts_increased": false,
+    "conflict_checks_removed": false
+  },
+  "tests": {
+    "status": "PASS",
+    "tests": 372,
+    "passed": 372,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "failure_ids": [],
+    "error_ids": [],
+    "elapsed_seconds": 11.305,
+    "python": "3.12.14",
+    "executed_at_utc": "2026-10-28T11:02:29.603981+00:00",
+    "mode": "viewer_offline_regressions",
+    "runtime_source_sha256": "e945a4f68f48f10e422dfdd90544df028dc3b8648b03fe0fe0c68e64a543dfee",
+    "owner_postgresql": "NOT_RUN",
+    "live_elasticsearch": "NOT_RUN"
+  },
+  "real_sample_replay": {
+    "status": "PASS",
+    "runtime_source_sha256": "e945a4f68f48f10e422dfdd90544df028dc3b8648b03fe0fe0c68e64a543dfee",
+    "mode": "574 supplied Kibana records on SQLite; not native or complete-window capture",
+    "protected_evidence_and_roles_unchanged": true,
+    "parent_projection_unchanged": true,
+    "incremental_equals_full": true,
+    "journeys_unchanged": true,
+    "rendered_pages": 10,
+    "original_service_behaviors": 5,
+    "standalone_payment_behaviors": 0,
+    "cases": [
+      {
+        "api": "Services.v1/CellPhoneBills",
+        "invoices": 1,
+        "bills": 1,
+        "inquiry_payments": 0,
+        "bill_payments": 1
+      },
+      {
+        "api": "Services.v1/ElectricBills",
+        "invoices": 1,
+        "bills": 1,
+        "inquiry_payments": 0,
+        "bill_payments": 1
+      },
+      {
+        "api": "Services.v1/MunicipalityCarTollBills",
+        "invoices": 1,
+        "bills": 3,
+        "inquiry_payments": 0,
+        "bill_payments": 1
+      },
+      {
+        "api": "Services.v1/TrafficFinesCarNoDetails",
+        "invoices": 1,
+        "bills": 1,
+        "inquiry_payments": 1,
+        "bill_payments": 1
+      },
+      {
+        "api": "Services.v1/WaterBills",
+        "invoices": 1,
+        "bills": 1,
+        "inquiry_payments": 0,
+        "bill_payments": 0
+      }
+    ],
+    "elapsed_seconds": 0.609
+  },
+  "native_parent_payment_qualification": {
+    "status": "PASS_9_CHECKS_ON_PARENT_RUNTIME_ONLY",
+    "runtime_source_sha256": "4909540be9b597e26379e8e5aa1b62cfc9503876d56dc59a77a484ddf8ee3920"
+  },
+  "private_cancelled_recovery_cluster": "ALREADY_STOPPED_PIDFILE_ABSENT_OWNER_PROBE",
+  "capacity_and_long_stability": "NOT_RUN_OUT_OF_CURRENT_SCOPE_BY_OWNER",
+  "pending": [
+    "one normal current-window publication with separated progress",
+    "one fresh real service/payment chain and visual review"
+  ],
+  "old_test_in_skipped_history": "not silently imported or marked complete; retained captures can be explicitly rechecked later",
+  "source_owner_data_included": false
+}

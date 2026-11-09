@@ -1,0 +1,45 @@
+{
+  "mode": "synthetic_sqlite_semantic_bootstrap",
+  "native_postgresql": "NOT_RUN",
+  "live_elasticsearch": "NOT_RUN",
+  "operational_capacity": "NOT_QUALIFIED",
+  "comparisons": [
+    {
+      "candidates": 10000,
+      "before": {
+        "seconds": 0.394,
+        "candidates": 10000,
+        "heads": 5000
+      },
+      "after": {
+        "seconds": 0.263,
+        "candidates": 10000,
+        "heads": 5000
+      },
+      "projections_equal": true
+    },
+    {
+      "candidates": 40000,
+      "before": {
+        "seconds": 2.63,
+        "candidates": 40000,
+        "heads": 5000
+      },
+      "after": {
+        "seconds": 1.6,
+        "candidates": 40000,
+        "heads": 5000
+      },
+      "projections_equal": true
+    },
+    {
+      "candidates": 500000,
+      "after": {
+        "seconds": 21.934,
+        "candidates": 500000,
+        "heads": 5000
+      }
+    }
+  ],
+  "status": "PASS"
+}

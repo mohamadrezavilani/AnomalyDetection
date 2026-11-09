@@ -1,0 +1,318 @@
+{
+  "mode": "offline_differential_real_archived_windows",
+  "status": "PASS",
+  "runtime_source_sha256": "1f77dbfa5d700cb614eb8af116a1184aafc540222ae5fb89883f3344d30b81f0",
+  "windows": [
+    {
+      "mode": "forward",
+      "filename": "logs_20261024_041500.json.gz",
+      "legacy_seconds": 10.631,
+      "finalized_seconds": 10.911,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": []
+    },
+    {
+      "mode": "forward",
+      "filename": "logs_20261024_042000.json.gz",
+      "legacy_seconds": 12.437,
+      "finalized_seconds": 12.94,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": [
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_requests",
+          "deleted_rows": 0,
+          "written_rows": 8554,
+          "seconds": 0.046
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_actions",
+          "deleted_rows": 0,
+          "written_rows": 8543,
+          "seconds": 0.037
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_action_history",
+          "deleted_rows": 0,
+          "written_rows": 21,
+          "seconds": 0.001
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_identifiers",
+          "deleted_rows": 0,
+          "written_rows": 9895,
+          "seconds": 0.081
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_observations",
+          "deleted_rows": 0,
+          "written_rows": 701,
+          "seconds": 0.004
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_edges",
+          "deleted_rows": 0,
+          "written_rows": 9717,
+          "seconds": 0.097
+        }
+      ]
+    },
+    {
+      "mode": "forward",
+      "filename": "logs_20261024_042500.json.gz",
+      "legacy_seconds": 12.166,
+      "finalized_seconds": 12.38,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": [
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_requests",
+          "deleted_rows": 0,
+          "written_rows": 8435,
+          "seconds": 0.051
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_actions",
+          "deleted_rows": 0,
+          "written_rows": 8423,
+          "seconds": 0.034
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_action_history",
+          "deleted_rows": 0,
+          "written_rows": 14,
+          "seconds": 0.001
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_identifiers",
+          "deleted_rows": 0,
+          "written_rows": 9800,
+          "seconds": 0.076
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_observations",
+          "deleted_rows": 0,
+          "written_rows": 631,
+          "seconds": 0.004
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_edges",
+          "deleted_rows": 0,
+          "written_rows": 9657,
+          "seconds": 0.107
+        }
+      ]
+    },
+    {
+      "mode": "forward",
+      "filename": "logs_20261024_043000.json.gz",
+      "legacy_seconds": 16.457,
+      "finalized_seconds": 14.644,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": [
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_requests",
+          "deleted_rows": 0,
+          "written_rows": 9796,
+          "seconds": 0.063
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_actions",
+          "deleted_rows": 0,
+          "written_rows": 9778,
+          "seconds": 0.049
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_action_history",
+          "deleted_rows": 0,
+          "written_rows": 15,
+          "seconds": 0.001
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_identifiers",
+          "deleted_rows": 0,
+          "written_rows": 11409,
+          "seconds": 0.113
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_observations",
+          "deleted_rows": 0,
+          "written_rows": 726,
+          "seconds": 0.005
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_edges",
+          "deleted_rows": 0,
+          "written_rows": 11215,
+          "seconds": 0.149
+        }
+      ]
+    },
+    {
+      "mode": "forward",
+      "filename": "logs_20261024_043500.json.gz",
+      "legacy_seconds": 18.073,
+      "finalized_seconds": 15.806,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": [
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_requests",
+          "deleted_rows": 0,
+          "written_rows": 9892,
+          "seconds": 0.071
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_actions",
+          "deleted_rows": 0,
+          "written_rows": 9878,
+          "seconds": 0.055
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_action_history",
+          "deleted_rows": 0,
+          "written_rows": 28,
+          "seconds": 0.002
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_identifiers",
+          "deleted_rows": 0,
+          "written_rows": 11453,
+          "seconds": 0.135
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_observations",
+          "deleted_rows": 0,
+          "written_rows": 845,
+          "seconds": 0.005
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_edges",
+          "deleted_rows": 0,
+          "written_rows": 11247,
+          "seconds": 0.167
+        }
+      ]
+    },
+    {
+      "mode": "forward",
+      "filename": "logs_20261024_044000.json.gz",
+      "legacy_seconds": 18.653,
+      "finalized_seconds": 17.958,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": [
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_requests",
+          "deleted_rows": 0,
+          "written_rows": 10749,
+          "seconds": 0.082
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_actions",
+          "deleted_rows": 0,
+          "written_rows": 10731,
+          "seconds": 0.063
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_action_history",
+          "deleted_rows": 0,
+          "written_rows": 13,
+          "seconds": 0.002
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_identifiers",
+          "deleted_rows": 0,
+          "written_rows": 12090,
+          "seconds": 0.158
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_observations",
+          "deleted_rows": 0,
+          "written_rows": 841,
+          "seconds": 0.011
+        },
+        {
+          "stage": "projection_publish_complete",
+          "table": "viewer_contract_edges",
+          "deleted_rows": 0,
+          "written_rows": 11879,
+          "seconds": 0.222
+        }
+      ]
+    },
+    {
+      "mode": "recheck",
+      "filename": "logs_20261024_044000.json.gz",
+      "legacy_seconds": 0.952,
+      "finalized_seconds": 0.824,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": []
+    },
+    {
+      "mode": "recheck",
+      "filename": "logs_20261024_041500.json.gz",
+      "legacy_seconds": 0.5,
+      "finalized_seconds": 0.503,
+      "all_projections_equal": true,
+      "all_evidence_equal": true,
+      "projection_final_writes": []
+    }
+  ],
+  "native_postgresql": "NOT_RUN",
+  "owner_throughput": "NOT_RUN",
+  "final_evidence": {
+    "viewer_events": {
+      "rows": 248351,
+      "sha256": "48be1042d17510769738affe9aeed9582f778e746661a4d40c7d4a30b848271e"
+    },
+    "viewer_links": {
+      "rows": 148086,
+      "sha256": "b83f8a15774b26be84d3b994ecfc346c71629a77bb595619b58299d203542904"
+    },
+    "viewer_raw_events": {
+      "rows": 248351,
+      "sha256": "a53704bcc1dd25e479f8708c5b63c7bdd2b30a79fc95bc24d8cd0846cb6de12d"
+    },
+    "viewer_event_captures": {
+      "rows": 248351,
+      "sha256": "93c049d27eff8024bee430425a904a660b74d560414c4cb211feec7a54e1d2a6"
+    },
+    "viewer_capture_projections": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

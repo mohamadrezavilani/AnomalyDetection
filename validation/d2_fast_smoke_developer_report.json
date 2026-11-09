@@ -1,0 +1,46 @@
+{
+  "project": "LogManagment",
+  "stage": "D2_FAST_SMOKE_CANDIDATE",
+  "date": "2026-10-27",
+  "native_d1_observed": "PASS_NATIVE_SINGLE_WINDOW_ONLY",
+  "native_d2_smoke": "AWAITING_OWNER",
+  "native_full_acceptance": "NOT_RUN",
+  "scope": {
+    "windows": 2,
+    "rechecks": 0,
+    "database_reconnect": true,
+    "full_process_restart": false,
+    "http_probes": true,
+    "enforced_cycle_budget_seconds": 300,
+    "overall_smoke_cap_minutes": 12
+  },
+  "changes": [
+    "tools/run_viewer_pilot.py: opt-in smoke args, no full gate modification",
+    "p24_foundation/viewer_acceptance.py: separate development_smoke checks",
+    "tests/test_viewer_dev_smoke.py: new checks",
+    "documentation + summarized owner evidence + release manifest"
+  ],
+  "unchanged": [
+    "DB schema",
+    "ingest/request aggregation",
+    "SessionID/RequestID stitching",
+    "manual roles",
+    "payment links",
+    "conflict guards",
+    "LIVE_START_UTC",
+    "private config/keys",
+    "full six-window acceptance criteria",
+    "live collector and anomaly components"
+  ],
+  "local_unit_tests": {
+    "status": "PASS",
+    "count": 7,
+    "suite": "test_viewer_dev_smoke + test_viewer_d1_aggregate"
+  },
+  "native_integration_tests": {
+    "status": "NOT_RUN",
+    "reason": "No local Flask/Werkzeug/psycopg/PostgreSQL + live ES"
+  },
+  "capacity_800k_request_ids_per_hour": "NOT_PROVEN",
+  "owner_expected_output": "validation/d2_fast_smoke.json"
+}

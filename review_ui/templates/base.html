@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · پیشخوان۲۴</title>
+  <link rel="stylesheet" href="{{ url_for('static',filename='review.css') }}">
+</head>
+<body>
+<a class="skip" href="#main">رفتن به محتوا</a>
+<header class="topbar"><div class="shell topbar-inner">
+  <a class="brand" href="{{ url_for('journey',publication=p.publication) }}"><span class="brand-icon">۲۴</span><span>پیشخوان۲۴<small>بررسی رفتار و شواهد</small></span></a>
+  <span class="header-context">بررسی Session و درخواست‌ها</span>
+  <span class="mode-pill">{{ 'پیش‌نمایش' if mode=='demo' else 'بررسی شواهد انتخاب‌شده' }}</span>
+</div></header>
+<nav class="shell review-nav" aria-label="مسیرهای بررسی">
+ <a href="{{ url_for('journey',publication=p.publication) }}" {% if request.endpoint=='journey' or (request.endpoint=='request_detail' and p.origin=='session') %}aria-current="page"{% endif %}>فعالیت Session</a>
+ <a href="{{ url_for('registration_review',publication=p.publication) }}" {% if request.endpoint=='registration_review' or (request.endpoint=='request_detail' and p.origin=='registration') %}aria-current="page"{% endif %}>ارتباط ثبت دستگاه</a>
+ <a href="{{ url_for('services',publication=p.publication) }}" {% if request.endpoint in ['services','service_detail'] or (request.endpoint=='request_detail' and p.origin=='service') %}aria-current="page"{% endif %}>مرور Endpointها</a>
+ {% if mode=='demo' %}<a href="{{ url_for('workflow_review',publication=p.publication) }}" {% if request.endpoint=='workflow_review' %}aria-current="page"{% endif %}>بررسی منطق فرایند</a>{% endif %}
+ <a href="{{ url_for('incident_list',publication=p.publication) }}" {% if request.endpoint in ['incident_list','incident_detail','priority_form','priority_preview','priority_confirm','incident_review','submit_incident_review'] and p.origin!='investigation' %}aria-current="page"{% endif %}>پرونده‌های بررسی</a>
+ <a href="{{ url_for('investigation_queue',publication=p.publication) }}" {% if request.endpoint in ['investigation_queue','investigation_detail'] or p.origin=='investigation' %}aria-current="page"{% endif %}>گروه‌های بررسی</a>
+ <a href="{{ url_for('workflow_evidence',publication=p.publication) }}" {% if request.endpoint=='workflow_evidence' %}aria-current="page"{% endif %}>شواهد فرایند و تحویل</a>
+</nav>
+<main id="main" class="shell">
+{% if mode=='demo' %}<div class="demo-notice"><strong>محیط نمایشی</strong><span>داده‌های ناشناس‌سازی‌شده و ساختگی برای بررسی جریان کار؛ این صفحه وضعیت جاری سامانه را نشان نمی‌دهد.</span></div>{% endif %}
+{% block content %}{% endblock %}
+</main>
+<footer class="shell footer"><span>زمان‌ها به وقت تهران · تاریخ‌ها میلادی‌اند</span><span>نمایش شواهد، بدون تغییر حکم اپراتور</span></footer>
+</body></html>

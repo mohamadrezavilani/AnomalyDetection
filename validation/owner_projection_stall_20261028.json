@@ -1,0 +1,37 @@
+{
+  "status": "STOPPED_BY_OWNER_WITHOUT_WINDOW_PUBLICATION",
+  "runtime_source_sha256": "4909540be9b597e26379e8e5aa1b62cfc9503876d56dc59a77a484ddf8ee3920",
+  "window_start_utc": "2026-10-28T06:40:00+00:00",
+  "events": 131337,
+  "capture_seconds": 57.312,
+  "ingestion_completed_elapsed_seconds": 174.765,
+  "merge_seconds": 69.968,
+  "request_aggregate_seconds": 7.469,
+  "global_conflicts_seconds": 2.859,
+  "root_selection_seconds": 2.156,
+  "last_progress_stage": "rebuild_request_conflicts",
+  "stage_entered_elapsed_seconds": 196.515,
+  "last_reported_elapsed_seconds": 3093.625,
+  "unseparated_stage_duration_at_least_seconds": 2897.11,
+  "exact_sql_statement_and_wait_cause": "NOT_OBSERVED",
+  "subsequent_readonly_probe": {
+    "generation": 143,
+    "next_window_start_utc": "2026-10-28T06:40:00+00:00",
+    "backlog_windows": 49,
+    "worker_advisory_lock_held": true,
+    "private_recovery_cluster": "ALREADY_STOPPED_PIDFILE_ABSENT"
+  },
+  "diagnosis": {
+    "proven": "long interval between request-conflict and action progress markers",
+    "candidate_causes": [
+      "per-request conflict query round trips",
+      "planner history-wide anti-joins in conflict/access/payment-link work",
+      "SQL wait or blocking"
+    ],
+    "not_proven": [
+      "WAL as cause of this stall",
+      "which SQL statement stalled",
+      "native speed improvement in current build"
+    ]
+  }
+}

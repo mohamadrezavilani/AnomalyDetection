@@ -1,0 +1,25 @@
+{
+  "build_id": "AD-20261108-RELEASE",
+  "status": "PASS_CONTENT_NETWORK_SCENARIO_PIPELINE_SQL",
+  "checks": {
+    "same_bill20_is_reviewable_from_content_even_without_a_high_service_call_rate": "PASS_400_COMPARABLE_OTHER_ACTOR_COHORTS",
+    "replay_preserves_one_case_revision_and_20_unique_requests": "PASS",
+    "late_evidence_updates_original_case_without_an_extra_execution": "PASS",
+    "outdated_profile_result_cannot_commit_after_input_version_change": "PASS_INJECTED_INTERLEAVING_NOT_NATIVE_MULTI_CONNECTION_ISOLATION",
+    "scenario_summary_decision_drilldown_and_stable_case_render_in_read_only_snapshot": "PASS_HTML",
+    "same_schema_negative_result_with_success_code_creates_a_service_content_case": "PASS_FULL_OWNED_SQL_PATH",
+    "repeated_service_failure_windows_update_one_health_case_with_40_unique_requests": "PASS",
+    "fully_covered_zero_traffic_decrease_is_a_renderable_case_without_fabricated_requests": "PASS",
+    "source_adapter_fixture_uses_a_fully_digest_verified_pinned_runtime": "PASS_180_FILES",
+    "actual_viewer_raw_reader_and_parser_keep_same_bill_despite_trace_and_ip_changes": "PASS_DISPOSABLE_PG_SOURCE_FIXTURE",
+    "technical_registration_request_profile_does_not_require_a_business_anchor_or_load_sqlite": "PASS",
+    "root_request_census_is_atomic_and_technical_calls_do_not_create_semantic_facts": "PASS_FENCE_RESTART_AND_OWNED_QUEUE",
+    "anonymous_requests_keep_service_workflow_detection_without_inventing_a_user": "PASS_SOURCE_READER_QUEUE_SQL_AND_CASE",
+    "changed_technical_root_requeues_content_and_retracted_owner_scope_is_not_current": "PASS_HISTORICAL_CENSUS_REPLAY"
+  },
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "production_precision_recall_and_capacity": "NOT_MEASURED",
+  "source_modified": false,
+  "financial_acceptance": "BLOCKED_EXTERNAL_EVIDENCE_NOT_INFERRED"
+}

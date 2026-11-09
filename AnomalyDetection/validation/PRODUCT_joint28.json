@@ -1,0 +1,12 @@
+{
+  "status": "PASS_COORDINATED_UPGRADE_SEQUENCING",
+  "build_id": "AD-PRODUCT-20261107-28",
+  "environment": "LINUX_SELECTOR_AND_MOCKED_LIFECYCLE",
+  "windows_console_signal": "NOT_RUN",
+  "checks": {
+    "owned_project_worker_and_web_matching": "PASS",
+    "stop_requested_retries_but_unknown_failures_stop": "PASS",
+    "verify_stop_both_install_compact_start_both_observe": "PASS",
+    "restore_both_services_if_disk_preflight_blocks_deletion": "PASS"
+  }
+}

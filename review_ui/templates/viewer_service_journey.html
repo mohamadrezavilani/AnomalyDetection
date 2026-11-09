@@ -1,0 +1,58 @@
+<section class="panel">
+  <div class="section-heading"><h2>سفر خدمت — شواهد ارتباط درخواست‌ها (R6.2 / LC1B)</h2></div>
+  <p class="scope-note">هر RequestID یک اجرای مستقل است. اتصال‌ها تنها بر اساس شناسه نوع‌دارِ مشاهده‌شده هستند؛ اشتراک شناسه، اثبات پرداخت واحد، برداشت وجه، کلیک کاربر یا تسویه قطعی نیست.</p>
+  {% if service_journey.status=='no_explicit_peer_observed' %}<p class="scope-note">این وضعیت فقط به محدودهٔ این گراف نوع‌دار مربوط است. ارتباط قلم قبض در کارت جداگانهٔ «ارتباط این قلم قبض» بررسی می‌شود.</p>{% endif %}
+  <p>نقش درخواست: <strong>{{ service_journey.role }}</strong> · وضعیت: <strong>{{ service_journey.status }}</strong> · شناسهٔ خانوادهٔ پیشنهادی سورس: <span dir="ltr">{{ service_journey.catalog.get("family_id") or "unknown" }}</span> (فعال‌بودن تاریخی تأیید نشده) · قطعیت مالی: <strong>تأییدنشده</strong></p>
+  <p class="scope-note">طبقه‌بندی رفتار: <strong>{{service_journey.behavior_kind or 'unknown'}}</strong> · هویت درخواست فعلی: <strong>{{service_journey.anchor_kind or 'execution_only'}}</strong> · تعداد اقدامات انسانی: <strong>نامشخص</strong>. تعداد RequestID یا مراحل مرتبط، تعداد رفتار مشتری نیست.</p>
+  {% if service_journey.truncated %}<p class="inline-notice">این نمایش به سقف پیمایش رسیده و همه درخواست‌های احتمالی را پوشش نمی‌دهد: {{ (service_journey.truncation_reasons or [])|join(', ') }}.</p>{% endif %}
+  {% for caveat in service_journey.coverage_caveats or [] %}<p class="inline-notice">پیمایش در عمق مشخص متوقف شده است؛ وجود مراحل دیگری بیرون این محدوده تأیید یا رد نشده: <code>{{caveat}}</code>.</p>{% endfor %}
+  {% if service_journey.behavior_kind == 'product_purchase_journey_candidate' %}<p class="scope-note">شاهد رزرو محصول توسط Provider در این سفر ثبت شده؛ این طبقه‌بندی هنوز اثبات آغاز دستی خرید یا موفقیت تحویل نیست.</p>{% endif %}
+  {% for limitation in service_journey.limitations or [] %}{% if not (service_journey.coverage_caveats and limitation == 'bounded_traversal_or_timeline_cannot_prove_absence') %}<p class="inline-notice">پیوند تأییدنشده یا محدودیت مشاهده: <code>{{limitation}}</code>. ارتباطی از روی نشست/زمان/مبلغ ساخته نشده است.</p>{% endif %}{% endfor %}
+  <div class="table-scroll"><table><thead><tr><th>مرحله</th><th>RequestID</th><th>API مشاهده‌شده</th><th>نتیجه API</th><th>نقش و منشأ</th></tr></thead><tbody>
+  {% for step in service_journey.steps %}<tr>
+    <td>{{ 'درخواست جاری' if step.anchor else 'درخواست مرتبط' }}</td>
+    <td><a href="{{url_for('request_view',key=step.request_key)}}">باز کردن شواهد ←</a></td>
+    <td dir="ltr">{{step.api}}</td><td dir="ltr">{{step.api_code or 'unknown'}}</td>
+    <td>{{step.role}} · {{step.initiation}}</td>
+  </tr>{% else %}<tr><td colspan="5">مرحله‌ای یافت نشد.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <h3>هویت رفتارهای مشاهده‌شده</h3>
+  <p class="scope-note">درخواست بازشده فقط ورودی بررسی است؛ شناسهٔ رفتار از اجرای واقعی خدمت استخراج می‌شود. درخواست فنی مستقل، اقدام دستی جدید نمی‌سازد. چند رفتار با مرجع مشترک ادغام نمی‌شوند.</p>
+  <p>وضعیت هویت: <strong>{{service_journey.identity_status or 'unknown'}}</strong> · اجرای مشاهده‌شده خدمت: <strong>{{service_journey.observed_service_execution_count if service_journey.observed_service_execution_count is not none else 'نامشخص'}}</strong> · اجرای رزرو محصول: <strong>{{service_journey.observed_product_reservation_execution_count or 0}}</strong> · اجرای شارژ کیف پول: <strong>{{service_journey.observed_wallet_funding_execution_count or 0}}</strong> · تعداد اقدامات انسانیِ تأییدشده: <strong>نامشخص</strong></p>
+  {% if service_journey.resolved_occurrences %}
+    {% for item in service_journey.resolved_occurrences %}
+      <p>نوع رفتار: <code>{{item.kind}}</code> · شناسهٔ پایدار: <code dir="ltr">{{item.occurrence_key}}</code> · <a href="{{url_for('request_view',key=item.anchor_request_key)}}">شاهد اجرای خدمت ←</a></p>
+    {% endfor %}
+  {% else %}
+    <p class="scope-note">مرجع فنی موقت: <code dir="ltr">{{service_journey.provisional_reference or 'unknown'}}</code>؛ این مورد در شمارش رفتار مشتری لحاظ نمی‌شود.</p>
+  {% endif %}
+  <p class="scope-note">نسخه Resolver: {{service_journey.version}}؛ رابطه‌های ناقص با دادهٔ حدسی پر نمی‌شوند.</p>
+  {% if service_journey.bridge_diagnostics %}
+    <h3>تشخیص گسست ارتباطی (محدود به شواهد ثبت‌شده)</h3>
+    {% for gap in service_journey.bridge_diagnostics %}
+      <p><code>{{gap.name}}</code> — <strong>{{gap.status}}</strong> · منبع بررسی: <code>{{gap.scope}}</code> · دقت انتساب: {{gap.precision}} · انواع شواهد ایندکس‌شده: {{(gap.indexed_kinds or [])|join(", ") or "هیچ‌کدام"}} · انواع بدون شاهد در این مؤلفه: {{(gap.missing_indexed_kinds or [])|join(", ") or "هیچ‌کدام"}} · مسیر: {{gap.raw_stage}} → {{gap.parsed_stage}} → {{gap.indexed_stage}} → {{gap.edge_stage}} → {{gap.reachable_stage}}.</p>
+      {% for e in gap.evidence_refs[:4] %}<p class="scope-note">نوع: <code>{{e.kind}}</code> · فیلد: <code>{{e.field_path}}</code> · <a href="{{url_for('raw_evidence',origin=e.origin_key,version=e.version_key)}}">شاهد اصلی ←</a></p>{% endfor %}
+    {% endfor %}
+  {% endif %}
+  {% for rejection in service_journey.rejected_bindings or [] %}
+    <p class="inline-notice">رابطه نامعتبر: {{rejection.cause}}؛ از اتصال خودکار جلوگیری شد. <a href="{{url_for('raw_evidence',origin=rejection.evidence_origin,version=rejection.evidence_version)}}">شاهد ←</a></p>
+  {% endfor %}
+  {% if service_journey.timeline %}
+    <h3>تاریخچه مشاهدات در مراحل مرتبط</h3>
+    <p class="scope-note">نمای زمانی صرفاً از مشاهدات ثبت‌شده ساخته شده است؛ <code>Paid</code> نزد Provider، <code>Processing/Finalized</code> سفارش و ثبت/برداشت وجه محورهای متفاوت‌اند. هیچ وضعیت جدیدی حدس زده نشده است؛ ترتیب رخدادهای دارای زمان یکسان الزاماً ترتیب علّی نیست.</p>
+    <div class="table-scroll"><table><thead><tr><th>زمان تهران</th><th>محور</th><th>مقدار گزارش‌شده</th><th>منبع</th><th>شاهد</th></tr></thead><tbody>
+    {% for obs in service_journey.timeline %}<tr>
+      <td dir="ltr">{{obs.tehran_time}}</td>
+      <td dir="ltr">{{obs.axis}}</td><td dir="ltr">{{obs.value}}</td>
+      <td dir="ltr">{{obs.callpath}}</td>
+      <td><a href="{{url_for('raw_evidence',origin=obs.origin_key,version=obs.version_key)}}">خام ←</a> · <a href="{{url_for('request_view',key=obs.request_key)}}">RequestID ←</a></td>
+    </tr>{% endfor %}
+    </tbody></table></div>
+  {% else %}<p class="muted">هیچ مشاهده وضعیت در محدوده روابط بازیابی‌شده یافت نشد؛ این به معنی نبود نتیجه خدمت نیست.</p>{% endif %}
+  {% if service_journey.edges %}
+    <details><summary>روابط منطقی یکتا ({{service_journey.edges|length}} رابطه؛ رخدادهای خام در شواهد درخواست محفوظ‌اند)</summary>
+      {% for edge in service_journey.edges[:24] %}<p dir="ltr">{{edge.basis}} · {{edge.identity_key}} · <a href="{{url_for('request_view',key=edge.to_request_key)}}">{{edge.to_request_key}}</a> · {{edge.certainty}}</p>{% endfor %}
+      {% if service_journey.edges|length > 24 %}<p>ادامه روابط در این کارت نمایش داده نشده است.</p>{% endif %}
+    </details>
+  {% else %}<p class="muted">درخواست مرتبط دیگری با مرجع صریح در محدوده واکشی پیدا نشد؛ نبود اتصال، اثبات نبود پرداخت یا خدمت نیست.</p>{% endif %}
+</section>

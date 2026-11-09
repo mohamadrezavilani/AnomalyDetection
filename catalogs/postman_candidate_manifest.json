@@ -1,0 +1,43 @@
+{
+  "version": "p24-taxonomy-candidate.1",
+  "status": "unpublished_review_candidates",
+  "collections": [
+    {
+      "file_name": "Core.postman_collection.json",
+      "sha256": "f7bb3763a06dbeb0033a517edb22db4a99b0b3ca367ceaa33f146a9585221f44",
+      "request_items": 72
+    },
+    {
+      "file_name": "Ewano.postman_collection.json",
+      "sha256": "774c60d55855463718652a793250325f8fe8e4cf989576155363ada06998d02f",
+      "request_items": 4
+    },
+    {
+      "file_name": "Proxy.postman_collection.json",
+      "sha256": "ce401bc342a2ea9f26a601c87ec0b7fc385ef34f3185ae8ffd285b836c52bd90",
+      "request_items": 16
+    },
+    {
+      "file_name": "Public.postman_collection.json",
+      "sha256": "8386c283d7a5f3597ca593b15e309c111a0fcfd2a22710875f093b56fd141e12",
+      "request_items": 10
+    },
+    {
+      "file_name": "Services.postman_collection.json",
+      "sha256": "020c66bd2b3e2ca78eca0f81e6838c0c9806c301be3c6c049af1c6b7808c822d",
+      "request_items": 113
+    },
+    {
+      "file_name": "Webhook.postman_collection.json",
+      "sha256": "e5a4d2d5da0d6886262dd222d582d5fd701527537a26e518c45512fbee08a3fb",
+      "request_items": 4
+    }
+  ],
+  "request_items": 219,
+  "items_with_resolved_routes": 218,
+  "items_missing_or_redacted_route": 1,
+  "unique_method_route_pairs": 212,
+  "duplicate_method_route_groups": 6,
+  "semantic_fields_inferred": false,
+  "request_bodies_headers_auth_values_or_responses_exported": false
+}

@@ -1,0 +1,32 @@
+{
+  "mode": "RESUME_CHECKPOINT",
+  "runtime_source_sha256": "e132996f9f68f3b8f7ed899af27d1b8b98aa9caa9517f69e04869029f45f80c7",
+  "live": {
+    "status": "STALE",
+    "worker_status": "capturing",
+    "generation": 346,
+    "started_from_utc": "2026-09-30T20:30:00+00:00",
+    "continuous_published_to_utc": "2026-10-01T10:55:00+00:00",
+    "continuous_published_from_utc": "2026-09-30T20:30:00+00:00",
+    "last_complete_window_utc": "2026-10-01T10:55:00+00:00",
+    "last_publish_utc": "2026-11-09T14:05:23.381191+00:00",
+    "last_success_utc": "2026-11-09T14:05:23.381191+00:00",
+    "last_observed_event_utc": "2026-10-01T10:54:59.993717+00:00",
+    "backlog_windows": 11272,
+    "lag_seconds": 60,
+    "overlap_windows": 2,
+    "last_error": null,
+    "source_finality": "not_established",
+    "earlier_history": "not_claimed_complete",
+    "late_evidence_beyond_overlap": "manual_recheck_required",
+    "history_has_gaps": false,
+    "historical_gap_windows": 0,
+    "historical_gaps": [],
+    "history_resume_count": 0,
+    "recent_coverage_from_utc": null
+  },
+  "pid": 13572,
+  "started_at_utc": "2026-11-09T14:16:11.590644+00:00",
+  "started_at_tehran": "2026-11-09 17:46:11",
+  "selected_from_tehran": "2026-10-01 14:25:00"
+}

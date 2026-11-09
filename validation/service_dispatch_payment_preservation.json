@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "runtime_source_sha256": "36def3d36753b25d54d3640afcdb71304bc34f132c8150fb8802a6f36fc7bb0a",
+  "mode": "previous 574-record payment sample on SQLite; not native",
+  "payment_journeys_unchanged": true,
+  "logical_requests_actions_unchanged": true,
+  "raw_events": 574,
+  "detail_pages_rendered": 10,
+  "new_dispatch_identifiers_do_not_create_payment_or_session_relationships": true
+}

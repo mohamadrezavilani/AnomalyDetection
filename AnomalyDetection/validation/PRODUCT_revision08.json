@@ -1,0 +1,21 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "environment": "ISOLATED_POSTGRESQL_WASM",
+  "owner_connections": 0,
+  "checks": {
+    "fifty_observed_executions_abstain_without_fabricating_incident": "PASS",
+    "native_shape_cold_decision_visible_with_count_and_witness": "PASS_SQL_AND_HTML",
+    "forty_pending_executions_visible_without_any_write_or_evaluation": "PASS_SQL_AND_HTML",
+    "first_assessment_precedes_repeated_older_rechecks": "PASS",
+    "restart_preserves_uncommitted_dirty_job": "PASS",
+    "second_burst_not_forced_into_an_alert_with_only_eight_past_windows": "PASS",
+    "previous_newest_first_rule_can_continuously_defer_same_ready_target": "REPRODUCED",
+    "frozen_keyset_pass_cannot_be_overtaken_by_newer_windows": "PASS",
+    "historical_lane_keeps_all_ages_including_unready_windows": "PASS"
+  },
+  "native_windows_postgresql": "NOT_RUN",
+  "native_queue_latency": "NOT_MEASURED",
+  "detector_gates_lowered": false,
+  "native_precision_recall": "NOT_EVALUATED",
+  "status": "PASS_REVISION08"
+}

@@ -1,0 +1,628 @@
+{
+  "version": "p24-taxonomy-candidate.1",
+  "status": "unpublished_observed_candidates",
+  "sources": [
+    {
+      "file_name": "boundary.sanitized.json",
+      "sha256": "342edcd6d22a77d9411baba74d5d2c13f08bfc72c47b6bc0a986d26938840b80",
+      "unresolved_records": 0,
+      "callpath_groups": [
+        {
+          "source_role": "client_http",
+          "callpath": "Services.v3/ElectricBillsExport",
+          "method": "POST",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "provider",
+          "callpath": "ClientAyanCoInquiry.ElectricityBillInquiryGetBillImage",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequestResult",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequest",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_invoiceSettlementRequired",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_mobileVerificationReview",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_persistentCacheReadServiceData2",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_invoiceQueryInfo",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_queryInfo",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_invoiceInfo",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_invoiceBelongs",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_invoiceExists",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        }
+      ]
+    },
+    {
+      "file_name": "ip_activity.sanitized.json",
+      "sha256": "9207404f71bcc7978a2fc573376b82aba3bfa2b2a3401394f40cd81ccdc7afc8",
+      "unresolved_records": 0,
+      "callpath_groups": [
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v1/ConfigBasic",
+          "method": "POST",
+          "observed_event_count": 5,
+          "distinct_request_count": 5,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_configBadgeServices",
+          "method": null,
+          "observed_event_count": 5,
+          "distinct_request_count": 5,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess",
+          "method": null,
+          "observed_event_count": 11,
+          "distinct_request_count": 11,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v1/LoginByUserCredential",
+          "method": "POST",
+          "observed_event_count": 4,
+          "distinct_request_count": 4,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userCredentialValidate",
+          "method": null,
+          "observed_event_count": 4,
+          "distinct_request_count": 4,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_reasonExtraInfo",
+          "method": null,
+          "observed_event_count": 2,
+          "distinct_request_count": 2,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v1/LoginByOTP",
+          "method": "POST",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "provider",
+          "callpath": "ClientAyanCoMessage.SendShortMessage",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_oneTimePasswordGenerate",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v2/DeviceRegister",
+          "method": "POST",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userSessionCreate",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        }
+      ]
+    },
+    {
+      "file_name": "provider_ping.sanitized.json",
+      "sha256": "5d11099eaa6f98791d235b0eb9dd6f2b8558f8158ab7971009b1856b9ebc0b1c",
+      "unresolved_records": 0,
+      "callpath_groups": [
+        {
+          "source_role": "provider",
+          "callpath": "EwanoApi.Ping",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        }
+      ]
+    },
+    {
+      "file_name": "registration.sanitized.json",
+      "sha256": "baf23894a1fb2d11963ed20a4e3a215577bb4e5648843555c905942f0fd66707",
+      "unresolved_records": 0,
+      "callpath_groups": [
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v2/DeviceRegister",
+          "method": "POST",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userSessionCreate",
+          "method": null,
+          "observed_event_count": 2,
+          "distinct_request_count": 2,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess",
+          "method": null,
+          "observed_event_count": 2,
+          "distinct_request_count": 2,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v1/DeviceRegister",
+          "method": "POST",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        }
+      ]
+    },
+    {
+      "file_name": "session_activity.sanitized.json",
+      "sha256": "cf281cfe59736cd2e2abaf842aa85ac9e96ad22dbcba13a0664a324950b7d044",
+      "unresolved_records": 0,
+      "callpath_groups": [
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v1/ConfigBasic",
+          "method": "POST",
+          "observed_event_count": 5,
+          "distinct_request_count": 5,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_configBadgeServices",
+          "method": null,
+          "observed_event_count": 5,
+          "distinct_request_count": 5,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess",
+          "method": null,
+          "observed_event_count": 10,
+          "distinct_request_count": 10,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v1/LoginByUserCredential",
+          "method": "POST",
+          "observed_event_count": 4,
+          "distinct_request_count": 4,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_userCredentialValidate",
+          "method": null,
+          "observed_event_count": 4,
+          "distinct_request_count": 4,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_reasonExtraInfo",
+          "method": null,
+          "observed_event_count": 2,
+          "distinct_request_count": 2,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "client_http",
+          "callpath": "Core.v1/LoginByOTP",
+          "method": "POST",
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "client_completion"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "provider",
+          "callpath": "ClientAyanCoMessage.SendShortMessage",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        },
+        {
+          "source_role": "sql",
+          "callpath": "DBPath.pishkhan24.application.ud_prc_oneTimePasswordGenerate",
+          "method": null,
+          "observed_event_count": 1,
+          "distinct_request_count": 1,
+          "event_kinds": [
+            "operation_observation"
+          ],
+          "service_key": null,
+          "business_phase": "unknown",
+          "initiation": "unknown",
+          "security_class": "unknown",
+          "mapping_state": "candidate"
+        }
+      ]
+    }
+  ],
+  "semantic_classifications_inferred": false,
+  "session_ip_account_or_payload_values_exported": false
+}

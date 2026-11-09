@@ -1,0 +1,1337 @@
+{
+  "rawResponse": {
+    "timed_out": false,
+    "_shards": {
+      "total": 40,
+      "successful": 40,
+      "skipped": 39,
+      "failed": 0
+    },
+    "hits": {
+      "hits": [
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "8849WKEB9fbQWEofwd2I",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:44.101Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              454
+            ],
+            "Counter": [
+              103523657
+            ],
+            "RequestID": [
+              "30ac34bb-7f52-4a08-9c02-0d3f6f2af238"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              7.9544
+            ],
+            "CallPath": [
+              "Core.v1/ConfigBasic Line:153"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/ConfigBasic HTTP/1.1 (G00000 | successful)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "8c49WKEB9fbQWEofwd2I",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:44.101Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              454
+            ],
+            "Counter": [
+              103523655
+            ],
+            "RequestID": [
+              "30ac34bb-7f52-4a08-9c02-0d3f6f2af238"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.7872
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_configBadgeServices"
+            ],
+            "message": [
+              "(Command Text: ud_prc_configBadgeServices)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "7M49WKEB9fbQWEofwd2I",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:44.086Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              454
+            ],
+            "Counter": [
+              103523650
+            ],
+            "RequestID": [
+              "30ac34bb-7f52-4a08-9c02-0d3f6f2af238"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.8961
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/ConfigBasic @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "ps49WKEB9fbQWEofrZfu",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:38.382Z"
+            ],
+            "level": [
+              "Warn"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103521998
+            ],
+            "RequestID": [
+              "96314016-e679-435c-8c74-dbc270fa5d75"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              4.2959
+            ],
+            "CallPath": [
+              "Core.v1/LoginByUserCredential Line:99"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/LoginByUserCredential HTTP/1.1 (GR0054 | IsNotValidUserCredential)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "pc49WKEB9fbQWEofrZfu",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:38.382Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103521997
+            ],
+            "RequestID": [
+              "96314016-e679-435c-8c74-dbc270fa5d75"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.5809
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userCredentialValidate"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userCredentialValidate)(Code: 1)(Result: OK)(SQL Parameters: @type=Mobile @username=[REDACTED_VALUE] @password=[REDACTED_SECRET])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "o849WKEB9fbQWEofrZfu",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:38.382Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              333
+            ],
+            "Counter": [
+              103521995
+            ],
+            "RequestID": [
+              "96314016-e679-435c-8c74-dbc270fa5d75"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.836
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/LoginByUserCredential @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "Ps09WKEB9fbQWEofhs7L",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:24.944Z"
+            ],
+            "level": [
+              "Warn"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              241
+            ],
+            "Counter": [
+              103517734
+            ],
+            "RequestID": [
+              "d3dc0506-b268-4577-a3d3-c02f13b52ab5"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              4.3833
+            ],
+            "CallPath": [
+              "Core.v1/LoginByUserCredential Line:99"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/LoginByUserCredential HTTP/1.1 (GR0054 | IsNotValidUserCredential)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "Pc09WKEB9fbQWEofhs7L",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:24.944Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              241
+            ],
+            "Counter": [
+              103517733
+            ],
+            "RequestID": [
+              "d3dc0506-b268-4577-a3d3-c02f13b52ab5"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.5469
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userCredentialValidate"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userCredentialValidate)(Code: 1)(Result: OK)(SQL Parameters: @type=Mobile @username=[REDACTED_VALUE] @password=[REDACTED_SECRET])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "PM09WKEB9fbQWEofhs7L",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:24.944Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              241
+            ],
+            "Counter": [
+              103517732
+            ],
+            "RequestID": [
+              "d3dc0506-b268-4577-a3d3-c02f13b52ab5"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.9177
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/LoginByUserCredential @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "zMw9WKEB9fbQWEofOJiy",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:07.584Z"
+            ],
+            "level": [
+              "Warn"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              500
+            ],
+            "Counter": [
+              103512993
+            ],
+            "RequestID": [
+              "4d3c4f8e-4c8f-4acf-bd8a-a190c9030732"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              4.6496
+            ],
+            "CallPath": [
+              "Core.v1/LoginByUserCredential Line:99"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/LoginByUserCredential HTTP/1.1 (GR0054 | IsNotValidUserCredential)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "y8w9WKEB9fbQWEofOJiy",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:07.584Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              500
+            ],
+            "Counter": [
+              103512992
+            ],
+            "RequestID": [
+              "4d3c4f8e-4c8f-4acf-bd8a-a190c9030732"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.6968
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userCredentialValidate"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userCredentialValidate)(Code: 1)(Result: OK)(SQL Parameters: @type=Mobile @username=[REDACTED_VALUE] @password=[REDACTED_SECRET])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "xMw9WKEB9fbQWEofOJiy",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:36:07.584Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              500
+            ],
+            "Counter": [
+              103512985
+            ],
+            "RequestID": [
+              "4d3c4f8e-4c8f-4acf-bd8a-a190c9030732"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.9597
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/LoginByUserCredential @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "Lss8WKEB9fbQWEof_anZ",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:35:52.709Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              339
+            ],
+            "Counter": [
+              103508284
+            ],
+            "RequestID": [
+              "24e2429e-7de4-43a6-bb87-04df208318c5"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              1.0719
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_reasonExtraInfo"
+            ],
+            "message": [
+              "(Command Text: ud_prc_reasonExtraInfo)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002 @endpoint=[REDACTED_VALUE] @code=[REDACTED_VALUE] @name=[REDACTED_VALUE] @message=[REDACTED_VALUE] @language=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "LMs8WKEB9fbQWEof_anZ",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:35:52.709Z"
+            ],
+            "level": [
+              "Warn"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              339
+            ],
+            "Counter": [
+              103508282
+            ],
+            "RequestID": [
+              "24e2429e-7de4-43a6-bb87-04df208318c5"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              4.6302
+            ],
+            "CallPath": [
+              "Core.v1/LoginByUserCredential Line:99"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/LoginByUserCredential HTTP/1.1 (GR0054 | IsNotValidUserCredential)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "K8s8WKEB9fbQWEof_anZ",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:35:52.709Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              339
+            ],
+            "Counter": [
+              103508281
+            ],
+            "RequestID": [
+              "24e2429e-7de4-43a6-bb87-04df208318c5"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.743
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userCredentialValidate"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userCredentialValidate)(Code: 1)(Result: OK)(SQL Parameters: @type=Mobile @username=[REDACTED_VALUE] @password=[REDACTED_SECRET])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "Jcs8WKEB9fbQWEof_anZ",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:35:52.693Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              339
+            ],
+            "Counter": [
+              103508275
+            ],
+            "RequestID": [
+              "24e2429e-7de4-43a6-bb87-04df208318c5"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.8145
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/LoginByUserCredential @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "m8Y7WKEB9fbQWEofsQ3L",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:34:28.324Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              516
+            ],
+            "Counter": [
+              103483000
+            ],
+            "RequestID": [
+              "0887beb9-f50a-418e-b559-fa8ffce368a3"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              28.367
+            ],
+            "CallPath": [
+              "Core.v1/LoginByOTP Line:72"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/LoginByOTP HTTP/1.1 (G00000 | successful)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "msY7WKEB9fbQWEofsQ3L",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:34:28.324Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              516
+            ],
+            "Counter": [
+              103482999
+            ],
+            "RequestID": [
+              "0887beb9-f50a-418e-b559-fa8ffce368a3"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              19.6818
+            ],
+            "CallPath": [
+              "ClientAyanCoMessage.SendShortMessage Line:34"
+            ],
+            "message": [
+              "https://fixture.invalid/provider (G00000 | successful) Input:[{\"From\": \"[REDACTED_VALUE]\", \"To\": \"[REDACTED_VALUE]\", \"Text\": \"[REDACTED_VALUE]\"}] Output:[{\"Status\": {\"Code\": \"G00000\", \"Description\": \"درخواست با موفقیت انجام شد.\"}}]"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "k8Y7WKEB9fbQWEofsQ3L",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:34:28.308Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              516
+            ],
+            "Counter": [
+              103482992
+            ],
+            "RequestID": [
+              "0887beb9-f50a-418e-b559-fa8ffce368a3"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              2.8354
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_oneTimePasswordGenerate"
+            ],
+            "message": [
+              "(Command Text: ud_prc_oneTimePasswordGenerate)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002 @type=Login @receivertype=Mobile @receiveridentifier=[REDACTED_VALUE] @ipaddress=198.51.100.11)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "ksY7WKEB9fbQWEofsQ3L",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:34:28.292Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              516
+            ],
+            "Counter": [
+              103482991
+            ],
+            "RequestID": [
+              "0887beb9-f50a-418e-b559-fa8ffce368a3"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.8422
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/LoginByOTP @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "CMQ7WKEB9fbQWEofT4Ru",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:34:03.181Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              487
+            ],
+            "Counter": [
+              103476764
+            ],
+            "RequestID": [
+              "ba055b94-2439-452e-89f5-3e34cc0889a0"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              7.0407
+            ],
+            "CallPath": [
+              "Core.v1/ConfigBasic Line:153"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/ConfigBasic HTTP/1.1 (G00000 | successful)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "B8Q7WKEB9fbQWEofT4Ru",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:34:03.181Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              487
+            ],
+            "Counter": [
+              103476763
+            ],
+            "RequestID": [
+              "ba055b94-2439-452e-89f5-3e34cc0889a0"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.5885
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_configBadgeServices"
+            ],
+            "message": [
+              "(Command Text: ud_prc_configBadgeServices)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "BsQ7WKEB9fbQWEofT4Ru",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:34:03.181Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              487
+            ],
+            "Counter": [
+              103476762
+            ],
+            "RequestID": [
+              "ba055b94-2439-452e-89f5-3e34cc0889a0"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.8202
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/ConfigBasic @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "wsM7WKEB9fbQWEofFIaP",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:33:45.749Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              238
+            ],
+            "Counter": [
+              103471510
+            ],
+            "RequestID": [
+              "19a3568e-7225-45e7-9691-4a42f29bbd2b"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.5658
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_reasonExtraInfo"
+            ],
+            "message": [
+              "(Command Text: ud_prc_reasonExtraInfo)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002 @endpoint=[REDACTED_VALUE] @code=[REDACTED_VALUE] @name=[REDACTED_VALUE] @message=[REDACTED_VALUE] @language=[REDACTED_VALUE])"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "wcM7WKEB9fbQWEofFIaP",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:33:45.733Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              238
+            ],
+            "Counter": [
+              103471509
+            ],
+            "RequestID": [
+              "19a3568e-7225-45e7-9691-4a42f29bbd2b"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              7.0432
+            ],
+            "CallPath": [
+              "Core.v1/ConfigBasic Line:153"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/ConfigBasic HTTP/1.1 (G00000 | successful)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "wMM7WKEB9fbQWEofFIaP",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:33:45.733Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              238
+            ],
+            "Counter": [
+              103471508
+            ],
+            "RequestID": [
+              "19a3568e-7225-45e7-9691-4a42f29bbd2b"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.5605
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_configBadgeServices"
+            ],
+            "message": [
+              "(Command Text: ud_prc_configBadgeServices)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "v8M7WKEB9fbQWEofFIaP",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:33:45.733Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              238
+            ],
+            "Counter": [
+              103471507
+            ],
+            "RequestID": [
+              "19a3568e-7225-45e7-9691-4a42f29bbd2b"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.7762
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/ConfigBasic @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "rMI6WKEB9fbQWEof7e52",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:33:34.296Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              69
+            ],
+            "Counter": [
+              103468643
+            ],
+            "RequestID": [
+              "59c768b4-3052-484e-9312-59cdd6298edd"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              7.4448
+            ],
+            "CallPath": [
+              "Core.v1/ConfigBasic Line:153"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/ConfigBasic HTTP/1.1 (G00000 | successful)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "q8I6WKEB9fbQWEof7e52",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:33:34.296Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              69
+            ],
+            "Counter": [
+              103468642
+            ],
+            "RequestID": [
+              "59c768b4-3052-484e-9312-59cdd6298edd"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.6226
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_configBadgeServices"
+            ],
+            "message": [
+              "(Command Text: ud_prc_configBadgeServices)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "qsI6WKEB9fbQWEof7e52",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:33:34.296Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              69
+            ],
+            "Counter": [
+              103468641
+            ],
+            "RequestID": [
+              "59c768b4-3052-484e-9312-59cdd6298edd"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.8653
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/ConfigBasic @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 10; REDACTED_MODEL) AppleWebKit/537.36 Chrome/155.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "z682WKEB9fbQWEofHBg8",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:28:23.346Z"
+            ],
+            "level": [
+              "Info"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              363
+            ],
+            "Counter": [
+              103375416
+            ],
+            "RequestID": [
+              "65a78db4-5396-434e-a1bf-fbc4d16f2d57"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              7.4962
+            ],
+            "CallPath": [
+              "Core.v1/ConfigBasic Line:153"
+            ],
+            "message": [
+              "POST https://fixture.invalid/webservices/service.svc/v1/ConfigBasic HTTP/1.1 (G00000 | successful)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "zq82WKEB9fbQWEofHBg8",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:28:23.346Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              363
+            ],
+            "Counter": [
+              103375415
+            ],
+            "RequestID": [
+              "65a78db4-5396-434e-a1bf-fbc4d16f2d57"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.5755
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_configBadgeServices"
+            ],
+            "message": [
+              "(Command Text: ud_prc_configBadgeServices)(Code: 1)(Result: Ok)(SQL Parameters: @session=00000000000000000000000000000002)"
+            ]
+          }
+        },
+        {
+          "_index": "logs-pishkhan24-core-20261020",
+          "_id": "za82WKEB9fbQWEofHBg8",
+          "_version": 1,
+          "fields": {
+            "@timestamp": [
+              "2026-10-20T07:28:23.331Z"
+            ],
+            "level": [
+              "Debug"
+            ],
+            "ProcessID": [
+              7244
+            ],
+            "ThreadID": [
+              363
+            ],
+            "Counter": [
+              103375414
+            ],
+            "RequestID": [
+              "65a78db4-5396-434e-a1bf-fbc4d16f2d57"
+            ],
+            "IP": [
+              "198.51.100.11"
+            ],
+            "Session": [
+              "00000000000000000000000000000002"
+            ],
+            "ExecutionTime": [
+              0.841
+            ],
+            "CallPath": [
+              "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess"
+            ],
+            "message": [
+              "(Command Text: ud_prc_userSessionHasAccess)(Code: 1)(Result: OK)(SQL Parameters: @session=00000000000000000000000000000002 @action=v1/ConfigBasic @ipaddress=198.51.100.11 @useragent=Mozilla/5.0 (Linux; Android 12; REDACTED_MODEL) AppleWebKit/537.36 Chrome/103.0.0.0 Mobile Safari/537.36)"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "isPartial": false,
+  "isRunning": false
+}

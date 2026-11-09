@@ -1,0 +1,22 @@
+{
+  "build_id": "AD-PRODUCT-20261106-25",
+  "status": "PASS_REVIEW_QUERY_EQUIVALENCE_AND_HTTP_FAILURE_ISOLATION",
+  "checks": {
+    "every_case_readiness_currentness_selected_signal_and_feedback_match_release22": "PASS_EXACT_SQL_ROW_EQUALITY",
+    "group_lead_and_current_case_selection_are_read_in_one_query": "PASS_SQL",
+    "optional_evidence_count_timeout_keeps_current_issues_visible_and_unknown_counts_are_not_zero": "PASS_REAL_SQL57014_READ_ONLY_SAVEPOINT",
+    "incidents_service_user_and_case_views_and_status_succeed_as_actual_http_gets": "PASS_HTTP_NOT_BROWSER",
+    "sql_timeout_and_python_render_error_have_distinct_status_messages_and_safe_trace": "PASS_503_VS_500_EXACT_HANDLER_PATH"
+  },
+  "corpus": {},
+  "comparison_rows": 8,
+  "isolated_sql_seconds": {
+    "release22": 0.013746,
+    "release23": 0.013291
+  },
+  "owner_connections": 0,
+  "production_source_writes": 0,
+  "native_windows_postgresql23": "NOT_RUN",
+  "production_precision_recall_capacity": "NOT_MEASURED",
+  "browser_visual": "NOT_RUN"
+}

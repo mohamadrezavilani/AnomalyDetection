@@ -1,0 +1,131 @@
+{
+  "status": "FAILED_PRIVATE_CLUSTER_STOP",
+  "mode": "isolated_postgresql_server_crash_and_real_owner_backup_restore",
+  "run_id": "7dd2b1bb",
+  "runtime_source_sha256": "a9f5a0e19ef1df4a482004441cf56bc28aac2027db1f7ccf5ba3231129599575",
+  "checks": {
+    "preflight": {
+      "status": "PASS",
+      "owner_database_opened_read_only": true,
+      "installed_runtime_matches_native_pass": true
+    },
+    "server_crash_before_commit": {
+      "point": "before_commit",
+      "status": "PASS",
+      "all_application_tables_match": true,
+      "checkpoint_safe": true,
+      "automatic_recovery_log_observed": true,
+      "stop_and_recovery_seconds": 6.172
+    },
+    "server_crash_after_commit": {
+      "point": "after_commit",
+      "status": "PASS",
+      "all_application_tables_match": true,
+      "checkpoint_safe": true,
+      "automatic_recovery_log_observed": true,
+      "stop_and_recovery_seconds": 1.5
+    },
+    "postgresql_server_crash": {
+      "status": "PASS",
+      "cases": [
+        {
+          "point": "before_commit",
+          "status": "PASS",
+          "all_application_tables_match": true,
+          "checkpoint_safe": true,
+          "automatic_recovery_log_observed": true,
+          "stop_and_recovery_seconds": 6.172
+        },
+        {
+          "point": "after_commit",
+          "status": "PASS",
+          "all_application_tables_match": true,
+          "checkpoint_safe": true,
+          "automatic_recovery_log_observed": true,
+          "stop_and_recovery_seconds": 1.5
+        }
+      ],
+      "repeated_capture_idempotent": true,
+      "scope": "private_cluster_immediate_stop_not_power_loss_or_pitr"
+    },
+    "owner_actual_backup_restore": {
+      "status": "PASS",
+      "same_snapshot_backup_and_manifest": true,
+      "all_application_table_rows_and_definitions_match": true,
+      "table_count": 23,
+      "total_rows": 39091798,
+      "archive_bytes": 10385751068,
+      "dump_and_source_verification_seconds": 646.796,
+      "restore_command_seconds": 2009.172,
+      "scope": "new_logical_backup_in_separate_cluster_not_physical_pitr_or_formal_rpo_rto"
+    },
+    "restored_real_d5_readonly": {
+      "status": "PASS",
+      "three_real_entry_points": true,
+      "sql_evidence_pointer": true,
+      "three_local_flask_page_seconds": [
+        0.156,
+        0.094,
+        0.109
+      ],
+      "scope": "real_sample_readonly_not_browser_or_load_p95"
+    },
+    "restored_existing_capture_recheck": {
+      "status": "PASS",
+      "new_events": 0,
+      "forward_checkpoint_preserved": true,
+      "archived_capture_not_fresh_es_recheck": true
+    }
+  },
+  "owner_database_written_by_runner": false,
+  "owner_postgresql_restarted_or_tuned": false,
+  "capacity_800k_logical_requests_per_hour": "NOT_RUN",
+  "final_http_browser_sustained_run": "NOT_RUN",
+  "financial": "DEFERRED_BACKEND_LOGS_INCOMPLETE",
+  "all_backups_and_test_data_retained": true,
+  "stage": "stop_private_cluster",
+  "disk_preflight": {
+    "source_database_gib": 32.523,
+    "free_gib": 153.936,
+    "required_free_gib": 91.307
+  },
+  "server_version": "17.7",
+  "backup_checkpoint": {
+    "next_ns": 1793169600000000000,
+    "generation": 143
+  },
+  "stored_request_workload_observation": {
+    "status": "OBSERVED_NOT_CAPACITY_ACCEPTANCE",
+    "from_ns": 1793166000000000000,
+    "to_ns": 1793169600000000000,
+    "per_five_minutes": [
+      {
+        "from_ns": 1793167800000000000,
+        "logical_request_ids": 17594
+      },
+      {
+        "from_ns": 1793168100000000000,
+        "logical_request_ids": 16103
+      },
+      {
+        "from_ns": 1793168400000000000,
+        "logical_request_ids": 17667
+      },
+      {
+        "from_ns": 1793168700000000000,
+        "logical_request_ids": 26187
+      },
+      {
+        "from_ns": 1793169000000000000,
+        "logical_request_ids": 28785
+      },
+      {
+        "from_ns": 1793169300000000000,
+        "logical_request_ids": 30976
+      }
+    ],
+    "note": "stored_request_start_time_not_ingest_arrival_rate_or_target_workload"
+  },
+  "private_cluster_stopped": false,
+  "elapsed_seconds": 10721.891
+}

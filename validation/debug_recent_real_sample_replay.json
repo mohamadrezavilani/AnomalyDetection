@@ -1,0 +1,50 @@
+{
+  "status": "PASS",
+  "runtime_source_sha256": "e945a4f68f48f10e422dfdd90544df028dc3b8648b03fe0fe0c68e64a543dfee",
+  "mode": "574 supplied Kibana records on SQLite; not native or complete-window capture",
+  "protected_evidence_and_roles_unchanged": true,
+  "parent_projection_unchanged": true,
+  "incremental_equals_full": true,
+  "journeys_unchanged": true,
+  "rendered_pages": 10,
+  "original_service_behaviors": 5,
+  "standalone_payment_behaviors": 0,
+  "cases": [
+    {
+      "api": "Services.v1/CellPhoneBills",
+      "invoices": 1,
+      "bills": 1,
+      "inquiry_payments": 0,
+      "bill_payments": 1
+    },
+    {
+      "api": "Services.v1/ElectricBills",
+      "invoices": 1,
+      "bills": 1,
+      "inquiry_payments": 0,
+      "bill_payments": 1
+    },
+    {
+      "api": "Services.v1/MunicipalityCarTollBills",
+      "invoices": 1,
+      "bills": 3,
+      "inquiry_payments": 0,
+      "bill_payments": 1
+    },
+    {
+      "api": "Services.v1/TrafficFinesCarNoDetails",
+      "invoices": 1,
+      "bills": 1,
+      "inquiry_payments": 1,
+      "bill_payments": 1
+    },
+    {
+      "api": "Services.v1/WaterBills",
+      "invoices": 1,
+      "bills": 1,
+      "inquiry_payments": 0,
+      "bill_payments": 0
+    }
+  ],
+  "elapsed_seconds": 0.609
+}

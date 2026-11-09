@@ -1,0 +1,22 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+  "checks": {
+    "water_100_and_electric_20_can_be_rare_without_exceeding_three_times_maximum": "PASS_SYNTHETIC_REFERENCE",
+    "statistical_screen_without_request_evidence_never_promotes_review": "PASS",
+    "partial_audit_waits_then_complete_audit_gets_a_reserved_turn_and_review": "PASS",
+    "currency_and_gold_share_the_same_rank_and_evidence_policy": "PASS_SYNTHETIC_REFERENCE",
+    "old_small_audited_job_is_reachable_without_a_volume_threshold": "PASS",
+    "upgrade_evidence_backfill_is_finite_and_idempotent": "PASS",
+    "stale_revision_and_missing_identity_cannot_claim_evidence_readiness": "PASS",
+    "previously_evaluated_busy_target_is_not_excluded_from_backlog_lane": "PASS",
+    "tracked_cases_report_currentness_counts_evidence_and_rank_without_evaluation": "PASS_SELECT_ONLY",
+    "range_cursor_jumps_known_pruned_history_without_a_zero_or_replay": "PASS",
+    "explicit_pruned_target_remains_unavailable_and_old_summary_is_not_zeroed": "PASS",
+    "rank_policy_upgrade_rechecks_old_decisions_once_without_resetting_history": "PASS"
+  },
+  "owner_database_or_viewer_modified": false,
+  "native_windows": "NOT_RUN",
+  "reported_owner_cases_on_release11": "NOT_RUN_BEFORE_OWNER_INSTALL",
+  "precision_recall_and_capacity": "NOT_EVALUATED"
+}

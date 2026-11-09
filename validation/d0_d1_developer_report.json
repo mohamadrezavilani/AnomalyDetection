@@ -1,0 +1,89 @@
+{
+  "project": "LogManagment",
+  "package_status": "D1_NATIVE_PROBE_CANDIDATE_NOT_ACCEPTED",
+  "created_at_utc": "2026-10-27T06:51:12.940509+00:00",
+  "baseline_release_id": "p24-viewer-online-1-market-bulk-20261027",
+  "baseline_archive_sha256": "5c2e9432024ec08af70f186b4232e83d58905ab8c7f25934452b6bf7d1e684b8",
+  "baseline_runtime_sha256": "7eb96aac884f3fd9a02643e65f3ff69c8064bfbc3f0c99c437bb03c1636a4fdb",
+  "release_id": "p24-viewer-online-1-d1-aggregate-probe-20261027",
+  "runtime_source_sha256": "bc699845175b019cd312940cee59b49b82892dacc6cf23bfae9b1e0397e0d953",
+  "owner_failing_window": {
+    "start_utc": "2026-10-27T05:20:00Z",
+    "events": 71221,
+    "stage": "rebuild_requests_aggregate",
+    "elapsed_seconds": 360.125,
+    "sqlstate": "57014",
+    "native_timeout_unresolved": true
+  },
+  "scope": {
+    "updated_existing_code": [
+      "p24_foundation/viewer_data.py",
+      "tools/profile_viewer_window.py"
+    ],
+    "added_tools": [
+      "tools/diagnose_d0_d1_readonly.py",
+      "tools/qualify_d1_sqlite.py"
+    ],
+    "added_tests": [
+      "tests/test_viewer_d1_aggregate.py"
+    ],
+    "changes": [
+      "bound_first_incremental_aggregate_using_correlated_global_origin_cardinality",
+      "remove_redundant_scope_on_materialized_projection_events",
+      "probe_only_explain_without_analyze_legacy_and_candidate",
+      "read_only_d0_checkpoint_catalog_and_indexes_probe"
+    ],
+    "timeout_increased": false,
+    "conflict_control_removed": false,
+    "checkpoint_advanced_by_developer": false,
+    "private_credentials_included": false
+  },
+  "local": {
+    "focused_unittest": {
+      "status": "PASS",
+      "tests": 50,
+      "failures": 0,
+      "errors": 0
+    },
+    "archived_six_windows": {
+      "status": "PASS",
+      "events": 248351,
+      "requests": 55398,
+      "windows": 6,
+      "two_rechecks_idempotent": true,
+      "incremental_equals_full": true,
+      "elapsed_seconds": 141.63,
+      "same_runtime_source": true
+    },
+    "python_full_suite": {
+      "status": "NOT_RUN_DEPENDENCIES_MISSING",
+      "missing": [
+        "Flask",
+        "psycopg",
+        "werkzeug"
+      ]
+    },
+    "native_postgresql": "NOT_RUN",
+    "live_es": "NOT_RUN",
+    "browser_real": "NOT_RUN"
+  },
+  "owner_required": {
+    "d0_native_readonly": "NOT_RUN",
+    "d1_native_one_window": "NOT_RUN",
+    "postgres_plan_actual": "NOT_RUN",
+    "remaining": [
+      "D2_six_forward_two_recheck",
+      "D3_http_atomicity",
+      "D4_restart_restore",
+      "D5_roles_browser",
+      "D6_evaluator_delivery",
+      "capacity_800k_logical_request_ids_per_hour"
+    ]
+  },
+  "owner_artifacts": [
+    "validation/d1_install_check.json",
+    "validation/d0_d1_readonly.json",
+    "validation/d1_one_window.json"
+  ],
+  "limitations": "SQLite equality and local timing do not prove that owner PostgreSQL meets 300s or resolves SQLSTATE 57014."
+}

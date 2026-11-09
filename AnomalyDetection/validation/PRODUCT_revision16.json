@@ -1,0 +1,23 @@
+{
+  "build_id": "AD-INPUT-PUBLICATION-20261108",
+  "status": "PASS_CONTINUOUS_AND_STABLE_CASE_SQL_ISOLATED",
+  "checks": {
+    "split_burst_crosses_midnight_and_source_fence_grid20_is_not_high_exact_rolling40_is_high": "PASS_320_OTHER_SESSIONS_19200_REFERENCE_EXECUTIONS",
+    "three_rolling_horizons_create_one_case_and_40_unique_executions_not_120": "PASS",
+    "first_and_last_case_times_are_actual_behavior_times_not_empty_lookback_bounds": "PASS",
+    "ordinary_control_is_current_and_has_no_candidate_without_tuning_a_threshold": "PASS_SYNTHETIC_NOT_OWNER_CONTROL",
+    "replay_does_not_create_case_occurrence_or_revision": "PASS",
+    "different_issue_kind_is_a_separate_case_for_the_same_actor_and_service": "PASS",
+    "quiet_then_returned_issue_keeps_identity_and_historical_evidence": "PASS",
+    "yesterday_request_completed_a_day_later_updates_same_case_evidence_without_new_execution_or_episode": "PASS",
+    "viewer_typed_relations_are_reused_and_corrected_without_session_time_heuristics": "PASS",
+    "late_semantic_revision_invalidates_population_proof_preserves_history_and_marks_case_stale": "PASS",
+    "issue_summary_inline_history_full_identity_legacy_links_feedback_and_rtl_are_read_only_and_escaped": "PASS_RENDERED_HTML"
+  },
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "native_owner_negative_control": "PENDING_POST_INSTALL",
+  "production_precision_recall_and_capacity": "NOT_MEASURED",
+  "sqlite": "NOT_IMPORTED",
+  "source_modified": false
+}

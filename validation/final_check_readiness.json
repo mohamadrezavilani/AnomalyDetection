@@ -1,0 +1,75 @@
+{
+  "status": "FUNCTIONAL_NATIVE_PASS_RECOVERY_AND_CAPACITY_PENDING",
+  "created_utc": "2026-10-28T05:23:40.297290+00:00",
+  "runtime_source_sha256": "a9f5a0e19ef1df4a482004441cf56bc28aac2027db1f7ccf5ba3231129599575",
+  "parent_runtime_source_sha256": "21e38ef0dcbfc4a952c8dc965718cc3f1e0574789403b7228c6097711c398b00",
+  "canonical_processing_parent_runtime": "9eda1ed0b85cfd570aa12b0fed2f5d7435591eb8be783f1f356066673e282491",
+  "changes": [
+    "bounded bill-item navigation from inquiry, AddBills and Checkout",
+    "explicit SQL selection points to SQL evidence and the exact parameter locator",
+    "per-item selection/readset distinction and multiple independent inquiry evidence",
+    "reader-local fingerprint cache cannot survive a later publication",
+    "finite native qualification runner creates only new synthetic databases"
+  ],
+  "changed_existing_viewerdb_methods": [
+    "_bill_item_fingerprints",
+    "action",
+    "inquiry_payment_journey",
+    "request"
+  ],
+  "publisher_ingest_rebuild_ast_unchanged": true,
+  "catalog_bytes_unchanged": true,
+  "owner_schema_or_checkpoint_migration": false,
+  "local_tests": {
+    "status": "PASS",
+    "unittest_cases": 67,
+    "real_evidence_rows_replayed": 47,
+    "real_request_and_action_pages": 6,
+    "real_replay_engine": "SQLite",
+    "three_entry_navigation": "PASS",
+    "explicit_sql_field_pointer": "PASS",
+    "six_actual_child_hard_exits": "PASS_SQLITE_ONLY",
+    "native_database_name_guard": "PASS"
+  },
+  "native_tests_on_current_source": {
+    "real_d5_windows_flask": "PASS",
+    "native_copy_sql": "PASS",
+    "two_connection_snapshot": "PASS",
+    "six_publisher_hard_cuts": "PASS",
+    "late_evidence": "PASS",
+    "synthetic_logical_restore": "PASS",
+    "postgresql_server_crash": "NOT_RUN",
+    "owner_actual_backup_restore": "NOT_RUN",
+    "capacity_800k_logical_requests_per_hour": "NOT_RUN"
+  },
+  "limits": {
+    "neighbor_requests_each_direction": 128,
+    "related_inquiries": 8,
+    "truncation_is_explicit": true,
+    "no_global_absence_inferred_from_bounded_card": true,
+    "historical_230_window_gap_remains": "DISCLOSED_NOT_BACKFILLED"
+  },
+  "owner_next_command": "python Run_Viewer_Recovery_Checks.py --config viewer_config.local.py",
+  "native_runner_scope": "Previous finite native suite PASS; do not rerun. New recovery runner creates an isolated PostgreSQL cluster, takes a same-snapshot actual Viewer backup, restores and reconciles every application row, and tests server crash only on that new cluster.",
+  "report_contents": "only JSON; no keys, local credentials or real raw evidence",
+  "remaining_after_quick_checks": [
+    "crash/recovery of a separate PostgreSQL instance and verified actual owner backup restore, one combined tool run",
+    "representative capacity screening, then one final sustained HTTP/browser/capacity run"
+  ],
+  "financial_acceptance": "DEFERRED_BACKEND_LOGS_INCOMPLETE",
+  "owner_native_evidence": {
+    "file": "validation/native_owner_checks_20261028.json",
+    "original_bundle": "native_final_checks_20261028_062213_b693c469.zip",
+    "bundle_sha256": "0dd7b1cdd08b85bd2db4c6d967646bbb60222444867d3efec2fb48d22a82bf51",
+    "reported_status": "QUICK_CHECKS_PASS_FINAL_ACCEPTANCE_PENDING",
+    "runtime_matches": true,
+    "server_version": "17.7"
+  },
+  "recovery_runner_local_tests": {
+    "status": "PASS",
+    "cases": 15,
+    "scope": "target_refusal_and_full_digest_algorithms",
+    "native_execution": "NOT_RUN"
+  },
+  "functional_status": "NO_OPEN_FUNCTIONAL_DEFECT_IDENTIFIED_IN_QUALIFIED_SCOPE"
+}

@@ -1,0 +1,20 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+  "checks": {
+    "learning_cursor_dense_window_restarts_reproduced_then_finishes_with_full_fence": "PASS",
+    "older_learning_cursor_dense_window_restarts_reproduced_then_finishes_with_full_fence": "PASS",
+    "overlap_cursor_dense_window_restarts_reproduced_then_finishes_with_full_fence": "PASS",
+    "scope_repair_cursor_dense_window_restarts_reproduced_then_finishes_with_full_fence": "PASS",
+    "unchanged_clean_jobs_do_not_repeat_evaluation_on_a_timer": "PASS_500_JOBS_64_TURNS",
+    "real_dependency_change_requeues_its_consumers_without_global_incident_relabel": "PASS",
+    "cohort_case_rechecks_use_one_bulk_statement_for_200_consumers": "PASS",
+    "evidence_priority_survives_history_recheck_but_not_target_revision_change": "PASS",
+    "adequate_reference_singleton_negative_control_is_not_forced_into_a_case": "PASS_SYNTHETIC_CONTROL"
+  },
+  "owner_database_or_viewer_modified": false,
+  "native_windows": "NOT_RUN",
+  "native_latency_and_capacity": "NOT_MEASURED",
+  "detector_criterion": "UNCHANGED_FROM_RELEASE11",
+  "native_release12_case_acceptance": "PENDING_OWNER_INSTALL"
+}

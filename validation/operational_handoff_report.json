@@ -1,0 +1,140 @@
+{
+  "project": "LogManagment",
+  "release_id": "operational-test-handoff-20261027",
+  "status": "READY_FOR_OPERATIONAL_TESTING_NOT_FINALLY_ACCEPTED",
+  "operational_acceptance": "CONDITIONAL_HTTP_ERRORS",
+  "runtime_source_sha256": "9eda1ed0b85cfd570aa12b0fed2f5d7435591eb8be783f1f356066673e282491",
+  "owner_observation_sha256": "b88e35a0da14c33384a7cd6079209e8043a97bb9315210e864bfc30c5884566d",
+  "owner_report": "validation/owner_live_acceptance_20261027.json",
+  "owner_report_status": "CONDITIONAL",
+  "native_checks": {
+    "six_forward_windows_complete": true,
+    "rechecks_complete": true,
+    "restart_performed": true,
+    "restart_checkpoint_preserved": true,
+    "all_cycles_under_budget": true,
+    "http_without_errors": false,
+    "ui_budget_met": true,
+    "backlog_not_growing": true
+  },
+  "only_failed_native_pilot_gate": "http_without_errors",
+  "forward": {
+    "windows": 6,
+    "events": 644628,
+    "cycle_seconds": [
+      194.719,
+      122.86,
+      174.813,
+      220.172,
+      170.719,
+      209.875
+    ],
+    "average_cycle_seconds": 182.193,
+    "utc_from": "2026-10-27T06:20:00+00:00",
+    "utc_to": "2026-10-27T06:50:00+00:00"
+  },
+  "rechecks": {
+    "windows": 2,
+    "cycles_seconds": [
+      52.031,
+      53.516
+    ],
+    "new_events": [
+      0,
+      0
+    ],
+    "fresh": true,
+    "actual_late_arrival_admission_native": "NOT_EXERCISED"
+  },
+  "prefetch": {
+    "enabled": true,
+    "depth": 1,
+    "max_age_seconds": 300,
+    "database_writers": 1,
+    "rechecks": "always_fresh",
+    "windows_prefetched": 5,
+    "capture_work_seconds": 321.563,
+    "capture_wait_seconds": 48.516,
+    "capture_overlap_seconds": 273.047
+  },
+  "http": {
+    "errors": 8,
+    "latency": {
+      "home": {
+        "samples": 440,
+        "p95_seconds": 0.219,
+        "max_seconds": 8.156
+      },
+      "session": {
+        "samples": 442,
+        "p95_seconds": 0.156,
+        "max_seconds": 0.687
+      },
+      "request": {
+        "samples": 439,
+        "p95_seconds": 0.453,
+        "max_seconds": 12.61
+      }
+    },
+    "cause": "NOT_CAPTURED_UNKNOWN",
+    "p95_sample": "successful_responses_only",
+    "root_cause_fixed": false
+  },
+  "checkpoint": {
+    "before_generation": 55,
+    "after_generation": 69,
+    "forward_contiguous": true,
+    "reconnect_preserved": true,
+    "process_restart": "NOT_RUN_BY_THIS_PILOT",
+    "historical_gap_windows": 230
+  },
+  "backlog": {
+    "before": 56,
+    "after": 54,
+    "state": "CATCHING_UP"
+  },
+  "unit_tests": {
+    "status": "PASS",
+    "tests": 332,
+    "passed": 332,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "elapsed_seconds": 8.393
+  },
+  "sql_qualification": {
+    "status": "PASS_PREVIOUS_MATCHING_RUNTIME",
+    "checks": 31,
+    "report": "validation/d2_prefetch_pg_sql.json",
+    "runtime_source_sha256": "9eda1ed0b85cfd570aa12b0fed2f5d7435591eb8be783f1f356066673e282491",
+    "engine": "PGlite/WASM",
+    "native_COPY_and_Windows_and_multiclient_and_capacity": "NOT_PROVEN"
+  },
+  "processing_runtime_files_unchanged_from_native_package": 161,
+  "added_diagnostic": {
+    "file": "LogManagment_HTTP_Check.py",
+    "sha256": "ba16a447296ae5357856e87484ac5343f6e1d08eae55dc9144c73b4eab463dfb",
+    "status": "LOCAL_TESTS_PASS_NATIVE_NOT_RUN",
+    "tests": 8,
+    "forward_windows": 2,
+    "rechecks": 0,
+    "max_minutes": 12,
+    "http_timeout_seconds": 15,
+    "http_poll_seconds": 2,
+    "publisher_timeout_changed": false,
+    "prior_acceptance_report_preserved": true,
+    "acceptance_rules_changed": false,
+    "private_values_logged": false
+  },
+  "remaining": [
+    "identify_and_fix_eight_HTTP_errors",
+    "real_process_restart_and_isolated_restore",
+    "native_browser_and_journey_checks",
+    "800k_logical_RequestID_per_hour_capacity"
+  ],
+  "developer_first_command": "python LogManagment_HTTP_Check.py",
+  "developer_output": "validation/d2_http_check.json",
+  "developer_guide": "docs/D2_FINALIZED_WRITES_HANDOFF_FA.md",
+  "full_project_finished": false,
+  "private_configs_keys_raw_dumps_included": false
+}

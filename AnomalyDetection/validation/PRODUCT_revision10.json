@@ -1,0 +1,25 @@
+{
+  "build_id": "AD-R3-INPUT-20261108",
+  "status": "PASS_REVISION10_OFFLINE",
+  "checks": {
+    "sparse_page_scheduling_under_global_generation_changes_can_restart_forever": "REPRODUCED",
+    "bounded_consecutive_reads_finish_without_weakening_any_generation_fence": "PASS",
+    "currency_gold_water_and_electricity_use_one_general_reference_method": "PASS_SYNTHETIC_QUALIFIED_CANONICAL_INPUTS",
+    "live_first_assessment_prioritizes_busy_ready_scope_without_dropping_old_history": "PASS",
+    "unpublished_future_population_cannot_enter_live_ready_lane": "PASS",
+    "changed_candidate_evidence_has_reserved_reassessment_after_initial_evaluation": "PASS",
+    "older_busy_first_assessment_keeps_a_path_after_exiting_live_band": "PASS",
+    "bounded_priority_upgrade_is_not_model_input_or_job_version_mutation": "PASS",
+    "qualified_ongoing_canonical_history_supersedes_finite_http_seed": "PASS",
+    "different_sessions_share_one_versioned_reference_input_query": "PASS",
+    "late_reference_correction_invalidates_shared_cache_by_epoch": "PASS",
+    "persisted_diagnostic_distinguishes_missing_window_proof_from_evaluation_queue": "PASS",
+    "metadata_migration_is_idempotent_and_preserves_existing_jobs": "PASS"
+  },
+  "environment": "ISOLATED_POSTGRESQL_WASM",
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN",
+  "native_new_test_results": "NOT_RUN",
+  "native_latency": "NOT_MEASURED",
+  "precision_recall": "NOT_EVALUATED"
+}

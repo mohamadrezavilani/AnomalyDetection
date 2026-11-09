@@ -1,0 +1,29 @@
+{
+  "status": "LOCAL_TESTS_PASS_NATIVE_PERFORMANCE_NOT_RUN",
+  "date": "2026-10-27",
+  "baseline_source_sha256": "79ae7958bb612f99ead6dff5ccf49a9829e3a2c971b7293d8bfd6428208498db",
+  "focus_tests": {
+    "ran": 60,
+    "skipped": 2,
+    "status": "PASS"
+  },
+  "semantic_tests": {
+    "ran": 34,
+    "status": "PASS"
+  },
+  "python_compilation": "PASS",
+  "native_postgres_copy": "NOT_RUN_DEPENDENCY_UNAVAILABLE",
+  "postgresql_AB": "NOT_RUN",
+  "native_owner_one_window": "NOT_RUN",
+  "HTTP": "NOT_RUN_MISSING_FLASK_WERKZEUG",
+  "worker_write_strategy": "UNCHANGED_COPY_BINARY",
+  "payment_identity_role_logic": "UNCHANGED",
+  "owner_d2_baseline": {
+    "status": "FAILED",
+    "first_window_publication": "PUBLISHED_OVER_BUDGET",
+    "cycle_seconds": 414.625,
+    "second_window": "NOT_CONFIRMED_PUBLISHED"
+  },
+  "capacity_800k_requestids_hour": "NOT_PROVEN",
+  "operational_acceptance": "NOT_ACCEPTED"
+}

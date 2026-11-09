@@ -1,0 +1,245 @@
+{
+  "version": "p24-action-crosswalk-candidate.1",
+  "status": "unpublished_same_request_co_observation_candidates",
+  "counting_unit": "distinct logical RequestID projection within each listed source file",
+  "source_counts_must_not_be_summed": "source fixtures can overlap; no cross-source union is asserted",
+  "interpretation": "same RequestID evidence links an observed Client HTTP CallPath and an Access-check @action value; does not prove target execution or authoritative service mapping",
+  "identity_values_exported": false,
+  "sensitive_parameters_or_payloads_exported": false,
+  "sources": [
+    {
+      "version": "p24-action-crosswalk-candidate.1",
+      "locator": "boundary.sanitized.json",
+      "source_sha256": "342edcd6d22a77d9411baba74d5d2c13f08bfc72c47b6bc0a986d26938840b80",
+      "source_record_count": 14,
+      "normalized_record_count": 14,
+      "unresolved_record_count": 0,
+      "unavailable_time_event_count": 0,
+      "ambiguous_origin_event_count": 0,
+      "request_projections": 1,
+      "pair_count": 1,
+      "pairs": [
+        {
+          "client_http_endpoint": "Services.v3/ElectricBillsExport",
+          "access_check_action": "v3/ElectricBillsExport",
+          "request_projections": 1,
+          "distinct_client_http_requests": 1,
+          "access_check_sql_observations": 1,
+          "client_http_outcomes": {
+            "success": 0,
+            "failure": 1,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        }
+      ],
+      "ambiguous_request_counts": {},
+      "semantic_classifications_inferred": false,
+      "raw_request_ids_ip_sessions_sql_parameters_and_payloads_exported": false
+    },
+    {
+      "version": "p24-action-crosswalk-candidate.1",
+      "locator": "ip_activity.sanitized.json",
+      "source_sha256": "9207404f71bcc7978a2fc573376b82aba3bfa2b2a3401394f40cd81ccdc7afc8",
+      "source_record_count": 36,
+      "normalized_record_count": 36,
+      "unresolved_record_count": 0,
+      "unavailable_time_event_count": 0,
+      "ambiguous_origin_event_count": 0,
+      "request_projections": 11,
+      "pair_count": 4,
+      "pairs": [
+        {
+          "client_http_endpoint": "Core.v1/ConfigBasic",
+          "access_check_action": "v1/ConfigBasic",
+          "request_projections": 5,
+          "distinct_client_http_requests": 5,
+          "access_check_sql_observations": 5,
+          "client_http_outcomes": {
+            "success": 5,
+            "failure": 0,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByOTP",
+          "access_check_action": "v1/LoginByOTP",
+          "request_projections": 1,
+          "distinct_client_http_requests": 1,
+          "access_check_sql_observations": 1,
+          "client_http_outcomes": {
+            "success": 1,
+            "failure": 0,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByUserCredential",
+          "access_check_action": "v1/LoginByUserCredential",
+          "request_projections": 4,
+          "distinct_client_http_requests": 4,
+          "access_check_sql_observations": 4,
+          "client_http_outcomes": {
+            "success": 0,
+            "failure": 4,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v2/DeviceRegister",
+          "access_check_action": "v2/DeviceRegister",
+          "request_projections": 1,
+          "distinct_client_http_requests": 1,
+          "access_check_sql_observations": 1,
+          "client_http_outcomes": {
+            "success": 1,
+            "failure": 0,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        }
+      ],
+      "ambiguous_request_counts": {},
+      "semantic_classifications_inferred": false,
+      "raw_request_ids_ip_sessions_sql_parameters_and_payloads_exported": false
+    },
+    {
+      "version": "p24-action-crosswalk-candidate.1",
+      "locator": "provider_ping.sanitized.json",
+      "source_sha256": "5d11099eaa6f98791d235b0eb9dd6f2b8558f8158ab7971009b1856b9ebc0b1c",
+      "source_record_count": 1,
+      "normalized_record_count": 1,
+      "unresolved_record_count": 0,
+      "unavailable_time_event_count": 0,
+      "ambiguous_origin_event_count": 0,
+      "request_projections": 1,
+      "pair_count": 0,
+      "pairs": [],
+      "ambiguous_request_counts": {},
+      "semantic_classifications_inferred": false,
+      "raw_request_ids_ip_sessions_sql_parameters_and_payloads_exported": false
+    },
+    {
+      "version": "p24-action-crosswalk-candidate.1",
+      "locator": "registration.sanitized.json",
+      "source_sha256": "baf23894a1fb2d11963ed20a4e3a215577bb4e5648843555c905942f0fd66707",
+      "source_record_count": 6,
+      "normalized_record_count": 6,
+      "unresolved_record_count": 0,
+      "unavailable_time_event_count": 0,
+      "ambiguous_origin_event_count": 0,
+      "request_projections": 2,
+      "pair_count": 2,
+      "pairs": [
+        {
+          "client_http_endpoint": "Core.v1/DeviceRegister",
+          "access_check_action": "v1/DeviceRegister",
+          "request_projections": 1,
+          "distinct_client_http_requests": 1,
+          "access_check_sql_observations": 1,
+          "client_http_outcomes": {
+            "success": 1,
+            "failure": 0,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v2/DeviceRegister",
+          "access_check_action": "v2/DeviceRegister",
+          "request_projections": 1,
+          "distinct_client_http_requests": 1,
+          "access_check_sql_observations": 1,
+          "client_http_outcomes": {
+            "success": 1,
+            "failure": 0,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        }
+      ],
+      "ambiguous_request_counts": {},
+      "semantic_classifications_inferred": false,
+      "raw_request_ids_ip_sessions_sql_parameters_and_payloads_exported": false
+    },
+    {
+      "version": "p24-action-crosswalk-candidate.1",
+      "locator": "session_activity.sanitized.json",
+      "source_sha256": "cf281cfe59736cd2e2abaf842aa85ac9e96ad22dbcba13a0664a324950b7d044",
+      "source_record_count": 33,
+      "normalized_record_count": 33,
+      "unresolved_record_count": 0,
+      "unavailable_time_event_count": 0,
+      "ambiguous_origin_event_count": 0,
+      "request_projections": 10,
+      "pair_count": 3,
+      "pairs": [
+        {
+          "client_http_endpoint": "Core.v1/ConfigBasic",
+          "access_check_action": "v1/ConfigBasic",
+          "request_projections": 5,
+          "distinct_client_http_requests": 5,
+          "access_check_sql_observations": 5,
+          "client_http_outcomes": {
+            "success": 5,
+            "failure": 0,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByOTP",
+          "access_check_action": "v1/LoginByOTP",
+          "request_projections": 1,
+          "distinct_client_http_requests": 1,
+          "access_check_sql_observations": 1,
+          "client_http_outcomes": {
+            "success": 1,
+            "failure": 0,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        },
+        {
+          "client_http_endpoint": "Core.v1/LoginByUserCredential",
+          "access_check_action": "v1/LoginByUserCredential",
+          "request_projections": 4,
+          "distinct_client_http_requests": 4,
+          "access_check_sql_observations": 4,
+          "client_http_outcomes": {
+            "success": 0,
+            "failure": 4,
+            "unknown_or_conflicting": 0
+          },
+          "mapping_state": "same_request_co_observation_candidate",
+          "mapping_authority": "unverified",
+          "execution_proven": "no"
+        }
+      ],
+      "ambiguous_request_counts": {},
+      "semantic_classifications_inferred": false,
+      "raw_request_ids_ip_sessions_sql_parameters_and_payloads_exported": false
+    }
+  ]
+}

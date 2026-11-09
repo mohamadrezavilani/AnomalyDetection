@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="panel error-panel"><p class="eyebrow">بررسی شواهد</p><h1>امکان نمایش این صفحه وجود ندارد</h1><p>{{ message }}</p><p class="muted">کد پیگیری: <bdi dir="ltr" class="mono">{{ code }}</bdi></p><a class="button" href="{{ url_for('journey',publication=p.publication) }}">بازگشت به فعالیت Session</a></section>{% endblock %}

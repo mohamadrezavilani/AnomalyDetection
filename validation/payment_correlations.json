@@ -1,0 +1,127 @@
+{
+  "status": "NATIVE_FUNCTIONAL_PASS_WAITING_FOR_REAL_CAPTURE_AND_UI_REVIEW",
+  "created_utc": "2026-10-28T09:39:23.016611+00:00",
+  "runtime_source_sha256": "4909540be9b597e26379e8e5aa1b62cfc9503876d56dc59a77a484ddf8ee3920",
+  "parent_runtime_source_sha256": "a9f5a0e19ef1df4a482004441cf56bc28aac2027db1f7ccf5ba3231129599575",
+  "scope": "explicit_invoice_bill_payment_correlations_under_original_service_behavior",
+  "changes": [
+    "four trusted exact correlation formats",
+    "separate inquiry-fee and bill payments",
+    "global version-conflict fence",
+    "multi-bill and multi-payment provenance retained",
+    "current-snapshot details and reverse links without Session inference",
+    "bounded atomic reindex of already captured emitters since deployment",
+    "original API names in action heading"
+  ],
+  "offline_regressions": {
+    "status": "PASS",
+    "tests": 362,
+    "passed": 362,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "new_functional_tests": 22,
+  "real_sample_replay": {
+    "mode": "sampled_kibana_fields_on_SQLite_not_complete_windows_or_native_capture",
+    "raw_events": 574,
+    "events_preserved": 574,
+    "rendered_request_action_pages": 10,
+    "original_service_behaviors": 5,
+    "standalone_payment_behaviors": 0,
+    "cases": [
+      {
+        "api": "Services.v1/TrafficFinesCarNoDetails",
+        "bills_observed": 1,
+        "inquiry_payments_observed": 1,
+        "bill_payment_keys_observed": 1,
+        "status": "PASS_ON_SUPPLIED_SAMPLE",
+        "absence_is_not_global": true
+      },
+      {
+        "api": "Services.v1/WaterBills",
+        "bills_observed": 1,
+        "inquiry_payments_observed": 0,
+        "bill_payment_keys_observed": 0,
+        "status": "PASS_ON_SUPPLIED_SAMPLE",
+        "absence_is_not_global": true
+      },
+      {
+        "api": "Services.v1/CellPhoneBills",
+        "bills_observed": 1,
+        "inquiry_payments_observed": 0,
+        "bill_payment_keys_observed": 1,
+        "status": "PASS_ON_SUPPLIED_SAMPLE",
+        "absence_is_not_global": true
+      },
+      {
+        "api": "Services.v1/ElectricBills",
+        "bills_observed": 1,
+        "inquiry_payments_observed": 0,
+        "bill_payment_keys_observed": 1,
+        "status": "PASS_ON_SUPPLIED_SAMPLE",
+        "absence_is_not_global": true
+      },
+      {
+        "api": "Services.v1/MunicipalityCarTollBills",
+        "bills_observed": 3,
+        "inquiry_payments_observed": 0,
+        "bill_payment_keys_observed": 1,
+        "status": "PASS_ON_SUPPLIED_SAMPLE",
+        "absence_is_not_global": true
+      }
+    ]
+  },
+  "untouched_runtime_modules": [
+    "p24_foundation/viewer_online.py",
+    "p24_foundation/viewer_elastic.py",
+    "p24_foundation/viewer_prefetch.py",
+    "p24_foundation/viewer_projection_writes.py",
+    "p24_foundation/viewer_semantic_index.py",
+    "p24_foundation/viewer_service_sync.py",
+    "p24_foundation/service_journey.py",
+    "p24_foundation/session_behavior.py"
+  ],
+  "catalog_bytes_unchanged": true,
+  "owner_raw_roles_keys_forward_checkpoint_migration": false,
+  "native_current_feature": "PASS_9_CHECKS",
+  "native_install_command": "python tools/sync_viewer_payment_correlations.py --config viewer_config.local.py",
+  "native_installer_checks": "ONE new synthetic database; nine small native functional checks; bounded owner derived reindex; five sample source-link probes if captured",
+  "source_reindex_since_utc": "2026-10-28T07:30:00Z",
+  "idempotence_and_failed_transaction_rollback": "PASS_LOCAL",
+  "limitations": [
+    "BillIDs is not an alias of BillUniqueIDs; a distinct future log format requires its own source contract",
+    "only Success and Failed are interpreted; other or multiple statuses remain explicit and unresolved",
+    "query fee cannot be inferred from absence of a correlation",
+    "funding source and provider bill settlement are separate from PaymentKey-Status",
+    "read limits are explicit; no global absence claimed"
+  ],
+  "financial_acceptance": "CORRELATION_LINKS_LOCAL_PASS_NOT_FULL_SETTLEMENT_CERTIFICATION",
+  "owner_recovery_report": {
+    "file": "validation/owner_recovery_partial_20261028.json",
+    "original_status": "FAILED_PRIVATE_CLUSTER_STOP",
+    "private_server_crash": "PASS_ON_PARENT_A9F5",
+    "actual_logical_restore": "PASS_23_TABLES_39091798_ROWS_ON_PARENT_A9F5",
+    "owner_stopped_remaining_forward_test": true,
+    "private_cluster_shutdown": "UNCONFIRMED_REQUIRES_GUARDED_CHECK",
+    "recovery_repetition": "OUT_OF_CURRENT_SCOPE_BY_OWNER"
+  },
+  "capacity_and_long_stability": "NOT_RUN_REMOVED_FROM_CURRENT_SCOPE_BY_OWNER",
+  "paid_inquiry_without_bills": "SYNTHETIC_SCENARIO_PASS_REAL_POSTAL_SAMPLE_NOT_PROVIDED",
+  "changed_existing_viewerdb_methods": [
+    "action",
+    "request"
+  ],
+  "native_functional_driver_flow_local": "PASS_SQLITE_TRANSPORT_ONLY_NOT_NATIVE_EVIDENCE",
+  "current_parent_recovery_tool_must_finish_before_install": true,
+  "owner_native_evidence": "validation/owner_payment_correlations_20261028.json",
+  "owner_checkpoint_at_sync": {
+    "utc": "2026-10-28T06:40:00+00:00",
+    "tehran": "2026-10-28T10:10:00+03:30",
+    "generation": 143
+  },
+  "new_logging_from_utc": "2026-10-28T07:30:00+00:00",
+  "owner_real_samples": "NOT_CAPTURED_YET_AT_SYNC",
+  "owner_next_step": "Resume ordinary Viewer capture; read-only followup finds a real linked case; no repeated native fixture or recovery/capacity test",
+  "followup_helper": "Viewer_Payment_Followup_20261028.py"
+}

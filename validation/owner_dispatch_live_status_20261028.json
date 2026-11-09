@@ -1,0 +1,43 @@
+{
+  "owner_report": {
+    "status": "CATCHING_UP",
+    "worker_status": "capturing",
+    "generation": 169,
+    "started_from_utc": "2026-10-26T09:00:00+00:00",
+    "continuous_published_to_utc": "2026-10-28T11:45:00+00:00",
+    "continuous_published_from_utc": "2026-10-28T11:15:00+00:00",
+    "last_complete_window_utc": "2026-10-28T11:45:00+00:00",
+    "last_publish_utc": "2026-10-28T11:50:42.383471+00:00",
+    "last_success_utc": "2026-10-28T11:50:42.383471+00:00",
+    "last_observed_event_utc": "2026-10-28T11:44:59.967829+00:00",
+    "backlog_windows": 1,
+    "lag_seconds": 60,
+    "overlap_windows": 2,
+    "last_error": null,
+    "source_finality": "not_established",
+    "earlier_history": "not_claimed_complete",
+    "late_evidence_beyond_overlap": "manual_recheck_required",
+    "history_has_gaps": true,
+    "historical_gap_windows": 529,
+    "history_resume_count": 3,
+    "recent_coverage_from_utc": "2026-10-28T11:15:00+00:00",
+    "historical_gaps": [
+      {
+        "from_utc": "2026-10-26T10:05:00+00:00",
+        "to_utc": "2026-10-27T05:15:00+00:00",
+        "unprocessed_windows": 230
+      },
+      {
+        "from_utc": "2026-10-27T09:25:00+00:00",
+        "to_utc": "2026-10-28T06:10:00+00:00",
+        "unprocessed_windows": 249
+      },
+      {
+        "from_utc": "2026-10-28T07:05:00+00:00",
+        "to_utc": "2026-10-28T11:15:00+00:00",
+        "unprocessed_windows": 50
+      }
+    ]
+  },
+  "runtime_source_sha256": "NOT_INCLUDED_IN_OWNER_STATUS"
+}

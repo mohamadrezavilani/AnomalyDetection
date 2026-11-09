@@ -1,0 +1,12 @@
+{
+  "build_id": "AD-PRODUCT-20261107-28",
+  "status": "PASS",
+  "tests_run": 183,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "seconds": 9.043,
+  "environment": "ISOLATED_LINUX_UNIT_FIXTURES",
+  "owner_connections": 0,
+  "native_windows_postgresql": "NOT_RUN"
+}

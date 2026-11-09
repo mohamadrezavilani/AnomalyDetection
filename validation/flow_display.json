@@ -1,0 +1,63 @@
+{
+  "status": "LOCAL_PASS_OWNER_PROBE_PENDING",
+  "runtime_source_sha256": "6775da6f9080580ae7525f7205fe62ec27f8bcf1a75854970b6b41ccbeb10310",
+  "parent_runtime_source_sha256": "0eced4ef05423c66e6c36ae945c900bf1307b393b41b2c37dca56bf55b2b28eb",
+  "created_at_utc": "2026-10-31T07:34:00.237087+00:00",
+  "changes": [
+    "one observed timeline includes proven fee/bill/payment/status/basket peers",
+    "separate inquiry and per-PaymentKey outcome summaries",
+    "invoice registration is not a payment report",
+    "RTL alignment and bounded content width",
+    "all Viewer-owned readable timestamps in Tehran; original raw and UTC API unchanged",
+    "normal launcher explicitly selects debug-recent-start despite old private config false",
+    "source catalog corrects only UserWidgetsSetDefault support/unknown; reviewed choices preserved"
+  ],
+  "payment_status_rules": [
+    "fee and bill payment namespaces stay separate",
+    "multiple statuses remain unresolved, no latest-wins",
+    "partial evidence never becomes unqualified success",
+    "no bank settlement or per-item settlement inferred",
+    "unresolved payment source remains unresolved"
+  ],
+  "startup": {
+    "proven_code_path": "normal launcher previously did not override LIVE.debug_recent_start=False",
+    "actual_owner_failure_cause": "NOT_ESTABLISHED",
+    "explicit_resume_checkpoint_supported": true,
+    "retries_never_seek_past_failed_window": true,
+    "recent_overlap_rechecks_preserved": true,
+    "receipt": "validation/viewer_startup.json"
+  },
+  "source_scope": {
+    "schema_changes": false,
+    "ingest_changes": false,
+    "capture_selection_algorithm_changed": false,
+    "catalog_routes_changed": [
+      "Core.v1/UserWidgetsSetDefault"
+    ],
+    "financial_relationship_parser_changed": false
+  },
+  "regressions": "validation/flow_display_regressions.json",
+  "real_replays": "validation/flow_display_replays.json",
+  "role_review": "validation/flow_role_review.json",
+  "native_postgresql": "NOT_RUN",
+  "owner_browser": "NOT_RUN",
+  "local_visual_browser": "NOT_RUN_BROWSER_BINARY_UNAVAILABLE",
+  "owner_probe": "python tools/inspect_viewer_request.py --request-id 0546b72b-b601-48cf-b4b7-3f7850a30e67",
+  "owner_probe_properties": [
+    "read-only",
+    "no ES capture",
+    "no ingest",
+    "no seek",
+    "current startup mode/source, live backlog, last three window modes, scoped payment status and widget role"
+  ],
+  "cross_request_otp": "WAITING_FOR_BACKEND_SHARED_INVOICE_OR_EXPLICIT_MAPPING",
+  "capacity_and_long_stability": "OUT_OF_SCOPE_BY_OWNER",
+  "cancelled_recovery": "NOT_RESTARTED",
+  "offline_checks": {
+    "status": "PASS",
+    "tests": 409,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

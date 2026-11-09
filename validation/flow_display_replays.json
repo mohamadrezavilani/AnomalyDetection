@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "runtime_source_sha256": "6775da6f9080580ae7525f7205fe62ec27f8bcf1a75854970b6b41ccbeb10310",
+  "samples": [
+    {
+      "source_sha256": "eb2bb2b8ae8d18047f31883851ba4b46a29737b9e471af68e58159dbe3df2f1a",
+      "records": 34,
+      "requests": 3,
+      "final_outcome": "success",
+      "persisted_rows_unchanged": true,
+      "mode": "SQLite partial Kibana sample; not native PostgreSQL"
+    },
+    {
+      "source_sha256": "b34a1b76c3555a7706a6fcc752d4900e299d9d6f98009470591b5bc089b7f87e",
+      "records": 30,
+      "requests": 5,
+      "final_outcome": "failure",
+      "persisted_rows_unchanged": true,
+      "mode": "SQLite partial Kibana sample; not native PostgreSQL"
+    }
+  ],
+  "payment_sample_records": 574,
+  "payment_service_pages": 5,
+  "payment_relations_and_outcomes_preserved": true,
+  "native_postgresql": "NOT_RUN",
+  "visual_browser": "NOT_RUN"
+}

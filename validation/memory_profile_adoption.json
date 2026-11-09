@@ -1,0 +1,74 @@
+{
+  "status": "PASS_ONE_NATIVE_WINDOW_UNDER_300_SECONDS",
+  "release_id": "LogManagment_Fast_Runtime_20261102",
+  "base_runtime_source_sha256": "9bc58af3b0b75cdb880426560f6c7e69fd0b0d6269ef28ba91f85bc65814a97b",
+  "memory_profile_id": "viewer-memory-candidate-20261102-1",
+  "memory_profile_script_sha256": "1a3af6a29342ff1af54a543ad4a2bde89e5ef9a889d0281a31c5feb4606b2655",
+  "records": 60279,
+  "impacted_requests": 13421,
+  "total_cycle_seconds": 221.688,
+  "publication_seconds": 192.86,
+  "capture_seconds": 28.828,
+  "window_start_utc": "2026-11-02T05:40:00+00:00",
+  "window_end_utc": "2026-11-02T05:45:00+00:00",
+  "checkpoint_before": {
+    "next_ns": 1793598000000000000,
+    "generation": 2316
+  },
+  "generation_after": 2318,
+  "checkpoint_seek_requested": false,
+  "global_postgres_settings_modified": false,
+  "postgres_restart_performed": false,
+  "durability_preserved": true,
+  "retention_guard_preserved": true,
+  "conflict_controls_preserved": true,
+  "selected_session_overrides": {
+    "work_mem": "64MB",
+    "temp_buffers": "128MB",
+    "effective_cache_size": "96GB",
+    "jit": "off"
+  },
+  "copy_spools": [
+    {
+      "stage": "ingest_bulk_copy_completed",
+      "table": "viewer_events",
+      "export_seconds": 0.781,
+      "upload_and_finish_seconds": 23.89,
+      "spool_bytes": 35797303,
+      "bytes_uploaded": 35797303,
+      "spool_disk_rollover": false
+    },
+    {
+      "stage": "ingest_bulk_copy_completed",
+      "table": "viewer_links",
+      "export_seconds": 0.344,
+      "upload_and_finish_seconds": 27.875,
+      "spool_bytes": 10326821,
+      "bytes_uploaded": 10326821,
+      "spool_disk_rollover": false
+    }
+  ],
+  "remaining_observation": {
+    "dominant_wait": "WAL-related waits",
+    "wait_sample_counts": {
+      "Client/ClientRead": 10,
+      "IO/DataFileExtend": 2,
+      "none/none": 27,
+      "LWLock/WALWrite": 47,
+      "IO/WalWrite": 4,
+      "IO/DataFileRead": 5
+    },
+    "cluster_wal_bytes_delta": 2253342231.0,
+    "cluster_counters_not_exclusively_attributed_to_viewer": true
+  },
+  "qualification": {
+    "native_memory_profile_one_window": "PASS",
+    "paired_AB_speedup": "NOT_RUN",
+    "new_continuous_launcher_on_windows": "NOT_RUN",
+    "new_continuous_profile_capacity": "NOT_RUN",
+    "capacity_800k_logical_requests_per_hour": "NOT_PROVEN",
+    "offline_profile_guard_and_binary_checks": 17,
+    "related_regression_tests_passed": 11
+  },
+  "owner_action": "Use Start_Viewer.cmd for ordinary running; no long pilot requested."
+}

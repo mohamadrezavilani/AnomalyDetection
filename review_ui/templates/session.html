@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set t=page.totals %}
+<section class="page-heading"><div><p class="eyebrow">مسیر بررسی / Session</p><h1>فعالیت Session</h1><p class="lead">درخواست‌ها و عملیات مرتبط را به ترتیب زمان بررسی کنید.</p></div>
+<div class="snapshot"><span>نسخهٔ شواهد</span><bdi dir="ltr">{{ page.publication_id[:8] }}</bdi><small>تمام صفحات به همین نسخه متصل‌اند</small></div></section>
+<section class="metrics" aria-label="آمار کامل Session">
+ <article class="metric"><span>درخواست HTTP کلاینت</span><strong>{{ t.assigned_client_http_requests|fa_number }}</strong><small>شمار مستقل از تعداد ردیف‌های لاگ</small></article>
+ <article class="metric success"><span>پاسخ موفق کلاینت</span><strong>{{ t.client_http_outcomes.success|fa_number }}</strong><small>از درخواست‌های همین Session</small></article>
+ <article class="metric failure"><span>پاسخ ناموفق کلاینت</span><strong>{{ t.client_http_outcomes.failure|fa_number }}</strong><small>موفقیت عملیات داخلی جایگزین آن نیست</small></article>
+ <article class="metric"><span>منبع شبکهٔ مشاهده‌شده</span><strong>{{ t.assigned_distinct_network_sources|fa_number }}</strong><small>تغییر IP، Session را جدا نمی‌کند</small></article>
+</section>
+<section class="panel context-panel">
+ <div><span class="muted">Session پوشیده</span><bdi class="mono token" dir="ltr">{{ page.session_key }}</bdi></div>
+ <dl class="time-range"><div><dt>اولین مشاهده</dt><dd><bdi dir="ltr">{{ t.first_observed_time_ns|tehran_time }}</bdi></dd></div><div><dt>آخرین مشاهده</dt><dd><bdi dir="ltr">{{ t.last_observed_time_ns|tehran_time }}</bdi></dd></div></dl>
+ <p class="scope-note">آمار بالا کل Session را در نسخهٔ انتخاب‌شده پوشش می‌دهد. درخواست‌های دارای تعارض هویت در شمار منتسب‌شده قرار ندارند.</p>
+</section>
+<section class="panel activity-panel">
+ <div class="section-heading"><div><h2>درخواست‌های مشاهده‌شده</h2><p>فراخوانی‌های پشتیبانی برنامه، از جمله ConfigBasic، در فهرست باقی می‌مانند.</p></div><span class="neutral badge">{{ t.assigned_request_projections|fa_number }} رکورد درخواست</span></div>
+ <nav class="tabs" aria-label="دامنهٔ انتساب هویت">
+  <a class="tab {{ 'active' if p.scope=='assigned' }}" {% if p.scope=='assigned' %}aria-current="page"{% endif %} href="{{ url_for('journey',publication=p.publication,scope='assigned',limit=p.limit) }}">منتسب به Session <span>{{ t.assigned_request_projections|fa_number }}</span></a>
+  <a class="tab {{ 'active' if p.scope=='conflicting' }}" {% if p.scope=='conflicting' %}aria-current="page"{% endif %} href="{{ url_for('journey',publication=p.publication,scope='conflicting',limit=p.limit) }}">تعارض هویت <span>{{ t.conflicting_context_request_projections|fa_number }}</span></a>
+ </nav>
+ {% if p.scope=='conflicting' %}<div class="inline-notice">این درخواست‌ها به چند Session اشاره دارند. برای بررسی نمایش داده می‌شوند و به این Session نسبت داده نشده‌اند.</div>{% endif %}
+ <div class="table-scroll" tabindex="0" aria-label="فهرست قابل پیمایش درخواست‌ها"><table>
+ <thead><tr><th scope="col">زمان تهران</th><th scope="col">درخواست / Endpoint</th><th scope="col">نوع فعالیت</th><th scope="col">نتیجهٔ کلاینت</th><th scope="col">زمان ثبت‌شده</th><th scope="col">شواهد</th><th scope="col"><span class="sr-only">بررسی</span></th></tr></thead>
+ <tbody>{% for item in page['items'] %}<tr>
+  <td class="time-cell"><bdi dir="ltr">{{ item.activity_time_ns|tehran_time }}</bdi></td>
+  <td><bdi dir="ltr" class="endpoint">{{ item.endpoint or 'نامشخص' }}</bdi><small class="muted mono"><bdi dir="ltr">{{ item.request_key[-12:] }}</bdi></small></td>
+  <td><span class="phase">{{ item.phase_label_fa }}</span>{% if item.classification_state=='candidate' %}<small class="muted">طبقه‌بندی اولیه</small>{% endif %}</td>
+  <td><span class="badge {{ item.client_result.outcome }}">{{ outcomes_fa.get(item.client_result.outcome,'نامشخص') }}</span>{% if item.client_result.code %}<bdi dir="ltr" class="status-code">{{ item.client_result.code }}</bdi>{% endif %}{% if item.client_result.completion_state=='not_observed' %}<small>پایان درخواست ثبت نشده</small>{% endif %}</td>
+  <td class="nowrap">{% if item.client_result.duration_ms is not none %}<bdi dir="ltr">{{ item.client_result.duration_ms|fa_number }} ms</bdi>{% else %}<span class="muted">ثبت نشده</span>{% endif %}</td>
+  <td><span>{{ item.counts.selected_log_events|fa_number }} ردیف</span><small class="muted">SQL: {{ item.counts.sql_observations|fa_number }} · سرویس‌دهنده: {{ item.counts.provider_observations|fa_number }}</small></td>
+  <td><a class="row-link" href="{{ url_for('request_detail',key=item.request_key,publication=p.publication,scope=p.scope,limit=p.limit) }}">بررسی ←</a></td>
+ </tr>{% else %}<tr><td colspan="7" class="empty-state">در این دامنه شواهدی ثبت نشده است.</td></tr>{% endfor %}</tbody></table></div>
+ <div class="pagination"><span>نمایش {{ page['items']|length|fa_number }} ردیف از نسخهٔ انتخاب‌شده</span><div>{% if p.cursor %}<a class="button secondary" href="{{ url_for('journey',publication=p.publication,scope=p.scope,limit=p.limit) }}">ابتدای فهرست</a>{% endif %}{% if page.next_cursor %}<a class="button" href="{{ url_for('journey',publication=p.publication,scope=p.scope,limit=p.limit,cursor=page.next_cursor) }}">صفحهٔ بعد</a>{% endif %}</div></div>
+</section>
+<section class="lower-grid"><article class="panel compact"><h2>واحدهای شمارش شواهد</h2><dl class="unit-list"><div><dt>ردیف لاگ انتخاب‌شده</dt><dd>{{ t.assigned_log_events|fa_number }}</dd></div><div><dt>مشاهدهٔ اجرای SQL</dt><dd>{{ t.assigned_sql_observations|fa_number }}</dd></div><div><dt>مشاهدهٔ عملیات سرویس‌دهنده</dt><dd>{{ t.assigned_provider_observations|fa_number }}</dd></div><div><dt>نتیجهٔ نامشخص یا متعارض کلاینت</dt><dd>{{ t.client_http_outcomes.unknown_or_conflicting|fa_number }}</dd></div></dl><p class="scope-note">این عددها واحد یکسانی ندارند؛ شمار ردیف لاگ، شمار قبض یکتا یا پرداخت تکمیل‌شده نیست.</p></article>
+<article class="panel compact"><h2>راهنمای بررسی</h2><p>از یک درخواست وارد شواهد شوید، عملیات را باز کنید و نتیجهٔ کلاینت را با پاسخ همان عملیات مقایسه کنید.</p><p class="muted">ترتیب برابر در زمان‌ها، رابطهٔ علّی میان عملیات را ثابت نمی‌کند. نبود مشاهدهٔ بعدی نیز به‌تنهایی نشان‌دهندهٔ خروج یا بازیابی خدمت نیست.</p>{% for example in examples %}<a class="example-link" href="{{ url_for('request_detail',key=example.key,publication=p.publication,limit=p.limit) }}">نمونهٔ جداگانه: {{ example.label }} ←</a>{% endfor %}</article></section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{
+  "status": "PASS_CAPTURED_REQUEST_REPAIR",
+  "runtime_source_sha256": "36def3d36753b25d54d3640afcdb71304bc34f132c8150fb8802a6f36fc7bb0a",
+  "source_zip_sha256": "dde60d1300c605a78316b5ef4bbc93756c5c56ddfa724b2feb10e7db5cefd34c",
+  "release": {
+    "status": "PASS",
+    "checked_files": 289,
+    "mismatches": []
+  },
+  "native_feature_checks": {
+    "preservation": true,
+    "cursor_preserved": true,
+    "exact_three_phases": true,
+    "original_service_identified": true,
+    "actual_http_transport_preserved": true,
+    "one_completed_service_occurrence": true,
+    "final_service_active": true
+  },
+  "repair": {
+    "status": "UPDATED",
+    "request_ids": 3,
+    "checkpoint_before": {
+      "next_ns": 1793304000000000000,
+      "generation": 1295
+    },
+    "checkpoint_after": {
+      "next_ns": 1793304000000000000,
+      "generation": 1297
+    },
+    "raw_events_links_and_manual_roles_preserved": true,
+    "checkpoint_advanced": false,
+    "captures_started": false,
+    "other_requests_rebuilt": false
+  },
+  "scope": "parent R9 repair of three captured requests; not native execution of the new presentation"
+}

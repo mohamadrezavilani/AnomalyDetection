@@ -1,0 +1,23 @@
+{
+  "status": "PASS_SOURCE_REGISTRATION_AUDIT",
+  "source_cs_files": 1396,
+  "registered_routes": 256,
+  "catalog_routes": 256,
+  "missing_registered_routes": [],
+  "unchanged_existing_role_catalog": true,
+  "dispatcher_routes": 110,
+  "unmapped_dispatch_service_names": [
+    "v1_InquiryMunicipalityPropertySafetyTollBills"
+  ],
+  "mapped_routes_without_role_proposal": [
+    "Services.v1/TopUpProductReserve"
+  ],
+  "runtime_execution_coverage": "NOT_IMPLIED_BY_SOURCE_REGISTRATION",
+  "helper_dispatch_source_sha256": {
+    "Core/Main/Helper/HelperHttpContext.cs": "7c082d3f3836ad47bb58aa1686531c430f2a028d04c2769ec555e88eb3893d71",
+    "Core/Intermediate/Modules/Sales/Commands/Register/InvoiceRegisterHandler.cs": "686502af1fbd24bbc0a2d7ed1848be4b74c90b302a995468071d170bbaf1ed2f",
+    "Core/WebServices/Services.svc.cs": "7681770b34bbecc893f9fbbbe1a35850c1eeba6041f7ce9b525e1413acb55994"
+  },
+  "otp_scope": "MyGovRequestOtp, MyGovLogin and TaminUnderCoveredInquiry inside InvoiceRegister; other OTP providers not qualified",
+  "source_condition": "API registration coverage is not full workflow qualification"
+}

@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "runtime_source_sha256": "9bc58af3b0b75cdb880426560f6c7e69fd0b0d6269ef28ba91f85bc65814a97b",
+  "mode": "retained_574_record_payment_sample_copy_on_SQLite",
+  "native_postgresql": "NOT_RUN",
+  "actual_browser": "NOT_RUN",
+  "raw_events": 574,
+  "logical_requests": 501,
+  "protected_tables_unchanged": [
+    "viewer_events",
+    "viewer_raw_events",
+    "viewer_links",
+    "viewer_requests",
+    "viewer_contract_identifiers",
+    "viewer_contract_edges",
+    "viewer_contract_observations"
+  ],
+  "payment_service_journeys_preserved": 5,
+  "idempotent": true,
+  "changed_actions": 0,
+  "dispatch_requests": 0
+}

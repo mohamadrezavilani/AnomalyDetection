@@ -1,0 +1,176 @@
+{
+  "mode": "archived_real_windows",
+  "live_elasticsearch": "NOT_RUN",
+  "owner_windows_native_postgresql": "NOT_RUN",
+  "operational_capacity": "NOT_QUALIFIED",
+  "full_r5_acceptance": 0,
+  "production_modified": false,
+  "windows": [
+    {
+      "ordinal": 0,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 35893,
+      "new_events": 35893,
+      "window_start_utc": "2026-10-24T04:15:00+00:00",
+      "window_end_utc": "2026-10-24T04:20:00+00:00",
+      "impacted_requests": 8037,
+      "bootstrap": true,
+      "generation": 2,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 16.341,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 16.341
+    },
+    {
+      "ordinal": 1,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 38397,
+      "new_events": 38397,
+      "window_start_utc": "2026-10-24T04:20:00+00:00",
+      "window_end_utc": "2026-10-24T04:25:00+00:00",
+      "impacted_requests": 8574,
+      "bootstrap": false,
+      "generation": 4,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 24.524,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 24.524
+    },
+    {
+      "ordinal": 2,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 37935,
+      "new_events": 37935,
+      "window_start_utc": "2026-10-24T04:25:00+00:00",
+      "window_end_utc": "2026-10-24T04:30:00+00:00",
+      "impacted_requests": 8464,
+      "bootstrap": false,
+      "generation": 6,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 36.41,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 36.41
+    },
+    {
+      "ordinal": 3,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 44255,
+      "new_events": 44255,
+      "window_start_utc": "2026-10-24T04:30:00+00:00",
+      "window_end_utc": "2026-10-24T04:35:00+00:00",
+      "impacted_requests": 9820,
+      "bootstrap": false,
+      "generation": 8,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 26.66,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 26.66
+    },
+    {
+      "ordinal": 4,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 44286,
+      "new_events": 44286,
+      "window_start_utc": "2026-10-24T04:35:00+00:00",
+      "window_end_utc": "2026-10-24T04:40:00+00:00",
+      "impacted_requests": 9932,
+      "bootstrap": false,
+      "generation": 10,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 31.388,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 31.388
+    },
+    {
+      "ordinal": 5,
+      "status": "PUBLISHED",
+      "mode": "forward",
+      "records": 47585,
+      "new_events": 47585,
+      "window_start_utc": "2026-10-24T04:40:00+00:00",
+      "window_end_utc": "2026-10-24T04:45:00+00:00",
+      "impacted_requests": 10796,
+      "bootstrap": false,
+      "generation": 12,
+      "capture_method": "pit_search_after",
+      "elapsed_seconds": 31.754,
+      "capture_seconds": 0,
+      "total_cycle_seconds": 31.754
+    }
+  ],
+  "pre_commit_restart_preserved": true,
+  "duplicate_recheck_idempotent": true,
+  "incremental_equals_full_batch": true,
+  "derived_tables": {
+    "viewer_requests": {
+      "rows": 55398,
+      "sha256": "214fa05b925a2abc1556dc08340ee11f8c7686e6e9b93cf0e8890a84af224abe"
+    },
+    "viewer_actions": {
+      "rows": 55374,
+      "sha256": "53a16362f11c7f4c08dd34d6ae6609dc2c2a1f288a176f94d74bd2b0371dc319"
+    },
+    "viewer_action_history": {
+      "rows": 103,
+      "sha256": "b5ace055d812e66b4c5d943c86df6c64f2ab5855463df810be663ed80e984f5b"
+    },
+    "viewer_contract_identifiers": {
+      "rows": 63665,
+      "sha256": "fd149890633e379229e4efa82e1addcbfa7ea804ad4fe55e3cee12f56faee829"
+    },
+    "viewer_contract_edges": {
+      "rows": 62586,
+      "sha256": "e378efb36b0eb863718a7fd60f22ae19948d5f550a5d52a285075fec8404a609"
+    },
+    "viewer_contract_observations": {
+      "rows": 4394,
+      "sha256": "45ad474c2a19ef3309e6818881beef7f9c4c8493eee93fc01d5a9e39a18dc782"
+    },
+    "viewer_semantic_occurrences": {
+      "rows": 5268,
+      "sha256": "7757f2b8162274bc12b372ea53582e4df2bab3f0647e2f9d9c23062e01dba411"
+    },
+    "viewer_semantic_session_heads": {
+      "rows": 2226,
+      "sha256": "20761fc4a2e51aef57cfc4ef2d60c4a1e06bca03df87b1c94cf168ab8c35702b"
+    }
+  },
+  "counts": {
+    "events": 248351,
+    "origins": 248351,
+    "requests": 55398,
+    "session_ids": 3576,
+    "actions": 6359,
+    "root_calls": 55374,
+    "unknown_calls": 0,
+    "files": 6,
+    "conflicting_origins": 0
+  },
+  "semantic_anchors": 5268,
+  "elapsed_seconds": 226.694,
+  "cpu_seconds": 225.132,
+  "process_peak_rss_kib": 301148,
+  "flask_ui": [
+    {
+      "route": "home",
+      "max_seconds": 0.0291,
+      "samples": 5
+    },
+    {
+      "route": "session",
+      "max_seconds": 0.0134,
+      "samples": 5
+    },
+    {
+      "route": "request",
+      "max_seconds": 0.0338,
+      "samples": 5
+    }
+  ],
+  "status": "PASS"
+}

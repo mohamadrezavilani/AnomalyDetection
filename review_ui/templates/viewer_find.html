@@ -1,0 +1,1 @@
+{% extends 'viewer_base.html' %}{% block body %}<section class="page-heading"><h1>جست‌وجوی درخواست</h1></section><section class="panel compact"><form method="get"><label>RequestID کامل <input size="50" name="request_id" value="{{search}}"></label><button>جست‌وجو</button></form>{% if not_found %}<p>درخواست در داده‌های واردشده پیدا نشد.</p>{% endif %}</section>{% endblock %}

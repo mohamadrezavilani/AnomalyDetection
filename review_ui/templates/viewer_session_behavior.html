@@ -1,0 +1,28 @@
+{% extends 'viewer_base.html' %}{% block body %}
+<section class="page-heading"><h1>اجرای رفتارهای مشاهده‌شدهٔ نشست</h1>
+<p class="lead">اجراهای مستقل، از جدید به قدیم. جزئیات هر ردیف، مراحل خدمت و درخواست‌های مرتبط را نشان می‌دهد.</p></section>
+<section class="panel">
+<div class="section-heading"><div><h2>شواهد زمان‌مند</h2>
+<p>محدوده: لاگ‌های ایندکس‌شدهٔ Viewer. آغاز دستی و قطعیت مالی بدون شاهد نامشخص‌اند.
+اگر صفحه دیگری وجود دارد، نبود یک خدمت در این صفحه اثبات عدم اجرای آن نیست.</p></div></div>
+<div class="table-scroll"><table><thead><tr><th>زمان تهران</th><th>خدمت / عملیات مشاهده‌شده</th><th>نوع اجرا</th><th>نتیجه API</th><th>آغاز دستی</th><th>مدرک</th></tr></thead>
+<tbody>{% for o in result.observed_occurrences %}<tr>
+<td dir="ltr">{{o.when_fa}}</td>
+<td>{% if o.root_call %}<strong dir="ltr">{{o.root_call.split(' Line:')[0]}}</strong>{% else %}<span>ریشه HTTP مشاهده نشده</span>{% endif %}</td>
+<td dir="ltr">{{o.kind}}{% if o.product_reservation_in_request %}<small>ProductReserve در همین RequestID مشاهده شده؛ اجرای دستی جداگانه شمرده نشده</small>{% endif %}{% if o.observed_secondary_operations %}<small>زیرعملیات مشاهده‌شده: {{o.observed_secondary_operations|length}}؛ اجرای مستقل آن‌ها تأیید نشده</small>{% endif %}{% if o.root_classification_authority == 'source_proposal_only_runtime_unverified' %}<small>دسته‌بندی پیشنهادی سورس؛ نیازمند تأیید</small>{% endif %}</td><td dir="ltr">{{o.root_code or 'نامشخص'}}</td>
+<td>{{'دارای شاهد' if o.customer_initiation_confirmed else 'نامشخص'}}</td>
+<td><a href="{{url_for('request_view',key=o.anchor_request_key)}}">لاگ و مراحل مرتبط ←</a><details><summary>شناسهٔ شواهد</summary><small dir="ltr">anchor: {{o.anchor_key}} · classification: {{o.occurrence_key}} · revision: {{o.revision}}</small></details></td>
+</tr>{% else %}<tr><td colspan="6" class="empty-state">در محدوده بررسی این صفحه، اجرای خدمت واجد شاهد مشاهده نشد.</td></tr>{% endfor %}
+</tbody></table></div>
+{% if result.ambiguous_multi_root_requests %}
+<div class="section-heading"><div><h2>درخواست‌های چندریشه‌ایِ نیازمند بررسی</h2>
+<p>چند API سرویس در یک RequestID دیده شده‌اند؛ بدون شاهد تفکیک عملیات، تعداد رفتار یا کلیک مشتری افزایش نمی‌یابد.</p></div></div>
+<div class="table-scroll"><table><thead><tr><th>شناسه درخواست</th><th>APIهای مشاهده‌شده</th><th>وضعیت</th><th>شواهد</th></tr></thead><tbody>
+{% for item in result.ambiguous_multi_root_requests %}<tr>
+<td dir="ltr">{{item.request_key}}</td><td>{% for api in item.observed_service_roots %}<small dir="ltr">{{api}}</small>{% endfor %}</td>
+<td>انتساب مستقل تأییدنشده{% if not item.candidate_roots_complete %} · فهرست ناقص{% endif %}</td>
+<td><a href="{{url_for('request_view',key=item.request_key)}}">جزئیات درخواست ←</a></td>
+</tr>{% endfor %}</tbody></table></div>{% endif %}
+<div class="pagination"><span>{{result.candidate_requests_scanned}} درخواست نامزد بررسی شد · {{result.observed_semantic_execution_count}} اجرای معنی‌دار مشاهده‌شده در این صفحه · شمارش اقدامات دستی: نامشخص</span>
+{% if result.next_cursor %}<a class="button" href="{{url_for('session_behavior_view',key=result.session_key,limit=limit,after_ns=result.next_cursor.after_ns,after_key=result.next_cursor.after_key,generation=result.next_cursor.generation)}}">ادامهٔ بررسی ←</a>{% endif %}</div>
+</section>{% endblock %}

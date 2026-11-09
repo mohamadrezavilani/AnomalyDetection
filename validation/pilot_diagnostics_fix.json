@@ -1,0 +1,11 @@
+{
+  "status": "PASS_LOCAL",
+  "focused_new_tests": 7,
+  "viewer_regressions_passed": 213,
+  "scope": "diagnostic cause preservation; no change to capture/publication semantics",
+  "user_initial_pilot": "FAILED_BEFORE_FIRST_PUBLICATION",
+  "root_cause": "UNRESOLVED_PENDING_DETAILED_NATIVE_REPORT",
+  "config_modified": false,
+  "private_credentials_included": false,
+  "atomic_ingest_sql_cause_preserved": true
+}

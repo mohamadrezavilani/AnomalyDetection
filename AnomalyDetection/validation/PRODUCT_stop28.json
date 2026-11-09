@@ -1,0 +1,13 @@
+{
+  "status": "PASS_VIEWER_STOP_REGRESSION",
+  "build_id": "AD-PRODUCT-20261107-28",
+  "environment": "LINUX_WIN32_API_AND_DATABASE_BOUNDARY_FIXTURES",
+  "native_windows": "NOT_RUN",
+  "checks": {
+    "delayed_console_stop_uses_targeted_fallback": "PASS",
+    "recycled_identity_and_mismatched_image_not_terminated": "PASS",
+    "termination_waits_for_handle_signal_and_closes_handles": "PASS",
+    "unknown_port_listener_blocks_upgrade": "PASS",
+    "viewer_advisory_locks_are_rechecked_before_upgrade": "PASS"
+  }
+}

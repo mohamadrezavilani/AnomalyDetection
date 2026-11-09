@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "tests": 372,
+  "passed": 372,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "failure_ids": [],
+  "error_ids": [],
+  "elapsed_seconds": 11.305,
+  "python": "3.12.14",
+  "executed_at_utc": "2026-10-28T11:02:29.603981+00:00",
+  "mode": "viewer_offline_regressions",
+  "runtime_source_sha256": "e945a4f68f48f10e422dfdd90544df028dc3b8648b03fe0fe0c68e64a543dfee",
+  "owner_postgresql": "NOT_RUN",
+  "live_elasticsearch": "NOT_RUN"
+}

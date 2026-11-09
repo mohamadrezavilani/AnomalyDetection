@@ -1,0 +1,77 @@
+{
+  "version": "p24-real-evidence-fixtures.2a.1",
+  "status": "sanitized_from_user_supplied_logs; synthetic aliases and URLs; not producer manifests",
+  "privacy": "Original messages are regenerated with safe fields. Other identifiers/secret/payload values are removed; only Session/IP equality is preserved explicitly. No secret equality hashes are saved.",
+  "sources": [
+    {
+      "file": "ip_activity.sanitized.json",
+      "sha256": "9207404f71bcc7978a2fc573376b82aba3bfa2b2a3401394f40cd81ccdc7afc8",
+      "original_attachment": "Pasted text(20261020-080719).txt",
+      "original_attachment_sha256": "ef2d614abbc44b913de35dae7db7089670e199772669c5c9ee4bcb204b8f0f99",
+      "records": 36
+    },
+    {
+      "file": "session_activity.sanitized.json",
+      "sha256": "cf281cfe59736cd2e2abaf842aa85ac9e96ad22dbcba13a0664a324950b7d044",
+      "original_attachment": "Pasted text (2)(5).txt",
+      "original_attachment_sha256": "03f515a1ad16827aacab1e0c38c954f3bfe662ade4dbd2769d4b55b0e22f53a4",
+      "records": 33
+    },
+    {
+      "file": "boundary.sanitized.json",
+      "sha256": "342edcd6d22a77d9411baba74d5d2c13f08bfc72c47b6bc0a986d26938840b80",
+      "original_attachment": "Pasted text(20261020-081544).txt",
+      "original_attachment_sha256": "7251d9cc9c3d21fe3cad855a56aa64b6545aa7fb6f3bfe0777c29451c2cd18f3",
+      "records": 14
+    },
+    {
+      "file": "registration.sanitized.json",
+      "sha256": "baf23894a1fb2d11963ed20a4e3a215577bb4e5648843555c905942f0fd66707",
+      "origin": "Six user-pasted raw registration documents; sanitized/reconstructed with full-source precision and observed fields",
+      "records": 6
+    }
+  ],
+  "expected": {
+    "IP_documents": 36,
+    "Session_documents": 33,
+    "overlapping_documents": 33,
+    "union_documents": 36,
+    "IP_request_ids": 11,
+    "Session_request_ids": 10,
+    "boundary_documents": 14,
+    "boundary_client_requests": 1,
+    "boundary_sql_observations": 12,
+    "boundary_provider_observations": 1,
+    "boundary_pre_cutoff_events": 11,
+    "boundary_post_cutoff_events": 3,
+    "boundary_final_code": "GD2016",
+    "Session_config_calls": 5,
+    "Session_OTP_generation_calls": 1,
+    "Session_credential_failures": 4
+  },
+  "anchors": {
+    "session_token": "00000000000000000000000000000002",
+    "registration_v2_request_id": "f89b23ab-a18c-4535-8f48-b2030173bc81",
+    "registration_v1_request_id": "0da3abfa-1133-4a77-be05-17296396882c",
+    "boundary_request_id": "394186e2-6b88-40dc-8523-08688e41b4b1"
+  },
+  "supplemental_taxonomy_sources": [
+    {
+      "file": "taxonomy/provider_ping.sanitized.json",
+      "sha256": "5d11099eaa6f98791d235b0eb9dd6f2b8558f8158ab7971009b1856b9ebc0b1c",
+      "origin": "Sanitized user-pasted provider ping; opaque IDs replaced; URL, headers, clientId, transactionId and payloads removed.",
+      "records": 1,
+      "included_in_example_replay": false
+    }
+  ],
+  "supplemental_fixtures": [
+    {
+      "file": "acquisition/complete_scroll.synthetic.json",
+      "sha256": "ad50138a42616781878639a4a2077cc9058eddaa2f139ca7926bc6f451dd11c5",
+      "evidence_authority": "synthetic_contract_example",
+      "records": 2,
+      "origin": "Entirely synthetic three-page recorded scroll example; no real collector transcript supplied.",
+      "included_in_example_replay": false
+    }
+  ]
+}

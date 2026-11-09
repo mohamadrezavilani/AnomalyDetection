@@ -1,0 +1,1011 @@
+{
+  "version": "p24-source-dispatch-1",
+  "transport": "Services.v1/InvoiceRegister",
+  "source_files_sha256": {
+    "Core/Main/Helper/HelperHttpContext.cs": "7c082d3f3836ad47bb58aa1686531c430f2a028d04c2769ec555e88eb3893d71",
+    "Core/Intermediate/Modules/Sales/Commands/Register/InvoiceRegisterHandler.cs": "686502af1fbd24bbc0a2d7ed1848be4b74c90b302a995468071d170bbaf1ed2f",
+    "Core/WebServices/Services.svc.cs": "7681770b34bbecc893f9fbbbe1a35850c1eeba6041f7ce9b525e1413acb55994"
+  },
+  "meaning": "requested service is explicitly authorized by dispatcher endpoint selection; HTTP transport remains InvoiceRegister",
+  "unmapped_service_names": [
+    "v1_InquiryMunicipalityPropertySafetyTollBills"
+  ],
+  "routes": {
+    "Services.v1/BankChequeStatusSayad": {
+      "service_names": [
+        "v1_InquiryBankChequeStatusSayad"
+      ],
+      "handler_methods": [
+        "V1_BankChequeStatusSayad"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/BankIbanInfo": {
+      "service_names": [
+        "v1_InquiryBankIbanInfo"
+      ],
+      "handler_methods": [
+        "V1_BankIbanInfo"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/CarAnnualTaxBills": {
+      "service_names": [
+        "v1_InquiryCarAnnualTaxBills"
+      ],
+      "handler_methods": [
+        "V_CarAnnualTollBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/CarAnnualTaxFileRegistration": {
+      "service_names": [
+        "v1_InquiryCarAnnualTaxFileRegistration"
+      ],
+      "handler_methods": [
+        "V1_CarAnnualTaxFileRegistration"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/CarAnnualTaxFileRegistrationRequest": {
+      "service_names": [
+        "v1_InquiryCarAnnualTaxFileRegistrationRequest"
+      ],
+      "handler_methods": [
+        "V1_CarAnnualTaxFileRegistrationRequest"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/CarAnnualTaxGetSettlementCertificate": {
+      "service_names": [
+        "v1_InquiryCarAnnualTaxGetSettlementCertificate"
+      ],
+      "handler_methods": [
+        "V1_CarAnnualTaxGetSettlementCertificate"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/CellPhoneBills": {
+      "service_names": [
+        "v1_InquiryCellPhoneBills"
+      ],
+      "handler_methods": [
+        "V1_CellPhoneBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/CellPhoneMciBillsExport": {
+      "service_names": [
+        "v1_InquiryCellPhoneMciBillsExport"
+      ],
+      "handler_methods": [
+        "V1_CellPhoneMciBillsExport"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/DrivingAccidents": {
+      "service_names": [
+        "v1_InquiryDrivingAccidents"
+      ],
+      "handler_methods": [
+        "V1_DrivingAccidents"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/DrivingLicenseNegativePoint": {
+      "service_names": [
+        "v1_InquiryDrivingLicenseNegativePoint"
+      ],
+      "handler_methods": [
+        "V1_DrivingLicenseNegativePoint"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/DrivingLicenseStatus": {
+      "service_names": [
+        "v1_InquiryDrivingLicenseStatus"
+      ],
+      "handler_methods": [
+        "V1_DrivingLicenseStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/EducationalExemption": {
+      "service_names": [
+        "v1_InquiryEducationalExemption"
+      ],
+      "handler_methods": [
+        "V1_EducationalExemption"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/ElectricBills": {
+      "service_names": [
+        "v1_InquiryElectricBills"
+      ],
+      "handler_methods": [
+        "V1_ElectricBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/ElectricBillsDetails": {
+      "service_names": [
+        "v1_InquiryElectricBillsDetails"
+      ],
+      "handler_methods": [
+        "v1_ElectricBillsDetails"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/ElectricBillsExport": {
+      "service_names": [
+        "v1_InquiryElectricBillsExport"
+      ],
+      "handler_methods": [
+        "V1_ElectricBillsExport"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/ExitBanStatus": {
+      "service_names": [
+        "v1_InquiryExitBanStatus"
+      ],
+      "handler_methods": [
+        "V1_ExitBanStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/Facility": {
+      "service_names": [
+        "v1_InquiryFacility"
+      ],
+      "handler_methods": [
+        "V1_InquiryFacility"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/FreewayTollBills": {
+      "service_names": [
+        "v1_InquiryFreewayTollBills"
+      ],
+      "handler_methods": [
+        "V1_FreewayTollBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/FreewayTollBillsDetailed": {
+      "service_names": [
+        "v1_InquiryFreewayTollBillsDetailed"
+      ],
+      "handler_methods": [
+        "V1_FreewayTollBillsDetailed"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/GasBills": {
+      "service_names": [
+        "v1_InquiryGasBills"
+      ],
+      "handler_methods": [
+        "V1_GasBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/GasBillsExport": {
+      "service_names": [
+        "v1_InquiryGasBillsExport"
+      ],
+      "handler_methods": [
+        "V1_GasBillsExport"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/GovernmentRetirement": {
+      "service_names": [
+        "v1_InquiryGovernmentRetirement"
+      ],
+      "handler_methods": [
+        "V1_GovernmentRetirement"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/GovernmentRetirementReceipt": {
+      "service_names": [
+        "v1_InquiryGovernmentRetirementReceipt"
+      ],
+      "handler_methods": [
+        "V1_GovernmentRetirementReceipt"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/GovernmentSubventionHistory": {
+      "service_names": [
+        "v1_InquiryGovernmentSubventionHistory"
+      ],
+      "handler_methods": [
+        "V1_GovernmentSubventionHistory"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/HusbandOrGuardianConsent": {
+      "service_names": [
+        "v1_InquiryHusbandOrGuardianConsent"
+      ],
+      "handler_methods": [
+        "V1_InquiryHusbandOrGuardianConsent"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/IdentificationDocumentsStatusCar": {
+      "service_names": [
+        "v1_InquiryIdentificationDocumentsStatusCar"
+      ],
+      "handler_methods": [
+        "V1_IdentificationDocumentsStatusCar"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/IdentificationDocumentsStatusMotorcycle": {
+      "service_names": [
+        "v1_InquiryIdentificationDocumentsStatusMotorcycle"
+      ],
+      "handler_methods": [
+        "V1_IdentificationDocumentsStatusMotorcycle"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/InsurancePolicies": {
+      "service_names": [
+        "v1_InquiryInsurancePolicies"
+      ],
+      "handler_methods": [
+        "V1_InsurancePolicies"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/JudicialTransactionCredit": {
+      "service_names": [
+        "v1_InquiryJudicialTransactionCredit"
+      ],
+      "handler_methods": [
+        "V1_JudicialTransactionCredit"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/JusticeSharesPortfolio": {
+      "service_names": [
+        "v1_InquiryJusticeSharesPortfolio"
+      ],
+      "handler_methods": [
+        "V1_JusticeSharesPortfolio"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/LandLinePhoneBills": {
+      "service_names": [
+        "v1_InquiryLandlinePhoneBills"
+      ],
+      "handler_methods": [
+        "V1_LandLinePhoneBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/LandLinePhoneBillsExport": {
+      "service_names": [
+        "v1_InquiryLandlinePhoneBillsExport"
+      ],
+      "handler_methods": [
+        "V1_LandLinePhoneBillsExport"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/LivelihoodInformation": {
+      "service_names": [
+        "v1_InquiryLivelihoodInformation"
+      ],
+      "handler_methods": [
+        "V1_LivelihoodInformation"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/MilitaryCardIssuanceStatus": {
+      "service_names": [
+        "v1_InquiryMilitaryCardIssuanceStatus"
+      ],
+      "handler_methods": [
+        "V1_MilitaryCardIssuanceStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/MunicipalityCarAnnualTollBills": {
+      "service_names": [
+        "v1_InquiryMunicipalityCarAnnualTollBills"
+      ],
+      "handler_methods": [
+        "V1_MunicipalityCarAnnualTollBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/MunicipalityCarParkTollBills": {
+      "service_names": [
+        "v1_InquiryMunicipalityCarParkTollBills"
+      ],
+      "handler_methods": [
+        "V1_MunicipalityCarParkTollBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/MunicipalityCarTollBills": {
+      "service_names": [
+        "v1_InquiryMunicipalityCarTollBills"
+      ],
+      "handler_methods": [
+        "V1_MunicipalityCarTollBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/MunicipalityPropertyTollBills": {
+      "service_names": [
+        "v1_InquiryMunicipalityPropertyTollBills"
+      ],
+      "handler_methods": [
+        "V1_MunicipalityPropertyTollBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/MunicipalityTaxiFaresBills": {
+      "service_names": [
+        "v1_InquiryMunicipalityTaxiFaresBills"
+      ],
+      "handler_methods": [
+        "V1_MunicipalityTaxiFaresBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/MyGovRegister": {
+      "service_names": [
+        "v1_InquiryMyGovRegister"
+      ],
+      "handler_methods": [
+        "V1_MyGovRegister"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/NationalCardReceiveTracking": {
+      "service_names": [
+        "v1_InquiryNationalCardReceiveTracking"
+      ],
+      "handler_methods": [
+        "V1_NationalCardReceiveTracking"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/NationalInfo": {
+      "service_names": [
+        "v1_InquiryNationalInfo"
+      ],
+      "handler_methods": [
+        "V1_NationalInfo"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/PassportStatus": {
+      "service_names": [
+        "v1_InquiryPassportStatus"
+      ],
+      "handler_methods": [
+        "V1_PassportStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/PassportStatusExport": {
+      "service_names": [
+        "v1_InquiryPassportStatusExport"
+      ],
+      "handler_methods": [
+        "V1_PassportStatusExport"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/PersonStatus": {
+      "service_names": [
+        "v1_InquiryPersonStatus"
+      ],
+      "handler_methods": [
+        "V1_PersonStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/PlateNumberHistory": {
+      "service_names": [
+        "v1_InquiryPlateNumberHistory"
+      ],
+      "handler_methods": [
+        "V1_PlateNumberHistory"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/PostPackagesStatus": {
+      "service_names": [
+        "v1_InquiryPostPackagesStatus"
+      ],
+      "handler_methods": [
+        "V1_PostPackagesStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/PostTrackingExtended": {
+      "service_names": [
+        "v1_InquiryPostTrackingExtended"
+      ],
+      "handler_methods": [
+        "V1_PostTrackingExtended"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/PostalCodeToAddress": {
+      "service_names": [
+        "v1_InquiryPostalCodeToAddress"
+      ],
+      "handler_methods": [
+        "V1_PostalCodeToAddress"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/RealEstateContract": {
+      "service_names": [
+        "v1_InquiryRealEstateContract"
+      ],
+      "handler_methods": [
+        "V1_RealEstateContract"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/SfaraCoupon": {
+      "service_names": [
+        "v1_InquirySfaraCoupon"
+      ],
+      "handler_methods": [
+        "V1_SfaraCoupon"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/SfaraCouponGetOrderDetail": {
+      "service_names": [
+        "v1_InquirySfaraCouponGetOrderDetail"
+      ],
+      "handler_methods": [
+        "V1_SfaraCouponGetOrderDetail"
+      ],
+      "catalog_role": "support"
+    },
+    "Services.v1/SfaraCouponGetOrderOtp": {
+      "service_names": [
+        "v1_InquirySfaraCouponGetOrderOtp"
+      ],
+      "handler_methods": [
+        "V1_SfaraCouponGetOrderOtp"
+      ],
+      "catalog_role": "support"
+    },
+    "Services.v1/SocialSecurityInsuranceElectronicPrescription": {
+      "service_names": [
+        "v1_InquirySocialSecurityInsuranceElectronicPrescription"
+      ],
+      "handler_methods": [
+        "V1_SocialSecurityInsuranceElectronicPrescription"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/SocialSecurityInsuranceHistory": {
+      "service_names": [
+        "v1_InquirySocialSecurityInsuranceHistory"
+      ],
+      "handler_methods": [
+        "V1_SocialSecurityInsuranceHistory"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalCredit": {
+      "service_names": [
+        "v1_InquirySocialSecurityInsuranceMedicalCredit"
+      ],
+      "handler_methods": [
+        "V1_SocialSecurityInsuranceMedicalCredit"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalPrescription": {
+      "service_names": [
+        "v1_InquirySocialSecurityInsuranceMedicalPrescription"
+      ],
+      "handler_methods": [
+        "V1_SocialSecurityInsuranceMedicalPrescription"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/SocialSecurityInsuranceRetirement": {
+      "service_names": [
+        "v1_InquirySocialSecurityInsuranceRetirement"
+      ],
+      "handler_methods": [
+        "V1_SocialSecurityInsuranceRetirement"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/SocialSecurityInsuranceRetirementReceipt": {
+      "service_names": [
+        "v1_InquirySocialSecurityInsuranceRetirementReceipt"
+      ],
+      "handler_methods": [
+        "V1_SocialSecurityInsuranceRetirementReceipt"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TechnicalExaminationCertificate": {
+      "service_names": [
+        "v1_InquiryTechnicalExaminationCertificate"
+      ],
+      "handler_methods": [
+        "V1_TechnicalExaminationCertificate"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TechnicalExaminationCertificateByVin": {
+      "service_names": [
+        "v1_InquiryTechnicalExaminationCertificateByVin"
+      ],
+      "handler_methods": [
+        "V1_TechnicalExaminationCertificateByVin"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TelecomRegisteredLines": {
+      "service_names": [
+        "v1_InquiryTelecomRegisteredLines"
+      ],
+      "handler_methods": [
+        "V1_TelecomRegisteredLines"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TopUpProductReserve": {
+      "service_names": [
+        "v1_TopUpCharge",
+        "v1_TopUpInternetPackage",
+        "v1_TopUpRoamingInternetPackageProducts",
+        "v1_TopUpChargeCustom"
+      ],
+      "handler_methods": [
+        "V1_TopUpReserve",
+        "V1_TopUpReserve",
+        "V1_TopUpReserve",
+        "V1_TopUpChargeCustom"
+      ],
+      "catalog_role": "unknown"
+    },
+    "Services.v1/TrafficFinesCar": {
+      "service_names": [
+        "v1_InquiryTrafficFinesCar"
+      ],
+      "handler_methods": [
+        "V1_TrafficFinesCar"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TrafficFinesCarNoDetails": {
+      "service_names": [
+        "v1_InquiryTrafficFinesCarSummary"
+      ],
+      "handler_methods": [
+        "V1_TrafficFinesCarNoDetails"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TrafficFinesCarTotalDebt": {
+      "service_names": [
+        "v1_InquiryTrafficFinesCarTotalDebt"
+      ],
+      "handler_methods": [
+        "V1_TrafficFinesCarTotalDebt"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TrafficFinesCarWithImage": {
+      "service_names": [
+        "v1_InquiryTrafficFinesCarWithImage"
+      ],
+      "handler_methods": [
+        "V1_InquiryTrafficFinesCarWithImage"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TrafficFinesMotorcycle": {
+      "service_names": [
+        "v1_InquiryTrafficFinesMotorcycle"
+      ],
+      "handler_methods": [
+        "V1_TrafficFinesMotorcycle"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TrafficFinesMotorcycleNoDetails": {
+      "service_names": [
+        "v1_InquiryTrafficFinesMotorcycleSummary"
+      ],
+      "handler_methods": [
+        "V1_TrafficFinesMotorcycleNoDetails"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TrafficFinesMotorcycleWithImage": {
+      "service_names": [
+        "v1_InquiryTrafficFinesMotorcycleWithImage"
+      ],
+      "handler_methods": [
+        "V1_TrafficFinesMotorcycleWithImage"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TrafficFinesWithImageInquiryGetImage": {
+      "service_names": [
+        "v1_InquiryTrafficFinesWithImagesGetImage"
+      ],
+      "handler_methods": [
+        "V1_TrafficFinesWithImageInquiryGetImage"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TransferTax": {
+      "service_names": [
+        "v1_InquiryTransferTax"
+      ],
+      "handler_methods": [
+        "V1_TransferTax"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TransferTaxCar": {
+      "service_names": [
+        "v1_InquiryTransferTaxCar"
+      ],
+      "handler_methods": [
+        "V1_TransferTaxCar"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TransferTaxGetSettlementCertificate": {
+      "service_names": [
+        "v1_InquiryTransferTaxGetSettlementCertificate"
+      ],
+      "handler_methods": [
+        "V1_TransferTaxGetSettlementCertificate"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/TransferTaxMotorcycle": {
+      "service_names": [
+        "v1_InquiryTransferTaxMotorcycle"
+      ],
+      "handler_methods": [
+        "V1_TransferTaxMotorcycle"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/VehicleAuthenticity": {
+      "service_names": [
+        "v1_InquiryVehicleAuthenticity"
+      ],
+      "handler_methods": [
+        "V1_VehicleAuthenticity"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/VehicleLeaseStatus": {
+      "service_names": [
+        "v1_InquiryVehicleLeaseStatus"
+      ],
+      "handler_methods": [
+        "V1_VehicleLeaseStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/VehiclePlateNumbers": {
+      "service_names": [
+        "v1_InquiryVehiclePlateNumbers"
+      ],
+      "handler_methods": [
+        "V1_VehiclePlateNumbers"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/VehicleTheftStatus": {
+      "service_names": [
+        "v1_InquiryVehicleTheftStatus"
+      ],
+      "handler_methods": [
+        "V1_VehicleTheftStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/VehicleThirdPartyInsurance": {
+      "service_names": [
+        "v1_InquiryVehicleThirdPartyInsurance"
+      ],
+      "handler_methods": [
+        "V1_VehicleThirdPartyInsurance"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/VehicleThirdPartyInsuranceStatus": {
+      "service_names": [
+        "v1_InquiryVehicleThirdPartyInsuranceStatus"
+      ],
+      "handler_methods": [
+        "V1_VehicleThirdPartyInsuranceStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/WaterBills": {
+      "service_names": [
+        "v1_InquiryWaterBills"
+      ],
+      "handler_methods": [
+        "V1_WaterBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v1/WaterBillsExport": {
+      "service_names": [
+        "v1_InquiryWaterBillsExport"
+      ],
+      "handler_methods": [
+        "V1_WaterBillsExport"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/BankIbanInfo": {
+      "service_names": [
+        "v2_InquiryBankIbanInfo"
+      ],
+      "handler_methods": [
+        "V2_BankIbanInfo"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/CellPhoneMciBillsDetails": {
+      "service_names": [
+        "v2_InquiryCellPhoneMciBillsDetails"
+      ],
+      "handler_methods": [
+        "V2_CellPhoneMciBillsDetails"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/ExitBanStatus": {
+      "service_names": [
+        "v2_InquiryExitBanStatus"
+      ],
+      "handler_methods": [
+        "V2_ExitBanStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/FreewayTollBills": {
+      "service_names": [
+        "v2_InquiryFreewayTollBills"
+      ],
+      "handler_methods": [
+        "V2_FreewayTollBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/GasBills": {
+      "service_names": [
+        "v2_InquiryGasBills"
+      ],
+      "handler_methods": [
+        "V2_GasBills"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/GovernmentSubventionHistory": {
+      "service_names": [
+        "v2_InquiryGovernmentSubventionHistory"
+      ],
+      "handler_methods": [
+        "V2_GovernmentSubventionHistory"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/JudicialTransactionCredit": {
+      "service_names": [
+        "v2_InquiryJudicialTransactionCredit"
+      ],
+      "handler_methods": [
+        "V2_JudicialTransactionCredit"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/PassportStatus": {
+      "service_names": [
+        "v2_InquiryPassportStatus"
+      ],
+      "handler_methods": [
+        "V2_PassportStatus"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/RealEstateContract": {
+      "service_names": [
+        "v2_InquiryRealEstateContract"
+      ],
+      "handler_methods": [
+        "V2_RealEstateContract"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/SfaraCouponGetOrderOtp": {
+      "service_names": [
+        "v2_InquirySfaraCouponGetOrderOtp"
+      ],
+      "handler_methods": [
+        "V2_SfaraCouponGetOrderOtp"
+      ],
+      "catalog_role": "support"
+    },
+    "Services.v2/SocialSecurityInsuranceHistory": {
+      "service_names": [
+        "v2_InquirySocialSecurityInsuranceHistory"
+      ],
+      "handler_methods": [
+        "V2_SocialSecurityInsuranceHistory"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalCredit": {
+      "service_names": [
+        "v2_InquirySocialSecurityInsuranceMedicalCredit"
+      ],
+      "handler_methods": [
+        "V2_SocialSecurityInsuranceMedicalCredit"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalPrescription": {
+      "service_names": [
+        "v2_InquirySocialSecurityInsuranceMedicalPrescription"
+      ],
+      "handler_methods": [
+        "V2_SocialSecurityInsuranceMedicalPrescription"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/SocialSecurityInsuranceRetirement": {
+      "service_names": [
+        "v2_InquirySocialSecurityInsuranceRetirement"
+      ],
+      "handler_methods": [
+        "V2_SocialSecurityInsuranceRetirement"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/SocialSecurityInsuranceRetirementReceipt": {
+      "service_names": [
+        "v2_InquirySocialSecurityInsuranceRetirementReceipt"
+      ],
+      "handler_methods": [
+        "V2_SocialSecurityInsuranceRetirementReceipt"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/TrafficFinesImages": {
+      "service_names": [
+        "v2_InquiryTrafficFinesImages"
+      ],
+      "handler_methods": [
+        "V2_TrafficFinesImages"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/TransferTaxCar": {
+      "service_names": [
+        "v2_InquiryTransferTaxCar"
+      ],
+      "handler_methods": [
+        "V2_TransferTaxCar"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/TransferTaxMotorcycle": {
+      "service_names": [
+        "v2_InquiryTransferTaxMotorcycle"
+      ],
+      "handler_methods": [
+        "V2_TransferTaxMotorcycle"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v2/VehicleAuthenticity": {
+      "service_names": [
+        "v2_InquiryVehicleAuthenticity"
+      ],
+      "handler_methods": [
+        "V2_VehicleAuthenticity"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/BankIbanInfo": {
+      "service_names": [
+        "v3_InquiryBankIbanInfo"
+      ],
+      "handler_methods": [
+        "V3_BankIbanInfo"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/ElectricBillsExport": {
+      "service_names": [
+        "v3_InquiryElectricBillsExport"
+      ],
+      "handler_methods": [
+        "V3_ElectricBillsExport"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/JudicialTransactionCredit": {
+      "service_names": [
+        "v3_InquiryJudicialTransactionCredit"
+      ],
+      "handler_methods": [
+        "V3_JudicialTransactionCredit"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/LandLinePhoneBillsDetails": {
+      "service_names": [
+        "v3_InquiryLandLinePhoneBillsDetails"
+      ],
+      "handler_methods": [
+        "v3_InquiryLandLinePhoneBillsDetails"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/SocialSecurityInsuranceMedicalCredit": {
+      "service_names": [
+        "v3_InquirySocialSecurityInsuranceMedicalCredit"
+      ],
+      "handler_methods": [
+        "V3_SocialSecurityInsuranceMedicalCredit"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/TransferTaxCar": {
+      "service_names": [
+        "v3_InquiryTransferTaxCar"
+      ],
+      "handler_methods": [
+        "V3_TransferTaxCar"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/TransferTaxMotorcycle": {
+      "service_names": [
+        "v3_InquiryTransferTaxMotorcycle"
+      ],
+      "handler_methods": [
+        "V3_TransferTaxMotorcycle"
+      ],
+      "catalog_role": "business"
+    },
+    "Services.v3/VehicleAuthenticity": {
+      "service_names": [
+        "v3_InquiryVehicleAuthenticity"
+      ],
+      "handler_methods": [
+        "V3_VehicleAuthenticity"
+      ],
+      "catalog_role": "business"
+    }
+  }
+}

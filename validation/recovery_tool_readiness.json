@@ -1,0 +1,42 @@
+{
+  "status": "TOOL_READY_NATIVE_RECOVERY_NOT_RUN",
+  "runtime_source_sha256": "a9f5a0e19ef1df4a482004441cf56bc28aac2027db1f7ccf5ba3231129599575",
+  "runtime_code_unchanged": true,
+  "local_tests": {
+    "status": "PASS",
+    "cases": 15,
+    "scope": "dangerous_target_refusals_and_streamed_exact_multiset_hashes"
+  },
+  "native_windows_postgresql_execution": "NOT_RUN",
+  "source_protection": {
+    "database_transactions": "READ ONLY",
+    "pg_dump": "same exported snapshot as full row manifest",
+    "server_commands": "new private datadir only, guarded by marker and distinct server system identifier",
+    "existing_checkpoint_roles_keys": "unchanged"
+  },
+  "test_actions": [
+    "private cluster immediate stop before and after real publisher COMMIT",
+    "actual owner Viewer logical backup and local key backup",
+    "full application row and table/index/constraint reconciliation after restore",
+    "real restored D5 readonly reconciliation",
+    "duplicate verified local capture on restored copy",
+    "one real next closed ES window on restored copy only"
+  ],
+  "private_outputs": "backup, local key copy, isolated cluster, raw captures and diagnostic logs retained locally; never uploaded in report ZIP",
+  "cost": "once; required free space 2.5 x database size + 10 GiB; full backup and restore can take appreciable time",
+  "not_covered": [
+    "power loss / OS crash",
+    "physical WAL/PITR",
+    "PostgreSQL global ACLs/roles/tablespaces",
+    "formal RPO/RTO policy",
+    "800K new logical RequestIDs/hour",
+    "sustained HTTP and native browser acceptance",
+    "financial acceptance"
+  ],
+  "scope_after_pass": "functional native checks and application logical recovery complete; sustained representative capacity/HTTP/browser gate remains",
+  "references": [
+    "https://www.postgresql.org/docs/17/app-pgdump.html",
+    "https://www.postgresql.org/docs/17/app-pg-ctl.html"
+  ],
+  "tool_sha256": "b507baf7e89e61c17d063cc3766d8f52c59f428715a50edd93f27942def13969"
+}

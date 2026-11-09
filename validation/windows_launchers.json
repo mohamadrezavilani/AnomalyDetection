@@ -1,0 +1,86 @@
+{
+  "status": "PASS",
+  "mode": "actual_powershell_engine_inert_executable_regression",
+  "platform": "Linux",
+  "powershell_version": "7.5.4",
+  "cases": [
+    {
+      "case": "old_launcher_six_application_sources",
+      "status": "REPRODUCED_JOINED_EXECUTABLE_FAILURE"
+    },
+    {
+      "case": "six_sources_Check",
+      "status": "PASS"
+    },
+    {
+      "case": "six_sources_Status",
+      "status": "PASS"
+    },
+    {
+      "case": "six_sources_Worker",
+      "status": "PASS"
+    },
+    {
+      "case": "six_sources_Web",
+      "status": "PASS"
+    },
+    {
+      "case": "six_sources_Pilot",
+      "status": "PASS"
+    },
+    {
+      "case": "six_sources_Start",
+      "status": "PASS"
+    },
+    {
+      "case": "parent_active_venv_precedes_project_and_path",
+      "status": "PASS"
+    },
+    {
+      "case": "project_venv_without_active_environment",
+      "status": "PASS"
+    },
+    {
+      "case": "stale_active_environment_falls_back_to_project",
+      "status": "PASS"
+    },
+    {
+      "case": "explicit_python_precedes_active_and_project",
+      "status": "PASS"
+    },
+    {
+      "case": "native_failure_exit_code_propagated",
+      "status": "PASS"
+    }
+  ],
+  "native_windows_execution": "NOT_RUN",
+  "native_owner_postgresql": "NOT_RUN",
+  "spawned_windows": "MOCKED_ONLY_FOR_START",
+  "config_and_python_paths_with_spaces": true,
+  "live_worker_or_capture_started": false,
+  "permanent_viewer_data_modified": false,
+  "scripts": {
+    "Start_Viewer.cmd": "ab32452ef44beafb7d062f9122f41bd111a3536e02141223a4887d807331252d",
+    "tools/viewer.ps1": "68b50d4970d301a2468f174773f0a27a0becefdacc3699d7fb00c598d22b6a2d"
+  },
+  "config_preserved": true,
+  "env_vars_required": false,
+  "new_dependencies": false,
+  "actions": [
+    "Start",
+    "Worker",
+    "Web",
+    "Status",
+    "Check",
+    "Pilot"
+  ],
+  "stop": "Ctrl+C in each launched window",
+  "original_failure": "multiple ApplicationInfo Source values joined into one executable",
+  "resolution_precedence": [
+    "explicit_python",
+    "active_virtual_environment",
+    "project_virtual_environment",
+    "first_path_application"
+  ],
+  "script_exit_code_propagated": true
+}

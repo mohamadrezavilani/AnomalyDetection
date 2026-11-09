@@ -1,0 +1,429 @@
+{
+  "version": "p24-viewer-online-1",
+  "created_at_utc": "2026-10-26T09:19:16.373467+00:00",
+  "decision": "MARKET_ROLE_CORRECTION_AND_BULK_PUBLICATION_READY_NATIVE_TIMING_PENDING",
+  "implementation_complete": true,
+  "operational_acceptance_complete": false,
+  "input_archive_sha256": "c339c4d467509d33219978f7f6f2316d28f10d7dd5d27474613683f62b0fddd3",
+  "scope": {
+    "viewer_only": true,
+    "core_changed": false,
+    "original_collector_changed": false,
+    "operational_database_changed": false,
+    "anomaly_engine_changed": false
+  },
+  "tests": {
+    "tests": 281,
+    "passed": 281,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "groups": {
+    "A": {
+      "status": "PASS_LOCAL_HTTP_AND_TEMPLATE_CHECKS_NATIVE_BROWSER_PENDING",
+      "evidence": [
+        "release_viewer_tests.json",
+        "recent_start.json",
+        "market_bulk_fix.json"
+      ],
+      "scope": "Local HTTP/template checks and owner-confirmed main-market/background roles; native browser validation pending."
+    },
+    "B": {
+      "status": "PASS_LOCAL",
+      "evidence": [
+        "release_viewer_tests.json",
+        "source_catalog_real_migration.json"
+      ],
+      "scope": "stable ba1 anchors, independent repeat, IP continuity, withdrawals, cursor generation"
+    },
+    "C": {
+      "status": "PASS_GUARDS_ONLY",
+      "evidence": [
+        "release_viewer_tests.json",
+        "reference_cases.json"
+      ],
+      "scope": "financial meanings preserved; no inferred transfer or full R5 acceptance"
+    },
+    "D": {
+      "status": "PASS_ARCHIVED_REAL_AND_RETAINED_CATALOG_MIGRATION",
+      "evidence": [
+        "market_bulk_real_replay.json"
+      ],
+      "windows": 6,
+      "events": 248351,
+      "requests": 55398,
+      "derived_tables_compared": 8
+    },
+    "E": {
+      "status": "PASS_LOCAL_OWNER_RECONNECT_PRESERVED",
+      "evidence": [
+        "release_viewer_tests.json",
+        "postgres_sql_dialect.json",
+        "owner_pilot_observation.json",
+        "recent_start.json",
+        "recent_start_postgres.json",
+        "binary_copy_codec.json",
+        "market_bulk_fix.json"
+      ],
+      "scope": "Local rollback/snapshot/reconnect tests and PostgreSQL dialect checks pass. Owner connection reopen preserves checkpoint; native process-kill/restore and multi-client isolation after final changes are NOT_RUN."
+    },
+    "F": {
+      "status": "PASS_SIMULATED_FAILURES",
+      "evidence": [
+        "release_viewer_tests.json"
+      ],
+      "scope": "timeout, shards, early stop, missing/repeated page, cursor loss, corrupt proof/file, legitimate zero rows"
+    },
+    "G": {
+      "status": "PASS_EXISTING_REFERENCE_PRESERVATION",
+      "evidence": [
+        "reference_cases.json"
+      ],
+      "cases": [
+        "landline",
+        "mobile",
+        "electricity"
+      ],
+      "scope": "bounded existing real evidence; source completeness and financial finality not inferred"
+    },
+    "H": {
+      "status": "OWNER_SIX_PUBLISHED_FINAL_BUILD_SPEED_RECHECK_UI_PENDING",
+      "evidence": [
+        "owner_pilot_observation.json"
+      ],
+      "reason": "Latest owner window published 63029 events in 272.578 seconds before current binary bulk-copy and scoped-event cache changes. Native timing for these changes remains pending.",
+      "next_command": "python .\\tools\\profile_viewer_window.py --config .\\viewer_config.local.py --max-minutes 6 --out .\\validation\\viewer_one_window.json"
+    }
+  },
+  "runtime": {
+    "dependencies_changed": false,
+    "online_commands": [
+      "live",
+      "live-once",
+      "live-status",
+      "live-recent",
+      "recheck"
+    ],
+    "refresh_seconds": 30,
+    "default_window_minutes": 5,
+    "default_lag_seconds": 60,
+    "default_overlap_windows": 2,
+    "continuous_history_before_live_start": "NOT_CLAIMED",
+    "default_pilot_max_minutes": 45,
+    "required_rechecks": 2,
+    "console_io": "bounded_async_writer",
+    "pilot_progress_report": "atomic_after_every_publication",
+    "readiness_check": "read_only_existing_private_binding_and_release_integrity",
+    "windows_launcher": "Start_Viewer.cmd",
+    "windows_python_resolution": "explicit_then_active_venv_then_project_venv_then_first_path_application",
+    "recent_start": "explicit_locked_atomic_cursor_seek_with_append_only_gap_receipt",
+    "event_and_link_final_transport": "ordered_binary_copy_via_bounded_spool_same_transaction",
+    "incremental_event_source": "materialized_impacted_request_events_with_indexed_lateral_fetch"
+  },
+  "evidence_limits": {
+    "native_windows_postgresql": "OWNER_SIX_WINDOWS_BEFORE_FINAL_ALIAS_CONSOLE_GATE_CHANGES",
+    "live_elasticsearch": "OWNER_511306_EVENTS_IN_SIX_PUBLISHED_WINDOWS_BEFORE_FINAL_CHANGES",
+    "postgres_sql_engine": "postgresql_dialect_wasm",
+    "full_r5_end_to_end_acceptance": 0,
+    "backend_l1_real_deployment": "NOT_OBSERVED",
+    "capacity_800k_requests_hour": "NOT_QUALIFIED",
+    "native_postgresql_copy_transfer": "OWNER_SIX_WINDOWS_PUBLISHED_BEFORE_FINAL_NON_INGEST_CHANGES",
+    "native_after_current_ingest_fix": "OWNER_SIX_WINDOWS_PUBLISHED",
+    "native_current_final_build": "NOT_RUN",
+    "native_windows_launcher_execution": "NOT_RUN",
+    "native_current_source_catalog_update": "OWNER_APPLIED_86_PATHS_50663_REQUESTS_5217_SEMANTIC_CHANGES",
+    "native_current_recent_start": "OWNER_RESCHEDULED_WITH_230_WINDOW_GAP_RECORDED",
+    "native_latest_observed_cycle_seconds": 272.578,
+    "native_new_binary_copy_and_scope_cache": "NOT_RUN"
+  },
+  "remaining_actions": [
+    "Owner stops Worker and web, installs current integrated ZIP and preserves config, keys and checkpoint",
+    "Owner does not repeat live-recent; the prior recent start is already durable",
+    "Owner runs one bounded six-minute profiler to measure the new native binary-copy and request cache path",
+    "After the bounded check, Start_Viewer.cmd runs Worker and web; full sustained-speed/recheck/restart/HTTP acceptance remains pending"
+  ],
+  "backend_deferred": [
+    "actual new L1 runtime fields and relation bridges",
+    "wallet funding purpose without explicit evidence",
+    "authoritative ledger/final financial result"
+  ],
+  "pilot_diagnostics_fix": {
+    "status": "PASS_LOCAL",
+    "reason": "Suppressed exception context now classified without raw error messages",
+    "owner_initial_pilot": "FAILED_BEFORE_FIRST_PUBLICATION",
+    "owner_initial_error": "RuntimeError",
+    "owner_windows_published": 0,
+    "root_operational_cause": "NOT_YET_OBSERVED",
+    "native_retest_required": true,
+    "configuration_changed": false,
+    "atomic_ingest_sql_cause_preserved": true
+  },
+  "updated_at_utc": "2026-10-26T16:30:54.813521+00:00",
+  "owner_reported_regressions": {
+    "passed": 206,
+    "failed": 0,
+    "skipped": 0
+  },
+  "pit_capture_fix": {
+    "status": "PASS_LOCAL",
+    "new_focused_tests": 7,
+    "owner_observed": {
+      "terminated_early": true,
+      "timed_out": false,
+      "shards": {
+        "total": 1,
+        "successful": 1,
+        "skipped": 0,
+        "failed": 0
+      }
+    },
+    "strategy": "Prefer the proven PIT/search_after capture; keep exact count and strict partial-response rejection",
+    "native_pit_pilot": "NOT_RUN",
+    "configuration_changed": false,
+    "checkpoint_reset": false,
+    "synthetic_http_rest_to_atomic_publish_and_recheck": "PASS"
+  },
+  "processing_speed_fix": {
+    "status": "SUPERSEDED_BY_BOOTSTRAP_AND_COPY_FIX",
+    "viewer_tests_passed": 224,
+    "origin_lookup_batch_size": 500,
+    "contract_cursor_batch_size": 400,
+    "postgres_writes_pipelined": true,
+    "publication_transaction_unchanged": true,
+    "pilot_phase_progress": true,
+    "heartbeat_seconds": 15,
+    "pg_protocol_qualification": "PGlite/WASM: 1203 first-window events; contract cursor over 600 candidates",
+    "native_owner_performance": "NOT_MEASURED",
+    "owner_capture_bytes": 7671071,
+    "owner_generation_at_report": 0,
+    "exact_owner_database_stage": "NOT_OBSERVED",
+    "config_changed": false,
+    "checkpoint_reset": false,
+    "new_dependencies": false,
+    "archived_six_windows_replay": "PASS"
+  },
+  "bootstrap_and_copy_fix": {
+    "status": "PASS_LOCAL_NATIVE_RETEST_REQUIRED",
+    "tests_passed": 232,
+    "owner_observation": {
+      "window_events": 81859,
+      "ingest_completed_elapsed_seconds": 332.9,
+      "root_bearing_historical_requests": 467576,
+      "contract_candidates_scanned": 813617,
+      "semantic_scanned_at_last_attached_line": 352500,
+      "attached_last_elapsed_seconds": 2771.2,
+      "owner_reported_runtime_over_one_hour": true
+    },
+    "semantic_bootstrap": {
+      "one_server_cursor": true,
+      "previous_anchor_join": true,
+      "one_final_session_head_refresh": true,
+      "incremental_session_refresh": "one_set_after_all_batches",
+      "preserves_anchor_identity_and_revisions": true
+    },
+    "ingestion": {
+      "transport": "PostgreSQL COPY to bounded temporary staging and merge",
+      "batch_size": 500,
+      "commits_inside_ingest": false,
+      "revision_deduplication_unchanged": true
+    },
+    "pilot_deadline": {
+      "wall_clock_cancel": true,
+      "cpu_progress_check": true,
+      "sql_statement_timeout_seconds": 300
+    },
+    "synthetic_sqlite_500k_bootstrap_seconds": 21.934,
+    "staged_merge_postgresql_dialect": "PASS_WITH_BOUND_ROW_COPY_ADAPTER",
+    "native_postgresql_copy_transport": "NOT_RUN",
+    "native_owner_performance": "INCREMENTAL_CYCLE_EXCEEDED_300_SECONDS",
+    "real_archived_six_windows": "PASS",
+    "configuration_changed": false,
+    "checkpoint_reset": false,
+    "private_credentials_included": false,
+    "production_modified": false
+  },
+  "scoped_fetch_fix": {
+    "status": "OWNER_READERS_MATCH_AND_SIX_WINDOWS_PUBLISHED",
+    "owner_observed": {
+      "worker_pid": 40096,
+      "samples": 5,
+      "state": "active",
+      "sql_command": "FETCH",
+      "wait_event_type": null,
+      "wait_event": null,
+      "blocked_by": [],
+      "native_incremental_cycle_over_300_seconds": true,
+      "window_events": 86972,
+      "contract_events_at_last_log": 12000,
+      "contract_seconds_at_last_log": 519.8
+    },
+    "strategy": {
+      "scoped_metadata_materialized_once": true,
+      "raw_payload_batch_limit": 400,
+      "postgres_payload_read": "primary_key_lookup_per_origin_version_with_lateral_fence",
+      "scope_statistics_refreshed": true,
+      "financial_and_revision_predicates_unchanged": true,
+      "atomic_publication_unchanged": true
+    },
+    "qualification": {
+      "regressions": 236,
+      "archived_six_windows": "PASS",
+      "postgresql_dialect_wasm": "PASS",
+      "raw_payload_primary_key_plan": "PASS",
+      "readonly_first_400_matches_original": "PASS",
+      "native_windows_postgresql": "OWNER_400_ROWS_MATCH_AND_COMPLETE_CONTRACT_PHASE",
+      "operational_capacity": "NOT_QUALIFIED"
+    },
+    "diagnostic": {
+      "command": "python tools/diagnose_viewer_fetch.py --config viewer_config.local.py --out validation/viewer_sql_fetch.json",
+      "global_budget_seconds": 60,
+      "statement_timeout_seconds": 20,
+      "permanent_data_modified": false,
+      "elasticsearch_capture": false,
+      "setup_writes": "connection_local_temporary_tables_only",
+      "comparison_reads": "repeatable_read_read_only_transactions",
+      "cache_controlled": false
+    },
+    "ingestion_timing_fields": [
+      "lookup_seconds",
+      "stage_copy_merge_seconds",
+      "parse_encode_other_seconds"
+    ],
+    "configuration_changed": false,
+    "checkpoint_reset": false,
+    "private_credentials_included": false
+  },
+  "window_ingest_fix": {
+    "status": "LOCAL_FIX_READY_NATIVE_THROUGHPUT_PENDING",
+    "owner_before_fix": {
+      "log_name": "viewer_one_window.log",
+      "sha256": "af77f9daecafb1375cba763898e8ae1014698332bf08c40a0777625ef140600c",
+      "result": {
+        "status": "PUBLISHED",
+        "mode": "forward",
+        "records": 86972,
+        "new_events": 86972,
+        "impacted_requests": 17427,
+        "bootstrap": false,
+        "generation": 4,
+        "capture_method": "pit_search_after",
+        "elapsed_seconds": 323.0,
+        "capture_seconds": 52.625,
+        "total_cycle_seconds": 375.625
+      },
+      "ingest": {
+        "progress": {
+          "stage": "ingest",
+          "processed": 86972,
+          "total": 86972,
+          "lookup_seconds": 4.908,
+          "stage_copy_merge_seconds": 224.369,
+          "parse_encode_other_seconds": 22.145
+        },
+        "elapsed_seconds": 307.5
+      },
+      "contract_seconds": 30.8,
+      "reader_probe": "READERS_MATCH_400_ROWS",
+      "cache_controlled": false
+    },
+    "change": {
+      "copy_batch_source_events": 500,
+      "stage_lifetime": "one_capture_in_current_publication_transaction",
+      "target_merge": "once_per_table_per_capture_ordered_by_primary_key",
+      "revision_cache_scope": "one_capture_only_raw_rows_referenced_without_reencoding",
+      "conflict_rules_unchanged": true,
+      "atomic_publication_unchanged": true,
+      "config_changed": false,
+      "checkpoint_reset": false
+    },
+    "local_qualification": {
+      "viewer_regressions": "validation/release_viewer_tests.json",
+      "postgres_sql": "validation/postgres_sql_dialect.json",
+      "archived_real_replay": "validation/window_ingest_real_replay.json",
+      "native_copy_transport": "NOT_RUN_IN_DEVELOPMENT_PGLITE_USES_BOUND_ROW_ADAPTER"
+    },
+    "native_after_fix": "OWNER_SIX_WINDOWS_PUBLISHED_SPEED_NOT_ACCEPTED",
+    "online_capacity": "NOT_ACCEPTED",
+    "next_command": "python tools/profile_viewer_window.py --config viewer_config.local.py --max-minutes 10 --out validation/viewer_one_window.json"
+  },
+  "release_id": "p24-viewer-online-1-catalog-final-20261026",
+  "development_delivery_complete": true,
+  "owner_six_window_result": {
+    "evidence": "owner_pilot_observation.json",
+    "published_windows": 6,
+    "events": 511306,
+    "mean_cycle_seconds": 298.748,
+    "max_cycle_seconds": 338.766,
+    "cycles_over_300": 3,
+    "restart_checkpoint_preserved": true,
+    "rechecks_completed": 0,
+    "failure_code": "pilot_time_budget_exceeded",
+    "measured_before_final_build": true
+  },
+  "final_runtime_changes": {
+    "home_alias_lookup": "metadata identity scope plus fenced raw primary-key lookup",
+    "home_alias_sql_plan": "PASS_PGLITE_WASM_NOT_NATIVE_CAPACITY",
+    "console": "bounded non-blocking queue with a daemon I/O thread; no worker locks held during console writes",
+    "acceptance": "six published forward windows AND two published rechecks AND all existing speed/UI/backlog/restart gates",
+    "reports": "atomic replacement after every publication; bounded phase trace; runtime source fingerprint",
+    "init": "fresh configured live init creates/binds online schema without ES traversal; existing keys preserved",
+    "installation": "read-only source/config/key/source-start check; no reinitialization on existing owner DB",
+    "tests": 264,
+    "postgres_dialect_checks": 27,
+    "financial_semantics_changed": false,
+    "production_modified": false,
+    "config_modified": false,
+    "checkpoint_reset": false,
+    "new_dependencies": false
+  },
+  "final_qualification": {
+    "regressions": "release_viewer_tests.json",
+    "sql": "postgres_sql_dialect.json",
+    "archived_real": "catalog_online_real_replay.json",
+    "finite_driver_http": "test_viewer_pilot_integration: SQLite and synthetic capture, not native PostgreSQL/ES",
+    "source_digest_pinned": true,
+    "windows_launcher_execution": "NOT_RUN",
+    "retained_catalog_migration": "source_catalog_real_migration.json"
+  },
+  "service_catalog_fix": {
+    "status": "PASS_LOCAL_ARCHIVED_REAL_AND_POSTGRES_DIALECT",
+    "audit": "service_catalog_audit.json",
+    "retained_migration": "source_catalog_real_migration.json",
+    "source_paths": 256,
+    "source_proposals": 250,
+    "unresolved_source_paths": 6,
+    "observed_root_api_paths": 162,
+    "unknown_before_unreviewed": 65,
+    "unknown_after_unreviewed": 0,
+    "reviewed_unknown_preserved": true,
+    "operator_notes_preserved": true,
+    "automatic_one_time_startup_migration": true,
+    "raw_and_financial_relations_preserved": true,
+    "full_rebuild_required": false,
+    "capture_cursor_changed": false,
+    "init_or_private_config_edit_required": false,
+    "separate_versions": true,
+    "manual_initiation_inferred": false,
+    "root_event_kind_rules_changed": false,
+    "native_owner_current_build": "NOT_RUN"
+  },
+  "windows_launcher_regression": {
+    "status": "PASS_LINUX_POWERSHELL_ENGINE",
+    "cases": 12,
+    "evidence": "windows_launchers.json",
+    "original_failure_reproduced": true,
+    "native_windows_execution": "NOT_RUN",
+    "owner_latest_pilot_started": false
+  },
+  "owner_latest_installation": {
+    "status": "READY_TO_START",
+    "release_integrity_checked_files": 247,
+    "generation": 18,
+    "continuous_published_to_utc": "2026-10-26T09:45:00+00:00",
+    "service_catalog": "UPDATE_PENDING",
+    "checkpoint_preserved": true,
+    "pilot_launcher_failure_before_python": true
+  },
+  "runtime_source_sha256": "7eb96aac884f3fd9a02643e65f3ff69c8064bfbc3f0c99c437bb03c1636a4fdb"
+}

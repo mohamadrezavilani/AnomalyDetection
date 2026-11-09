@@ -1,0 +1,1084 @@
+[
+  {
+    "domain_id": null,
+    "domain_label_fa": null,
+    "family_id": "municipal_settlement_certificate",
+    "family_label_fa": "مفاصاحساب شهرداری",
+    "facade_endpoints": [
+      "Services.v1/SettlementCertificateRequest"
+    ],
+    "ServiceEnum_names": [
+      "v1_SettlementCertificateRequest"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": "Requires typed context; do not publish a new unknown business domain merely for this row"
+  },
+  {
+    "domain_id": null,
+    "domain_label_fa": null,
+    "family_id": "paper_bill",
+    "family_label_fa": "قبض کاغذی",
+    "facade_endpoints": [],
+    "ServiceEnum_names": [
+      "v1_PaperBills"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": "Requires typed context; do not publish a new unknown business domain merely for this row"
+  },
+  {
+    "domain_id": "account_wallet",
+    "domain_label_fa": "حساب کاربری و کیف پول",
+    "family_id": "account",
+    "family_label_fa": "حساب کاربری",
+    "facade_endpoints": [
+      "Core.v1/DeviceRegister",
+      "Core.v2/DeviceRegister",
+      "Core.v1/LoginByOTP",
+      "Core.v1/LoginByUserCredential",
+      "Core.v1/LoginByGoogle",
+      "Core.v1/UserSessions",
+      "Core.v1/UserSessionsTerminate",
+      "Core.v1/UserSessionsTerminateAllOthers",
+      "Core.v1/UserSessionUpdateInfo",
+      "Core.v2/UserSessionUpdateInfo",
+      "Core.v1/UserSessionInfo",
+      "Core.v1/UserCredentialAdd",
+      "Core.v1/UserCredentialChangePassword",
+      "Core.v1/UserCredentialClearPassword",
+      "Core.v1/UserCredentialInfo",
+      "Core.v1/UserProfile",
+      "Core.v1/UserProfileUpdatePersonalInfo",
+      "Core.v1/UserProfileUpdateLocation",
+      "Core.v1/UserProfileUpdateFinancialInfo",
+      "Core.v1/UserQuickAccessItems",
+      "Core.v1/UserQuickAccessItemsUpdate",
+      "Core.v1/UserServiceQueries",
+      "Core.v1/UserServiceQueryNote",
+      "Core.v1/UserServiceQueryBookmark",
+      "Core.v1/UserServiceQueryDelete",
+      "Core.v1/UserMessages",
+      "Core.v1/UserMessageRead",
+      "Core.v1/UserMessageRemove",
+      "Core.v1/UserTransactions",
+      "Core.v1/UserSurvey",
+      "Core.v1/UserDelete",
+      "Core.v1/UserLogOut",
+      "Ewano.v1/EwanoLogin"
+    ],
+    "ServiceEnum_names": [],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "account_wallet",
+    "domain_label_fa": "حساب کاربری و کیف پول",
+    "family_id": "wallet",
+    "family_label_fa": "کیف پول",
+    "facade_endpoints": [
+      "Core.v1/UserWallets",
+      "Core.v1/UserWalletBalance",
+      "Core.v1/UserWalletChargeChannels",
+      "Core.v1/UserWalletCharge"
+    ],
+    "ServiceEnum_names": [],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "banking_finance",
+    "domain_label_fa": "خدمات بانکی و مالی",
+    "family_id": "bank_facilities",
+    "family_label_fa": "تسهیلات و تعهدات بانکی",
+    "facade_endpoints": [
+      "Services.v1/Facility"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryFacility"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "banking_finance",
+    "domain_label_fa": "خدمات بانکی و مالی",
+    "family_id": "bank_iban",
+    "family_label_fa": "اطلاعات شبا و حساب بانکی",
+    "facade_endpoints": [
+      "Services.v1/BankIbanInfoPrerequisites",
+      "Services.v1/BankIbanInfo",
+      "Services.v2/BankIbanInfo",
+      "Services.v3/BankIbanInfo"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryBankIbanInfo",
+      "v2_InquiryBankIbanInfo",
+      "v3_InquiryBankIbanInfo"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "banking_finance",
+    "domain_label_fa": "خدمات بانکی و مالی",
+    "family_id": "cheque_status",
+    "family_label_fa": "وضعیت چک صیادی",
+    "facade_endpoints": [
+      "Services.v1/BankChequeStatusSayad"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryBankChequeStatusSayad"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "coupons",
+    "domain_label_fa": "کالابرگ و خدمات سفرا",
+    "family_id": "sfara_coupon",
+    "family_label_fa": "کالابرگ و خدمات سفرا",
+    "facade_endpoints": [
+      "Services.v1/SfaraCoupon",
+      "Services.v1/SfaraCouponGetOrderOtp",
+      "Services.v2/SfaraCouponGetOrderOtp",
+      "Services.v1/SfaraCouponGetOrderDetail"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquirySfaraCouponGetOrderOtp",
+      "v2_InquirySfaraCouponGetOrderOtp",
+      "v1_InquirySfaraCoupon",
+      "v1_InquirySfaraCouponGetOrderDetail"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "government_support",
+    "domain_label_fa": "خدمات دولتی، حمایتی و بازنشستگی",
+    "family_id": "government_retirement",
+    "family_label_fa": "بازنشستگی کشوری",
+    "facade_endpoints": [
+      "Services.v1/GovernmentRetirement",
+      "Services.v1/GovernmentRetirementReceipt"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryGovernmentRetirement",
+      "v1_InquiryGovernmentRetirementReceipt"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "government_support",
+    "domain_label_fa": "خدمات دولتی، حمایتی و بازنشستگی",
+    "family_id": "justice_shares",
+    "family_label_fa": "سهام عدالت",
+    "facade_endpoints": [
+      "Services.v1/JusticeSharesPortfolio"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryJusticeSharesPortfolio"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "government_support",
+    "domain_label_fa": "خدمات دولتی، حمایتی و بازنشستگی",
+    "family_id": "livelihood_information",
+    "family_label_fa": "اطلاعات معیشتی",
+    "facade_endpoints": [
+      "Services.v1/LivelihoodInformation"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryLivelihoodInformation"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "government_support",
+    "domain_label_fa": "خدمات دولتی، حمایتی و بازنشستگی",
+    "family_id": "mygov_registration",
+    "family_label_fa": "ثبت‌نام پنجره ملی دولت",
+    "facade_endpoints": [
+      "Services.v1/MyGovRegister"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMyGovRegister"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "government_support",
+    "domain_label_fa": "خدمات دولتی، حمایتی و بازنشستگی",
+    "family_id": "subvention_history",
+    "family_label_fa": "سوابق یارانه",
+    "facade_endpoints": [
+      "Services.v1/GovernmentSubventionHistory",
+      "Services.v2/GovernmentSubventionHistory"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryGovernmentSubventionHistory",
+      "v2_InquiryGovernmentSubventionHistory"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "driving_accidents",
+    "family_label_fa": "سوابق تصادفات",
+    "facade_endpoints": [
+      "Services.v1/DrivingAccidents"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryDrivingAccidents"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "driving_license",
+    "family_label_fa": "گواهینامه و نمره منفی",
+    "facade_endpoints": [
+      "Services.v1/DrivingLicenseStatus",
+      "Services.v1/DrivingLicenseNegativePoint"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryDrivingLicenseStatus",
+      "v1_InquiryDrivingLicenseNegativePoint"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "educational_exemption",
+    "family_label_fa": "معافیت تحصیلی",
+    "facade_endpoints": [
+      "Services.v1/EducationalExemption"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryEducationalExemption"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "exit_ban",
+    "family_label_fa": "ممنوع‌الخروجی",
+    "facade_endpoints": [
+      "Services.v1/ExitBanStatus",
+      "Services.v2/ExitBanStatus"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryExitBanStatus",
+      "v2_InquiryExitBanStatus"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "guardian_consent",
+    "family_label_fa": "رضایت همسر یا ولی",
+    "facade_endpoints": [
+      "Services.v1/HusbandOrGuardianConsent"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryHusbandOrGuardianConsent"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "military_card",
+    "family_label_fa": "وضعیت کارت نظام وظیفه",
+    "facade_endpoints": [
+      "Services.v1/MilitaryCardIssuanceStatus"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMilitaryCardIssuanceStatus"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "national_card_tracking",
+    "family_label_fa": "پیگیری کارت ملی",
+    "facade_endpoints": [
+      "Services.v1/NationalCardReceiveTracking"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryNationalCardReceiveTracking"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "national_information",
+    "family_label_fa": "اطلاعات هویتی",
+    "facade_endpoints": [
+      "Services.v1/NationalInfo"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryNationalInfo"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "passport_status",
+    "family_label_fa": "وضعیت گذرنامه",
+    "facade_endpoints": [
+      "Services.v1/PassportStatus",
+      "Services.v2/PassportStatus",
+      "Services.v1/PassportStatusExport"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryPassportStatus",
+      "v2_InquiryPassportStatus",
+      "v1_InquiryPassportStatusExport"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "identity_police",
+    "domain_label_fa": "خدمات هویتی و انتظامی",
+    "family_id": "person_status",
+    "family_label_fa": "وضعیت شخص",
+    "facade_endpoints": [
+      "Services.v1/PersonStatus"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryPersonStatus"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "judicial",
+    "domain_label_fa": "خدمات قضایی",
+    "family_id": "judicial_transaction_credit",
+    "family_label_fa": "اعتبار معاملاتی قضایی",
+    "facade_endpoints": [
+      "Services.v1/JudicialTransactionCredit",
+      "Services.v2/JudicialTransactionCredit",
+      "Services.v3/JudicialTransactionCredit"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryJudicialTransactionCredit",
+      "v2_InquiryJudicialTransactionCredit",
+      "v3_InquiryJudicialTransactionCredit"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "post_address",
+    "domain_label_fa": "پست و نشانی",
+    "family_id": "postal_address",
+    "family_label_fa": "نشانی از کد پستی",
+    "facade_endpoints": [
+      "Services.v1/PostalCodeToAddress"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryPostalCodeToAddress"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "post_address",
+    "domain_label_fa": "پست و نشانی",
+    "family_id": "postal_tracking",
+    "family_label_fa": "رهگیری مرسوله پستی",
+    "facade_endpoints": [
+      "Services.v1/PostPackagesStatus",
+      "Services.v1/PostTrackingExtended"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryPostPackagesStatus",
+      "v1_InquiryPostTrackingExtended"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "property",
+    "domain_label_fa": "املاک و قراردادها",
+    "family_id": "property_safety_toll",
+    "family_label_fa": "عوارض ایمنی ملک",
+    "facade_endpoints": [
+      "Services.v1/MunicipalityPropertySafetyTollBills"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMunicipalityPropertySafetyTollBills"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "property",
+    "domain_label_fa": "املاک و قراردادها",
+    "family_id": "property_toll",
+    "family_label_fa": "عوارض ملک",
+    "facade_endpoints": [
+      "Services.v1/MunicipalityPropertyTollBillsBarcodeInfo",
+      "Services.v1/MunicipalityPropertyTollBills"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMunicipalityPropertyTollBills"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "property",
+    "domain_label_fa": "املاک و قراردادها",
+    "family_id": "real_estate_contract",
+    "family_label_fa": "قرارداد املاک",
+    "facade_endpoints": [
+      "Services.v1/RealEstateContract",
+      "Services.v2/RealEstateContract"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryRealEstateContract",
+      "v2_InquiryRealEstateContract"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "public_information",
+    "domain_label_fa": "اطلاعات عمومی",
+    "family_id": "air_pollution",
+    "family_label_fa": "کیفیت هوا",
+    "facade_endpoints": [
+      "Public.v1/AirPollution"
+    ],
+    "ServiceEnum_names": [
+      "v1_AirPollution"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "public_information",
+    "domain_label_fa": "اطلاعات عمومی",
+    "family_id": "calendar",
+    "family_label_fa": "تقویم",
+    "facade_endpoints": [
+      "Public.v1/CalendarToday",
+      "Public.v1/CalendarMonth"
+    ],
+    "ServiceEnum_names": [
+      "v1_CalendarToday",
+      "v1_CalendarMonth"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "public_information",
+    "domain_label_fa": "اطلاعات عمومی",
+    "family_id": "crypto_rates",
+    "family_label_fa": "نرخ رمزارز",
+    "facade_endpoints": [
+      "Public.v1/ExchangeCrypto"
+    ],
+    "ServiceEnum_names": [
+      "v1_ExchangeCrypto"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "public_information",
+    "domain_label_fa": "اطلاعات عمومی",
+    "family_id": "currency_rates",
+    "family_label_fa": "نرخ ارز",
+    "facade_endpoints": [
+      "Public.v1/ExchangeCurrency"
+    ],
+    "ServiceEnum_names": [],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "public_information",
+    "domain_label_fa": "اطلاعات عمومی",
+    "family_id": "gold_rates",
+    "family_label_fa": "نرخ طلا",
+    "facade_endpoints": [
+      "Public.v1/ExchangeGold"
+    ],
+    "ServiceEnum_names": [],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "public_information",
+    "domain_label_fa": "اطلاعات عمومی",
+    "family_id": "religious_times",
+    "family_label_fa": "اوقات شرعی",
+    "facade_endpoints": [
+      "Public.v1/CalendarReligiousTimes"
+    ],
+    "ServiceEnum_names": [
+      "v1_CalendarReligiousTimes"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "public_information",
+    "domain_label_fa": "اطلاعات عمومی",
+    "family_id": "weather",
+    "family_label_fa": "آب‌وهوا",
+    "facade_endpoints": [
+      "Public.v1/Weather"
+    ],
+    "ServiceEnum_names": [
+      "v1_Weather"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "social_insurance",
+    "domain_label_fa": "بیمه و تأمین اجتماعی",
+    "family_id": "electronic_prescription",
+    "family_label_fa": "نسخه الکترونیکی تأمین اجتماعی",
+    "facade_endpoints": [
+      "Services.v1/SocialSecurityInsuranceElectronicPrescription",
+      "Services.v1/SocialSecurityInsuranceElectronicPrescriptionDetails"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquirySocialSecurityInsuranceElectronicPrescription"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "social_insurance",
+    "domain_label_fa": "بیمه و تأمین اجتماعی",
+    "family_id": "insurance_policies",
+    "family_label_fa": "بیمه‌نامه‌ها",
+    "facade_endpoints": [
+      "Services.v1/InsurancePolicies"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryInsurancePolicies"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "social_insurance",
+    "domain_label_fa": "بیمه و تأمین اجتماعی",
+    "family_id": "medical_credit",
+    "family_label_fa": "اعتبار درمانی تأمین اجتماعی",
+    "facade_endpoints": [
+      "Services.v1/SocialSecurityInsuranceMedicalCredit",
+      "Services.v2/SocialSecurityInsuranceMedicalCredit",
+      "Services.v3/SocialSecurityInsuranceMedicalCredit"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquirySocialSecurityInsuranceMedicalCredit",
+      "v2_InquirySocialSecurityInsuranceMedicalCredit",
+      "v3_InquirySocialSecurityInsuranceMedicalCredit"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "social_insurance",
+    "domain_label_fa": "بیمه و تأمین اجتماعی",
+    "family_id": "medical_prescription",
+    "family_label_fa": "نسخه پزشکی تأمین اجتماعی",
+    "facade_endpoints": [
+      "Services.v1/SocialSecurityInsuranceMedicalPrescription",
+      "Services.v2/SocialSecurityInsuranceMedicalPrescription",
+      "Services.v1/SocialSecurityInsuranceMedicalPrescriptionDetails",
+      "Services.v2/SocialSecurityInsuranceMedicalPrescriptionDetails"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquirySocialSecurityInsuranceMedicalPrescription",
+      "v2_InquirySocialSecurityInsuranceMedicalPrescription"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "social_insurance",
+    "domain_label_fa": "بیمه و تأمین اجتماعی",
+    "family_id": "social_insurance_history",
+    "family_label_fa": "سوابق بیمه تأمین اجتماعی",
+    "facade_endpoints": [
+      "Services.v1/SocialSecurityInsuranceHistory",
+      "Services.v2/SocialSecurityInsuranceHistory"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquirySocialSecurityInsuranceHistory",
+      "v2_InquirySocialSecurityInsuranceHistory"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "social_insurance",
+    "domain_label_fa": "بیمه و تأمین اجتماعی",
+    "family_id": "social_insurance_retirement",
+    "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی",
+    "facade_endpoints": [
+      "Services.v1/SocialSecurityInsuranceRetirement",
+      "Services.v2/SocialSecurityInsuranceRetirement",
+      "Services.v1/SocialSecurityInsuranceRetirementReceipt",
+      "Services.v2/SocialSecurityInsuranceRetirementReceipt"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquirySocialSecurityInsuranceRetirement",
+      "v2_InquirySocialSecurityInsuranceRetirement",
+      "v1_InquirySocialSecurityInsuranceRetirementReceipt",
+      "v2_InquirySocialSecurityInsuranceRetirementReceipt"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "telecom_topup",
+    "domain_label_fa": "ارتباطات، شارژ و بسته",
+    "family_id": "registered_lines",
+    "family_label_fa": "خطوط ارتباطی ثبت‌شده",
+    "facade_endpoints": [
+      "Services.v1/TelecomRegisteredLines"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryTelecomRegisteredLines"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "telecom_topup",
+    "domain_label_fa": "ارتباطات، شارژ و بسته",
+    "family_id": "topup",
+    "family_label_fa": "خرید شارژ و بسته",
+    "facade_endpoints": [
+      "Services.v1/TopUpOperators",
+      "Services.v1/TopUpProducts",
+      "Services.v1/TopUpProductPurchase",
+      "Services.v1/TopUpPurchaseInfo",
+      "Services.v1/TopUpRoamingInternetPackageProducts",
+      "Services.v1/TopUpChargeCustomConfig",
+      "Services.v1/TopUpProductsInternetPackage",
+      "Services.v1/TopUpOperatorsInternetPackage",
+      "Services.v1/TopUpOperatorsCharge",
+      "Services.v1/TopUpProductsCharge"
+    ],
+    "ServiceEnum_names": [
+      "v1_TopUpCharge",
+      "v1_TopUpInternetPackage",
+      "v1_TopUpChargeCustom",
+      "v1_TopUpRoamingInternetPackageProducts"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "utilities",
+    "domain_label_fa": "قبوض خدماتی",
+    "family_id": "electric_bill",
+    "family_label_fa": "قبض برق",
+    "facade_endpoints": [
+      "Services.v1/ElectricBills",
+      "Services.v1/ElectricBillsExport",
+      "Services.v2/ElectricBillsExport",
+      "Services.v3/ElectricBillsExport",
+      "Services.v1/ElectricBillsDetails"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryElectricBills",
+      "v1_InquiryElectricBillsExport",
+      "v3_InquiryElectricBillsExport",
+      "v1_InquiryElectricBillsDetails"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "utilities",
+    "domain_label_fa": "قبوض خدماتی",
+    "family_id": "gas_bill",
+    "family_label_fa": "قبض گاز",
+    "facade_endpoints": [
+      "Services.v1/GasBills",
+      "Services.v1/GasBillsExport",
+      "Services.v2/GasBillsExport",
+      "Services.v2/GasBills"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryGasBills",
+      "v2_InquiryGasBills",
+      "v1_InquiryGasBillsExport"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "utilities",
+    "domain_label_fa": "قبوض خدماتی",
+    "family_id": "landline_bill",
+    "family_label_fa": "قبض تلفن ثابت",
+    "facade_endpoints": [
+      "Services.v1/LandLinePhoneBills",
+      "Services.v1/LandLinePhoneBillsDetails",
+      "Services.v2/LandLinePhoneBillsDetails",
+      "Services.v3/LandLinePhoneBillsDetails",
+      "Services.v1/LandLinePhoneBillsExport",
+      "Services.v2/LandLinePhoneBillsExport",
+      "Services.v3/LandLinePhoneBillsExport"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryLandlinePhoneBills",
+      "v3_InquiryLandLinePhoneBillsDetails",
+      "v1_InquiryLandlinePhoneBillsExport"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "utilities",
+    "domain_label_fa": "قبوض خدماتی",
+    "family_id": "mobile_bill",
+    "family_label_fa": "قبض تلفن همراه",
+    "facade_endpoints": [
+      "Services.v1/CellPhoneBills",
+      "Services.v1/CellPhoneMciBillsExport",
+      "Services.v1/CellPhoneMciBillsDetails",
+      "Services.v2/CellPhoneMciBillsDetails"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryCellPhoneBills",
+      "v1_InquiryCellPhoneMciBillsExport",
+      "v2_InquiryCellPhoneMciBillsDetails"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "utilities",
+    "domain_label_fa": "قبوض خدماتی",
+    "family_id": "water_bill",
+    "family_label_fa": "قبض آب",
+    "facade_endpoints": [
+      "Services.v1/WaterBills",
+      "Services.v1/WaterBillsExport",
+      "Services.v2/WaterBillsExport"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryWaterBills",
+      "v1_InquiryWaterBillsExport"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "annual_vehicle_tax",
+    "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+    "facade_endpoints": [
+      "Proxy.SettlementCertificateCarAnnualTax",
+      "Proxy.CarAnnualTaxGetFixedParametersConfig",
+      "Services.v1/CarAnnualTaxGetSettlementCertificate",
+      "Services.v1/MunicipalityCarAnnualTollBills",
+      "Services.v2/MunicipalityCarAnnualTollBills",
+      "Services.v1/CarAnnualTaxBills",
+      "Services.v1/CarAnnualTaxFileRegistration",
+      "Services.v1/CarAnnualTaxFileRegistrationRequest"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMunicipalityCarAnnualTollBills",
+      "v2_InquiryMunicipalityCarAnnualTollBills",
+      "v1_InquiryCarAnnualTaxBills",
+      "v1_SettlementCertificateRequestCarAnnualTax",
+      "v1_InquiryCarAnnualTaxFileRegistration",
+      "v1_InquiryCarAnnualTaxFileRegistrationRequest",
+      "v1_InquiryCarAnnualTaxGetSettlementCertificate"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "external_vehicle_tax",
+    "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+    "facade_endpoints": [
+      "Proxy.CarTaxCheckUserRegistrationStatus",
+      "Proxy.CarTaxForgetPassword",
+      "Proxy.CarTaxInquiry",
+      "Proxy.CarTaxRegistration",
+      "Proxy.CarTaxRequestOtp",
+      "Proxy.MotorTaxInquiry"
+    ],
+    "ServiceEnum_names": [],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "freeway_toll",
+    "family_label_fa": "عوارض آزادراهی",
+    "facade_endpoints": [
+      "Core.v1/AutoPayAddOrUpdateFreewayToll",
+      "Services.v1/FreewayTollBills",
+      "Services.v2/FreewayTollBills",
+      "Services.v1/FreewayTollBillsDetailed"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryFreewayTollBills",
+      "v2_InquiryFreewayTollBills",
+      "v1_InquiryFreewayTollBillsDetailed"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "municipal_vehicle_toll",
+    "family_label_fa": "عوارض شهری خودرو",
+    "facade_endpoints": [
+      "Services.v1/MunicipalityCarTollBills"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMunicipalityCarTollBills"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "parking_toll",
+    "family_label_fa": "عوارض پارک خودرو",
+    "facade_endpoints": [
+      "Services.v1/MunicipalityCarParkTollBills"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMunicipalityCarParkTollBills"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "taxi_fares",
+    "family_label_fa": "کرایه تاکسی",
+    "facade_endpoints": [
+      "Services.v1/MunicipalityTaxiFaresBillsBarcodeInfo",
+      "Services.v1/MunicipalityTaxiFaresBills"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryMunicipalityTaxiFaresBills"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "technical_examination",
+    "family_label_fa": "معاینه فنی",
+    "facade_endpoints": [
+      "Proxy.TechnicalExaminationCertificateCheckUserRegistrationStatus",
+      "Proxy.TechnicalExaminationCertificateInquiry",
+      "Proxy.TechnicalExaminationCertificateRegistration",
+      "Proxy.TechnicalExaminationCertificateRequestOtp",
+      "Services.v1/TechnicalExaminationCertificate",
+      "Services.v1/TechnicalExaminationCertificateByVin"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryTechnicalExaminationCertificate",
+      "v1_InquiryTechnicalExaminationCertificateByVin"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "traffic_fines",
+    "family_label_fa": "خلافی خودرو و موتور",
+    "facade_endpoints": [
+      "Services.v1/TrafficFinesCar",
+      "Services.v1/TrafficFinesCarWithImage",
+      "Services.v1/TrafficFinesCarNoDetails",
+      "Services.v1/TrafficFinesMotorcycle",
+      "Services.v1/TrafficFinesMotorcycleWithImage",
+      "Services.v1/TrafficFinesMotorcycleNoDetails",
+      "Services.v1/TrafficFinesImages",
+      "Services.v2/TrafficFinesImages",
+      "Services.v1/TrafficFinesWithImageInquiryGetImage",
+      "Services.v1/TrafficFinesCarTotalDebt"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryTrafficFinesCar",
+      "v1_InquiryTrafficFinesCarWithImage",
+      "v1_InquiryTrafficFinesCarSummary",
+      "v1_InquiryTrafficFinesMotorcycle",
+      "v1_InquiryTrafficFinesMotorcycleWithImage",
+      "v1_InquiryTrafficFinesMotorcycleSummary",
+      "v1_InquiryTrafficFinesImages",
+      "v2_InquiryTrafficFinesImages",
+      "v1_InquiryTrafficFinesWithImagesGetImage",
+      "v1_InquiryTrafficFinesCarTotalDebt"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "transfer_tax",
+    "family_label_fa": "مالیات نقل و انتقال خودرو و موتور",
+    "facade_endpoints": [
+      "Services.v1/TransferTax",
+      "Services.v1/TransferTaxCar",
+      "Services.v2/TransferTaxCar",
+      "Services.v3/TransferTaxCar",
+      "Services.v1/TransferTaxMotorcycle",
+      "Services.v2/TransferTaxMotorcycle",
+      "Services.v3/TransferTaxMotorcycle",
+      "Services.v1/TransferTaxGetSettlementCertificate"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryTransferTax",
+      "v1_InquiryTransferTaxCar",
+      "v2_InquiryTransferTaxCar",
+      "v3_InquiryTransferTaxCar",
+      "v1_InquiryTransferTaxMotorcycle",
+      "v2_InquiryTransferTaxMotorcycle",
+      "v3_InquiryTransferTaxMotorcycle",
+      "v1_InquiryTransferTaxGetSettlementCertificate"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "vehicle_authenticity",
+    "family_label_fa": "اصالت خودرو",
+    "facade_endpoints": [
+      "Services.v1/VehicleAuthenticity",
+      "Services.v2/VehicleAuthenticity",
+      "Services.v3/VehicleAuthenticity"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryVehicleAuthenticity",
+      "v2_InquiryVehicleAuthenticity",
+      "v3_InquiryVehicleAuthenticity"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "vehicle_documents",
+    "family_label_fa": "وضعیت مدارک خودرو و موتور",
+    "facade_endpoints": [
+      "Services.v1/IdentificationDocumentsStatusCar",
+      "Services.v1/IdentificationDocumentsStatusMotorcycle"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryIdentificationDocumentsStatusCar",
+      "v1_InquiryIdentificationDocumentsStatusMotorcycle"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "vehicle_lease",
+    "family_label_fa": "وضعیت لیزینگ خودرو",
+    "facade_endpoints": [
+      "Services.v1/VehicleLeaseStatus"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryVehicleLeaseStatus"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "vehicle_plates",
+    "family_label_fa": "پلاک‌های خودرو و سابقه پلاک",
+    "facade_endpoints": [
+      "Services.v1/VehiclePlateNumbers",
+      "Services.v1/PlateNumberHistory"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryVehiclePlateNumbers",
+      "v1_InquiryPlateNumberHistory"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "vehicle_theft",
+    "family_label_fa": "وضعیت سرقت خودرو",
+    "facade_endpoints": [
+      "Services.v1/VehicleTheftStatus"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryVehicleTheftStatus"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  },
+  {
+    "domain_id": "vehicle",
+    "domain_label_fa": "خدمات خودرو و موتور",
+    "family_id": "vehicle_third_party_insurance",
+    "family_label_fa": "بیمه شخص ثالث خودرو",
+    "facade_endpoints": [
+      "Services.v1/VehicleThirdPartyInsurance",
+      "Services.v1/VehicleThirdPartyInsuranceStatus"
+    ],
+    "ServiceEnum_names": [
+      "v1_InquiryVehicleThirdPartyInsurance",
+      "v1_InquiryVehicleThirdPartyInsuranceStatus"
+    ],
+    "authority": "presentation_proposal_grounded_in_named_service_and_reviewed_handlers; preserve concrete variant and runtime catalog IDs",
+    "domain_null_meaning": null
+  }
+]

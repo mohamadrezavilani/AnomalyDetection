@@ -1,0 +1,16 @@
+{
+  "build_id": "AD-INPUT-PUBLICATION-20261108",
+  "collector": "AD-CASE-REVIEW-20261106-06",
+  "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+  "synthetic_cases_exported": 51,
+  "overlapping_signal_members": 510,
+  "unique_facts": 255,
+  "read_only_snapshot": true,
+  "all_case_models_and_family_readiness": true,
+  "size_limit_and_failed_read_are_explicitly_partial": true,
+  "failed_read_savepoint_recovers_for_other_datasets": true,
+  "database_fingerprint_unchanged": true,
+  "owner_connection": false,
+  "native_windows_export": "NOT_RUN",
+  "actual_owner_case_accuracy": "NOT_PROVEN_BY_THIS_EXPORTER_TEST"
+}

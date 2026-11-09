@@ -1,0 +1,101 @@
+{
+  "version": "p24-taxonomy-candidate.1",
+  "conflicts": [
+    {
+      "method": "POST",
+      "endpoint": "/services.svc/v1/InvoiceRegister",
+      "references": [
+        {
+          "collection": "Services",
+          "request_name": "InvoiceRegister",
+          "item_path": "/item/0"
+        },
+        {
+          "collection": "Services",
+          "request_name": "WaterBillsExport",
+          "item_path": "/item/71"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "endpoint": "/services.svc/v1/SfaraCouponGetOrderOtp",
+      "references": [
+        {
+          "collection": "Services",
+          "request_name": "SfaraCouponGetOrderOtp",
+          "item_path": "/item/86"
+        },
+        {
+          "collection": "Services",
+          "request_name": "SfaraCouponGetOrderOtp v2",
+          "item_path": "/item/87"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "endpoint": "/services.svc/v2/SocialSecurityInsuranceMedicalPrescription",
+      "references": [
+        {
+          "collection": "Services",
+          "request_name": "SocialSecurityInsuranceMedicalPrescription v2",
+          "item_path": "/item/92"
+        },
+        {
+          "collection": "Services",
+          "request_name": "SocialSecurityInsuranceElectronicPrescription",
+          "item_path": "/item/94"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "endpoint": "/services.svc/v2/SocialSecurityInsuranceMedicalPrescriptionDetails",
+      "references": [
+        {
+          "collection": "Services",
+          "request_name": "SocialSecurityInsuranceMedicalPrescriptionDetails v2",
+          "item_path": "/item/93"
+        },
+        {
+          "collection": "Services",
+          "request_name": "SocialSecurityInsuranceElectronicPrescriptionDetails",
+          "item_path": "/item/95"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "endpoint": "/services.svc/v2/VehicleAuthenticity",
+      "references": [
+        {
+          "collection": "Services",
+          "request_name": "VehicleAuthenticity",
+          "item_path": "/item/66"
+        },
+        {
+          "collection": "Services",
+          "request_name": "VehicleAuthenticity V2",
+          "item_path": "/item/78"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "endpoint": "/webservices/Proxy.svc/SettlementCertificateCarAnnualTax",
+      "references": [
+        {
+          "collection": "Proxy",
+          "request_name": "SettlementCertificateCarAnnualTax",
+          "item_path": "/item/12"
+        },
+        {
+          "collection": "Proxy",
+          "request_name": "SettlementCertificateCarAnnualTax",
+          "item_path": "/item/14"
+        }
+      ]
+    }
+  ]
+}

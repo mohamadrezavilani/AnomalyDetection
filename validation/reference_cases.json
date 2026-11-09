@@ -1,0 +1,54 @@
+{
+  "status": "PASS",
+  "mode": "bounded_existing_real_reference_evidence",
+  "cases": [
+    {
+      "case": "landline",
+      "initial_rows": 19,
+      "webhook_rows": 4,
+      "initial_api_code": "G00000",
+      "observation_history": [
+        "paid_false",
+        "webhook_payment_success"
+      ],
+      "shared_payment_related_request_count": 2,
+      "financial_confirmation": "unverified",
+      "initial_page_http": 200,
+      "webhook_page_http": 200,
+      "pass_preservation": true
+    },
+    {
+      "case": "mobile",
+      "initial_rows": 19,
+      "webhook_rows": 4,
+      "initial_api_code": "G00000",
+      "observation_history": [
+        "paid_false",
+        "webhook_payment_success"
+      ],
+      "shared_payment_related_request_count": 2,
+      "financial_confirmation": "unverified",
+      "initial_page_http": 200,
+      "webhook_page_http": 200,
+      "pass_preservation": true
+    },
+    {
+      "case": "electricity",
+      "initial_rows": 10,
+      "webhook_rows": 4,
+      "initial_api_code": "G00000",
+      "observation_history": [
+        "paid_true",
+        "webhook_payment_success"
+      ],
+      "shared_payment_related_request_count": 2,
+      "financial_confirmation": "unverified",
+      "initial_page_http": 200,
+      "webhook_page_http": 200,
+      "pass_preservation": true
+    }
+  ],
+  "source_window_completeness": "NOT_CLAIMED",
+  "full_financial_acceptance": "NOT_CLAIMED",
+  "new_payment_requested": false
+}

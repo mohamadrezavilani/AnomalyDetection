@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Workflow / بررسی قرارداد</p><h1>بررسی منطق فرایند و تحویل</h1><p class="lead">سناریوهای زیر ساختگی‌اند و رفتار قرارداد بازطراحی را نشان می‌دهند.</p></div></section>
+{% for scenario in examples.scenarios %}{% set r=scenario.projection %}
+<section class="panel compact"><h2>{{ scenario.title_fa }}</h2><p>{{ scenario.description_fa }}</p>
+  <dl class="unit-list"><div><dt>رویداد منطقی دارای هویت معتبر در سناریو</dt><dd>{{ r.logical_event_count|fa_number }}</dd></div><div><dt>مشاهدهٔ تحویل</dt><dd>{{ r.delivery_observation_count|fa_number }}</dd></div><div><dt>تلاش تحویل با شناسهٔ مستقل</dt><dd>{{ r.verified_delivery_attempt_count|fa_number }}</dd></div><div><dt>RequestID متمایز انتقال</dt><dd>{{ r.distinct_transport_request_count|fa_number }}</dd></div></dl>
+  {% if r.state_publications %}<div class="evidence-list" tabindex="0" aria-label="نتیجه‌های موضوع فرایند">{% for result in r.state_publications %}<article class="outcome-row"><strong>{{ 'موضوع مستقل' if result.state_scope=='subject' else 'کل فرایند' }}</strong><bdi dir="ltr" class="token mono">{{ result.subject_token or result.workflow_token }}</bdi><span class="badge {{ result.published_state }}">{{ outcomes_fa.get(result.published_state,'نامشخص') }}</span><small class="scope-note">{{ result.observation_count|fa_number }} مشاهده · قرارداد ساختگی: <bdi dir="ltr">{{ result.contract_version }}</bdi></small></article>{% endfor %}</div>{% else %}<p class="scope-note">نتیجهٔ معتبر برای کل فرایند یا موضوع آن در این سناریو ثبت نشده است.</p>{% endif %}
+  {% for event in r.logical_events %}{% if event.state=='conflicting_revisions' %}<p class="inline-notice">{{ event.revision_count|fa_number }} نسخهٔ محتوای متعارض برای همان شناسهٔ منطقی؛ نتیجه با انتخاب آخرین زمان ساخته نشده است.</p>{% endif %}{% endfor %}
+</section>
+{% endfor %}
+<p class="scope-note">مرجع هویت و اصالت این نمونه‌ها ساختگی است. اتصال به سرویس واقعی به قرارداد و راستی‌آزمایی مستقل همان تولیدکننده نیاز دارد. زمان دریافت و پاسخ HTTP به‌تنهایی تکمیل کسب‌وکار را اثبات نمی‌کنند.</p>
+{% endblock %}

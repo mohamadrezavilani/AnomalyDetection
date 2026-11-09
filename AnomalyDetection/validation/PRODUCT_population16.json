@@ -1,0 +1,16 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_SERVICE_AND_SYSTEM_CASE_CONTRACT_ISOLATED",
+  "checks": {
+    "three_outages_with_normal_periods_are_one_service_case_three_episodes_60_distinct_executions_four_sessions": "PASS",
+    "detected_service_failure_periods_do_not_train_themselves_into_the_normal_reference": "PASS",
+    "service_census_replay_is_idempotent": "PASS",
+    "case_feedback_is_preserved_scoped_to_reviewed_evidence_and_invalidates_service_reassessment": "PASS",
+    "recheck_cursor_survives_restart_and_reaches_middle_and_500_day_old_targets_despite_new_arrivals": "PASS"
+  },
+  "owner_connections": 0,
+  "native_service_outage_acceptance": "NOT_RUN",
+  "source_modified": false,
+  "financial_finality": "NOT_INFERRED",
+  "session_epochs_not_asserted_distinct_people": true
+}

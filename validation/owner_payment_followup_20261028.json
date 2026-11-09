@@ -1,0 +1,102 @@
+{
+  "status": "WAITING_FOR_FIRST_POST_DEPLOYMENT_WINDOW",
+  "source_database_writes": false,
+  "new_test_databases_created": false,
+  "checkpoint_changes_by_probe": false,
+  "source_postgresql_restart": false,
+  "capacity_or_recovery_test_repeated": false,
+  "runtime_source_sha256": "4909540be9b597e26379e8e5aa1b62cfc9503876d56dc59a77a484ddf8ee3920",
+  "source_before": {
+    "live": {
+      "status": "STALE",
+      "worker_status": "capturing",
+      "generation": 143,
+      "started_from_utc": "2026-10-26T09:00:00+00:00",
+      "continuous_published_to_utc": "2026-10-28T06:40:00+00:00",
+      "continuous_published_from_utc": "2026-10-28T06:10:00+00:00",
+      "last_complete_window_utc": "2026-10-28T06:40:00+00:00",
+      "last_publish_utc": "2026-10-28T06:53:23.422852+00:00",
+      "last_success_utc": "2026-10-28T06:53:23.422852+00:00",
+      "last_observed_event_utc": "2026-10-28T06:39:59.996000+00:00",
+      "backlog_windows": 49,
+      "lag_seconds": 60,
+      "overlap_windows": 2,
+      "last_error": null,
+      "source_finality": "not_established",
+      "earlier_history": "not_claimed_complete",
+      "late_evidence_beyond_overlap": "manual_recheck_required",
+      "history_has_gaps": true,
+      "historical_gap_windows": 479,
+      "historical_gaps": [
+        {
+          "from_utc": "2026-10-26T10:05:00+00:00",
+          "to_utc": "2026-10-27T05:15:00+00:00",
+          "unprocessed_windows": 230
+        },
+        {
+          "from_utc": "2026-10-27T09:25:00+00:00",
+          "to_utc": "2026-10-28T06:10:00+00:00",
+          "unprocessed_windows": 249
+        }
+      ],
+      "history_resume_count": 2,
+      "recent_coverage_from_utc": "2026-10-28T06:10:00+00:00"
+    },
+    "checkpoint": {
+      "next_ns": 1793169600000000000,
+      "generation": 143
+    },
+    "normal_worker_lock_held": true
+  },
+  "cancelled_private_cluster": {
+    "status": "ALREADY_STOPPED_PIDFILE_ABSENT",
+    "run_id": "7dd2b1bb"
+  },
+  "source_after": {
+    "live": {
+      "status": "STALE",
+      "worker_status": "capturing",
+      "generation": 143,
+      "started_from_utc": "2026-10-26T09:00:00+00:00",
+      "continuous_published_to_utc": "2026-10-28T06:40:00+00:00",
+      "continuous_published_from_utc": "2026-10-28T06:10:00+00:00",
+      "last_complete_window_utc": "2026-10-28T06:40:00+00:00",
+      "last_publish_utc": "2026-10-28T06:53:23.422852+00:00",
+      "last_success_utc": "2026-10-28T06:53:23.422852+00:00",
+      "last_observed_event_utc": "2026-10-28T06:39:59.996000+00:00",
+      "backlog_windows": 49,
+      "lag_seconds": 60,
+      "overlap_windows": 2,
+      "last_error": null,
+      "source_finality": "not_established",
+      "earlier_history": "not_claimed_complete",
+      "late_evidence_beyond_overlap": "manual_recheck_required",
+      "history_has_gaps": true,
+      "historical_gap_windows": 479,
+      "historical_gaps": [
+        {
+          "from_utc": "2026-10-26T10:05:00+00:00",
+          "to_utc": "2026-10-27T05:15:00+00:00",
+          "unprocessed_windows": 230
+        },
+        {
+          "from_utc": "2026-10-27T09:25:00+00:00",
+          "to_utc": "2026-10-28T06:10:00+00:00",
+          "unprocessed_windows": 249
+        }
+      ],
+      "history_resume_count": 2,
+      "recent_coverage_from_utc": "2026-10-28T06:10:00+00:00"
+    },
+    "checkpoint": {
+      "next_ns": 1793169600000000000,
+      "generation": 143
+    },
+    "normal_worker_lock_held": true
+  },
+  "normal_worker_progress_observed_during_probe": false,
+  "real_chain": {
+    "status": "WAITING_FOR_FIRST_POST_DEPLOYMENT_WINDOW",
+    "first_useful_capture_to_utc": "2026-10-28T07:35:00+00:00"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "build_id": "AD-PRODUCT-20261104-19",
+  "status": "PASS_ISOLATED_POSTGRESQL_WASM",
+  "checks": {
+    "first_page_reads_at_most_65_semantic_rows_and_65_indexed_identity_lookups": "PASS_EXPLAIN_ANALYZE_SYNTHETIC_30000_ROWS",
+    "keyset_continuation_is_ordered_without_duplicates": "PASS",
+    "missing_identity_is_retained_as_unknown_not_dropped_or_assigned": "PASS",
+    "time_window_uses_same_bounded_join_with_exact_range_and_page_order": "PASS",
+    "ten_semantic_timeouts_cannot_reduce_window_throughput_by_32_times": "PASS_INDEPENDENT_PAGE_SIZES",
+    "multi_service_dependency_page_uses_two_set_queries_and_one_version_change_per_consumer": "PASS_200_SHARED_CONSUMERS",
+    "cancelled_owned_page_rolls_back_facts_jobs_and_cursor_before_retry": "PASS"
+  },
+  "source_read_budgets": "UNCHANGED_1000MS_STATEMENT_3S_TOTAL_RR_RO",
+  "owner_connections": 0,
+  "native_query_plan_and_latency": "NOT_MEASURED",
+  "negative_control_native_result": "PENDING_WORKER_EVALUATION",
+  "detector_criterion": "UNCHANGED_FROM_RELEASE12"
+}
