@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import sys
 
-EXPECTED_BUILD = "AD-20261108-WINSTART"
+EXPECTED_BUILD = "AD-20261110-AUDIT-CODE"
 ROOT = Path(__file__).resolve().parent
 VERIFIED_FILES = {}
 sys.dont_write_bytecode = True

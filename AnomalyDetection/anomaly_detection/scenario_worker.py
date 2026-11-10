@@ -18,6 +18,8 @@ def step(store,source,clock,cycle,state):
     if cycle%4==1:attempt('seed_profile_work',lambda:seed(store,clock.time_ns()))
     if cycle%4==3:
         from .longitudinal import seed as seed_longitudinal,upgrade_profiles
+        from .scenario_store import upgrade_methods
+        attempt('upgrade_scenario_methods',lambda:upgrade_methods(store))
         attempt('upgrade_case_content',lambda:upgrade_profiles(store))
         attempt('seed_longitudinal_content',lambda:seed_longitudinal(store))
     def sample():

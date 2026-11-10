@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 
 from . import CONTRACT, SOURCE_SHA, CATALOG_SHA, SEMANTIC_SCHEMA, FIVE_NS, KINDS
+from .source_profiles import SUPPORTED_RUNTIMES
 
 MAX_REQUESTS = 500
 MAX_ROWS = 4000
@@ -173,7 +174,8 @@ class Snapshot:
     @property
     def deferred_reasons(self):
         reasons = []
-        for field, expected in (("runtime_sha256", SOURCE_SHA), ("catalog_fingerprint", CATALOG_SHA),
+        if self.source['runtime_sha256'] not in SUPPORTED_RUNTIMES:reasons.append('source_not_ready:runtime_sha256')
+        for field, expected in (("catalog_fingerprint", CATALOG_SHA),
                                 ("semantic_schema", SEMANTIC_SCHEMA), ("catalog_status", "CURRENT"),
                                 ("semantic_state", "ready")):
             if self.source[field] != expected:

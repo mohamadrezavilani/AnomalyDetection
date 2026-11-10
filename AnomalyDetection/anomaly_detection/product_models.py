@@ -223,6 +223,8 @@ def evaluate(context,history,details=(), *, peer_provider=None):
     records=[]
     for record in details:
         fact=record.get('details') or {}
+        quality=fact.get('quality',{})
+        if not (fact.get('source_present') and quality.get('evidence_available') and not quality.get('conflicted')):continue
         values={observation['value'] for observation in fact.get('observations',[]) if observation.get('qualified') and observation.get('axis')=='service_dispatch.inquiry_result'
                 and (record['at_ns']>=target or type(observation.get('at_ns')) is int and observation['at_ns']<target)}
         if len(values)==1:records.append((record['at_ns'],record['service_path'],next(iter(values))))
@@ -230,10 +232,18 @@ def evaluate(context,history,details=(), *, peer_provider=None):
     if len(before)<100 or len(now)<20:
         cold('business_result_change','context','INSUFFICIENT_QUALIFIED_BUSINESS_RESULTS')
     else:
-        previous_codes=Counter((service,code) for _,service,code in before)
-        novel=sum(previous_codes[(service,code)]==0 for _,service,code in now)/len(now)
-        emit('business_result_change','context','CANDIDATE' if novel>.5 else 'NO_DEVIATION_OBSERVED',
-            'BUSINESS_RESULT_DISTRIBUTION_CHANGE' if novel>.5 else 'BUSINESS_RESULTS_ALREADY_OBSERVED',score=novel,
+        from .categorical import shift
+        services=sorted({service for _,service,_ in now});contrasts=[]
+        for service in services:
+            old=[code for _,s,code in before if s==service];new=[code for _,s,code in now if s==service]
+            if len(old)>=100 and len(new)>=20:
+                contrasts.append(shift(old,new,comparisons=len(services))|{'service_path':service})
+        high=any(c['high'] for c in contrasts)
+        complete=len(contrasts)==len(services)
+        emit('business_result_change','context','CANDIDATE' if high else 'NO_DEVIATION_OBSERVED' if complete else 'INSUFFICIENT_DATA',
+            'BUSINESS_RESULT_DISTRIBUTION_CHANGE' if high else 'BUSINESS_RESULTS_WITHIN_REFERENCE' if complete else 'INSUFFICIENT_SAME_SERVICE_BUSINESS_RESULTS',
+            score=max((c['score'] for c in contrasts),default=0),category_contrasts=contrasts,
+            method_version='qualified-business-distribution-2',calibration_status='DESCRIPTIVE_SCREEN_NOT_PRODUCTION_ERROR_RATE_GUARANTEE',
             service_context='UNKNOWN_NOT_A_CUSTOMER_FRAUD_SIGNAL',
-            explanation_fa=f'{novel:.0%} نتیجهٔ تجاریِ دارای شاهد، ترکیب خدمت/کدی دارند که در سابقه مشاهده نشده؛ علت عمومی خدمت هنوز نامعلوم است.')
+            explanation_fa='فراوانی کدهای نتیجهٔ تجاری با سابقهٔ همان خدمت و آزمون دقیق تعدیل‌شده مقایسه شد؛ کد قبلاً مشاهده‌شده نیز می‌تواند تغییر کند. علت عمومی خدمت هنوز نامعلوم است.')
     return decisions

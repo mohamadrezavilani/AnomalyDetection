@@ -1,7 +1,7 @@
 """Separate descriptive rarity from qualification for operator review."""
 from collections import defaultdict
 
-VERSION=2
+VERSION=3
 
 
 def corroborated_scopes(values):
@@ -42,7 +42,7 @@ def sql(alias='s',*,qualified=True):
 
 def warm(store,limit=128):
     """Reassess old method results in finite pages, preserving decisions."""
-    state=store.state('rate_history_requalification_v2')
+    state=store.state('rate_history_requalification_v3')
     if state.get('done'):return state
     with store.transaction():
         if 'through' not in state:
@@ -59,5 +59,5 @@ def warm(store,limit=128):
         if changed:store.raw.execute('UPDATE anomaly_detection.adp_jobs j SET dirty=TRUE,version=version+1,due_ns=0 FROM jsonb_to_recordset(%s::jsonb) AS x(actor TEXT,target BIGINT) WHERE j.session_key=x.actor AND j.target_ns=x.target',(canonical(changed),))
         state.update(scanned=state.get('scanned',0)+len(rows),requeued=state.get('requeued',0)+len(changed),done=len(rows)<limit)
         if rows:state['after']=[rows[-1]['session_key'],rows[-1]['target_ns']]
-        store.save_state('rate_history_requalification_v2',state)
+        store.save_state('rate_history_requalification_v3',state)
     return state

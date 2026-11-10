@@ -35,6 +35,8 @@ class ProductContractTests(unittest.TestCase):
         self.assertTrue(all(not fact['outcomes'] for fact in Snapshot(snapshot).facts()))
     def test_explicit_audit_scope_is_canonical_even_when_queue_due_order_differs(self):
         reader=ProductSource.__new__(ProductSource)
+        from anomaly_detection import SOURCE_SHA
+        reader.identity={'runtime_sha256':SOURCE_SHA}
         @contextmanager
         def snapshot():yield object()
         reader.snapshot=snapshot
