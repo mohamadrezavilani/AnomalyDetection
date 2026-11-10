@@ -17,7 +17,7 @@
   "private_configs_keys_raw_dumps_included": false,
   "files_sha256": {
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "180c867eb2608eba8a87f64f1a4e2a1d003ec862007b99be3a1706215a80a9f6",
+    "Pishkhan24_Project_Roadmap.md": "1138bfe47a4b4e7f0fec14bdcf5095ca003633257db8f5ca79b56d3b30cb603a",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "3c6c32ab68d5a60df20337ec554a5862ad1fe18ad6ae70b7e0d7992ea7a03678",
     "Start_Viewer_Standard.cmd": "b53e294696a5bad5f4ae02af2e4a0c824fd5057d6a24504b0e2902b0e934da94",
@@ -957,7 +957,11 @@
     "persistent_ddl": false,
     "age_cutoff": null,
     "web_initializes_schema": false,
-    "native_pg18": "PENDING_CI",
-    "production_speed": "NOT_EVALUATED"
+    "native_pg18": "PASS_CI_LINUX_18_6",
+    "production_speed": "NOT_EVALUATED",
+    "ci_run": "https://github.com/mohamadrezavilani/AnomalyDetection/actions/runs/42827911762",
+    "ci_viewer_tests": 52,
+    "ci_ad_tests": 266,
+    "native_cases": 6
   }
 }
