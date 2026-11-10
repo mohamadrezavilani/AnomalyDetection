@@ -13,6 +13,7 @@ on:
       - 'tests/test_viewer_launcher_bytes.py'
       - 'tests/test_viewer_process_control.py'
       - '.gitattributes'
+      - 'RELEASE_MANIFEST.json'
       - '.github/workflows/viewer-delta.yml'
   workflow_dispatch:
 

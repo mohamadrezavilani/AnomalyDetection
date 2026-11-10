@@ -18,7 +18,7 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "748c6faf8528c9d130e91a8a27d3c3c522f9fe4dcfc9cc4b21d1f8bd23727f42",
+    "Pishkhan24_Project_Roadmap.md": "9a55ef3aa782f0e0f3fa814d77d7fe9337ce48b4cd6ba64c500be70f64a99d8c",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
@@ -975,6 +975,15 @@
     "exact_hash_check_preserved": true,
     "runtime_unchanged": true,
     "ad_unchanged": true,
-    "windows_checkout_and_process_test": "PENDING_CI"
+    "windows_checkout_and_process_test": "PASS_NATIVE_WINDOWS_CI",
+    "ci_run": "https://github.com/mohamadrezavilani/AnomalyDetection/actions/runs/42844272317",
+    "qualified_code_commit": "574945cfbce6b2b8a8d8af72b2c177ce7ffcf7f7",
+    "windows_tests": 20,
+    "windows_skips": 0,
+    "linux_viewer_tests": 70,
+    "linux_windows_only_skips": 4,
+    "native_postgresql_cases": 7,
+    "ad_tests": 266,
+    "production_speed": "NOT_EVALUATED"
   }
 }
