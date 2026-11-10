@@ -41,5 +41,35 @@ class TraceTests(unittest.TestCase):
         self.assertEqual(observed.execute(Composed()),7)
         self.assertEqual(observed.metrics()[-1]['operation'],'COMPOSED')
 
+    def test_progress_identifies_real_statement_boundaries_without_sql_or_parameters(self):
+        events=[]
+        class Raw:
+            def execute(self,query,args):
+                self.entered_with_active=events[-1]['active']
+                return 42
+        raw=Raw();observed=ObservedConnection(raw,observer=events.append)
+        self.assertEqual(observed.execute('SELECT private_column WHERE password=%s',('private-password',)),42)
+        self.assertTrue(raw.entered_with_active)
+        self.assertEqual([r['active'] for r in events],[True,False])
+        self.assertEqual(events[0]['statement_id'],events[1]['statement_id'])
+        self.assertEqual(events[1]['operation'],'SELECT')
+        self.assertNotIn('private',json.dumps(events))
+        self.assertNotIn('password',json.dumps(events))
+
+    def test_failed_progress_publication_cannot_change_a_sql_result_or_error(self):
+        class Cancelled(Exception):sqlstate='57014'
+        error=Cancelled('private-error-text')
+        class Raw:
+            def execute(self,query,args):
+                if query=='FAIL':raise error
+                return 42
+        def observer(_):raise PermissionError('telemetry file unavailable')
+        observed=ObservedConnection(Raw(),observer=observer)
+        self.assertEqual(observed.execute('SELECT 42'),42)
+        with self.assertRaises(Cancelled) as caught:observed.execute('FAIL')
+        self.assertIs(caught.exception,error)
+        self.assertEqual(observed.metrics()[-1]['sqlstate'],'57014')
+        self.assertEqual(observed.observer_failures,4)
+
 
 if __name__=='__main__':unittest.main()

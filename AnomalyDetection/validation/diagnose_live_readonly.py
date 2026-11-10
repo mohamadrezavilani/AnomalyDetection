@@ -77,7 +77,7 @@ def process_summary(status):
         result[resource] = {key:observed.get(key) for key in ('locked','owner_read_status','owner_read_failure')}
         result[resource]['owner'] = {key:owner.get(key) for key in ('job','pid','build_id','source_sha256','started_at_utc')}
     worker = status.get('worker') or status.get('unverified_worker_status') or {}
-    result['worker'] = {key:worker.get(key) for key in ('state','phase','heartbeat_ns','source_pages','evaluated_jobs','audited_requests','content_reads','scenario_evaluations','last_source_failure','last_source_failure_event','last_storage_failure','evaluating_target','last_owned_query_metrics')}
+    result['worker'] = {key:worker.get(key) for key in ('state','phase','heartbeat_ns','source_pages','evaluated_jobs','audited_requests','content_reads','scenario_evaluations','last_source_failure','last_source_failure_event','last_storage_failure','evaluating_target','owned_statement','last_owned_query_metrics')}
     # The selected target is unnecessary for diagnosing a blocked SQL call.
     result['worker'].pop('evaluating_target', None)
     return result

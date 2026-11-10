@@ -30,6 +30,11 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
             if force or clock.monotonic()>=next_heartbeat:
                 state['heartbeat_ns']=clock.time_ns();write_json(root/'reports/product_status.json',state)
                 next_heartbeat=clock.monotonic()+2
+        def owned_statement_progress(value):
+            # Real statement boundaries, not a background "alive" ticker.
+            # A single stuck SQL call still makes this heartbeat stale.
+            state['owned_statement']=value
+            publish()
         publish(True)
         def read_pages(lane,initial=None):
             state['active_source_lane']=lane
@@ -82,7 +87,7 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                     state.update(state='PREPARING_POSTGRESQL',phase='connect_owned_postgresql');publish(True)
                     try:
                         from .owned_sql import ObservedConnection
-                        raw=ObservedConnection(prepare_pg(root),clock.monotonic);store=ProductStore(raw)
+                        raw=ObservedConnection(prepare_pg(root),clock.monotonic,observer=owned_statement_progress);store=ProductStore(raw)
                         state['phase']='acquire_owned_writer_lease';publish(True)
                         acquired=raw.execute('SELECT pg_try_advisory_lock(%s) AS acquired',(WRITER_LOCK,)).fetchone()['acquired']
                         if not acquired:raise RuntimeError('owned product writer lease unavailable')
