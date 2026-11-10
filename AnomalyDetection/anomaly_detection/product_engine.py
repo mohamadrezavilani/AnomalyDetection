@@ -2,7 +2,7 @@
 from .product_models import evaluate
 from .snapshot import digest,require
 from .temporal import Point,fit
-from . import FIVE_NS
+from . import FIVE_NS,EVALUATOR_VERSION
 from collections import Counter
 from .snapshot import api_path
 
@@ -84,6 +84,18 @@ def evaluate_job(store,job,context,now, *, progress=None,mode='full'):
         continuous,inputs=store.continuous_models(job,context)
         require(all(peer_inputs.get(k,v)==v for k,v in inputs.items()),'PRODUCT_CONTEXT_INPUT_CHANGED_RETRY')
         decisions+=continuous;peer_inputs.update(inputs)
-    context=dict(context,peer_inputs=peer_inputs)
+    # Method changes must neither reuse an old model receipt nor leave a
+    # completed job looking current solely because its input version matches.
+    renamed={}
+    for decision in decisions:
+        model=decision.get('model')
+        if model:
+            old=model['model_id'];new='am2:'+digest([EVALUATOR_VERSION,old])
+            model.update(model_id=new,implementation_version=EVALUATOR_VERSION);renamed[old]=new
+    for decision in decisions:
+        for field in ('model_id','reference_model_id'):
+            if decision.get(field) in renamed:decision[field]=renamed[decision[field]]
+        decision['evaluator_version']=EVALUATOR_VERSION
+    context=dict(context,peer_inputs=peer_inputs,evaluator_version=EVALUATOR_VERSION)
     stage('commit_result')
     return store.complete(job,context,decisions,now)

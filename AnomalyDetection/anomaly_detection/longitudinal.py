@@ -142,11 +142,13 @@ def context(store,job):
     records=store.raw.execute("""SELECT f.request_key,f.session_key,f.at_ns,
         p.body::jsonb->'subjects' AS subjects,p.body::jsonb->'ip_keys' AS ip_keys,
         (p.request_key IS NULL OR COALESCE(p.body::jsonb->>'qualified','false')<>'true'
+          OR EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=f.request_key)
           OR p.body::jsonb->>'version' IS DISTINCT FROM %s
           OR p.body::jsonb->>'semantic_revision' IS DISTINCT FROM f.revision::text
           OR p.body::jsonb->>'anchor_key' IS DISTINCT FROM f.anchor_key
           OR p.session_key IS DISTINCT FROM f.session_key OR p.service_path IS DISTINCT FROM f.service_path OR p.at_ns IS DISTINCT FROM f.at_ns) AS needs_refresh,
         COALESCE(p.body::jsonb->>'qualified'='true' AND p.body::jsonb->>'actor_qualified'='true'
+          AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=f.request_key)
           AND p.body::jsonb->>'version'=%s
           AND p.body::jsonb->>'input_complete'='true' AND p.body::jsonb->>'semantic_active'='true'
           AND p.body::jsonb->>'semantic_revision'=f.revision::text AND p.body::jsonb->>'anchor_key'=f.anchor_key
@@ -169,8 +171,9 @@ def context(store,job):
         for field in ('subjects','ip_keys'):
             if isinstance(r[field],str):r[field]=json.loads(r[field])
             r[field]=r[field] or []
+        if r.pop('needs_refresh'):
+            r['qualified']=False;missing.append(r['request_key'])
         r['reference_qualified']=bool(r['qualified'] and r['ended_ns'] is not None and int(r['ended_ns'])<target and r['witness_end'] is not None and r['witness_end']<target)
-        if r.pop('needs_refresh'):missing.append(r['request_key'])
         r.pop('training_quarantined',None) # never train this actor against itself
         rows.append(r)
     reference_metrics,reference_missing=reference(store,service,target,begin,peers,durations)
@@ -204,6 +207,7 @@ def reference(store,service,target,begin,peers,durations):
     records=store.raw.execute("""WITH facts AS MATERIALIZED (
         SELECT f.request_key,f.session_key,f.at_ns,p.body::jsonb AS body,
           COALESCE(p.body::jsonb->>'qualified'='true' AND p.body::jsonb->>'actor_qualified'='true'
+            AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=f.request_key)
             AND p.body::jsonb->>'version'=%s
             AND p.body::jsonb->>'input_complete'='true' AND p.body::jsonb->>'semantic_active'='true'
             AND p.body::jsonb->>'semantic_revision'=f.revision::text AND p.body::jsonb->>'anchor_key'=f.anchor_key
@@ -215,6 +219,7 @@ def reference(store,service,target,begin,peers,durations):
               WHERE m.request_key=f.request_key AND s.state='ACTIVE' AND s.qualified=TRUE AND s.review_eligible=TRUE
               AND COALESCE((SELECT b.label FROM anomaly_detection.adp_case_feedback b WHERE b.case_key=s.case_key AND b.created_ns>=p.observed_ns AND b.reviewed_end_ns>f.at_ns ORDER BY b.id DESC LIMIT 1),'unreviewed')<>'reviewed_benign'),FALSE) AS qualified,
           (p.request_key IS NULL OR COALESCE(p.body::jsonb->>'qualified','false')<>'true'
+            OR EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=f.request_key)
             OR p.body::jsonb->>'version' IS DISTINCT FROM %s
             OR p.body::jsonb->>'semantic_revision' IS DISTINCT FROM f.revision::text
             OR p.body::jsonb->>'anchor_key' IS DISTINCT FROM f.anchor_key
@@ -241,7 +246,7 @@ def reference(store,service,target,begin,peers,durations):
     for row in records:
         groups=row['groups'] or []
         if isinstance(groups,str):groups=json.loads(groups)
-        result[row['duration']].append({'requests':row['requests'],'active_days':row['active_days'],'qualified':row['qualified'],
+        result[row['duration']].append({'requests':row['requests'],'active_days':row['active_days'],'qualified':bool(row['qualified'] and not row['missing']),
             'groups':{(g['channel'],g['field']):{'distinct':g['distinct'],'covered':g['covered']} for g in groups},
             'ips':row['ips'],'ip_covered':row['ip_covered']})
         if row['missing']:missing.append(row['missing'])

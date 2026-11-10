@@ -49,7 +49,7 @@ def read_queue(raw,now,targets=()):
             'waiting_reason':evaluation.get('reason'),
             'decisions':[{k:d[k] for k in FIELDS if k in d} for d in evaluation.get('decisions',[])]}
     cursors=raw.execute('SELECT name,body FROM anomaly_detection.adp_state WHERE name IN '
-        "('fresh_cursor','overlap_cursor','learning_cursor','older_learning_cursor','scope_repair_cursor','root_reference_import','job_scope_backfill_v1','job_scope_fast_promote_v1','stable_cases_backfill_v1','stable_cases_review_policy_v2','rate_history_requalification_v2','population_backfill_v1','assessed_recheck_pass_v1')").fetchall()
+        "('fresh_cursor','overlap_cursor','learning_cursor','older_learning_cursor','scope_repair_cursor','root_reference_import','job_scope_backfill_v1','job_scope_fast_promote_v1','stable_cases_backfill_v1','stable_cases_review_policy_v2','rate_history_requalification_v2','rate_history_requalification_v3','population_backfill_v1','assessed_recheck_pass_v1')").fetchall()
     recent_targets=[]
     for session in sorted({s for s,at in targets})[:4]:
         recent_targets.extend((session,r['target_ns']) for r in raw.execute('SELECT target_ns FROM anomaly_detection.adp_jobs '

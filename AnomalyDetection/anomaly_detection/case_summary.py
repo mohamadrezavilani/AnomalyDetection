@@ -4,7 +4,8 @@ import json
 from urllib.parse import urlencode
 from .review_policy import sql as review_sql
 from .cases import LABELS
-from .scenario_store import PROFILE_JOB_KINDS,PROFILE_VERSION
+from .scenario_store import PROFILE_JOB_KINDS,PROFILE_VERSION,METHOD_VERSION
+from . import EVALUATOR_VERSION
 
 BUCKETS={'READY':'آمادهٔ بررسی','PENDING':'تمام مواردِ در انتظار بازبینی یا شاهد','EVIDENCE_PENDING':'نامزد تازه؛ تکمیل شاهد در جریان است','RECHECK':'در صف بازبینی','WATCH':'مشاهدهٔ آماری؛ پشتوانهٔ بیشتر لازم است',
  'HISTORY':'سابقه؛ الگو در ارزیابی بعدی دیده نشده','REVIEWED':'بررسی‌شده توسط اپراتور','EVIDENCE':'منتظر شاهد طبق نظر اپراتور'}
@@ -13,9 +14,11 @@ BUCKETS={'READY':'آمادهٔ بررسی','PENDING':'تمام مواردِ در
 _PROFILE_KINDS_SQL="("+",".join("'"+kind+"'" for kind in PROFILE_JOB_KINDS)+")"
 CURRENT_SIGNAL_SQL=(
     "CASE WHEN s.source_kind='feature' THEN fj.scope_key IS NOT NULL AND NOT fj.dirty AND fj.version=s.job_version "
-    "AND (fj.kind NOT IN "+_PROFILE_KINDS_SQL+" OR COALESCE(fj.evaluation::jsonb->'input_receipt'->>'profile_version','')='"+PROFILE_VERSION+"') "
+    "AND (fj.kind NOT IN "+_PROFILE_KINDS_SQL+" OR (COALESCE(fj.evaluation::jsonb->'input_receipt'->>'profile_version','')='"+PROFILE_VERSION+"' "
+    "AND COALESCE(fj.evaluation::jsonb->'input_receipt'->>'method_version','')='"+METHOD_VERSION+"')) "
     "WHEN s.source_kind='actor' THEN j.session_key IS NOT NULL AND (CASE WHEN s.primary_version IS NOT NULL "
-    "THEN j.primary_version=s.primary_version ELSE NOT j.dirty AND j.version=s.job_version END) "
+    "THEN j.primary_version=s.primary_version ELSE NOT j.dirty AND j.version=s.job_version "
+    "AND COALESCE(j.evaluation::jsonb->>'evaluator_version','')='"+EVALUATOR_VERSION+"' END) "
     "ELSE p.start_ns IS NOT NULL AND NOT p.dirty AND p.version=s.job_version END"
 )
 

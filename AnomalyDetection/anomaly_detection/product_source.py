@@ -39,6 +39,9 @@ class ProductSource:
         self.last_metrics=[];self.last_source=None
     @contextmanager
     def snapshot(self):
+        # A long-lived Source must not keep labelling reads with an old pin
+        # after a Viewer hot deployment. Check both sides of packet capture.
+        require(installed_source_identity(self.project)==self.identity,'SOURCE_RUNTIME_CHANGED')
         import psycopg
         from psycopg.rows import dict_row
         self.last_metrics=[]
@@ -50,6 +53,7 @@ class ProductSource:
                 raw.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
                 query=BudgetQuery(raw)
                 yield query
+                require(installed_source_identity(self.project)==self.identity,'SOURCE_RUNTIME_CHANGED')
             finally:
                 if query is not None:self.last_metrics=query.metrics
                 try:raw.rollback()
@@ -65,7 +69,7 @@ class ProductSource:
         require(rows and rows[0]['semantic_state']=='ready' and rows[0]['catalog_fingerprint']==CATALOG_SHA and
             rows[0]['generation']==rows[0]['semantic_generation'],'SOURCE_NOT_READY')
         row=rows[0];require(row['has_error'] is False,'SOURCE_REPORTED_ERROR')
-        source=dict(row,namespace='viewer:'+row['stream_key'],runtime_sha256=SOURCE_SHA,captured_at_ns=time.time_ns(),
+        source=dict(row,namespace='viewer:'+row['stream_key'],runtime_sha256=self.identity['runtime_sha256'],captured_at_ns=time.time_ns(),
             catalog_status='CURRENT',semantic_schema=SEMANTIC_SCHEMA,maintenance='CLEAR',consistent_snapshot=True,
             evidence_mode='postgresql_readonly_snapshot',source_finality='not_established',source_role=flags[0]['source_role'],source_read_only=True)
         audit=q("SELECT to_regclass('public.viewer_retention_audit') AS present",cap=1)
@@ -175,7 +179,7 @@ class ProductSource:
     def audit(self,keys):
         keys=sorted(set(keys))
         with self.snapshot() as q:
-            snapshot,report=collect_sample(q,runtime_sha256=SOURCE_SHA,sample_limit=len(keys),request_keys=keys)
+            snapshot,report=collect_sample(q,runtime_sha256=self.identity['runtime_sha256'],sample_limit=len(keys),request_keys=keys)
             from .input_subjects import CONTRACTS,collect,load_key
             if any(api_path(r.get('root_call')) in CONTRACTS and r.get('kind')=='service_execution'
                    for r in snapshot.occurrences.values()):

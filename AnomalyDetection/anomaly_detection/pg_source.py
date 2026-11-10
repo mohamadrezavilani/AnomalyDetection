@@ -11,6 +11,7 @@ from contextvars import ContextVar
 
 from . import SOURCE_SHA, CATALOG_SHA, SEMANTIC_SCHEMA, CONTRACT
 from .snapshot import Snapshot, ContractError, api_path, require, MAX_ROWS
+from .source_profiles import R31_RUNTIME,r31_overlay_allowed
 
 DEFAULT_SAMPLE = 32
 MAX_SAMPLE = 64
@@ -42,7 +43,8 @@ def installed_source_identity(project):
     """Same byte-digest definition as the accepted Viewer, without importing it."""
     project = Path(project).resolve()
     manifest = json.loads((project / "RELEASE_MANIFEST.json").read_text(encoding="utf-8-sig"))
-    require(manifest.get("runtime_source_sha256") == SOURCE_SHA, "SOURCE_MANIFEST_VERSION_MISMATCH")
+    declared=manifest.get("runtime_source_sha256")
+    require(declared in (SOURCE_SHA,R31_RUNTIME), "SOURCE_MANIFEST_VERSION_MISMATCH")
     value = hashlib.sha256()
     count = 0
     for folder in ("p24_foundation", "tools", "review_ui", "catalogs"):
@@ -52,7 +54,9 @@ def installed_source_identity(project):
                 value.update(path.relative_to(project).as_posix().encode() + b"\0")
                 value.update(hashlib.sha256(path.read_bytes()).digest())
                 count += 1
-    require(count > 0 and value.hexdigest() == SOURCE_SHA, "SOURCE_INSTALLED_BYTES_MISMATCH")
+    actual=value.hexdigest();viewer=project/'p24_foundation/viewer_data.py'
+    overlay=r31_overlay_allowed(declared,actual,count,hashlib.sha256(viewer.read_bytes()).hexdigest() if viewer.is_file() else None)
+    require(count > 0 and (declared==SOURCE_SHA and actual==SOURCE_SHA or overlay), "SOURCE_INSTALLED_BYTES_MISMATCH")
     return {"runtime_sha256": value.hexdigest(), "checked_runtime_files": count}
 
 

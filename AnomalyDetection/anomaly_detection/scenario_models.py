@@ -27,6 +27,36 @@ def past_only(rows,target):
     return [r for r in rows if r.get('qualified') and r['at_ns']<target and type(r.get('ended_ns')) is int and r['ended_ns']<target and all(w['at_ns']<target for w in r.get('witnesses',[]))]
 
 
+def numeric_separation(current,history,channel,field):
+    """Exact extreme-rank screen on one median per authoritative SessionID.
+
+    Request repetitions are not independent trials. Reference sessions also
+    present in the current cohort are excluded. With strict separation, the
+    one-direction permutation tail is 1 / choose(n + m, n), including ties
+    within either cohort. Both directions count toward family multiplicity.
+    Partial distribution shifts are outside this deliberately bounded screen.
+    """
+    def values(rows):
+        grouped=defaultdict(dict)
+        for row in rows:
+            value=row.get('outputs',{}).get(channel,{}).get('numbers',{}).get(field)
+            if not row.get('session_key') or type(value) not in (int,float) or not math.isfinite(value):return None
+            grouped[row['session_key']][row['request_key']]=value
+        return {key:median(v.values()) for key,v in grouped.items()}
+    now=values(current)
+    if now is None or len(now)<3:return None
+    past=values([r for r in history if r.get('session_key') not in now])
+    if past is None or len(past)<20:return None
+    direction='increase' if min(now.values())>max(past.values()) else 'decrease' if max(now.values())<min(past.values()) else None
+    n,m=len(now),len(past)
+    # lgamma avoids converting a very large binomial integer to float.
+    p=math.exp(math.lgamma(n+1)+math.lgamma(m+1)-math.lgamma(n+m+1)) if direction else 1.
+    return dict(direction=direction,p=p,current_sessions=n,reference_sessions=m,
+        current_median=median(now.values()),reference_median=median(past.values()),
+        statistic='STRICT_SEPARATION_OF_SESSION_MEDIANS',unit='authoritative_session',
+        test_scope='EXTREME_NUMERIC_SHIFT_ONLY_NOT_GENERAL_DISTRIBUTION_EQUALITY')
+
+
 def metrics(rows):
     rows=list({r['request_key']:r for r in rows}.values())
     bills_by_request={r['request_key']:[x for x in r.get('subjects',[]) if 'billid' in re.sub(r'[^a-z0-9]','',x['field'].lower())] for r in rows}
@@ -156,7 +186,7 @@ def service(service,target,current,past,*,independent=False):
     if not ready:
         for f in SERVICE_FAMILIES:emit(f,'INSUFFICIENT_DATA','INDEPENDENT_CONTENT_SAMPLE_OR_HISTORY_INCOMPLETE',explanation_fa='نمونهٔ مستقل، شاهد کامل درخواست یا سابقهٔ هم‌دامنه کافی نیست؛ نتیجهٔ عادی یا قطعی صادر نمی‌شود.')
         return out
-    tests=[];comparisons=0;available_families=set()
+    tests=[];numeric_tests=[];comparisons=0;available_families=set()
     def add_test(item):
         nonlocal comparisons
         comparisons+=1;available_families.add(item[0])
@@ -177,6 +207,12 @@ def service(service,target,current,past,*,independent=False):
             before=Counter(x['categories'].get(field,'<absent>') for x in old)
             for category,n in Counter(x['categories'].get(field,'<absent>') for x in new).items():
                 add_test(('response_content_change',channel,field,n,len(new),before[category],len(old),{'value':category}))
+        numeric_fields=set.intersection(*(set(x.get('numbers',{})) for x in new)) if new else set()
+        for field in sorted(numeric_fields)[:64]:
+            result=numeric_separation(current,older,channel,field)
+            if result is None:continue
+            comparisons+=2;available_families.add('response_content_change')
+            if result['direction']:numeric_tests.append(dict(result,channel=channel,field=field))
     flagged=defaultdict(list)
     for family,channel,field,a,n,c,m,extra in tests:
         affected=[r for r in current if (r['outputs'][channel]['shape']==field if family=='response_schema_change' else r['outputs'][channel]['categories'].get(field,'<absent>')==extra['value'])]
@@ -185,6 +221,12 @@ def service(service,target,current,past,*,independent=False):
         if support<3:continue
         p=fisher_greater(a,n-a,c,m-c);adjusted=min(1.,p*max(1,comparisons))
         if adjusted<=.01:flagged[family].append({'channel':channel,'field':field,'current_count':a,'current_total':n,'reference_count':c,'reference_total':m,'comparison_count':comparisons,'supporting_sessions':support,'witness_request_key':affected[0]['request_key'],'current_share':a/n,'past_share':c/m,'adjusted_p':adjusted,**extra})
+    for result in numeric_tests:
+        adjusted=min(1.,result['p']*max(1,comparisons))
+        if adjusted<=.01:flagged['response_content_change'].append(dict(result,
+            current_count=len(current),current_total=len(current),current_share=1.,past_share=0.,
+            comparison_count=comparisons,supporting_sessions=result['current_sessions'],
+            witness_request_key=current[0]['request_key'],adjusted_p=adjusted))
     for family in SERVICE_FAMILIES[:2]:
         changed=flagged[family]
         available=family in available_families

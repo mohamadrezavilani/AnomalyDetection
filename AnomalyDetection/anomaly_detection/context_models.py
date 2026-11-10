@@ -8,18 +8,21 @@ import math
 from . import FIVE_NS
 from .snapshot import digest
 from .temporal import quantile
+from .categorical import shift
 
 FAMILIES=('request_latency','otp_result_change','payment_result_change','typed_target_diversity','journey_profile_change')
 
 def evaluate(context,details):
     session=context['session_key'];target=context['target_ns'];decisions=[]
-    records=defaultdict(list)
+    records=defaultdict(list);current_scopes=set()
     for record in details:
         fact=record.get('details') or {};quality=fact.get('quality',{})
-        if not (fact.get('source_present') and quality.get('evidence_available') and not quality.get('conflicted')):continue
         service=record.get('service_path');at=record['at_ns'];kind=fact.get('semantic',{}).get('kind')
         if not service:continue
-        key=(service,kind);transport=fact.get('transport',{});start=transport.get('started_ns');end=transport.get('ended_ns')
+        key=(service,kind)
+        if target<=at<target+FIVE_NS:current_scopes.add(key);records[key]
+        if not (fact.get('source_present') and quality.get('evidence_available') and not quality.get('conflicted')):continue
+        transport=fact.get('transport',{});start=transport.get('started_ns');end=transport.get('ended_ns')
         duration=(end-start)/1e9 if type(start) is int and type(end) is int and end>=start else None
         if at<target and (type(end) is not int or end>=target):duration=None
         otp={str(o['value']) for o in fact.get('observations',[]) if o.get('qualified') and o.get('axis')=='service_dispatch.otp_validation'
@@ -47,14 +50,18 @@ def evaluate(context,details):
                         if values:reported.append((label,tuple(sorted(values))))
         records[key].append({'at':at,'session':fact.get('semantic',{}).get('session_key',session),'request_key':record['request_key'],'latency':duration,'otp':otp,'targets':ids,'profile':profile,'payments':tuple(sorted(reported))})
     def emit(family,service,status,reason,**values):
-        decisions.append({'finding_key':'pf1:'+digest([session,target,family,service]),'session_key':session,'target_ns':target,
+        decisions.append({'finding_key':'pf1:'+digest([session,target,family,service,kind]),'session_key':session,'target_ns':target,
             'family':family,'dimension':'context','service_path':service,'status':status,'reason':reason,
-            'baseline_origin':'same_service_and_kind_verified_history','comparison_cutoff_ns':target,'method_version':'qualified-context-2',
+            'semantic_kind':kind,'baseline_origin':'same_service_and_kind_verified_history','comparison_cutoff_ns':target,'method_version':'qualified-context-3',
             'operator_alert':False,'precision_recall':'NOT_EVALUATED','score_interpretation':'context_deviation_not_fraud_probability',**values})
-    seen=set()
+    kind=None
+    evaluated_scopes=False
+    comparison_scopes=max(1,3*sum(any(target<=r['at']<target+FIVE_NS for r in rows) for rows in records.values()))
     for (service,kind),rows in records.items():
         past=[r for r in rows if r['at']<target];current=[r for r in rows if target<=r['at']<target+FIVE_NS]
-        if not current:continue
+        if not current and (service,kind) not in current_scopes:continue
+        evaluated_scopes=True
+        seen=set()
         durations=[r['latency'] for r in past if r['latency'] is not None]
         now=[r for r in current if r['latency'] is not None]
         if len(durations)>=100 and now:
@@ -67,23 +74,26 @@ def evaluate(context,details):
         otp_before=Counter(next(iter(r['otp'])) for r in past if len(r['otp'])==1)
         otp_now=[r for r in current if len(r['otp'])==1]
         if sum(otp_before.values())>=100 and len(otp_now)>=10:
-            novel=sum(otp_before[next(iter(r['otp']))]==0 for r in otp_now)/len(otp_now)
-            emit('otp_result_change',service,'CANDIDATE' if novel>.5 else 'NO_DEVIATION_OBSERVED','OTP_RESULT_DISTRIBUTION',score=novel,
+            contrast=shift(list(otp_before.elements()),[next(iter(r['otp'])) for r in otp_now],comparisons=comparison_scopes)
+            emit('otp_result_change',service,'CANDIDATE' if contrast['high'] else 'NO_DEVIATION_OBSERVED','OTP_RESULT_DISTRIBUTION',
+                **{k:v for k,v in contrast.items() if k!='high'},
                 witness_request_key=otp_now[0]['request_key'],explanation_fa='کدهای صریح نتیجهٔ تأیید OTP در همان خدمت مقایسه شدند؛ نبود مرحلهٔ OTP شکست فرض نشده است.')
             seen.add('otp_result_change')
         payment_before=Counter(r['payments'] for r in past if r['payments'])
         payment_now=[r for r in current if r['payments']]
         if sum(payment_before.values())>=100 and len(payment_now)>=10:
-            novel=sum(payment_before[r['payments']]==0 for r in payment_now)/len(payment_now)
-            emit('payment_result_change',service,'CANDIDATE' if novel>.5 else 'NO_DEVIATION_OBSERVED','REPORTED_PAYMENT_PROFILE_CHANGE',score=novel,
+            contrast=shift(list(payment_before.elements()),[r['payments'] for r in payment_now],comparisons=comparison_scopes)
+            emit('payment_result_change',service,'CANDIDATE' if contrast['high'] else 'NO_DEVIATION_OBSERVED','REPORTED_PAYMENT_PROFILE_CHANGE',
+                **{k:v for k,v in contrast.items() if k!='high'},
                 witness_request_key=payment_now[0]['request_key'],
                 explanation_fa='الگوی وضعیت گزارش‌شدهٔ هزینهٔ استعلام و پرداخت قبض، جداگانه مقایسه شد؛ نبود پرداخت اختیاری شکست و Success گواه تسویه بانکی نیست.')
             seen.add('payment_result_change')
         profiles=Counter(r['profile'] for r in past if r['profile'] is not None)
         current_profiles=[r for r in current if r['profile'] is not None]
         if sum(profiles.values())>=100 and len(current_profiles)>=10:
-            novel=sum(profiles[r['profile']]==0 for r in current_profiles)/len(current_profiles)
-            emit('journey_profile_change',service,'CANDIDATE' if novel>.5 else 'NO_DEVIATION_OBSERVED','OBSERVED_JOURNEY_PROFILE',score=novel,
+            contrast=shift(list(profiles.elements()),[r['profile'] for r in current_profiles],comparisons=comparison_scopes)
+            emit('journey_profile_change',service,'CANDIDATE' if contrast['high'] else 'NO_DEVIATION_OBSERVED','OBSERVED_JOURNEY_PROFILE',
+                **{k:v for k,v in contrast.items() if k!='high'},
                 witness_request_key=current_profiles[0]['request_key'],
                 explanation_fa='ترکیب نقش‌های مرتبط در خروجی خود Viewer تغییر کرده است؛ این مشاهده فقدان پرداخت اختیاری، علت کلیک یا تقلب را اثبات نمی‌کند.')
             seen.add('journey_profile_change')
@@ -98,7 +108,11 @@ def evaluate(context,details):
                 score=math.log2(1+value/upper),observed=value,upper=upper,witness_request_key=current[0]['request_key'],
                 explanation_fa='تنوع مراجع وابسته مانند فاکتور و آیتم نتیجه در مقایسه با سابقهٔ همان خدمت بررسی شد. شمار موضوع ورودی معیار جداگانه دارد.')
             seen.add('typed_target_diversity')
-    for family in FAMILIES:
-        if family not in seen:emit(family,'*','INSUFFICIENT_DATA','QUALIFIED_CONTEXT_HISTORY_INSUFFICIENT',
+        for family in FAMILIES:
+            if family not in seen:emit(family,service,'INSUFFICIENT_DATA','QUALIFIED_CONTEXT_HISTORY_INSUFFICIENT',
+                explanation_fa='شواهد یا سابقهٔ هم‌دامنه برای این محور کافی نیست؛ نتیجهٔ عادی یا شکست صادر نشده است.')
+    if not evaluated_scopes:
+        kind=None
+        for family in FAMILIES:emit(family,'*','INSUFFICIENT_DATA','QUALIFIED_CONTEXT_HISTORY_INSUFFICIENT',
             explanation_fa='شواهد یا سابقهٔ هم‌دامنه برای این محور کافی نیست؛ نتیجهٔ عادی یا شکست صادر نشده است.')
     return decisions

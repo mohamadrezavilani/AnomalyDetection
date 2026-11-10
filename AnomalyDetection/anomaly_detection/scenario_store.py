@@ -7,6 +7,7 @@ from .request_profiles import VERSION as PROFILE_VERSION
 
 HORIZON=56*288*FIVE_NS
 PROFILE_JOB_KINDS=('actor','response','request_workflow','request_response','longitudinal')
+METHOD_VERSION='content-network-scenarios-2-audit'
 DDL=[
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_profiles(request_key TEXT PRIMARY KEY,session_key TEXT,service_path TEXT NOT NULL,at_ns BIGINT NOT NULL,body TEXT NOT NULL,content_digest TEXT NOT NULL,observed_ns BIGINT NOT NULL)''',
  'CREATE INDEX IF NOT EXISTS adp_profile_actor ON anomaly_detection.adp_profiles(session_key,service_path,at_ns,request_key)',
@@ -86,7 +87,7 @@ def save_profile(store,packet,now):
     key=packet['request_key'];profile=packet.get('profile')
     with store.transaction():
         store.bind(packet['source'])
-        old=store.raw.execute('SELECT * FROM anomaly_detection.adp_profiles WHERE request_key=%s',(key,)).fetchone()
+        old=store.raw.execute('SELECT p.*,EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) AS refresh_pending FROM anomaly_detection.adp_profiles p WHERE p.request_key=%s',(key,)).fetchone()
         if profile is None:
             if not old:
                 store.raw.execute('UPDATE anomaly_detection.adp_profile_tasks SET due_ns=%s,attempts=attempts+1 WHERE request_key=%s',(now+60_000_000_000,key));return
@@ -100,14 +101,20 @@ def save_profile(store,packet,now):
                 changed(store,[old['service_path']],old['at_ns'],profile_only=True)
             return
         signature=digest(profile)
-        if old is None or old['content_digest']!=signature:
+        content_changed=old is None or old['content_digest']!=signature
+        if content_changed:
             store.raw.execute('INSERT INTO anomaly_detection.adp_profiles VALUES(%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(request_key) DO UPDATE SET session_key=excluded.session_key,service_path=excluded.service_path,at_ns=excluded.at_ns,body=excluded.body,content_digest=excluded.content_digest,observed_ns=excluded.observed_ns',(key,profile['session_key'],profile['service_path'],profile['at_ns'],canonical(profile),signature,now))
             store.raw.execute('INSERT INTO anomaly_detection.adp_profile_versions(request_key,body,content_digest,observed_ns) VALUES(%s,%s,%s,%s)',(key,canonical(profile),signature,now))
             services=[profile['service_path']]
             if old:
                 services.append(old['service_path'])
             changed(store,services,min(profile['at_ns'],old['at_ns'] if old else profile['at_ns']),profile_only=True)
-        if profile.get('qualified'):store.raw.execute('DELETE FROM anomaly_detection.adp_profile_tasks WHERE request_key=%s',(key,))
+        if profile.get('qualified'):
+            store.raw.execute('DELETE FROM anomaly_detection.adp_profile_tasks WHERE request_key=%s',(key,))
+            # A completed refresh is an input transition even when its feature
+            # body is unchanged. Previously deferred consumers must run again.
+            if old and old.get('refresh_pending') and not content_changed:
+                changed(store,[profile['service_path']],profile['at_ns'],profile_only=True)
         else:store.raw.execute('UPDATE anomaly_detection.adp_profile_tasks SET due_ns=%s,attempts=attempts+1 WHERE request_key=%s',(now+60_000_000_000,key))
 
 
@@ -173,16 +180,28 @@ def next_profile(store,now,*,independent=False,historical=False):
     return row['request_key'] if row else None
 
 
+def profile_current(profile,row):
+    """Schema, canonical revision and pending refresh are separate guards.
+
+    Independent technical samples may legitimately have no canonical AD Fact.
+    A profile claiming a semantic anchor requires that exact active Fact.
+    """
+    if profile.get('version')!=PROFILE_VERSION or row.get('refresh_pending'):return False
+    if profile.get('semantic_active') or row.get('state')=='active':
+        return bool(row.get('revision') is not None and row.get('state')=='active' and row.get('source_present')
+            and row['revision']==profile.get('semantic_revision') and row.get('anchor_key')==profile.get('anchor_key'))
+    return True
+
+
 def scope_profiles(store,session,service,target,cache=None):
     row=cache[0].get((session,service,target)) if cache else store.raw.execute('SELECT * FROM anomaly_detection.adp_profile_scopes WHERE session_key=%s AND service_path=%s AND start_ns=%s',(session,service,target)).fetchone()
     if not row:return [],False,False
-    keys=json.loads(row['request_keys']);records=[cache[1][k] for k in keys if k in cache[1]] if cache else store.raw.execute('SELECT p.request_key,p.body,f.revision,f.anchor_key,f.source_present,f.state FROM anomaly_detection.adp_profiles p LEFT JOIN anomaly_detection.adp_facts f USING(request_key) WHERE p.request_key=ANY(%s)',(keys,)).fetchall()
+    keys=json.loads(row['request_keys']);records=[cache[1][k] for k in keys if k in cache[1]] if cache else store.raw.execute('SELECT p.request_key,p.body,f.revision,f.anchor_key,f.source_present,f.state,EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) AS refresh_pending FROM anomaly_detection.adp_profiles p LEFT JOIN anomaly_detection.adp_facts f USING(request_key) WHERE p.request_key=ANY(%s)',(keys,)).fetchall()
     data=[]
     for r in records:
         p=json.loads(r['body'])
-        if p.get('version')!=PROFILE_VERSION:p['qualified']=False
+        if not profile_current(p,r):p['qualified']=False
         p['_training_quarantined']=r.get('training_quarantined',False)
-        if r['revision'] is not None and (p.get('semantic_active') or r['state']=='active') and (r['revision']!=p.get('semantic_revision') or r['anchor_key']!=p.get('anchor_key') or not r['source_present'] or r['state']!='active'):p['qualified']=False
         if p['session_key']!=session or not p.get('actor_qualified',True) or service!='*' and p['service_path']!=service:p['qualified']=False
         data.append(p)
     complete=bool(row['available'] and keys and len(data)==len(keys) and all(p.get('qualified') and target<=p['at_ns']<target+FIVE_NS for p in data))
@@ -222,10 +241,22 @@ def process_one(store,now):
         decisions=evaluate(job['entity_key'],service,target,rows,covered,bounded=bounded,reference_metrics=reference_metrics,extra_durations=extra)
     elif job['kind'] in ('request_workflow','request_response'):
         frames=store.raw.execute('SELECT * FROM anomaly_detection.adp_service_profile_samples WHERE service_path=%s AND start_ns>=%s AND start_ns<=%s ORDER BY start_ns DESC LIMIT 1025',(service,target-HORIZON,target)).fetchall()
-        keys=sorted({k for f in frames[:1024] if f['available'] for k in json.loads(f['request_keys'])})
+        # Define a finite past reference BEFORE inspecting outcomes/profiles.
+        # Older frames are outside this model's declared sample, rather than
+        # making every mature installation permanently incomplete. The current
+        # frame must be complete; only complete past frames enter the reference.
+        older_frames_excluded=len(frames)>1024
+        frames=frames[:1024]
+        keys=sorted({k for f in frames if f['available'] for k in json.loads(f['request_keys'])})
         size=store.raw.execute('SELECT COALESCE(SUM(octet_length(body)),0) AS n FROM anomaly_detection.adp_profiles WHERE request_key=ANY(%s)',(keys,)).fetchone()['n'] if keys else 0
-        bounded=len(frames)<=1024 and len(keys)<=20000 and size<=32*1024*1024
-        points={r['request_key']:json.loads(r['body']) for r in store.raw.execute("SELECT request_key,body FROM anomaly_detection.adp_profiles WHERE request_key=ANY(%s) AND body::jsonb->>'version'=%s",(keys,PROFILE_VERSION)).fetchall()} if bounded else {}
+        bounded=len(keys)<=20000 and size<=32*1024*1024
+        points={}
+        if bounded:
+            profile_rows=store.raw.execute("SELECT p.request_key,p.body,f.revision,f.anchor_key,f.source_present,f.state,EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) AS refresh_pending FROM anomaly_detection.adp_profiles p LEFT JOIN anomaly_detection.adp_facts f USING(request_key) WHERE p.request_key=ANY(%s) AND p.body::jsonb->>'version'=%s",(keys,PROFILE_VERSION)).fetchall()
+            for record in profile_rows:
+                profile=json.loads(record['body'])
+                if not profile_current(profile,record):profile['qualified']=False
+                points[record['request_key']]=profile
         quarantined={r['request_key'] for r in store.raw.execute("SELECT DISTINCT m.request_key FROM anomaly_detection.adp_case_requests m JOIN anomaly_detection.adp_case_signals s USING(signal_key) JOIN anomaly_detection.adp_profiles p USING(request_key) WHERE m.request_key=ANY(%s) AND s.state='ACTIVE' AND s.qualified=TRUE AND s.review_eligible=TRUE AND COALESCE((SELECT b.label FROM anomaly_detection.adp_case_feedback b WHERE b.case_key=s.case_key AND b.created_ns>=p.observed_ns AND b.reviewed_end_ns>p.at_ns ORDER BY b.id DESC LIMIT 1),'unreviewed')<>'reviewed_benign'",(keys,)).fetchall()} if bounded and keys else set()
         current=[];past=[];complete=False;expected=0
         for f in frames[:1024]:
@@ -237,7 +268,10 @@ def process_one(store,now):
             decisions=[d for d in models.actor('request-scope',service,target,current,[],[past],complete=complete and bounded) if d['family']=='workflow_change']
             for d in decisions:d.update(family='service_workflow_change',entity_type='service',entity_key=service,count_scope='independent_request_sample_no_user_identity_inferred')
         else:decisions=models.service(service,target,current,past,independent=complete and bounded)
-        input_receipt={'expected_current_requests':expected,'qualified_current_profiles':sum(p.get('qualified') is True for p in current),'current_digest':digest(current),'reference_digest':digest(past),'reference_requests':len(past),'complete':complete,'bounded':bounded}
+        input_receipt={'expected_current_requests':expected,'qualified_current_profiles':sum(p.get('qualified') is True for p in current),'current_digest':digest(current),'reference_digest':digest(past),'reference_requests':len(past),'complete':complete,'bounded':bounded,
+            'reference_selection_policy':'RECENT_1024_REQUEST_SAMPLE_FRAMES_PAST_ONLY',
+            'selected_frames':len(frames),'older_frames_excluded':older_frames_excluded,
+            'reference_frame_floor_ns':min((f['start_ns'] for f in frames if f['start_ns']<target),default=None)}
     elif job['kind']=='canonical_traffic':
         r=store.raw.execute('SELECT body FROM anomaly_detection.adp_population WHERE service_path=%s AND start_ns=%s',(service,target)).fetchone()
         if not r:return None
@@ -259,7 +293,7 @@ def process_one(store,now):
         if len(wanted)>20000:truncated=True;wanted=wanted[:20000]
         size=store.raw.execute('SELECT COALESCE(SUM(octet_length(body)),0) AS n FROM anomaly_detection.adp_profiles WHERE request_key=ANY(%s)',(wanted,)).fetchone()['n'] if wanted else 0
         if size>32*1024*1024:truncated=True;wanted=[]
-        cached=store.raw.execute("SELECT p.request_key,p.body,f.revision,f.anchor_key,f.source_present,f.state,EXISTS(SELECT 1 FROM anomaly_detection.adp_case_requests m JOIN anomaly_detection.adp_case_signals s ON s.signal_key=m.signal_key WHERE m.request_key=p.request_key AND s.state='ACTIVE' AND s.qualified=TRUE AND s.review_eligible=TRUE AND COALESCE((SELECT b.label FROM anomaly_detection.adp_case_feedback b WHERE b.case_key=s.case_key AND b.created_ns>=p.observed_ns AND b.reviewed_end_ns>p.at_ns ORDER BY b.id DESC LIMIT 1),'unreviewed')<>'reviewed_benign') AS training_quarantined FROM anomaly_detection.adp_profiles p LEFT JOIN anomaly_detection.adp_facts f USING(request_key) WHERE p.request_key=ANY(%s)",(wanted,)).fetchall() if wanted else []
+        cached=store.raw.execute("SELECT p.request_key,p.body,f.revision,f.anchor_key,f.source_present,f.state,EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) AS refresh_pending,EXISTS(SELECT 1 FROM anomaly_detection.adp_case_requests m JOIN anomaly_detection.adp_case_signals s ON s.signal_key=m.signal_key WHERE m.request_key=p.request_key AND s.state='ACTIVE' AND s.qualified=TRUE AND s.review_eligible=TRUE AND COALESCE((SELECT b.label FROM anomaly_detection.adp_case_feedback b WHERE b.case_key=s.case_key AND b.created_ns>=p.observed_ns AND b.reviewed_end_ns>p.at_ns ORDER BY b.id DESC LIMIT 1),'unreviewed')<>'reviewed_benign') AS training_quarantined FROM anomaly_detection.adp_profiles p LEFT JOIN anomaly_detection.adp_facts f USING(request_key) WHERE p.request_key=ANY(%s)",(wanted,)).fetchall() if wanted else []
         cache=({(s['session_key'],service,s['start_ns']):s for s in scopes[:1024]},{p['request_key']:p for p in cached})
         authority=next((s['authority'] for s in scopes if s['session_key']==job['entity_key'] and s['start_ns']==target),None)
         for scope in scopes[:1024]:
@@ -280,6 +314,7 @@ def process_one(store,now):
             'own_past_profile_set_digest':digest(sorted(profile_digest(p) for p in ownpast)),'own_past_profiles':len(ownpast),
             'reference_profile_set_digest':digest(sorted(ref_digests)),'reference_profiles':len(ref_digests),
             'independent':independent,'complete':complete,'truncated':truncated}
+    input_receipt['method_version']=METHOD_VERSION
     if job['kind'] in PROFILE_JOB_KINDS:input_receipt['profile_version']=PROFILE_VERSION
     input_digest=digest(input_receipt)
     for d in decisions:
@@ -297,7 +332,7 @@ def process_one(store,now):
         if not locked or locked['version']!=job['version']:return {'status':'INPUT_CHANGED_RETRY'}
         from .cases import replace_scope,normal_observations
         for d in decisions:
-            model={'method_version':'content-network-scenarios-1','cutoff_ns':target,'service_path':service,'family':d['family'],
+            model={'method_version':METHOD_VERSION,'cutoff_ns':target,'service_path':service,'family':d['family'],
                 'input_digest':input_digest,'input_receipt':input_receipt,'reference_values':d.get('reference_values'),
                 'comparison_count':d.get('comparison_count'),'production_error_rate':'NOT_VALIDATED'}
             store.raw.execute('INSERT INTO anomaly_detection.adp_models VALUES(%s,%s,%s,%s) ON CONFLICT DO NOTHING',(d['model_id'],d['family'],canonical(model),now))
@@ -306,6 +341,21 @@ def process_one(store,now):
         pending=any(d['status']=='INSUFFICIENT_DATA' for d in decisions)
         store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET dirty=FALSE,processed_version=version,evaluation=%s,last_evaluated_ns=%s,due_ns=%s WHERE scope_key=%s',(canonical({'decisions':decisions,'models_executed':True,'pending_evidence_or_reference':pending,'input_receipt':input_receipt}),now,now+30_000_000_000,job['scope_key']))
     return {'status':'APPLIED','scope_key':job['scope_key'],'decisions':decisions}
+
+
+def upgrade_methods(store,limit=16):
+    """Invalidate bounded completed work after a rule change, keeping history.
+
+    Dirty jobs already await evaluation. No evidence, feedback, checkpoints or
+    Viewer objects are deleted. Current-method pending jobs are not requeued.
+    """
+    rows=store.raw.execute("SELECT scope_key FROM anomaly_detection.adp_scenario_jobs "
+        "WHERE NOT dirty AND kind=ANY(%s) AND evaluation IS NOT NULL "
+        "AND evaluation::jsonb->'input_receipt'->>'method_version' IS DISTINCT FROM %s "
+        "ORDER BY target_ns DESC,scope_key LIMIT %s",(list(PROFILE_JOB_KINDS),METHOD_VERSION,limit)).fetchall()
+    keys=[r['scope_key'] for r in rows]
+    if keys:store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET version=version+1,dirty=TRUE,due_ns=0 WHERE scope_key=ANY(%s) AND NOT dirty',(keys,))
+    return len(keys)
 
 
 def save_members(store,case,signal,item,entity,service,begin,end):

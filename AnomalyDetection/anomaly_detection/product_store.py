@@ -4,7 +4,7 @@ import json
 import time
 from contextlib import contextmanager
 
-from . import FIVE_NS,KINDS
+from . import FIVE_NS,KINDS,EVALUATOR_VERSION
 from .snapshot import canonical,digest,require,api_path,KEY
 from .history_scope import INPUT_LOCK,load_floor
 
@@ -620,8 +620,10 @@ class ProductStore:
             pending=list(context.get('pending_families') or ())
             if 'continuous_rate' not in pending and any(d.get('reason')=='CONTINUOUS_MODEL_READ_RETRY' for d in decisions):
                 pending.append('continuous_rate')
+            from .review_policy import VERSION as review_version
             evaluation={'decisions':[{k:decision[k] for k in fields if k in decision} for decision in decisions],
-                'changed_findings':changed,'operator_alert':False,'rate_history_policy_version':2,'pending_families':pending,
+                'changed_findings':changed,'operator_alert':False,'rate_history_policy_version':review_version,'pending_families':pending,
+                'evaluator_version':EVALUATOR_VERSION,
                 'primary_version':row['primary_version'],'primary_qualified_requests':context.get('primary_qualified_requests'),
                 'primary_expected_requests':context.get('primary_expected_requests')}
             # Includes imported windows and qualified evidence used by models,
