@@ -34,9 +34,11 @@ DDL=[
 def scope_key(kind,entity,service,target):return 'sc1:'+digest([kind,entity,service,target])
 
 
-def enqueue(store,kind,entity,service,target):
+def enqueue(store,kind,entity,service,target,*,invalidate=True):
+    """Ensure a scope exists; callers may already have invalidated its inputs."""
     key=scope_key(kind,entity,service,target)
-    store.raw.execute('INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns) VALUES(%s,%s,%s,%s,%s) ON CONFLICT(scope_key) DO UPDATE SET version=adp_scenario_jobs.version+1,dirty=TRUE,due_ns=0',(key,kind,entity,service,target))
+    conflict='DO UPDATE SET version=adp_scenario_jobs.version+1,dirty=TRUE,due_ns=0' if invalidate else 'DO NOTHING'
+    store.raw.execute('INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns) VALUES(%s,%s,%s,%s,%s) ON CONFLICT(scope_key) '+conflict,(key,kind,entity,service,target))
 
 
 def changed(store,services,at,*,profile_only=False):

@@ -167,20 +167,35 @@ def process_one(store,now,*,recent=False):
         old=store.raw.execute('SELECT DISTINCT service_path FROM anomaly_detection.adp_population WHERE start_ns>=%s AND start_ns<=%s',(target-56*288*FIVE_NS,target)).fetchall()
         services=sorted(set(summaries)|{r['service_path'] for r in old})
         from .cases import replace_scope,normal_observations
+        previous={r['service_path']:r['content_digest'] for r in store.raw.execute(
+            'SELECT service_path,content_digest FROM anomaly_detection.adp_population WHERE service_path=ANY(%s) AND start_ns=%s',
+            (services,target)).fetchall()} if services else {}
+        publications=[]
         for service in services:
             body=summaries.get(service,{'executions':0,'sessions':0,'top_session_share':0,'outcomes':{},'known_outcomes':0,'covered':available})
             body=dict(body,start_ns=target)
             if not available:body['covered']=False
-            previous=store.raw.execute('SELECT content_digest FROM anomaly_detection.adp_population WHERE service_path=%s AND start_ns=%s',(service,target)).fetchone()
-            if previous is None or previous['content_digest']!=digest(body):
-                store.raw.execute('UPDATE anomaly_detection.adp_population_jobs SET dirty=TRUE,version=version+1,due_ns=0 '
-                    'WHERE start_ns>%s AND start_ns<=%s AND dirty=FALSE AND processed_version>0',(target,target+56*288*FIVE_NS))
-            store.raw.execute('INSERT INTO anomaly_detection.adp_population VALUES(%s,%s,%s,%s) ON CONFLICT(service_path,start_ns) '
-                'DO UPDATE SET body=excluded.body,content_digest=excluded.content_digest',(service,target,canonical(body),digest(body)))
+            signature=digest(body)
+            publications.append((service,body,signature,previous.get(service)!=signature))
+        if any(changed for service,body,signature,changed in publications):
+            store.raw.execute('UPDATE anomaly_detection.adp_population_jobs SET dirty=TRUE,version=version+1,due_ns=0 '
+                'WHERE start_ns>%s AND start_ns<=%s AND dirty=FALSE AND processed_version>0',(target,target+56*288*FIVE_NS))
+        from .scenario_store import changed_many,enqueue as scenario_enqueue
+        changes=[(service,target) for service,body,signature,changed in publications if service!='*' and changed]
+        # All summaries are one atomic input publication. Invalidate their
+        # union once, including shared '*' jobs, while retaining version bumps
+        # for already dirty/in-flight scopes. No job can consume an intermediate
+        # per-service version under the enclosing writer transaction.
+        changed_many(store,changes)
+        for service,body,signature,changed in publications:
+            if changed:
+                store.raw.execute('INSERT INTO anomaly_detection.adp_population VALUES(%s,%s,%s,%s) ON CONFLICT(service_path,start_ns) '
+                    'DO UPDATE SET body=excluded.body,content_digest=excluded.content_digest',(service,target,canonical(body),signature))
             if service!='*':
-                from .scenario_store import enqueue as scenario_enqueue,changed as scenario_changed
-                if previous is None or previous['content_digest']!=digest(body):scenario_changed(store,[service],target)
-                scenario_enqueue(store,'canonical_traffic',service,service,target)
+                # changed_many already invalidates an existing canonical job.
+                # Replaying an unchanged census must not dirty it again; a
+                # missing job still needs to be created on older installations.
+                scenario_enqueue(store,'canonical_traffic',service,service,target,invalidate=False)
             from .cases import identity
             health_key=identity('system' if service=='*' else 'service',service,'service_health',service)
             prior=[json.loads(r['body']) for r in store.raw.execute('SELECT p.body FROM anomaly_detection.adp_population p '
