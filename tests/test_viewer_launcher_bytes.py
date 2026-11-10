@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from tools.check_viewer_install import verify_release
@@ -16,7 +17,88 @@ spec=importlib.util.spec_from_file_location('launcher_repair',ROOT/'viewer_perfo
 repair_tool=importlib.util.module_from_spec(spec);spec.loader.exec_module(repair_tool)
 
 
+def git_fixture(root):
+    def git(*args):
+        return subprocess.check_output(['git',*args],cwd=root,stderr=subprocess.DEVNULL)
+    git('init','-b','old');git('config','user.name','Fixture');git('config','user.email','fixture@example.invalid')
+    (root/'.gitattributes').write_bytes(b'* -text\n')
+    expected={}
+    for name in LAUNCHERS:
+        path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'# original launcher\n')
+        expected[name]=hashlib.sha256(path.read_bytes()).hexdigest()
+    (root/'RELEASE_MANIFEST.json').write_text(json.dumps({'files_sha256':expected}))
+    (root/'operator.txt').write_bytes(b'original operator file\n')
+    git('add','.');git('commit','-m','original')
+    return git
+
+
 class LauncherBytesTests(unittest.TestCase):
+    def test_matching_manifest_with_mode_changes_is_repaired_in_git_too(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);git=git_fixture(root)
+            if os.name=='nt':
+                git('update-index','--chmod=+x','--',*LAUNCHERS)
+            else:
+                git('config','core.filemode','true')
+                for name in LAUNCHERS:(root/name).chmod(0o755)
+            (root/'operator.txt').write_bytes(b'preserve this local edit\n')
+            report=root/'validation/installation_check.json';report.parent.mkdir();report.write_bytes(b'{}\n')
+            manifest=json.loads((root/'RELEASE_MANIFEST.json').read_text())
+            for name in LAUNCHERS:
+                self.assertEqual(hashlib.sha256((root/name).read_bytes()).hexdigest(),manifest['files_sha256'][name])
+            self.assertNotEqual(git('diff','HEAD','--name-only','--',*LAUNCHERS),b'')
+            result=repair_tool.repair(root)
+            self.assertEqual(result['status'],'EXACT_LAUNCHER_BYTES_REPAIRED')
+            self.assertTrue(result['git_launchers_clean'])
+            self.assertEqual(git('diff','HEAD','--name-only','--',*LAUNCHERS),b'')
+            self.assertEqual(git('diff','--cached','--name-only','--',*LAUNCHERS),b'')
+            self.assertEqual((root/'operator.txt').read_bytes(),b'preserve this local edit\n')
+            self.assertEqual(report.read_bytes(),b'{}\n')
+
+    def test_staged_crlf_is_repaired_even_when_working_bytes_already_match(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);git=git_fixture(root)
+            for name in LAUNCHERS:(root/name).write_bytes(b'# original launcher\r\n')
+            git('add','--',*LAUNCHERS)
+            for name in LAUNCHERS:(root/name).write_bytes(b'# original launcher\n')
+            self.assertNotEqual(git('diff','--cached','--name-only'),b'')
+            result=repair_tool.repair(root)
+            self.assertTrue(result['git_launchers_clean'])
+            self.assertEqual(git('status','--porcelain'),b'')
+
+    def test_real_staged_edit_is_preserved_even_if_working_files_match_manifest(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);git=git_fixture(root)
+            path=root/LAUNCHERS[-1];original=path.read_bytes()
+            path.write_bytes(b'# preserve this staged operator edit\n');git('add','--',LAUNCHERS[-1])
+            path.write_bytes(original)
+            before=git('diff','--cached','--binary')
+            with self.assertRaisesRegex(ValueError,'LAUNCHER_INDEX_CONTENT_CHANGED'):
+                repair_tool.repair(root)
+            self.assertEqual(git('diff','--cached','--binary'),before)
+            self.assertEqual(path.read_bytes(),original)
+
+    @unittest.skipUnless(os.name=='nt','Windows PowerShell bootstrap')
+    def test_windows_stdin_bootstrap_repairs_git_before_fast_forwarding(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);git=git_fixture(root)
+            git('checkout','-b','new')
+            script=root/'viewer_performance/Repair_Viewer_Launchers.py'
+            script.parent.mkdir();script.write_bytes((ROOT/'viewer_performance/Repair_Viewer_Launchers.py').read_bytes())
+            (root/LAUNCHERS[0]).write_bytes(b'# new launcher\n')
+            git('add','.');git('commit','-m','new packaging');git('checkout','old')
+            self.assertFalse(script.exists())
+            git('update-index','--chmod=+x','--',*LAUNCHERS)
+            self.assertNotEqual(subprocess.run(['git','merge','--ff-only','new'],cwd=root,capture_output=True).returncode,0)
+            code="$ErrorActionPreference='Stop';$src=git show new:viewer_performance/Repair_Viewer_Launchers.py;if($LASTEXITCODE){exit $LASTEXITCODE};$src | & $env:P24_REPAIR_TEST_PYTHON -B - --project-root .;if($LASTEXITCODE){exit $LASTEXITCODE};git merge --ff-only new;exit $LASTEXITCODE"
+            env=dict(os.environ,P24_REPAIR_TEST_PYTHON=sys.executable)
+            result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',code],
+                cwd=root,env=env,capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            self.assertIn('"git_launchers_clean": true',result.stdout)
+            self.assertTrue(script.is_file())
+            self.assertEqual((root/LAUNCHERS[0]).read_bytes(),b'# new launcher\n')
+
     def test_guarded_repair_then_fast_forward_upgrades_old_crlf_working_files(self):
         with tempfile.TemporaryDirectory() as temp:
             fixture=Path(temp)
