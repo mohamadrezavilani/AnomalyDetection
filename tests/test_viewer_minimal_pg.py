@@ -123,10 +123,11 @@ class NativeMinimalPublicationTests(unittest.TestCase):
         self.assertEqual(len(affected_closure(self.db,['r0'])),2000)
         self.db.many('''INSERT INTO viewer_semantic_occurrences(request_key,anchor_key,session_key,anchor_ns,
             state,revision,updated_at) VALUES(?,?,?,?,?,?,?)''',
-            [(str(n).zfill(64),'anchor'+str(n),'hot',n,'active',1,'fixture') for n in range(20000)])
+            [(str(n).zfill(64),'anchor'+str(n),'hot' if n<1000 else 'other'+str(n%20),n,'active',1,'fixture')
+                for n in range(20000)])
         self.db.sql('ANALYZE viewer_semantic_occurrences')
         self.db._refresh_semantic_session_heads(['hot'])
-        self.assertEqual(self.db.one('SELECT anchor_ns FROM viewer_semantic_session_heads')['anchor_ns'],19999)
+        self.assertEqual(self.db.one('SELECT anchor_ns FROM viewer_semantic_session_heads')['anchor_ns'],999)
         plan=self.db.one("EXPLAIN (ANALYZE,FORMAT JSON) SELECT request_key,anchor_ns FROM viewer_semantic_occurrences WHERE session_key='hot' AND state='active' ORDER BY anchor_ns DESC,request_key DESC LIMIT 1")
         root=plan['QUERY PLAN'][0]['Plan'];child=root['Plans'][0]
         self.assertEqual(root['Actual Rows'],1)
