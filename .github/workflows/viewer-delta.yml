@@ -1,0 +1,52 @@
+name: Viewer minimal publication
+
+on:
+  pull_request:
+    paths:
+      - 'p24_foundation/**'
+      - 'tests/test_viewer_minimal*'
+      - '.github/workflows/viewer-delta.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-postgresql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ephemeral-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Equivalent projections, late arrivals and native crash recovery
+        env:
+          P24_DELTA_PG_HOST: 127.0.0.1
+          P24_DELTA_PG_PORT: '5432'
+          P24_DELTA_PG_USER: postgres
+          PGPASSWORD: ephemeral-test-only
+        run: >-
+          python -B -m unittest -v
+          tests.test_viewer_minimal_publication
+          tests.test_viewer_minimal_pg
+          tests.test_viewer_online
+          tests.test_viewer_scoped_fetch
+          tests.test_viewer_finalized_projection
+          tests.test_viewer_final_semantic_index
+      - name: AD compatibility and unit regressions
+        working-directory: AnomalyDetection
+        run: python -B -m unittest discover -s tests -q

@@ -273,20 +273,40 @@ def affected_closure(db,keys,*,limit=250000):
     claims. Include old links, not just newly admissible ones, in the closure.
     This is maintenance dependency traversal, never evidence of a human action.
     """
-    found=set(keys);front=set(keys)
+    found=set(keys);front=set(keys);visited_groups=set()
+    if len(found)>limit:raise ValueError('affected_dependency_budget_exceeded')
     while front:
-        new=set()
+        groups=set()
         ordered=sorted(front)
         for start in range(0,len(ordered),500):
             batch=ordered[start:start+500]
-            slots=','.join('?' for _ in batch)
-            new.update(r['request_key'] for r in db.all('''SELECT DISTINCT b.request_key
-              FROM viewer_links a JOIN viewer_links b
-                ON a.link_domain=b.link_domain AND a.link_key=b.link_key
-              WHERE a.link_domain='platform_payment' AND a.request_key IN ('''+slots+''')
-                AND b.request_key IS NOT NULL''',batch))
+            if db.sqlite:
+                query="SELECT DISTINCT link_key FROM viewer_links WHERE link_domain='platform_payment' AND request_key IN ("+','.join('?' for _ in batch)+')'
+            else:
+                query='''SELECT DISTINCT a.link_key FROM (VALUES '''+','.join('(?)' for _ in batch)+''') k(request_key)
+                    CROSS JOIN LATERAL (SELECT source.link_key FROM viewer_links source
+                    WHERE source.request_key=k.request_key AND source.link_domain='platform_payment' OFFSET 0) a'''
+            groups.update(r['link_key'] for r in db.all(query,batch))
+        # A payment group is a hyperedge, not a clique of RequestID pairs.
+        # Expanding a group of N requests once avoids N*N joined rows before
+        # DISTINCT. This cache lives only inside this publication transaction.
+        unseen=sorted(groups-visited_groups);visited_groups.update(unseen)
+        new=set()
+        for start in range(0,len(unseen),500):
+            batch=unseen[start:start+500]
+            if db.sqlite:
+                query="SELECT DISTINCT request_key FROM viewer_links WHERE link_domain='platform_payment' AND request_key IS NOT NULL AND link_key IN ("+','.join('?' for _ in batch)+')'
+            else:
+                query='''SELECT DISTINCT b.request_key FROM (VALUES '''+','.join('(?)' for _ in batch)+''') k(link_key)
+                    CROSS JOIN LATERAL (SELECT source.request_key FROM viewer_links source
+                    WHERE source.link_domain='platform_payment' AND source.link_key=k.link_key
+                    AND source.request_key IS NOT NULL OFFSET 0) b'''
+            # A larger component cannot be published under this existing
+            # guard. Bound materialization before allocating the whole graph.
+            new.update(r['request_key'] for r in db.all(query+' LIMIT ?',[*batch,limit+1]))
+            if len(found|new)>limit:raise ValueError('affected_dependency_budget_exceeded')
         front=new-found;found.update(front)
-        if len(found)>limit:raise ValueError('affected_dependency_budget_exceeded')
+        db.progress('dependency_closure',requests=len(found),payment_groups=len(visited_groups))
     return sorted(found)
 
 
@@ -356,7 +376,7 @@ def publish_capture(db,path,start,end,*,mode='forward',epoch_ns=None,fault=None,
                 use_indexed_scope=mode=='forward' and existing_requests*100<=len(keys)
                 db.rebuild(request_keys=keys,commit=False,use_indexed_scope=use_indexed_scope)
                 stage('after_requests')
-                db.rebuild_payment_contract(request_keys=keys,commit=False)
+                db.rebuild_payment_contract(request_keys=keys,commit=False,reuse_projection_events=True)
                 stage('after_relations')
                 db.reconcile_semantic_requests(keys,commit=False)
         stage('after_semantics')

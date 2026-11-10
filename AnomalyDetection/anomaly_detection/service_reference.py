@@ -12,7 +12,8 @@ from pathlib import Path
 from statistics import median
 import ast,gzip,hashlib,json,re,sys,time,zipfile
 
-from . import FIVE_NS,SOURCE_SHA
+from . import FIVE_NS
+from .source_profiles import SUPPORTED_RUNTIMES
 from .snapshot import api_path,canonical,digest,require
 
 MODEL_VERSION='pooled-service-reference-3'
@@ -239,7 +240,7 @@ def bootstrap(store,project,source):
     sys.path.insert(0,str(project)) if str(project) not in sys.path else None
     from p24_foundation.privacy import Keys
     keys=Keys.read(project/known.get('KEYS_PATH','private/viewer_keys.json'))
-    require(keys.fingerprint==source['keys_fingerprint'] and source.get('runtime_sha256')==SOURCE_SHA,'REFERENCE_KEY_OR_SOURCE_BINDING_MISMATCH')
+    require(keys.fingerprint==source['keys_fingerprint'] and source.get('runtime_sha256') in SUPPORTED_RUNTIMES,'REFERENCE_KEY_OR_SOURCE_BINDING_MISMATCH')
     def token(kind,value):return keys.token('p24-viewer.1',kind,value).split(':')[-1]
     rejected=[];existing=None
     for path in candidates:
