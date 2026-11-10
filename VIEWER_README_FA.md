@@ -1,5 +1,7 @@
 # اجرای وب از دیتابیس آماده — ۱۰ نوامبر ۲۰۲۶
 
+اگر پس از ارتقای موفق، ابزار Stop_Viewer_Worker فقط ValueError داد، اصلاح آدرس PostgreSQL را pull کنید و همان ابزار را تکرار کنید. نسخهٔ اصلاح‌شده از host(inet) برای آدرس بدون /32 یا /128 استفاده می‌کند؛ گزارش خطا stage را نیز نشان می‌دهد. برای این حالت، اجرای دوبارهٔ Repair_Viewer_Launchers لازم نیست. پس از توقف تأییدشده، Start_Viewer_Standard.cmd -ResumeCheckpoint هر دو Worker و Web را از checkpoint فعلی بالا می‌آورد.
+
 **اصلاح CRLF و وضعیت Git راه‌اندازها:** اگر کنترل نصب سه فایل Start_Viewer.cmd، Start_Viewer_Standard.cmd و tools/viewer.ps1 را رد کرد، یا با وجود ALREADY_MATCH همچنان pull متوقف شد، از ریشهٔ پروژه در محیط مجازی ابتدا دو فرمان زیر را اجرا کنید. ابزار بایت‌های Manifest و محتوای HEAD و index را با هم می‌سنجد؛ اختلاف واقعی محتوا در فایل یا stage پیش از هر نوشتن رد می‌شود. فقط پایان‌خط و metadata همان سه فایل ترمیم می‌شوند و خروجی موفق باید git_launchers_clean=true داشته باشد. در Windows فقط اگر اختلاف باقی‌مانده mode اجرایی باشد، بررسی mode برای همان checkout غیرفعال می‌شود. فایل validation/installation_check.json گزارش تولیدشدهٔ برنامه است و نیازی به commit یا حذف ندارد.
 
 ```powershell

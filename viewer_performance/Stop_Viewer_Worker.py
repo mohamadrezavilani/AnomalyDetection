@@ -16,7 +16,8 @@ import runpy
 import subprocess
 import sys
 
-LEASE_SQL="""SELECT a.pid,a.backend_start,a.client_port,a.client_addr::text AS client_addr
+GUARD_SQL='SELECT current_database() AS db,host(inet_server_addr()) AS address,inet_server_port() AS port'
+LEASE_SQL="""SELECT a.pid,a.backend_start,a.client_port,host(a.client_addr) AS client_addr
     FROM pg_catalog.pg_stat_activity a WHERE a.datname=current_database()
       AND a.backend_type='client backend' AND EXISTS(SELECT 1 FROM pg_catalog.pg_locks l
         WHERE l.pid=a.pid AND l.locktype='advisory' AND l.classid=240026
@@ -27,7 +28,14 @@ class ControlError(RuntimeError):pass
 
 
 def loopback(value):
-    address=ipaddress.ip_address(value)
+    if not isinstance(value,str):return False
+    try:
+        if '/' in value:
+            endpoint=ipaddress.ip_interface(value)
+            if endpoint.network.prefixlen!=endpoint.ip.max_prefixlen:return False
+            address=endpoint.ip
+        else:address=ipaddress.ip_address(value)
+    except ValueError:return False
     return address.is_loopback or bool(getattr(address,'ipv4_mapped',None) and address.ipv4_mapped.is_loopback)
 
 
@@ -127,12 +135,16 @@ def main(argv=None):
     parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[1])
     parser.add_argument('--stop',action='store_true')
     args=parser.parse_args(argv);project=args.project_root.resolve();root=project/'AnomalyDetection'
+    stage='verify_platform'
     try:
         if os.name!='nt':raise ControlError('WINDOWS_OWNER_HOST_REQUIRED')
+        stage='verify_ad_build'
         launcher=runpy.run_path(str(root/'run_anomaly.py'));launcher['verify_build']()
         sys.path.insert(0,str(root));sys.meta_path.insert(0,launcher['VerifiedApplicationFinder']())
         from anomaly_detection.pg_source import read_database_config,installed_source_identity
+        stage='verify_viewer_source'
         installed_source_identity(project)
+        stage='read_database_config'
         params=read_database_config(project/'viewer_config.local.py')
         if str(params.get('host','localhost')).lower() not in ('localhost','127.0.0.1','::1'):
             raise ControlError('LOCAL_POSTGRESQL_REQUIRED')
@@ -141,8 +153,10 @@ def main(argv=None):
             options='-c default_transaction_read_only=on -c statement_timeout=7000 -c lock_timeout=100')
         import psycopg
         from psycopg.rows import dict_row
+        stage='connect_postgresql'
         with psycopg.connect(**params,autocommit=True,row_factory=dict_row) as conn:
-            guard=conn.execute('SELECT current_database() AS db,inet_server_addr()::text AS address,inet_server_port() AS port').fetchone()
+            stage='verify_local_postgresql'
+            guard=conn.execute(GUARD_SQL).fetchone()
             if guard['db']!='p24_design_viewer' or not guard['address'] or not loopback(guard['address']):
                 raise ControlError('LOCAL_VIEWER_DATABASE_REQUIRED')
             def lease():
@@ -151,12 +165,14 @@ def main(argv=None):
                 return dict(rows[0]) if rows else None
             def cleanup(value):
                 return terminate_lease(conn,value)
+            stage='identify_and_control_viewer'
             result=control(lease,lambda port:tcp_owner(port,guard['port']),
                 lambda pid:WindowsProcess(pid,allow_stop=args.stop),cleanup,stop=args.stop)
+            stage='verify_viewer_lease_released'
             if args.stop and lease() is not None:raise ControlError('VIEWER_LOCK_OWNER_STILL_PRESENT')
         print(json.dumps(result));return 0
     except Exception as exc:
-        result={'status':'VIEWER_CONTROL_BLOCKED','error_type':type(exc).__name__}
+        result={'status':'VIEWER_CONTROL_BLOCKED','stage':stage,'error_type':type(exc).__name__}
         if isinstance(exc,ControlError):result['code']=str(exc)
         for key in ('errno','winerror'):
             if type(getattr(exc,key,None)) is int:result[key]=getattr(exc,key)
