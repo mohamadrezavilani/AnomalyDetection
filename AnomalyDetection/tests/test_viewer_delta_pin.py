@@ -1,7 +1,8 @@
 """R3.2 is an exact release pin; historical overlays cannot admit mixed trees."""
 import unittest
 from anomaly_detection.source_profiles import (R3_RUNTIME,R31_RUNTIME,R32_RUNTIME,R32_FILES,
-    R31_VIEWER_DATA,r31_overlay_allowed,r32_release_allowed,SUPPORTED_RUNTIMES)
+    R31_VIEWER_DATA,r31_overlay_allowed,r32_release_allowed,SUPPORTED_RUNTIMES,
+    R33_RUNTIME,R33_FILES,r33_release_allowed)
 
 
 class ViewerDeltaPinTests(unittest.TestCase):
@@ -16,6 +17,13 @@ class ViewerDeltaPinTests(unittest.TestCase):
     def test_new_manifest_cannot_borrow_historical_overlay_exception(self):
         self.assertFalse(r31_overlay_allowed(R32_RUNTIME,R31_RUNTIME,180,R31_VIEWER_DATA))
         self.assertFalse(r31_overlay_allowed(R3_RUNTIME,R32_RUNTIME,180,R31_VIEWER_DATA))
+
+    def test_scoped_input_release_requires_its_own_exact_bytes(self):
+        self.assertTrue(r33_release_allowed(R33_RUNTIME,R33_RUNTIME,R33_FILES))
+        self.assertIn(R33_RUNTIME,SUPPORTED_RUNTIMES)
+        self.assertFalse(r33_release_allowed(R32_RUNTIME,R33_RUNTIME,R33_FILES))
+        self.assertFalse(r33_release_allowed(R33_RUNTIME,R32_RUNTIME,R33_FILES))
+        self.assertFalse(r33_release_allowed(R33_RUNTIME,R33_RUNTIME,R33_FILES+1))
 
 
 if __name__=='__main__':unittest.main()

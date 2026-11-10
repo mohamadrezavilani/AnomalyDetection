@@ -64,8 +64,7 @@ RESUMES_SQL = """SELECT previous_next_ns,resumed_from_ns,resumed_at_ns
 TABLES_SQL = """SELECT s.schemaname,s.relname,s.n_live_tup,s.n_dead_tup,
     s.n_mod_since_analyze,s.seq_scan,s.idx_scan,s.last_autovacuum,s.last_autoanalyze,
     s.last_analyze,c.reltuples AS planner_rows,
-    pg_relation_size(s.relid) AS heap_bytes,pg_indexes_size(s.relid) AS index_bytes,
-    pg_total_relation_size(s.relid) AS total_bytes
+    c.relpages::bigint*current_setting('block_size')::bigint AS estimated_main_heap_bytes
     FROM pg_catalog.pg_stat_user_tables s JOIN pg_catalog.pg_class c ON c.oid=s.relid
     WHERE (s.schemaname='public' AND left(s.relname,7)='viewer_')
        OR s.schemaname='anomaly_detection'
@@ -221,6 +220,7 @@ def receipt_summary(rows, backlog=None):
     ordered = sorted(windows.values(), key=lambda row: row['start_ns'])
     result = {'sample_windows': len(ordered), 'arrival_windows_per_hour': 12,
         'throughput_status': 'INSUFFICIENT_RECEIPTS', 'estimated_catchup_hours': None,
+        'basis': 'HISTORICAL_RECEIPTS_MAY_SPAN_RELEASES',
         'publisher_timer_excludes_commit': True}
     if not ordered:
         return result
@@ -358,6 +358,15 @@ def main(argv=None):
         report['installed_source'] = {'status': 'READ', 'value': inventory['value'][0]} if inventory['status'] == 'READ' else inventory
         report['installed_ad_build'] = launcher['EXPECTED_BUILD']
         report['installed_ad_source_sha256'] = ad_sha
+        startup=project/'validation/viewer_startup.json'
+        if startup.is_file():
+            def read_startup():
+                value=json.loads(startup.read_text(encoding='utf-8-sig'))
+                return {key:value.get(key) for key in ('pid','mode','runtime_source_sha256','started_at_utc')}
+            report['viewer_startup_receipt']=attempt(read_startup)
+            if report['viewer_startup_receipt']['status']=='READ_FAILED':
+                report['status']='PARTIAL_READ_ONLY_OBSERVATION'
+                report['read_failures']+=1
         if inventory['status'] != 'READ':
             report['status'] = 'PARTIAL_READ_ONLY_OBSERVATION'
             report['read_failures'] += 1

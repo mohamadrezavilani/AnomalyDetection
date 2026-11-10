@@ -5,6 +5,9 @@ on:
     paths:
       - 'p24_foundation/**'
       - 'tests/test_viewer_minimal*'
+      - 'tests/test_viewer_scoped_inputs.py'
+      - 'tests/test_viewer_web_existing.py'
+      - 'viewer_performance/**'
       - '.github/workflows/viewer-delta.yml'
   workflow_dispatch:
 
@@ -43,6 +46,8 @@ jobs:
           python -B -m unittest -v
           tests.test_viewer_minimal_publication
           tests.test_viewer_minimal_pg
+          tests.test_viewer_scoped_inputs
+          tests.test_viewer_web_existing
           tests.test_viewer_online
           tests.test_viewer_scoped_fetch
           tests.test_viewer_finalized_projection

@@ -67,7 +67,7 @@ switch ($Action) {
         exit $LASTEXITCODE
     }
     'Web' {
-        & $viewerPython '.\tools\run_behavior_viewer.py' serve --config $viewerConfig --progress
+        & $viewerPython '.\viewer_performance\Run_Viewer_Web.py' --project-root $viewerRoot
         exit $LASTEXITCODE
     }
     'Pilot' {

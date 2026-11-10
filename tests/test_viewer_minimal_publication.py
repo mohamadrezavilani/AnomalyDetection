@@ -86,7 +86,7 @@ class MinimalPublicationTests(unittest.TestCase):
         native=object.__new__(ViewerDB);native.sqlite=False
         query=native._contract_read_query(scoped=True,payload=False,reuse_projection_events=True)
         self.assertIn('FROM viewer_projection_events e',query)
-        self.assertIn('SELECT COUNT(*) FROM viewer_events bad',query)
+        self.assertIn('FROM viewer_projection_versions v',query)
         self.assertIn('SELECT COUNT(*) FROM viewer_raw_events b',query)
         self.assertNotIn('FROM viewer_events e',query)
         self.assertIn('CROSS JOIN LATERAL',native._contract_read_query(scoped=True,payload=False))
