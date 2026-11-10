@@ -201,7 +201,7 @@ class NativeMinimalPublicationTests(unittest.TestCase):
             self.assertTrue(module.terminate_lease(reader,lease))
             self.assertEqual(reader.execute(module.LEASE_SQL).fetchall(),[])
 
-    def test_control_addresses_from_native_postgresql_are_local_host_addresses(self):
+    def test_control_normalizes_native_inet_text_and_preserves_local_only_guard(self):
         import importlib.util
         import psycopg
         from psycopg.rows import dict_row
@@ -211,19 +211,33 @@ class NativeMinimalPublicationTests(unittest.TestCase):
         with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row) as held, \
              psycopg.connect(**self.config,autocommit=True,row_factory=dict_row,
                 options='-c default_transaction_read_only=on') as reader:
+            rows=reader.execute("""SELECT address::text AS legacy,host(address) AS normalized,expected
+                FROM (VALUES ('127.0.0.1'::inet,true),('::1'::inet,true),
+                    ('::ffff:127.0.0.1'::inet,true),('192.0.2.1'::inet,false),
+                    ('2001:db8::1'::inet,false)) AS endpoints(address,expected)""").fetchall()
+            for row in rows:
+                with self.assertRaises(ValueError):module.ipaddress.ip_address(row['legacy'])
+                self.assertEqual(module.loopback(row['legacy']),row['expected'])
+                self.assertEqual(module.loopback(row['normalized']),row['expected'])
             legacy=reader.execute('SELECT inet_server_addr()::text AS address').fetchone()['address']
             self.assertIn('/',legacy)
             with self.assertRaises(ValueError):module.ipaddress.ip_address(legacy)
-            self.assertTrue(module.loopback(legacy))
             guard=reader.execute(module.GUARD_SQL).fetchone()
             self.assertEqual(guard['db'],self.name)
             self.assertNotIn('/',guard['address'])
-            self.assertTrue(module.loopback(guard['address']))
+            server_address=module.ipaddress.ip_interface(legacy).ip
+            self.assertEqual(module.ipaddress.ip_address(guard['address']),server_address)
+            # Docker port publishing can expose the container's non-loopback
+            # address. The product's local-only check must still reject it.
+            self.assertEqual(module.loopback(guard['address']),server_address.is_loopback)
+            self.assertEqual(module.loopback(legacy),server_address.is_loopback)
             held.execute('SELECT pg_advisory_lock(240026,1)')
             lease=dict(reader.execute(module.LEASE_SQL).fetchone())
             self.assertEqual(lease['pid'],held.info.backend_pid)
             self.assertNotIn('/',lease['client_addr'])
-            self.assertTrue(module.loopback(lease['client_addr']))
+            client=held.execute('SELECT host(inet_client_addr()) AS address').fetchone()['address']
+            self.assertEqual(lease['client_addr'],client)
+            self.assertEqual(module.loopback(client),module.ipaddress.ip_address(client).is_loopback)
 
 
 if __name__=='__main__':unittest.main()
