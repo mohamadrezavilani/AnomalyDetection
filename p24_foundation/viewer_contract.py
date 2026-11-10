@@ -227,7 +227,8 @@ class PaymentContractMixin:
     def _contract_read_query(self,*,scoped=False,payload=True,reuse_projection_events=False):
         if reuse_projection_events and not scoped:raise ValueError('contract_event_scope_requires_requests')
         scope=' AND e.request_key IN (SELECT request_key FROM viewer_projection_scope)' if scoped else ''
-        clean=self._single_version_origin_sql('e',indexed=scoped and not self.sqlite)
+        clean=self._single_version_origin_sql('e',indexed=scoped and not self.sqlite,
+            cached=reuse_projection_events and not self.sqlite)
         query='SELECT e.origin_key,e.version_key,e.request_key,e.at_ns,e.callpath'
         if payload:query+=',b.payload'
         if reuse_projection_events:

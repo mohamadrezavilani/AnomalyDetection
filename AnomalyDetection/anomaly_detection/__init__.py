@@ -1,6 +1,6 @@
 """Independent PostgreSQL consumer; delegates selected pinned Viewer read models."""
 
-BUILD_ID = "AD-20261110-DELTA-VIEWER"
+BUILD_ID = "AD-20261110-SCOPED-INPUTS"
 EVALUATOR_VERSION = 'audit-evaluator-20261110-1'
 CONTRACT = "AD-SNAPSHOT-v1"
 SOURCE_SHA = "84e9dcc984092735dd4785a26b5af02019eda63d0d5d7ee221bb0c84da37e993"

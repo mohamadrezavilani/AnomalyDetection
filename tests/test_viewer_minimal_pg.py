@@ -98,6 +98,9 @@ class NativeMinimalPublicationTests(unittest.TestCase):
         path=Path(__file__).resolve().parents[1]/'AnomalyDetection/validation/observe_viewer_live.py'
         spec=importlib.util.spec_from_file_location('native_observer',path)
         observer=importlib.util.module_from_spec(spec);spec.loader.exec_module(observer)
+        web_path=Path(__file__).resolve().parents[1]/'viewer_performance/Run_Viewer_Web.py'
+        web_spec=importlib.util.spec_from_file_location('native_existing_web',web_path)
+        web=importlib.util.module_from_spec(web_spec);web_spec.loader.exec_module(web)
         self.publish([log(1,'first','Services.v1/WaterBills Line:1','POST (G00000 | successful)')])
         with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row,
                 options='-c default_transaction_read_only=on -c statement_timeout=2000 -c lock_timeout=100') as reader:
@@ -108,7 +111,9 @@ class NativeMinimalPublicationTests(unittest.TestCase):
             row['@timestamp']=iso(START+FIVE_NS+1_000_000_000)
             observed=[]
             def during(stage):
-                if stage=='after_relations':observed.append(count())
+                if stage=='after_relations':
+                    observed.append(count())
+                    web.check_existing({'config':self.config,'keys_path':self.keys})
             self.publish([row],START+FIVE_NS,fault=during)
             self.assertEqual(observed,[1]);self.assertEqual(count(),1)
             reader.execute('ROLLBACK');self.assertEqual(count(),2)
@@ -162,6 +167,21 @@ class NativeMinimalPublicationTests(unittest.TestCase):
         self.assertEqual(child['Node Type'],'Index Scan')
         self.assertEqual(child['Index Name'],'vso_session_latest')
         self.assertEqual(child['Actual Rows'],1)
+
+    def test_global_validity_snapshot_sees_other_request_versions_and_caps_probe_at_two(self):
+        row=log(1,'a','Services.v1/WaterBills Line:1','POST (G00000 | successful)')
+        self.publish([row])
+        original=self.db.one('SELECT * FROM viewer_events LIMIT 1')
+        columns=[d[0] for d in self.db.sql('SELECT * FROM viewer_events LIMIT 0').description]
+        for n in range(3):
+            changed=dict(original,version_key='outside-version'+str(n),request_key='outside-request'+str(n))
+            self.db.sql('INSERT INTO viewer_events VALUES('+','.join('?' for _ in columns)+')',[changed[c] for c in columns])
+        self.db.rebuild(request_keys=[original['request_key']],commit=False)
+        cache=self.db.one('SELECT version_count FROM viewer_projection_versions WHERE origin_key=?',(original['origin_key'],))
+        self.assertEqual(cache['version_count'],2)
+        request=self.db.one('SELECT conflicted,root_call FROM viewer_requests WHERE request_key=?',(original['request_key'],))
+        self.assertEqual(request,{'conflicted':1,'root_call':None})
+        self.db.conn.rollback()
 
 
 if __name__=='__main__':unittest.main()

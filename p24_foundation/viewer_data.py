@@ -955,23 +955,72 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         self.sql('CREATE INDEX IF NOT EXISTS vpe_origin ON viewer_projection_events(origin_key,version_key)')
         if not self.sqlite:
             self.sql('ANALYZE viewer_projection_events')
+            self._prepare_projection_inputs()
             if getattr(self,'d1_explain',False):
                 counts=self.one('SELECT COUNT(*) AS events,COUNT(DISTINCT request_key) AS requests FROM viewer_projection_events')
                 self.progress('projection_scope_ready',**counts)
 
+    def _prepare_projection_inputs(self):
+        """Snapshot links and global origin validity once under the writer lock.
+
+        Every scoped request link is copied, including links with no retained
+        event. Each distinct origin in events OR links is checked globally;
+        versions belonging to another RequestID must still invalidate it.
+        Only 0 / 1 / at-least-2 versions matter, so PG reads at most two PK
+        entries per origin. No validity survives the publication transaction.
+        """
+        self.progress('projection_scope_inputs')
+        if self.sqlite:
+            self.sql('CREATE TEMP TABLE IF NOT EXISTS viewer_projection_links AS SELECT * FROM viewer_links WHERE 0')
+            self.sql('DELETE FROM viewer_projection_links')
+            self.sql('''INSERT INTO viewer_projection_links SELECT l.* FROM viewer_projection_scope s
+                JOIN viewer_links l ON l.request_key=s.request_key''')
+        else:
+            self.sql('CREATE TEMP TABLE IF NOT EXISTS viewer_projection_links (LIKE viewer_links) ON COMMIT DROP')
+            self.sql('TRUNCATE TABLE viewer_projection_links')
+            self.sql('''INSERT INTO viewer_projection_links SELECT l.* FROM viewer_projection_scope s
+                CROSS JOIN LATERAL (SELECT source.* FROM viewer_links source
+                    WHERE source.request_key=s.request_key OFFSET 0) l''')
+        self.sql('CREATE INDEX IF NOT EXISTS vpl_origin ON viewer_projection_links(origin_key,version_key,link_domain)')
+        self.sql('CREATE INDEX IF NOT EXISTS vpl_request ON viewer_projection_links(request_key)')
+        self.sql('''CREATE TEMP TABLE IF NOT EXISTS viewer_projection_versions(
+            origin_key TEXT PRIMARY KEY,version_count BIGINT NOT NULL,only_version_key TEXT)'''+
+            ('' if self.sqlite else ' ON COMMIT DROP'))
+        self.sql('DELETE FROM viewer_projection_versions' if self.sqlite else 'TRUNCATE TABLE viewer_projection_versions')
+        origins='''(SELECT origin_key FROM viewer_projection_events UNION
+            SELECT origin_key FROM viewer_projection_links ORDER BY origin_key) k'''
+        if self.sqlite:
+            self.sql('''INSERT INTO viewer_projection_versions SELECT k.origin_key,
+                (SELECT COUNT(*) FROM viewer_events v WHERE v.origin_key=k.origin_key),
+                (SELECT MIN(version_key) FROM viewer_events v WHERE v.origin_key=k.origin_key)
+                FROM '''+origins)
+        else:
+            self.sql('''INSERT INTO viewer_projection_versions SELECT k.origin_key,v.n,v.only_version
+                FROM '''+origins+''' CROSS JOIN LATERAL
+                (SELECT COUNT(*) AS n,MIN(b.version_key) AS only_version FROM
+                    (SELECT version_key FROM viewer_events source
+                     WHERE source.origin_key=k.origin_key LIMIT 2 OFFSET 0) b) v''')
+            self.sql('ANALYZE viewer_projection_links')
+            self.sql('ANALYZE viewer_projection_versions')
+        self.progress('projection_scope_inputs_ready')
+
     @staticmethod
-    def _global_conflict_predicate(indexed=False):
+    def _global_conflict_predicate(indexed=False,cached=False):
         # PK(origin_key,version_key) makes >1 exactly the existence of a
         # competing material version, including another RequestID's version.
+        if cached:return '(SELECT version_count FROM viewer_projection_versions v WHERE v.origin_key=e.origin_key)>1'
         return ('''(SELECT COUNT(*) FROM viewer_events bad WHERE bad.origin_key=e.origin_key)>1'''
                 if indexed else
                 '''EXISTS(SELECT 1 FROM viewer_events bad WHERE bad.origin_key=e.origin_key AND bad.version_key<>e.version_key)''')
 
     @staticmethod
-    def _single_version_origin_sql(alias='e', *, indexed=False):
+    def _single_version_origin_sql(alias='e', *, indexed=False,cached=False):
         # The global PK is (origin_key,version_key). A scalar count cannot be
         # flattened into a history-wide anti-join. Never scope this lookup to
         # the current RequestID: a competing version may belong to another one.
+        if cached:
+            return ('(SELECT CASE WHEN v.version_count=0 OR v.version_count=1 AND v.only_version_key='+alias+
+                '.version_key THEN 1 ELSE 0 END FROM viewer_projection_versions v WHERE v.origin_key='+alias+'.origin_key)=1')
         if indexed:
             return ('(SELECT COUNT(*) FROM viewer_events bad WHERE bad.origin_key='+alias+
                     '.origin_key AND bad.version_key<>'+alias+'.version_key)=0')
@@ -979,17 +1028,17 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 '.origin_key AND bad.version_key<>'+alias+'.version_key)')
 
     @classmethod
-    def _request_conflict_evidence_sql(cls, events, *, indexed=False):
+    def _request_conflict_evidence_sql(cls, events, *, indexed=False,cached=False):
         return ('''SELECT DISTINCT e.request_key,e.callpath,e.code FROM '''+events+''' e
             JOIN viewer_requests r ON r.request_key=e.request_key
             WHERE r.root_count>1 AND e.kind='client' AND '''+
-            cls._single_version_origin_sql(indexed=indexed))
+            cls._single_version_origin_sql(indexed=indexed,cached=cached))
 
     @classmethod
-    def _access_session_conflicts_sql(cls, events, *, scoped=False, indexed=False):
+    def _access_session_conflicts_sql(cls, events, *, scoped=False, indexed=False,cached=False):
         # The link PK begins with origin/version. Keep both probes correlated
         # to the bounded event relation rather than joining all retained links.
-        links='''SELECT COUNT(*) FROM viewer_links l
+        links='''SELECT COUNT(*) FROM '''+('viewer_projection_links' if cached else 'viewer_links')+''' l
             WHERE l.origin_key=e.origin_key AND l.version_key=e.version_key
               AND l.link_domain='access_session' AND l.link_key<>e.session_key'''
         access=('('+links+')>0' if indexed else 'EXISTS('+links.replace('COUNT(*)','1')+')')
@@ -997,19 +1046,19 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         return ('''UPDATE viewer_requests SET identity_state='conflicting',conflicted=1,session_key=NULL
             WHERE request_key IN (SELECT e.request_key FROM '''+events+''' e
                 WHERE e.session_key IS NOT NULL AND '''+access+' AND '+
-                cls._single_version_origin_sql(indexed=indexed)+')'+scope)
+                cls._single_version_origin_sql(indexed=indexed,cached=cached)+')'+scope)
 
     @classmethod
-    def _projection_payment_links_sql(cls, *, scoped=False, postgres=False):
+    def _projection_payment_links_sql(cls, *, scoped=False, postgres=False,cached=False):
         domains="('platform_payment','invoice','purchase','query','query_index','query_parameters_hash')"
         if scoped and postgres:
             # OFFSET 0 preserves the per-request index probe (vli_request),
             # including old windows for these requests. Global version checks
             # still read the retained origin PK, not the private work table.
             source='''viewer_projection_scope s CROSS JOIN LATERAL
-                (SELECT source.* FROM viewer_links source WHERE source.request_key=s.request_key
+                (SELECT source.* FROM '''+('viewer_projection_links' if cached else 'viewer_links')+''' source WHERE source.request_key=s.request_key
                     AND source.link_domain IN '''+domains+''' OFFSET 0) l'''
-            filters=cls._single_version_origin_sql('l',indexed=True)
+            filters=cls._single_version_origin_sql('l',indexed=True,cached=cached)
         else:
             source='viewer_links l'
             filters='l.link_domain IN '+domains+' AND '+cls._single_version_origin_sql('l')
@@ -1017,7 +1066,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         return 'SELECT DISTINCT l.request_key,l.link_key,l.link_domain FROM '+source+' WHERE '+filters
 
     @staticmethod
-    def _request_aggregate_sql(events, *, scoped=False, indexed_conflict=False):
+    def _request_aggregate_sql(events, *, scoped=False, indexed_conflict=False,cached=False):
         """Keep the global origin/version conflict invariant with bounded lookups.
 
         The global PK(origin_key,version_key) means one origin row is clean,
@@ -1025,7 +1074,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         keeps the probe keyed by origin instead of encouraging an unbounded
         PostgreSQL anti-join. SQLite/full rebuild keep their existing SQL.
         """
-        if indexed_conflict:
+        if cached:
+            conflict='(SELECT version_count FROM viewer_projection_versions v WHERE v.origin_key=e.origin_key)=1'
+        elif indexed_conflict:
             conflict='''(SELECT COUNT(*) FROM viewer_events versions
                            WHERE versions.origin_key=e.origin_key)=1'''
         else:
@@ -1048,7 +1099,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             WHERE e.request_key IS NOT NULL AND '''+conflict+scope+''' GROUP BY e.request_key'''
 
     @staticmethod
-    def _request_roots_sql(events,*,scoped=False,indexed_conflict=False):
+    def _request_roots_sql(events,*,scoped=False,indexed_conflict=False,cached=False):
         # The retained-event PK makes COUNT=1 equivalent to no competing
         # version. Keep both root probes bounded by origin on incremental PG,
         # including versions assigned to another request outside the scope.
@@ -1056,6 +1107,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                if indexed_conflict else
                '''NOT EXISTS (SELECT 1 FROM viewer_events e2
                               WHERE e2.origin_key=e.origin_key AND e2.version_key<>e.version_key)''')
+        if cached:clean='(SELECT version_count FROM viewer_projection_versions v WHERE v.origin_key=e.origin_key)=1'
         scope=' AND r.request_key IN (SELECT request_key FROM viewer_projection_scope)' if scoped else ''
         return """UPDATE viewer_requests AS r
             SET (root_call,root_code,root_ns,initiation) = (
@@ -1127,7 +1179,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         # Only this failing aggregate is modified; remaining read models,
         # business classifications and financial relationships are unchanged.
         aggregate=self._request_aggregate_sql(events,scoped=scoped,
-            indexed_conflict=scoped and not self.sqlite)
+            indexed_conflict=scoped and not self.sqlite,cached=scoped and not self.sqlite)
         if scoped and not self.sqlite and getattr(self,'d1_explain',False):
             # Compare both *estimates* during the native transaction. Neither
             # EXPLAIN executes the INSERT or provides measured runtime.
@@ -1157,7 +1209,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         # A conflicting original cannot be silently attributed; mark affected requests.
         conflict_started=time.monotonic()
         self.progress('rebuild_global_conflicts')
-        conflict_test=self._global_conflict_predicate(indexed=scoped and not self.sqlite)
+        conflict_test=self._global_conflict_predicate(indexed=scoped and not self.sqlite,cached=scoped and not self.sqlite)
         self.sql('''UPDATE viewer_requests SET conflicted=1,identity_state='conflicting',session_key=NULL
                      WHERE request_key IN
                        (SELECT DISTINCT e.request_key FROM '''+events+''' e WHERE '''+conflict_test+'''
@@ -1167,7 +1219,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         # (essential for 145k+ real requests, especially on PostgreSQL).
         self.progress('rebuild_request_roots')
         roots_started=time.monotonic()
-        self.sql(self._request_roots_sql(events,scoped=scoped,indexed_conflict=scoped and not self.sqlite),
+        self.sql(self._request_roots_sql(events,scoped=scoped,indexed_conflict=scoped and not self.sqlite,cached=scoped and not self.sqlite),
                  ('%/InvoiceRegister %','Webhook.%','PaymentCallback.%','JobsQueue.%'))
         self.progress('rebuild_request_roots_complete',seconds=round(time.monotonic()-roots_started,3))
         # Distinct HTTP routes / contradictory root status are not resolved by
@@ -1176,7 +1228,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         self.progress('rebuild_request_conflicts')
         conflict_started=time.monotonic()
         roots=defaultdict(set)
-        for e in self.all(self._request_conflict_evidence_sql(events,indexed=scoped and not self.sqlite)):
+        for e in self.all(self._request_conflict_evidence_sql(events,indexed=scoped and not self.sqlite,cached=scoped and not self.sqlite)):
             roots[e['request_key']].add((service_path(e['callpath']),e['code']))
         conflicting=[(key,) for key,values in roots.items() if len(values)>1]
         self.many("""UPDATE viewer_requests SET conflicted=1,root_call=NULL,
@@ -1187,7 +1239,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         # Session field. Disagreement is explicit and never forcibly relinked.
         self.progress('rebuild_access_session_conflicts')
         access_started=time.monotonic()
-        self.sql(self._access_session_conflicts_sql(events,scoped=scoped,indexed=scoped and not self.sqlite))
+        self.sql(self._access_session_conflicts_sql(events,scoped=scoped,indexed=scoped and not self.sqlite,cached=scoped and not self.sqlite))
         self.progress('rebuild_access_session_conflicts_complete',seconds=round(time.monotonic()-access_started,3))
         # Actions remain separate per HTTP RequestID, including manual retries.
         self.progress('rebuild_service_roles')
@@ -1200,7 +1252,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         self.progress('rebuild_payment_index')
         payment_started=time.monotonic()
         payment_index=defaultdict(list)
-        for link in self.all(self._projection_payment_links_sql(scoped=scoped,postgres=not self.sqlite)):
+        for link in self.all(self._projection_payment_links_sql(scoped=scoped,postgres=not self.sqlite,cached=scoped and not self.sqlite)):
             payment_index[(link['link_domain'],link['link_key'])].append(link['request_key'])
         request_links=defaultdict(list)
         for (kind,key),rids in payment_index.items():
@@ -1256,7 +1308,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                    ('FreewayTollBills','GM2030'):'no_payable_bill'}
         scoped=getattr(self,'_active_projection_scope',False)
         events='viewer_projection_events' if scoped else 'viewer_events'
-        clean=self._single_version_origin_sql(indexed=scoped and not self.sqlite)
+        clean=self._single_version_origin_sql(indexed=scoped and not self.sqlite,cached=scoped and not self.sqlite)
         scope=" AND e.request_key IN (SELECT request_key FROM viewer_projection_scope)" if scoped else ''
         names={a['action_key']:a['name'] for a in self.all('SELECT action_key,name FROM viewer_actions'+
             (' WHERE action_key IN (SELECT request_key FROM viewer_projection_scope)' if scoped else ''))}
@@ -1279,11 +1331,11 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         """
         scoped=getattr(self,'_active_projection_scope',False)
         events='viewer_projection_events' if scoped else 'viewer_events'
-        clean=self._single_version_origin_sql(indexed=scoped and not self.sqlite)
+        clean=self._single_version_origin_sql(indexed=scoped and not self.sqlite,cached=scoped and not self.sqlite)
         scope=" AND e.request_key IN (SELECT request_key FROM viewer_projection_scope)" if scoped else ''
         if scoped and not self.sqlite:
             link_source=events+''' e CROSS JOIN LATERAL
-              (SELECT source.* FROM viewer_links source WHERE source.origin_key=e.origin_key
+              (SELECT source.* FROM viewer_projection_links source WHERE source.origin_key=e.origin_key
                 AND source.version_key=e.version_key AND source.link_domain='platform_payment'
                 AND source.request_key IS NOT NULL OFFSET 0) l'''
         else:
