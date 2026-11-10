@@ -31,6 +31,20 @@ def read_json(path, default=None):
     return value
 
 
+def read_observed_json(path):
+    """Best-effort telemetry only. Never use this for credentials or commands."""
+    for attempt in range(3):
+        try:
+            return read_json(path, {}), None
+        except (OSError, ValueError, ContractError) as exc:
+            failure = safe_failure(exc)
+            failure.update(errno=exc.errno if isinstance(getattr(exc, 'errno', None), int) else None,
+                           winerror=exc.winerror if isinstance(getattr(exc, 'winerror', None), int) else None)
+            if not isinstance(exc, PermissionError) or attempt == 2:
+                return {}, failure
+            time.sleep(.02 * (attempt + 1))
+
+
 def write_json(path, value):
     for attempt in range(3):
         try:
@@ -117,11 +131,12 @@ def process_owner(root,resource='baseline'):
         try: lock_handle(handle)
         except OSError as exc:
             if not busy_error(exc): raise
-            try: owner=read_json(root/('data/'+resource+'_process.json'),{})
-            except (ValueError,ContractError): owner={}
-            return {"locked":True,"owner":owner}
+            locked=True
         else:
             unlock_handle(handle)
-            try: owner=read_json(root/('data/'+resource+'_process.json'),{})
-            except (ValueError,ContractError): owner={}
-            return {"locked":False,"owner":owner}
+            locked=False
+        owner,failure=read_observed_json(root/('data/'+resource+'_process.json'))
+        result={"locked":locked,"owner":owner or None,
+                "owner_read_status":"UNAVAILABLE" if failure else "AVAILABLE" if owner else "MISSING"}
+        if failure: result['owner_read_failure']=failure
+        return result

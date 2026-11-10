@@ -10,22 +10,39 @@ import uuid
 import zipfile
 
 from . import BUILD_ID
-from .process_control import process_owner,read_json,write_json
+from .process_control import process_owner,read_observed_json,write_json
 
 
 def status(root):
     root=Path(root);owner=process_owner(root);identity=owner.get('owner') or {}
-    worker=read_json(root/'reports/product_status.json',{})
-    if worker.get('instance_token')!=identity.get('instance_token'):
-        previous=read_json(root/'reports/A2W_worker_status.json',{})
-        worker=previous if previous.get('instance_token')==identity.get('instance_token') else {}
-    same=bool(worker and worker.get('instance_token')==identity.get('instance_token'))
-    running=bool(owner['locked'] and identity.get('job')=='baseline_worker')
+    failures=[]
+    def failure(stage, value):
+        if value: failures.append(dict(stage=stage, failure=value))
+    failure('worker_identity',owner.get('owner_read_failure'))
+    worker,error=read_observed_json(root/'reports/product_status.json')
+    failure('worker_heartbeat',error)
+    token=identity.get('instance_token')
+    unverified=worker
+    if not token or worker.get('instance_token')!=token:
+        previous,error=read_observed_json(root/'reports/A2W_worker_status.json')
+        failure('previous_worker_heartbeat',error)
+        worker=previous if token and previous.get('instance_token')==token else {}
+    same=bool(owner['locked'] and identity.get('job')=='baseline_worker' and token and worker and worker.get('instance_token')==token)
+    unknown=bool(owner['locked'] and not (token and identity.get('job')))
+    if unknown and not owner.get('owner_read_failure'):
+        failure('worker_identity',{'code':'PROCESS_METADATA_UNAVAILABLE'})
+    running=None if unknown else bool(owner['locked'] and identity.get('job')=='baseline_worker')
     age=max(0,(time.time_ns()-worker.get('heartbeat_ns',0))/1e9) if same else None
-    return {'health':worker.get('state','STARTING') if running and same and age is not None and age<30 else
+    web=process_owner(root,'web')
+    failure('web_identity',web.get('owner_read_failure'))
+    if web['locked'] and not (web.get('owner') or {}).get('instance_token') and not web.get('owner_read_failure'):
+        failure('web_identity',{'code':'PROCESS_METADATA_UNAVAILABLE'})
+    return {'health':'PROCESS_IDENTITY_UNAVAILABLE' if unknown else
+        worker.get('state','STARTING') if running and same and age is not None and age<30 else
         'RUNNING_HEARTBEAT_STALE' if running and same else 'STARTING' if running else 'STOPPED',
         'running':running,'observation_matches_process':same,'heartbeat_age_seconds':age,'process':owner,'worker':worker,
-        'web':process_owner(root,'web'),'web_url':'http://127.0.0.1:5022/'}
+        'unverified_worker_status':unverified if not same else {},'diagnostic_failures':failures,
+        'web':web,'web_url':'http://127.0.0.1:5022/'}
 
 
 def spawn(root,command,*,instance_token=None):
@@ -48,6 +65,9 @@ def release_owner(process,build,sha,job='baseline_worker'):
 def start(root,sha):
     before=status(root)
     if before['process']['locked']:
+        identity=before['process'].get('owner') or {}
+        if not (identity.get('instance_token') and identity.get('job')):
+            return dict(before,status='PROCESS_IDENTITY_UNAVAILABLE')
         owner=release_owner(before['process'],BUILD_ID,sha)
         if owner:return dict(before,status='ALREADY_RUNNING',expected_instance_token=owner['instance_token'])
         return dict(before,status='EXISTING_WORKER_VERSION_DIFFERENT')
@@ -70,18 +90,24 @@ def start(root,sha):
 
 
 def stop(root,wait_seconds=20):
-    root=Path(root);requests=[]
+    root=Path(root);requests=[];blocked=[]
     for resource,file,job in [('baseline','A2W_stop_request.json','baseline_worker'),('web','web_stop_request.json','product_web')]:
         owner=process_owner(root,resource)
+        if owner['locked'] and not ((owner.get('owner') or {}).get('instance_token') and (owner.get('owner') or {}).get('job')):
+            blocked.append(resource)
+            continue
         if owner['locked'] and (owner.get('owner') or {}).get('job')==job:
-            token=owner['owner']['instance_token'];write_json(root/'data'/file,{'instance_token':token,'requested_at_ns':time.time_ns()})
-            requests.append((resource,token))
+            requests.append((resource,owner['owner']['instance_token'],file))
+    if blocked:return {'status':'STOP_BLOCKED_IDENTITY_UNAVAILABLE','resources':blocked}
+    for resource,token,file in requests:
+        write_json(root/'data'/file,{'instance_token':token,'requested_at_ns':time.time_ns()})
     deadline=time.monotonic()+wait_seconds
     while time.monotonic()<deadline:
         alive=[]
-        for resource,token in requests:
+        for resource,token,file in requests:
             current=process_owner(root,resource)
-            if current['locked'] and (current.get('owner') or {}).get('instance_token')==token:alive.append(resource)
+            current_token=(current.get('owner') or {}).get('instance_token')
+            if current['locked'] and (not current_token or current_token==token):alive.append(resource)
         if not alive:return {'status':'STOPPED' if requests else 'ALREADY_STOPPED'}
         time.sleep(.1)
     return {'status':'STOP_REQUESTED'}
@@ -90,10 +116,16 @@ def stop(root,wait_seconds=20):
 def export_report(root,sha, *, observe_seconds=0,clock=None,wait=None):
     root=Path(root);clock=clock or time;wait=wait or time.sleep
     first=status(root);last=first;began=clock.monotonic();samples=[]
+    observation_failures={}
+    def remember(value):
+        for failure in value.get('diagnostic_failures',[]):
+            observation_failures[json.dumps(failure,sort_keys=True)]=failure
+    remember(first)
     first_token=(first['process'].get('owner') or {}).get('instance_token')
     deadline=began+observe_seconds
     while first['running'] and clock.monotonic()<deadline:
         wait(min(1,deadline-clock.monotonic()));last=status(root)
+        remember(last)
         token=(last['process'].get('owner') or {}).get('instance_token')
         if not last['running'] or token!=first_token:break
         if not samples or clock.monotonic()-samples[-1]['elapsed_seconds']-began>=5:
@@ -114,12 +146,18 @@ def export_report(root,sha, *, observe_seconds=0,clock=None,wait=None):
                 'job_scope_backfill':worker.get('job_scope_backfill')})
             samples=samples[-72:]
     stamp=datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_')+uuid.uuid4().hex[:8]
+    last=dict(last,diagnostic_failures=list(observation_failures.values()))
     path=root/'reports'/('AnomalyDetection_Report_'+stamp+'.zip');path.parent.mkdir(exist_ok=True,parents=True)
-    same=first_token==(last['process'].get('owner') or {}).get('instance_token')
+    same=bool(first['process']['locked'] and last['process']['locked'] and first_token
+              and first_token==(last['process'].get('owner') or {}).get('instance_token'))
+    verified=bool(same and first['observation_matches_process'] and last['observation_matches_process'])
     with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as archive:
         archive.writestr('worker_status.json',json.dumps(last,ensure_ascii=False,indent=2))
-        archive.writestr('release.json',json.dumps({'build_id':BUILD_ID,'source_sha256':sha,'storage_backend':'postgresql'}))
+        archive.writestr('release.json',json.dumps({'build_id':BUILD_ID,'source_sha256':sha,'storage_backend':'postgresql',
+            'identity_scope':'REPORT_COLLECTOR_NOT_RUNNING_WORKER'}))
         archive.writestr('worker_observation.json',json.dumps({'same_instance':same,'elapsed_seconds':clock.monotonic()-began,
+            'process_identity_verified':verified,
+            'observation_complete':not first.get('diagnostic_failures') and not last.get('diagnostic_failures'),
             'samples':samples,'source_connections_by_observer':0,'capacity_acceptance':'NOT_EVALUATED'},ensure_ascii=False,indent=2))
         from .product_diagnostics import snapshot
         archive.writestr('evaluation_queue.json',json.dumps(snapshot(root),ensure_ascii=False,indent=2))

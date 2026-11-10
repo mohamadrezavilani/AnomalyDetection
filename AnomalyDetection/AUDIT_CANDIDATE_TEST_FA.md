@@ -2,6 +2,19 @@
 
 این بسته کاندید اصلاح است و پذیرش Production ندارد. هیچ نیاز به نصب، Reset یا تغییر تنظیمات PostgreSQL ایجاد نمی‌کند. روی کپی جداگانهٔ پروژه آزمون کنید. تغییرات فقط در AnomalyDetection هستند؛ Viewer و P0 آزمایشی تغییر نکرده‌اند.
 
+## گزارش از نصب موجود بدون تعویض سورس Worker
+
+خطای خواندن baseline_process.json اکنون گزارش‌گیری را متوقف نمی‌کند. پس از سه تلاش محدود، قفل واقعی مستقل حفظ می‌شود؛ هویت غیرقابل‌خواندن UNKNOWN می‌ماند، heartbeat جای هویت را نمی‌گیرد و گزارش PARTIAL_EVIDENCE_BUNDLE_EXPORTED با جزئیات امن ساخته می‌شود. این اصلاح، ACL سیستم‌عامل را تغییر نمی‌دهد. اجراهای Start و Stop نیز با هویت ناشناخته مسدود می‌شوند.
+
+برای گزارش‌گیری از Worker در حال اجرا، فایل‌های پوشهٔ نصب را با git pull یا کپی فایل جایگزین نکنید: Worker تغییر Manifest را RELEASE_CHANGED می‌شناسد و خاتمه می‌یابد. checkout جدا بگیرید و با همان Python محیط نصب اجرا کنید. core.autocrlf=false بایت‌های Manifest را هنگام checkout ویندوز حفظ می‌کند:
+
+```powershell
+git clone --config core.autocrlf=false --config core.eol=lf --depth 1 https://github.com/mohamadrezavilani/AnomalyDetection.git E:\P24\AD-Report-20261110
+python -B E:\P24\AD-Report-20261110\AnomalyDetection\Collect_Acceptance_ReadOnly.py --project E:\P24\pishkhan24 --seconds 60
+```
+
+اگر مسیر نصب شما متفاوت است، فقط --project را مطابق آن تغییر دهید؛ checkout نیز باید پوشه‌ای جدید و جدا از نصب باشد. ابزار خودش Manifest گزارش‌گیر را تأیید می‌کند، کد نصب را اجرا یا عوض نمی‌کند، دیتابیس را فقط با نقش AD و اتصال READ ONLY می‌خواند و ZIPها را در reports نصب می‌نویسد. شناسهٔ گزارش‌گیر، Manifest نصب و هویت مشاهده‌شدهٔ Worker از هم جدا هستند. کد خروج ۲ با مسیر output یعنی گزارش ناقص ساخته شده و باید همان ZIP بررسی شود؛ به معنای توقف Worker یا پذیرش پروژه نیست. نبود مجوز خروجی reports یا خواندن اعتبارنامه همچنان می‌تواند جمع‌آوری را محدود کند و مجوزها خودکار تغییر نمی‌کنند.
+
 ## آزمون فوری بدون دیتابیس
 
 از پوشهٔ AnomalyDetection اجرا کنید:
