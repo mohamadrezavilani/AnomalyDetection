@@ -1,5 +1,21 @@
 # اجرای وب از دیتابیس آماده — ۱۰ نوامبر ۲۰۲۶
 
+**اصلاح CRLF راه‌اندازها:** اگر کنترل نصب سه فایل Start_Viewer.cmd، Start_Viewer_Standard.cmd و tools/viewer.ps1 را رد کرد، از ریشهٔ پروژه در محیط مجازی ابتدا دو فرمان زیر را اجرا کنید. ابزار فقط پایان‌خط را به hash دقیق Manifest نصب‌شده برمی‌گرداند؛ اگر محتوا واقعاً ویرایش شده باشد، پیش از نوشتن هر سه فایل متوقف می‌شود. این مرحله لازم است چون Git ممکن است اختلاف CRLF نصب قدیمی را تغییر محلی حساب کند و pull را نپذیرد.
+
+```powershell
+git fetch origin main
+git show FETCH_HEAD:viewer_performance/Repair_Viewer_Launchers.py | python -B - --project-root .
+```
+
+پس از خروجی `EXACT_LAUNCHER_BYTES_REPAIRED` یا `ALREADY_MATCH`:
+
+```powershell
+git pull --ff-only origin main
+python -B viewer_performance/Stop_Viewer_Worker.py --stop
+```
+
+پس از `VIEWER_WORKER_STOPPED` یا `NO_VIEWER_LOCK_OWNER_OBSERVED`، پنجرهٔ قدیمی Web را با Ctrl+C ببندید و `Start_Viewer_Standard.cmd -ResumeCheckpoint` را اجرا کنید. ابزار توقف، مالک زندهٔ قفل/TCP/handle را بررسی می‌کند؛ در نبود تأیید، چیزی را متوقف نمی‌کند. Core و AD این اصلاح تغییر نمی‌کنند و AD جاری می‌تواند روشن بماند. راه‌انداز هر دو Worker استاندارد و Web بدون init را بالا می‌آورد. `python -B viewer_performance/Run_Viewer_Web.py` همچنان فقط Web است. checkpoint رد نمی‌شود و دادهٔ commitشده حذف نمی‌شود. پس از دو PUBLISHED، `python -B AnomalyDetection/validation/observe_viewer_live.py --project . --seconds 60` برای سنجش اجرای تازه کافی است.
+
 برای فقط وب، از ریشهٔ پروژه و محیط مجازی موجود `python -B viewer_performance/Run_Viewer_Web.py` را اجرا کنید و http://127.0.0.1:5021/ را باز کنید. این فرمان schema یا کاتالوگ را initialize نمی‌کند و Worker راه نمی‌اندازد. پیش از اجرای آن، پنجرهٔ قدیمیِ Web که روی CREATE منتظر مانده را با Ctrl+C ببندید؛ Worker فعال بماند. راه‌انداز معمول نیز بخش Web را از همین مسیر می‌آورد. نصب اصلاح R3.3 نیازمند توقف Viewer/AD، pull و شروع از Checkpoint طبق نقشهٔ جاری است. بخش‌های بعد سابقهٔ بسته‌های قبلی‌اند.
 
 # اجرای روزمره با پروفایل حافظهٔ تأییدشدهٔ تک‌پنجره‌ای — ۲۰۲۶/۱۱/۲
