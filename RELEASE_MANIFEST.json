@@ -17,7 +17,7 @@
   "private_configs_keys_raw_dumps_included": false,
   "files_sha256": {
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "558399ee0294df1a2ff092435c90349bad1b1d37f5ce19086d86b862d171360c",
+    "Pishkhan24_Project_Roadmap.md": "40363be00e3394e492e4440be550cc67586fd76abaac03e409cc2caedb619803",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "3c6c32ab68d5a60df20337ec554a5862ad1fe18ad6ae70b7e0d7992ea7a03678",
     "Start_Viewer_Standard.cmd": "b53e294696a5bad5f4ae02af2e4a0c824fd5057d6a24504b0e2902b0e934da94",
@@ -921,7 +921,7 @@
     "session_head": "indexed_top_one",
     "request_age_cutoff": null,
     "payment_age_cutoff": null,
-    "native_postgresql_18": "PASS_CI_LINUX_18_6_INITIAL_4_CASES",
+    "native_postgresql_18": "PASS_CI_LINUX_18_6",
     "production_capacity": "NOT_EVALUATED",
     "removed_obsolete_missing_manifest_members": [
       "D1_FROM_HANDOFF.diff",
@@ -935,7 +935,16 @@
       "Run_Viewer_Recovery_Checks.py",
       "Viewer_Payment_Followup_20261028.py"
     ],
-    "ci_run": "https://github.com/mohamadrezavilani/AnomalyDetection/actions/runs/42820425407",
-    "concurrent_reader_and_observer_queries": "PENDING_CI"
+    "ci_run": "https://github.com/mohamadrezavilani/AnomalyDetection/actions/runs/42820951734",
+    "concurrent_reader_and_observer_queries": "PASS_NATIVE_READ_ONLY",
+    "ci_viewer_tests": 44,
+    "ci_ad_tests": 265,
+    "native_cases": 5,
+    "real_subset_sqlite": {
+      "requests": 472,
+      "records": 2994,
+      "windows": 4,
+      "derived_transitions_raw_provenance": "EQUAL_TO_PREVIOUS"
+    }
   }
 }
