@@ -224,15 +224,23 @@ class PaymentContractMixin:
         ):self.sql(q)
         self.conn.commit()
 
-    def _contract_read_query(self,*,scoped=False,payload=True):
+    def _contract_read_query(self,*,scoped=False,payload=True,reuse_projection_events=False):
+        if reuse_projection_events and not scoped:raise ValueError('contract_event_scope_requires_requests')
         scope=' AND e.request_key IN (SELECT request_key FROM viewer_projection_scope)' if scoped else ''
-        clean='NOT EXISTS(SELECT 1 FROM viewer_events bad WHERE bad.origin_key=e.origin_key AND bad.version_key<>e.version_key)'
+        clean=self._single_version_origin_sql('e',indexed=scoped and not self.sqlite)
         query='SELECT e.origin_key,e.version_key,e.request_key,e.at_ns,e.callpath'
         if payload:query+=',b.payload'
-        query+=' FROM viewer_events e'
+        if reuse_projection_events:
+            query+=' FROM viewer_projection_events e'
+        elif scoped and not self.sqlite:
+            query+=''' FROM viewer_projection_scope s CROSS JOIN LATERAL
+                (SELECT source.* FROM viewer_events source WHERE source.request_key=s.request_key OFFSET 0) e'''
+        else:query+=' FROM viewer_events e'
         if payload:query+=' JOIN viewer_raw_events b USING(origin_key,version_key)'
         query+=' WHERE e.request_key IS NOT NULL'+scope+' AND '+clean+' AND ('+ ' OR '.join('e.callpath LIKE ?' for _ in CONTRACT_PATTERNS)+')'
         if payload:query+=' ORDER BY e.origin_key,e.version_key'
+        elif scoped and not self.sqlite:
+            query+=' AND (SELECT COUNT(*) FROM viewer_raw_events b WHERE b.origin_key=e.origin_key AND b.version_key=e.version_key)=1'
         else:query+=' AND EXISTS(SELECT 1 FROM viewer_raw_events b WHERE b.origin_key=e.origin_key AND b.version_key=e.version_key)'
         return query
 
@@ -242,7 +250,7 @@ class PaymentContractMixin:
             at_ns BIGINT,callpath TEXT NOT NULL,PRIMARY KEY(origin_key,version_key))''')
 
     @contextmanager
-    def contract_event_batches(self,*,scoped=False,timings=None,prepared_scope=False):
+    def contract_event_batches(self,*,scoped=False,timings=None,prepared_scope=False,reuse_projection_events=False):
         """Stream all history, or fetch bodies only for bounded scoped keys.
 
         Scoped cursor planning must not walk/sort the global raw-body join
@@ -259,7 +267,8 @@ class PaymentContractMixin:
             if not prepared_scope:self.init_contract_candidate_scope()
             self.sql(('TRUNCATE TABLE ' if native and not prepared_scope else 'DELETE FROM ')+'viewer_contract_candidate_scope')
             if native:self.sql('ANALYZE viewer_projection_scope')
-            self.sql('INSERT INTO viewer_contract_candidate_scope '+self._contract_read_query(scoped=True,payload=False),params)
+            self.sql('INSERT INTO viewer_contract_candidate_scope '+self._contract_read_query(
+                scoped=True,payload=False,reuse_projection_events=reuse_projection_events),params)
             timings['candidate_events']=self.one('SELECT COUNT(*) AS n FROM viewer_contract_candidate_scope')['n']
             query='SELECT * FROM viewer_contract_candidate_scope ORDER BY origin_key,version_key';params=()
         else:query=self._contract_read_query()
@@ -295,17 +304,21 @@ class PaymentContractMixin:
         try:yield batches()
         finally:cursor.close()
 
-    def rebuild_payment_contract(self, *, max_events=None, request_keys=None, commit=True):
+    def rebuild_payment_contract(self, *, max_events=None, request_keys=None, commit=True,reuse_projection_events=False):
+        if reuse_projection_events and (request_keys is None or commit):
+            raise ValueError('contract_event_reuse_requires_atomic_scoped_publication')
         if request_keys is None or getattr(self,'_legacy_projection_writes',False):
-            return self._rebuild_payment_contract(max_events=max_events,request_keys=request_keys,commit=commit)
+            return self._rebuild_payment_contract(max_events=max_events,request_keys=request_keys,commit=commit,
+                reuse_projection_events=reuse_projection_events)
         if commit:self.init_payment_contract()
         self.write_lock()
         with self.finalized_projection(CONTRACT_TABLES):
-            result=self._rebuild_payment_contract(max_events=max_events,request_keys=request_keys,commit=False)
+            result=self._rebuild_payment_contract(max_events=max_events,request_keys=request_keys,commit=False,
+                reuse_projection_events=reuse_projection_events)
         if commit:self.conn.commit()
         return result
 
-    def _rebuild_payment_contract(self, *, max_events=None, request_keys=None, commit=True):
+    def _rebuild_payment_contract(self, *, max_events=None, request_keys=None, commit=True,reuse_projection_events=False):
         """Recreate only derived R5 projections from DB-resident raw evidence.
 
         Must be invoked only on the isolated p24_design_* DB. Processing is
@@ -319,7 +332,8 @@ class PaymentContractMixin:
         import zlib
         scanned=identifiers=observations=edges=0
         timings={};process_seconds=0.0
-        with self.contract_event_batches(scoped=scoped,timings=timings) as batches:
+        with self.contract_event_batches(scoped=scoped,timings=timings,
+                reuse_projection_events=reuse_projection_events) as batches:
             self.progress('contract_build',processed=0,total=timings.get('candidate_events'),
                           metadata_seconds=round(timings['metadata_seconds'],3))
             for batch in batches:

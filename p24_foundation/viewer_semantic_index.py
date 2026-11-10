@@ -72,6 +72,22 @@ class SemanticIndexMixin:
             self.many('INSERT INTO viewer_semantic_session_scope VALUES (?)',[(key,) for key in keys])
             condition=' AND session_key IN (SELECT session_key FROM viewer_semantic_session_scope)'
             self.sql('DELETE FROM viewer_semantic_session_heads WHERE session_key IN (SELECT session_key FROM viewer_semantic_session_scope)')
+            # vso_session_latest already orders each session by these keys.
+            # Only its first active occurrence is needed, not a rank/sort of
+            # that session's entire retained history on every new behavior.
+            if not self.sqlite:
+                self.sql('''INSERT INTO viewer_semantic_session_heads(session_key,request_key,anchor_ns)
+                    SELECT s.session_key,o.request_key,o.anchor_ns FROM viewer_semantic_session_scope s
+                    CROSS JOIN LATERAL (SELECT request_key,anchor_ns FROM viewer_semantic_occurrences
+                        WHERE session_key=s.session_key AND state='active'
+                        ORDER BY anchor_ns DESC,request_key DESC LIMIT 1) o''')
+            else:
+                self.sql('''INSERT INTO viewer_semantic_session_heads(session_key,request_key,anchor_ns)
+                    SELECT o.session_key,o.request_key,o.anchor_ns FROM viewer_semantic_session_scope s
+                    JOIN viewer_semantic_occurrences o ON o.request_key=(SELECT c.request_key
+                        FROM viewer_semantic_occurrences c WHERE c.session_key=s.session_key AND c.state='active'
+                        ORDER BY c.anchor_ns DESC,c.request_key DESC LIMIT 1)''')
+            return
         self.sql('''INSERT INTO viewer_semantic_session_heads(session_key,request_key,anchor_ns)
                 SELECT session_key,request_key,anchor_ns FROM (
                   SELECT session_key,request_key,anchor_ns,ROW_NUMBER() OVER (

@@ -33,7 +33,7 @@ def source_fixture():
         def connect(**kwargs):
             c=FakeConnection();connections.append(c);return c
         pg=types.ModuleType('psycopg');rows=types.ModuleType('psycopg.rows');pg.connect=connect;rows.dict_row=object()
-        with patch.object(pg_source,'SOURCE_SHA',pin),patch('anomaly_detection.native_pg.source_parameters',return_value={'dbname':'p24_design_viewer'}), \
+        with patch.object(pg_source,'SOURCE_SHA',pin),patch.object(pg_source,'SUPPORTED_RUNTIMES',frozenset((pin,))),patch('anomaly_detection.native_pg.source_parameters',return_value={'dbname':'p24_design_viewer'}), \
              patch.dict(sys.modules,{'psycopg':pg,'psycopg.rows':rows}):
             source=ProductSource(root)
             yield source,member,connections
