@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "9a55ef3aa782f0e0f3fa814d77d7fe9337ce48b4cd6ba64c500be70f64a99d8c",
+    "Pishkhan24_Project_Roadmap.md": "52178458035d5460793a20c98096b36aff21f288ff92c2515756d648925b24e9",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "9007a20986f9b959ab777d3ab7d596ca145316613ada260e86ddbe5c0f6c6e38",
+    "VIEWER_README_FA.md": "4a08d7bd467a7b96cb68e14f2ad695c8d566bcbd097a18aa2ac422c87907e625",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -232,7 +232,7 @@
     "tests/test_viewer_inquiry_journey.py": "5f8a240cd78e80a10114337011a39b1193f760514fe21ce8e8ccdafd5f179070",
     "tests/test_viewer_install_check.py": "06b2dcd0775869f7ebe72a1ba269fece3e311fadba6c38dd04d80f5732e887af",
     "tests/test_viewer_install_regressions.py": "71f6475fa5bfdc767e12cb4f0e657f27c6da7291f8d3bd83459c7462bc69f6ca",
-    "tests/test_viewer_launcher_bytes.py": "92ceb93118cd7661837a5ae9a207c23d2f772a02eed0c9ff5aee5c75746cb143",
+    "tests/test_viewer_launcher_bytes.py": "be0f25416d7feeaacac55d2cc52620b0adfefcc9cd2757be2e52f548e2d28a53",
     "tests/test_viewer_lc1_anchor_resolver.py": "a08d3e2e981841536c1823442ee7941700aa3cc4907457c6a571e97a070e69e6",
     "tests/test_viewer_lc1b_gap_sampling.py": "0d845f08930523f4523aa91fb90aac2495ee9ca37214eb588b8b0ce2eaaa0c31",
     "tests/test_viewer_lc1c_correlation_preflight.py": "1788666fb02afcd32b75b8a578d01bb03a9f69fe8c9bddf7e3b4c30058b76ed2",
@@ -419,7 +419,7 @@
     "validation/window_profile_smoke.json": "d1ba9f8698b39000211c4d8f9c80a023ba5fa8a0c503b618d983ad2e2f80224f",
     "validation/windows_launchers.json": "254328675b226ebdc827349ba3cd3b3341e69b26ac12882941caddc2ed7a2971",
     "viewer_config.example.py": "1fb8ecdbd8eb3ea1d9f73ab802ce85eebf18cde2a228b84590c08f00e86318e9",
-    "viewer_performance/Repair_Viewer_Launchers.py": "5b9eb40e71f325b4d62cb207f38f4b6f355093936818fc5407cddad7e78732cb",
+    "viewer_performance/Repair_Viewer_Launchers.py": "91dddefe42597ab7f39489ffbda0d1325575439f3ff7dbaca36ccacc2f2eb37b",
     "viewer_performance/Run_Viewer_Memory.py": "691d741828971da76bfbbb73275d058b3877ba4d13e274618387a87ebe7b70b0",
     "viewer_performance/Run_Viewer_Web.py": "ac4b1a01d828d9bbfec3d8fb98ba5df1420ca8b3326c658daf2ed02e42bc7d1b",
     "viewer_performance/Stop_Viewer_Worker.py": "c7208cb002860e41f07995ea98854b4725fe6e6d6374eac8975b179785bdfd90",
@@ -984,6 +984,10 @@
     "linux_windows_only_skips": 4,
     "native_postgresql_cases": 7,
     "ad_tests": 266,
-    "production_speed": "NOT_EVALUATED"
+    "production_speed": "NOT_EVALUATED",
+    "git_head_and_index_checked_before_repair": true,
+    "successful_repair_requires_clean_git_launchers": true,
+    "real_staged_and_working_edits_preserved": true,
+    "windows_mode_fallback": "local_checkout_only_when_mode_is_the_remaining_difference"
   }
 }
