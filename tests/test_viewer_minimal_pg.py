@@ -91,6 +91,34 @@ class NativeMinimalPublicationTests(unittest.TestCase):
         self.db.conn.rollback();self.publish([row],START+FIVE_NS)
         self.assertEqual(self.db.one('SELECT COUNT(*) AS n FROM viewer_live_receipts')['n'],2)
 
+    def test_concurrent_read_only_snapshot_and_observer_queries_are_native_compatible(self):
+        import importlib.util
+        import psycopg
+        from psycopg.rows import dict_row
+        path=Path(__file__).resolve().parents[1]/'AnomalyDetection/validation/observe_viewer_live.py'
+        spec=importlib.util.spec_from_file_location('native_observer',path)
+        observer=importlib.util.module_from_spec(spec);spec.loader.exec_module(observer)
+        self.publish([log(1,'first','Services.v1/WaterBills Line:1','POST (G00000 | successful)')])
+        with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row,
+                options='-c default_transaction_read_only=on -c statement_timeout=2000 -c lock_timeout=100') as reader:
+            reader.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            count=lambda:reader.execute('SELECT COUNT(*) AS n FROM viewer_requests').fetchone()['n']
+            self.assertEqual(count(),1)
+            row=log(2,'second','Services.v1/ElectricBills Line:1','POST (G00000 | successful)')
+            row['@timestamp']=iso(START+FIVE_NS+1_000_000_000)
+            observed=[]
+            def during(stage):
+                if stage=='after_relations':observed.append(count())
+            self.publish([row],START+FIVE_NS,fault=during)
+            self.assertEqual(observed,[1]);self.assertEqual(count(),1)
+            reader.execute('ROLLBACK');self.assertEqual(count(),2)
+            probe=observer.Reader(reader)
+            for statement in (observer.STATE_SQL,observer.RECEIPTS_SQL,observer.RESUMES_SQL,
+                    observer.ACTIVITY_SQL,observer.TABLES_SQL,observer.INDEXES_SQL,*observer.COUNTERS.values()):
+                self.assertEqual(probe.optional(statement)['status'],'READ')
+            guard=probe.rows("SELECT current_setting('transaction_read_only') AS read_only")
+            self.assertEqual(guard,[{'read_only':'on'}])
+
     def test_process_crash_rolls_back_then_retry_and_postcommit_crash_remains_committed(self):
         self.publish([log(1,'first','Services.v1/WaterBills Line:1','POST (G00000 | successful)')])
         row=log(2,'second','Services.v1/ElectricBills Line:1','POST (G00000 | successful)')
