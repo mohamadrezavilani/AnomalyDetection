@@ -100,7 +100,14 @@ class WindowsHandleTests(unittest.TestCase):
             handle=control.WindowsProcess(child.pid,allow_stop=True)
             try:
                 self.assertIn(Path(handle.image).name.lower(),('python.exe','pythonw.exe'))
-                self.assertLessEqual(handle.created,datetime.now(timezone.utc))
+                # Windows process FILETIME and Python's wall clock can differ
+                # by a millisecond. Compare stable kernel identities instead.
+                parent=control.WindowsProcess(os.getpid())
+                second=control.WindowsProcess(child.pid)
+                try:
+                    self.assertLessEqual(parent.created,handle.created)
+                    self.assertEqual(handle.created,second.created)
+                finally:second.close();parent.close()
                 handle.terminate()
             finally:handle.close()
             self.assertIsNotNone(child.wait(timeout=5))

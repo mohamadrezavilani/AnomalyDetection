@@ -257,7 +257,7 @@
     "tests/test_viewer_pit_capture.py": "7b02c3353803eb8bc6b14dd851b930fa34994eeda5f47ebbb0a8675e705482fd",
     "tests/test_viewer_postgres_resources.py": "2f93739b48fc561ea39841156323a46051c239fb506472eee8f8a87b9061776d",
     "tests/test_viewer_prefetch.py": "042a09855d9620944b47cfd91478e9360519e4f7119ee4cbc588887b8fcf3e53",
-    "tests/test_viewer_process_control.py": "d287d139d0d0d3473e9fa35f382ab10259794a64529a704d048f78999d5c6bd0",
+    "tests/test_viewer_process_control.py": "2e5d44b031808eeda0862afd7e1a90d9238710006269bfccca3d80f8756b9b06",
     "tests/test_viewer_r6_s1b_quality.py": "744a2f9e77538ff9f20dc5534970d639182cee70fd74e08229694230e6424962",
     "tests/test_viewer_r6_s1c_behavior_evidence.py": "7a26ebb2733a0b70128bd5af93a89f3bfac5bcce5c2866b2b0b066e6e9c3d6e5",
     "tests/test_viewer_r6_service_journey.py": "8fbb4c622d8a744381c319d0c61823391e2d82284ebf053bb021bfe9cdf1982d",
