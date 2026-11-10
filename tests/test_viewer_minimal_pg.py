@@ -183,5 +183,23 @@ class NativeMinimalPublicationTests(unittest.TestCase):
         self.assertEqual(request,{'conflicted':1,'root_call':None})
         self.db.conn.rollback()
 
+    def test_readonly_control_can_end_only_the_exact_singleton_session(self):
+        import importlib.util
+        from datetime import timedelta
+        import psycopg
+        from psycopg.rows import dict_row
+        path=Path(__file__).resolve().parents[1]/'viewer_performance/Stop_Viewer_Worker.py'
+        spec=importlib.util.spec_from_file_location('native_stop_control',path)
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row) as held, \
+             psycopg.connect(**self.config,autocommit=True,row_factory=dict_row,
+                options='-c default_transaction_read_only=on') as reader:
+            held.execute('SELECT pg_advisory_lock(240026,1)')
+            lease=dict(reader.execute(module.LEASE_SQL).fetchone())
+            self.assertFalse(module.terminate_lease(reader,dict(lease,backend_start=lease['backend_start']+timedelta(seconds=1))))
+            self.assertEqual(held.execute('SELECT 1 AS n').fetchone()['n'],1)
+            self.assertTrue(module.terminate_lease(reader,lease))
+            self.assertEqual(reader.execute(module.LEASE_SQL).fetchall(),[])
+
 
 if __name__=='__main__':unittest.main()

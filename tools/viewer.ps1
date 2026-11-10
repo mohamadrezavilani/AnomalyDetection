@@ -1,3 +1,4 @@
+# Byte-pinned Windows launcher; preserve committed CRLF.
 param(
     [ValidateSet('Start','Worker','Web','Status','Check','Pilot','Resources','Smoke')]
     [string]$Action = 'Start',
@@ -67,7 +68,11 @@ switch ($Action) {
         exit $LASTEXITCODE
     }
     'Web' {
-        & $viewerPython '.\tools\run_behavior_viewer.py' serve --config $viewerConfig --progress
+        if ($viewerConfig -ieq (Join-Path $viewerRoot 'viewer_config.local.py')) {
+            & $viewerPython '.\viewer_performance\Run_Viewer_Web.py' --project-root $viewerRoot
+        } else {
+            & $viewerPython '.\tools\run_behavior_viewer.py' serve --config $viewerConfig --progress
+        }
         exit $LASTEXITCODE
     }
     'Pilot' {

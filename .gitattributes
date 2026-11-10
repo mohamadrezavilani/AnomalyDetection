@@ -5,3 +5,8 @@ AnomalyDetection/** -text
 experiments/p0-audit-selector/** -text
 docs/criteria-stage3/** -text
 docs/p0/evidence/** -text
+
+# Windows entrypoints are byte-hashed. Never convert their committed CRLF.
+Start_Viewer.cmd -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+Start_Viewer_Standard.cmd -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tools/viewer.ps1 -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
