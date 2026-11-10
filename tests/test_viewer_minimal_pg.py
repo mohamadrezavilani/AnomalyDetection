@@ -201,5 +201,29 @@ class NativeMinimalPublicationTests(unittest.TestCase):
             self.assertTrue(module.terminate_lease(reader,lease))
             self.assertEqual(reader.execute(module.LEASE_SQL).fetchall(),[])
 
+    def test_control_addresses_from_native_postgresql_are_local_host_addresses(self):
+        import importlib.util
+        import psycopg
+        from psycopg.rows import dict_row
+        path=Path(__file__).resolve().parents[1]/'viewer_performance/Stop_Viewer_Worker.py'
+        spec=importlib.util.spec_from_file_location('native_control_addresses',path)
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row) as held, \
+             psycopg.connect(**self.config,autocommit=True,row_factory=dict_row,
+                options='-c default_transaction_read_only=on') as reader:
+            legacy=reader.execute('SELECT inet_server_addr()::text AS address').fetchone()['address']
+            self.assertIn('/',legacy)
+            with self.assertRaises(ValueError):module.ipaddress.ip_address(legacy)
+            self.assertTrue(module.loopback(legacy))
+            guard=reader.execute(module.GUARD_SQL).fetchone()
+            self.assertEqual(guard['db'],self.name)
+            self.assertNotIn('/',guard['address'])
+            self.assertTrue(module.loopback(guard['address']))
+            held.execute('SELECT pg_advisory_lock(240026,1)')
+            lease=dict(reader.execute(module.LEASE_SQL).fetchone())
+            self.assertEqual(lease['pid'],held.info.backend_pid)
+            self.assertNotIn('/',lease['client_addr'])
+            self.assertTrue(module.loopback(lease['client_addr']))
+
 
 if __name__=='__main__':unittest.main()

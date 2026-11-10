@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "52178458035d5460793a20c98096b36aff21f288ff92c2515756d648925b24e9",
+    "Pishkhan24_Project_Roadmap.md": "f68fe3d40587db9bdbaf3b68bec0838325ad479626b7b8c71e25369483506b09",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "4a08d7bd467a7b96cb68e14f2ad695c8d566bcbd097a18aa2ac422c87907e625",
+    "VIEWER_README_FA.md": "c8c4cddfded1fd91074313f378f6cebc7b990688816ebbda0bc48dbc78bda381",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -247,7 +247,7 @@
     "tests/test_viewer_lc3d_payment_integrity.py": "fdcdc385e9c1de33e6f31615989a57c6dd06e9fd4ca28ad7a2e3071fd79284c0",
     "tests/test_viewer_lc3e_real_subset_replay.py": "4a460ac598ac616551dabbb9fc384fa86474416d41ee0e50c7a3796444ccf82d",
     "tests/test_viewer_logic_v024.py": "e7fdcdee9a3ee78bd65bc50ccb26699065760c30f4972f771a053e1d2ead7e5c",
-    "tests/test_viewer_minimal_pg.py": "70cf4251c5ea9ee75d3277add3d1940f61bddefe79fd2e33551d4a3d47d7713e",
+    "tests/test_viewer_minimal_pg.py": "e1457b0865a53c9ef27d70bde957f52603d6bffd32911f745705f2b847cb675e",
     "tests/test_viewer_minimal_publication.py": "0cdec4cde3e390db43e5b90647a178bfc3763083bebe0b1198a9df68938236e5",
     "tests/test_viewer_online.py": "e870cc7a4555f65af27b41c056186ec7dd0081a99e68fcf313106eb083b4f92e",
     "tests/test_viewer_payment_correlations.py": "19dff140d5a2c318c2fd5e63455d076b116bdb025fdb4bda6e8ed3ee61d57c85",
@@ -257,7 +257,7 @@
     "tests/test_viewer_pit_capture.py": "7b02c3353803eb8bc6b14dd851b930fa34994eeda5f47ebbb0a8675e705482fd",
     "tests/test_viewer_postgres_resources.py": "2f93739b48fc561ea39841156323a46051c239fb506472eee8f8a87b9061776d",
     "tests/test_viewer_prefetch.py": "042a09855d9620944b47cfd91478e9360519e4f7119ee4cbc588887b8fcf3e53",
-    "tests/test_viewer_process_control.py": "2e5d44b031808eeda0862afd7e1a90d9238710006269bfccca3d80f8756b9b06",
+    "tests/test_viewer_process_control.py": "3e47f9c3520d9c5c14017d01d6c741491492c7082685bc5c6538a2436b958193",
     "tests/test_viewer_r6_s1b_quality.py": "744a2f9e77538ff9f20dc5534970d639182cee70fd74e08229694230e6424962",
     "tests/test_viewer_r6_s1c_behavior_evidence.py": "7a26ebb2733a0b70128bd5af93a89f3bfac5bcce5c2866b2b0b066e6e9c3d6e5",
     "tests/test_viewer_r6_service_journey.py": "8fbb4c622d8a744381c319d0c61823391e2d82284ebf053bb021bfe9cdf1982d",
@@ -422,7 +422,7 @@
     "viewer_performance/Repair_Viewer_Launchers.py": "91dddefe42597ab7f39489ffbda0d1325575439f3ff7dbaca36ccacc2f2eb37b",
     "viewer_performance/Run_Viewer_Memory.py": "691d741828971da76bfbbb73275d058b3877ba4d13e274618387a87ebe7b70b0",
     "viewer_performance/Run_Viewer_Web.py": "ac4b1a01d828d9bbfec3d8fb98ba5df1420ca8b3326c658daf2ed02e42bc7d1b",
-    "viewer_performance/Stop_Viewer_Worker.py": "c7208cb002860e41f07995ea98854b4725fe6e6d6374eac8975b179785bdfd90",
+    "viewer_performance/Stop_Viewer_Worker.py": "403f8eaae169157c6d782bcae2c026d332f5b9c96237b946574d3c3b3905bb12",
     "viewer_performance/viewer.ps1": "30948f83eb55c3d1a02c044a66ed5ac8ac585c9b472ee23d84e14d01edb1d3a7"
   },
   "pilot_diagnostics_fix": true,
@@ -988,6 +988,8 @@
     "git_head_and_index_checked_before_repair": true,
     "successful_repair_requires_clean_git_launchers": true,
     "real_staged_and_working_edits_preserved": true,
-    "windows_mode_fallback": "local_checkout_only_when_mode_is_the_remaining_difference"
+    "windows_mode_fallback": "local_checkout_only_when_mode_is_the_remaining_difference",
+    "postgresql_control_address_format": "host(inet)_plus_full_host_mask_parser",
+    "control_failures_include_sanitized_stage": true
   }
 }

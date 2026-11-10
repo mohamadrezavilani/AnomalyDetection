@@ -35,6 +35,20 @@ class ProcessControlTests(unittest.TestCase):
         self.assertEqual(result['python_pid'],2002)
         self.assertEqual(result['postgres_backend_pid'],7001)
         self.assertFalse(self.process.stopped);self.assertFalse(self.cleaned);self.assertTrue(self.process.closed)
+    def test_postgresql_full_host_masks_are_accepted_but_networks_and_remote_hosts_are_rejected(self):
+        for address in ('127.0.0.1','127.0.0.1/32','::1','::1/128','::ffff:127.0.0.1/128'):
+            self.assertTrue(control.loopback(address),address)
+            self.lease['client_addr']=address
+            result=self.run_control()
+            self.assertEqual(result['status'],'VIEWER_WORKER_IDENTIFIED')
+            self.assertFalse(self.process.stopped)
+        for address in ('192.0.2.1/32','2001:db8::1/128','::ffff:192.0.2.1/128',
+                '127.0.0.0/8','127.0.0.1/0','::1/0','not-an-address','',None,2130706433):
+            self.assertFalse(control.loopback(address),address)
+        for address in ('127.0.0.1/0','192.0.2.1/32'):
+            self.process=Process();self.lease['client_addr']=address
+            with self.assertRaises(control.ControlError):self.run_control(stop=True)
+            self.assertFalse(self.process.stopped);self.assertFalse(self.cleaned)
     def test_explicit_stop_terminates_only_the_verified_client_then_its_unchanged_lease(self):
         result=self.run_control(stop=True)
         self.assertTrue(self.process.stopped);self.assertTrue(self.process.closed)
