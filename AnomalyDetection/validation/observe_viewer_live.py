@@ -390,7 +390,7 @@ def main(argv=None):
             def owned_progress():
                 value=json.loads(status_file.read_text(encoding='utf-8-sig'))
                 return {key:value.get(key) for key in ('build_id','source_sha256','state','phase','heartbeat_ns',
-                    'evaluated_jobs','audited_requests','scenario_evaluations','scenario_results','scenario_queue_activity')}
+                    'evaluated_jobs','audited_requests','scenario_evaluations','scenario_results','scenario_queue_activity','viewer_admission')}
             report['ad_owned_progress']=attempt(owned_progress)
         startup=project/'validation/viewer_startup.json'
         if startup.is_file():

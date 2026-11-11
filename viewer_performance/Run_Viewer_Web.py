@@ -44,14 +44,35 @@ def check_existing(opts,*,database_factory=None):
         if not set(REQUIRED)<=present:raise ValueError('start_existing_viewer_worker_first')
 
 
-def serve_existing(opts,*,factory=None,host='127.0.0.1'):
+def choose_bind_host(host,*,probe=None):
+    """Keep an existing LAN frontend and restore its loopback backend.
+
+    The observed BaseHTTP 502 is distinct from Flask. Starting on its LAN
+    address can compete with that listener on Windows; a loopback backend
+    instead lets an existing local reverse proxy reach the application.
+    Actual LAN readiness is still verified by the caller's pinned health GET.
+    """
+    address=ipaddress.ip_address(host)
+    if address.is_loopback:return str(address)
+    if probe is None:
+        from viewer_performance.Diagnose_Viewer_Web import probe as direct_probe
+        probe=lambda value:direct_probe(value,5021,'/healthz',timeout=1)
+    observed=probe(str(address))
+    if observed.get('http_status')==502 and str(observed.get('server','')).startswith('BaseHTTP/'):
+        return '127.0.0.1'
+    return str(address)
+
+
+def serve_existing(opts,*,factory=None,host='127.0.0.1',bind_host=None):
     if factory is None:
         from p24_foundation.viewer_ui import create_viewer_app
         factory=create_viewer_app
     address=ipaddress.ip_address(host)
     if address.is_loopback:app=factory(opts)
     else:app=factory(opts,lan_host=str(address))
-    app.run(host=str(address),port=5021,use_reloader=False,debug=False)
+    binding=str(ipaddress.ip_address(bind_host)) if bind_host else str(address)
+    if binding!=str(address) and binding!='127.0.0.1':raise ValueError('invalid_viewer_backend_binding')
+    app.run(host=binding,port=5021,use_reloader=False,debug=False)
 
 
 def main(argv=None):
@@ -68,9 +89,12 @@ def main(argv=None):
         if not address.is_loopback and not any(address in ipaddress.ip_network(n) for n in ('10.0.0.0/8','172.16.0.0/12','192.168.0.0/16')):
             raise ValueError('viewer_lan_host_must_be_private_ipv4')
         opts=existing_options(project);check_existing(opts)
+        binding=choose_bind_host(str(address))
         print(json.dumps({'status':'VIEWER_WEB_STARTING','url':f'http://{address}:5021/',
+            'bind_host':binding,'existing_lan_frontend':binding!=str(address),
             'schema_initialized':False,'worker_started':False}),flush=True)
-        serve_existing(opts,host=str(address))
+        if binding==str(address):serve_existing(opts,host=str(address))
+        else:serve_existing(opts,host=str(address),bind_host=binding)
         return 0
     except KeyboardInterrupt:return 130
     except Exception as exc:

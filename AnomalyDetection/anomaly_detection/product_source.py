@@ -27,6 +27,11 @@ def bounded_semantic_select(where,order):
 
 
 class ProductSource:
+    def viewer_writer_busy(self):
+        from .viewer_priority import BUSY_SQL
+        with self.snapshot() as q:
+            return q(BUSY_SQL,cap=1)[0]['busy']
+
     def profile(self,key):
         from .request_profiles import read
         return read(self,key)

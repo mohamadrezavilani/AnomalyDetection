@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import sys
 
-EXPECTED_BUILD = "AD-20261111-COMPACT-KEYS"
+EXPECTED_BUILD = "AD-20261111-BOUNDED-WORK"
 ROOT = Path(__file__).resolve().parent
 VERIFIED_FILES = {}
 sys.dont_write_bytecode = True

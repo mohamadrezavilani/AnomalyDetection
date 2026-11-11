@@ -242,6 +242,60 @@ class NativeMinimalPublicationTests(unittest.TestCase):
         finally:
             if child.is_alive():child.terminate();child.join(5)
 
+    def bounded_ad_source(self):
+        from contextlib import contextmanager
+        from types import SimpleNamespace
+        import psycopg
+        from psycopg.rows import dict_row
+        queries=[]
+        @contextmanager
+        def snapshot():
+            with psycopg.connect(**self.config,row_factory=dict_row) as raw:
+                raw.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+                def q(statement,params=(),*,cap):
+                    self.assertTrue(statement.lstrip().startswith('SELECT '))
+                    queries.append((statement,params))
+                    rows=raw.execute(statement,params).fetchall()
+                    self.assertLessEqual(len(rows),cap)
+                    return [dict(row) for row in rows]
+                yield q
+        source=SimpleNamespace(project=Path(__file__).resolve().parents[1],snapshot=snapshot,
+            metadata=lambda q:{'generation':1,'semantic_generation':1,'next_ns':START+FIVE_NS,
+                               'analysis_floor_ns':0,'retention_cutoff_ns':0})
+        return source,queries
+
+    def test_bounded_technical_census_advances_empty_raw_pages_and_equals_complete_root_query(self):
+        from AnomalyDetection.anomaly_detection.scenario_traffic import read_page
+        rows=[log(n,'provider-'+str(n),'ClientFixture.Call','Output:[]') for n in range(1,131)]
+        for n,row in enumerate(rows,1):row['@timestamp']=iso(START+n*1_000_000_000)
+        root=log(201,'root','Services.v1/WaterBills Line:1','POST (G00000 | successful)')
+        root['@timestamp']=iso(START+201*1_000_000_000)
+        rows.append(root)
+        self.publish(rows)
+        expected=[r['request_key'] for r in self.db.all("SELECT e.request_key FROM viewer_events e JOIN viewer_requests r ON r.request_key=e.request_key WHERE e.kind IN ('client','other') AND trim(split_part(e.callpath,' Line:',1))=trim(split_part(r.root_call,' Line:',1)) ORDER BY e.at_ns,e.origin_key")]
+        source,queries=self.bounded_ad_source();cursor={'page_size':64};found=[];scanned=0
+        for turn in range(8):
+            packet=read_page(source,cursor)
+            self.assertLessEqual(packet['scanned_events'],64)
+            if turn==0:self.assertEqual(packet['rows'],[]);self.assertTrue(packet['has_more'])
+            found.extend(r['request_key'] for r in packet['rows']);scanned+=packet['scanned_events']
+            if not packet['has_more']:break
+            cursor={'target_ns':packet['target_ns'],'stamp':packet['stamp'],'after':packet['after'],'page_size':64}
+        self.assertEqual(scanned,len(rows));self.assertEqual(found,expected)
+        self.assertTrue(any('page AS MATERIALIZED' in q[0] for q in queries))
+
+    def test_native_content_reader_uses_one_raw_batch_and_preserves_qualified_profile(self):
+        from AnomalyDetection.anomaly_detection.request_profiles import read
+        rows=[log(1,'profile','Services.v1/WaterBills Line:1','POST (G00000 | successful)')]
+        rows.extend(log(n,'profile','ClientFixture.Call','Input:{"BillID":"001"} Output:{"Result":true}') for n in range(2,5))
+        self.publish(rows)
+        key=self.db.lookup_request('profile')['request_key']
+        source,queries=self.bounded_ad_source();packet=read(source,key)
+        self.assertTrue(packet['profile']['qualified'])
+        self.assertTrue(packet['profile']['input_complete'])
+        batches=[q for q in queries if q[0].startswith('SELECT k.origin_key')]
+        self.assertEqual(len(batches),1);self.assertEqual(len(batches[0][1]),8)
+
     def test_control_normalizes_native_inet_text_and_preserves_local_only_guard(self):
         import importlib.util
         import psycopg

@@ -20,7 +20,9 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
             storage_backend='postgresql',architecture='PG_PRODUCT_V1',source_modified=False,source_checkpoint_modified=False,
             source_pages=0,evaluated_jobs=0,audited_requests=0,cohort_windows=0,source_attempts=0,
             historical_recheck_age_limit=None,operator_parameters_required=False,operator_alerts=0,precision_recall='NOT_EVALUATED',sqlite_loaded='sqlite3' in sys.modules)
-        raw=store=source=None;next_connect=next_source=next_report=next_heartbeat=next_web=0.;turn=cycles=0
+        raw=store=source=None;next_connect=next_source=next_report=next_heartbeat=next_web=0.;turn=cycles=iterations=0
+        from .viewer_priority import ViewerPriority
+        viewer_priority=ViewerPriority()
         from .product_scheduling import EvaluationScheduler
         from .source_scheduling import WindowContinuations
         scheduler=EvaluationScheduler()
@@ -75,8 +77,8 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                 state['last_audit_apply_seconds']=round(clock.monotonic()-apply_started,6)
                 if clock.monotonic()>=audit_until:break
         try:
-            while max_cycles is None or cycles<max_cycles:
-                cycles+=1
+            while max_cycles is None or iterations<max_cycles:
+                iterations+=1
                 manifest=read_json(root/'RELEASE_MANIFEST.json',{})
                 if manifest.get('build_id')!=BUILD_ID or manifest.get('source_sha256')!=sha:
                     state.update(state='STOPPED',stop_reason='RELEASE_CHANGED');break
@@ -113,6 +115,24 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                     'DEGRADED_OWNED_APPLY' if any(state.get(k) for k in ('semantic_apply_blocked','audit_apply_blocked','window_apply_blocked')) else 'RUNNING',phase='owned_historical_import')
                 try:
                     keys=[];job=None
+                    # Serving existing owned results is independent of the
+                    # disk admission decision for background analysis.
+                    if web and clock.monotonic()>=next_web:
+                        if not process_owner(root,'web')['locked']:spawn(root,'web-run')
+                        next_web=clock.monotonic()+30;state['web_url']='http://127.0.0.1:5022/'
+                    try:
+                        admission=viewer_priority.admit(source,clock)
+                        state['viewer_admission']=admission
+                        if admission['mode']!='PROBE_UNAVAILABLE':state.pop('viewer_admission_failure',None)
+                    except Exception as exc:
+                        # Unavailable metadata is not proof of an idle writer.
+                        # Keep the previous product behavior while reporting it.
+                        state['viewer_admission_failure']=safe_failure(exc)
+                        admission={'admitted':True,'mode':'PROBE_UNAVAILABLE'}
+                    if not admission['admitted']:
+                        state.update(state='WAITING_FOR_VIEWER_PUBLICATION',phase='yield_disk_to_viewer')
+                        publish();wait(.5);continue
+                    cycles+=1
                     from .runtime_lanes import maintenance
                     from .population import process_one as population_process
                     maintenance(store,clock,cycles,state)
@@ -123,9 +143,6 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                         state['statistics_status']=state['statistics']['statistics_collection']['status']
                         state['statistics_section_failures']={k:v for k,v in state['statistics']['statistics_collection']['sections'].items() if v['status']!='CURRENT'}
                         next_report=clock.monotonic()+30
-                    if web and clock.monotonic()>=next_web:
-                        if not process_owner(root,'web')['locked']:spawn(root,'web-run')
-                        next_web=clock.monotonic()+30;state['web_url']='http://127.0.0.1:5022/'
                     if source is not None and clock.monotonic()>=next_source:
                         continuation=continuations.take()
                         if continuation is None:turn+=1

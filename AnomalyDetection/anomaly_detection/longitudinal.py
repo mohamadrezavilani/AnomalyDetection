@@ -256,7 +256,7 @@ def reference(store,service,target,begin,peers,durations):
 def seed(store,limit=8):
     """Finite old/new keyset passes include singleton and low-rate actors."""
     from .scenario_store import enqueue
-    state=store.state('longitudinal_seed_v1')
+    state=store.state('longitudinal_seed_v2')
     turn=state.get('turn',0);fresh=turn%4!=0
     lane='fresh' if fresh else 'old';cursor=state.get(lane,{})
     if not cursor.get('through'):
@@ -265,26 +265,40 @@ def seed(store,limit=8):
         low=max(0,high-2*DAY) if fresh else 0
         cursor={'through':high,'after':[low,'','']}
     after=cursor['after']
-    # Complete owned summaries already contain the distinct actor/service
-    # census. Do not reconstruct that same census by probing every Fact PK
-    # for each eight-job seed page. The time/session index fences old pages.
-    rows=store.raw.execute("SELECT w.start_ns,w.session_key,s.key AS service_path FROM anomaly_detection.adp_windows w "
-        "JOIN anomaly_detection.adp_source_windows p ON p.start_ns=w.start_ns AND p.complete=TRUE "
-        "CROSS JOIN LATERAL jsonb_each_text(CASE WHEN jsonb_typeof(w.body::jsonb->'counts')='object' "
-        "THEN w.body::jsonb->'counts' ELSE '{}'::jsonb END) s "
-        "WHERE (w.start_ns,w.session_key)>=(%s,%s) AND (w.start_ns,w.session_key,s.key)>(%s,%s,%s) "
-        "AND w.start_ns<=%s AND w.body::jsonb->>'coverage_complete'='true' "
-        "AND COALESCE(w.body::jsonb->>'population_complete','true')='true' AND s.value::bigint>0 "
-        "AND s.key<>'Services.v1/InvoiceRegister' ORDER BY w.start_ns,w.session_key,s.key LIMIT %s",
-        (after[0],after[1],*after,cursor['through'],limit)).fetchall()
-    for r in rows:enqueue(store,'longitudinal',r['session_key'],r['service_path'],r['start_ns'],invalidate=False)
-    if rows:cursor['after']=[rows[-1]['start_ns'],rows[-1]['session_key'],rows[-1]['service_path']]
-    if len(rows)<limit:
+    # Fence the parent page BEFORE JSON expansion or qualification. A page
+    # with no qualifying actor must advance, rather than re-scan all history.
+    parent_limit=64
+    relation='>' if after[2]=='\uffff' else '>='
+    parents=store.raw.execute("SELECT w.start_ns,w.session_key,w.body,"
+        "EXISTS(SELECT 1 FROM anomaly_detection.adp_source_windows p WHERE p.start_ns=w.start_ns AND p.complete=TRUE) AS source_complete "
+        "FROM (SELECT start_ns,session_key,body FROM anomaly_detection.adp_windows "
+        "WHERE (start_ns,session_key)"+relation+"(%s,%s) AND start_ns<=%s "
+        "ORDER BY start_ns,session_key LIMIT %s) w ORDER BY w.start_ns,w.session_key",
+        (after[0],after[1],cursor['through'],parent_limit)).fetchall()
+    emitted=0;all_consumed=True
+    for parent in parents:
+        body=json.loads(parent['body']) if isinstance(parent['body'],str) else parent['body']
+        prefix=[parent['start_ns'],parent['session_key']]
+        counts=body.get('counts') if isinstance(body.get('counts'),dict) else {}
+        coverage=body.get('coverage_complete')
+        population=body.get('population_complete')
+        if parent['source_complete'] and (coverage is True or coverage=='true') and (population is None or population is True or population=='true'):
+            for service,value in sorted(counts.items()):
+                if (prefix==after[:2] and service<=after[2]) or service=='Services.v1/InvoiceRegister':continue
+                count=int(str(value))
+                if not -(2**63)<=count<2**63:raise ValueError('invalid_summary_count')
+                if count<=0:continue
+                enqueue(store,'longitudinal',parent['session_key'],service,parent['start_ns'],invalidate=False)
+                emitted+=1;cursor['after']=[*prefix,service]
+                if emitted>=limit:all_consumed=False;break
+        if not all_consumed:break
+        cursor['after']=[*prefix,'\uffff']
+    if all_consumed and len(parents)<parent_limit:
         high=cursor['through'];cursor={'after':[high,'\uffff','\uffff'],'through':high}
         next_high=store.raw.execute('SELECT MAX(start_ns) AS at FROM anomaly_detection.adp_source_windows WHERE complete=TRUE').fetchone()['at']
         if next_high is not None:cursor['through']=next_high
-    state.update({lane:cursor,'turn':turn+1,'enqueued':state.get('enqueued',0)+len(rows)})
-    store.save_state('longitudinal_seed_v1',state)
+    state.update({lane:cursor,'turn':turn+1,'enqueued':state.get('enqueued',0)+emitted,'last_parent_rows':len(parents)})
+    store.save_state('longitudinal_seed_v2',state)
 
 
 def coverage_changed(store,target):

@@ -200,7 +200,7 @@ function Invoke-WebRequest { param($Uri,[switch]$UseBasicParsing,$TimeoutSec)
         module=runpy.run_path(str(ROOT/'AnomalyDetection/run_anomaly.py'))
         declared=json.loads((ROOT/'AnomalyDetection/RELEASE_MANIFEST.json').read_text())
         self.assertEqual(module['verify_build'](),declared['source_sha256'])
-        self.assertEqual(module['EXPECTED_BUILD'],'AD-20261111-COMPACT-KEYS')
+        self.assertEqual(module['EXPECTED_BUILD'],'AD-20261111-BOUNDED-WORK')
 
     @unittest.skipUnless(os.name=='nt','Windows PowerShell parser')
     def test_both_launcher_scripts_parse_in_windows_powershell(self):

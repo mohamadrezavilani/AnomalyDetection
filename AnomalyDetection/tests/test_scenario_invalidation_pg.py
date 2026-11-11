@@ -212,9 +212,41 @@ class NativeScenarioInvalidationTests(unittest.TestCase):
         self.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET dirty=FALSE,processed_version=version')
         # The independent old pass discovers the same scope once more. It
         # must not manufacture an input change for a completed job.
-        self.store.save_state('longitudinal_seed_v1',{'turn':3})
+        self.store.save_state('longitudinal_seed_v2',{'turn':3})
         seed(self.store,limit=8)
         self.assertFalse(self.raw.execute('SELECT dirty FROM anomaly_detection.adp_scenario_jobs').fetchone()['dirty'])
+
+    def test_summary_seed_advances_through_empty_parents_and_resumes_within_a_service_list(self):
+        from anomaly_detection.product_pipeline import apply_window
+        from anomaly_detection.longitudinal import seed
+        packet=self.window_packet();apply_window(self.store,packet)
+        self.raw.execute('DELETE FROM anomaly_detection.adp_scenario_jobs')
+        empty=canonical({'coverage_complete':False,'counts':{}})
+        self.raw.execute('INSERT INTO anomaly_detection.adp_windows SELECT lpad(n::text,64,\'0\'),%s,%s,%s FROM generate_series(1,130) n',
+                         (TARGET,empty,'fixture-empty'))
+        for _ in range(12):seed(self.store,limit=1)
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_scenario_jobs').fetchone()['n'],1)
+        state=self.store.state('longitudinal_seed_v2')
+        self.assertLessEqual(state['last_parent_rows'],64)
+        many=canonical({'coverage_complete':True,'population_complete':True,'counts':{'Services.v1/A':1,'Services.v1/B':2,'Services.v1/C':1}})
+        self.raw.execute('DELETE FROM anomaly_detection.adp_scenario_jobs')
+        self.raw.execute('DELETE FROM anomaly_detection.adp_windows')
+        self.raw.execute('INSERT INTO anomaly_detection.adp_windows VALUES(%s,%s,%s,%s)',('d'*64,TARGET,many,'many'))
+        self.store.save_state('longitudinal_seed_v2',{})
+        for _ in range(12):seed(self.store,limit=1)
+        services=[r['service_path'] for r in self.raw.execute('SELECT service_path FROM anomaly_detection.adp_scenario_jobs ORDER BY service_path').fetchall()]
+        self.assertEqual(services,['Services.v1/A','Services.v1/B','Services.v1/C'])
+
+    def test_viewer_disk_admission_observes_only_this_database_and_releases_without_source_locks(self):
+        from anomaly_detection.viewer_priority import BUSY_SQL
+        with self.psycopg.connect(**self.params,dbname=self.name,autocommit=True) as writer, \
+             self.psycopg.connect(**self.params,dbname='postgres',autocommit=True) as other:
+            self.assertFalse(self.raw.execute(BUSY_SQL).fetchone()['busy'])
+            writer.execute('SELECT pg_advisory_lock(240026,2)')
+            self.assertTrue(self.raw.execute(BUSY_SQL).fetchone()['busy'])
+            writer.execute('SELECT pg_advisory_unlock(240026,2)')
+            other.execute('SELECT pg_advisory_lock(240026,2)')
+            self.assertFalse(self.raw.execute(BUSY_SQL).fetchone()['busy'])
 
 
 if __name__=='__main__':unittest.main()
