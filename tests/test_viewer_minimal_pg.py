@@ -23,6 +23,13 @@ def crash_publish(config, keys, capture, start, point):
     os._exit(74)
 
 
+def sleeping_viewer_backend(config):
+    import psycopg
+    with psycopg.connect(**config,autocommit=True) as raw:
+        raw.execute('SELECT pg_advisory_lock(240026,1)')
+        raw.execute('SELECT pg_sleep(30)')
+
+
 @unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'native PG18 test cluster not configured')
 class NativeMinimalPublicationTests(unittest.TestCase):
     @classmethod
@@ -197,9 +204,43 @@ class NativeMinimalPublicationTests(unittest.TestCase):
             held.execute('SELECT pg_advisory_lock(240026,1)')
             lease=dict(reader.execute(module.LEASE_SQL).fetchone())
             self.assertFalse(module.terminate_lease(reader,dict(lease,backend_start=lease['backend_start']+timedelta(seconds=1))))
+            self.assertFalse(module.terminate_lease(reader,dict(lease,client_port=lease['client_port']+1)))
+            self.assertFalse(module.terminate_lease(reader,dict(lease,client_addr='192.0.2.1')))
             self.assertEqual(held.execute('SELECT 1 AS n').fetchone()['n'],1)
             self.assertTrue(module.terminate_lease(reader,lease))
             self.assertEqual(reader.execute(module.LEASE_SQL).fetchall(),[])
+
+    def test_dead_client_with_sleeping_server_is_cleaned_by_exact_lease_and_release_is_observed(self):
+        import importlib.util
+        import time
+        import psycopg
+        from psycopg.rows import dict_row
+        path=Path(__file__).resolve().parents[1]/'viewer_performance/Stop_Viewer_Worker.py'
+        spec=importlib.util.spec_from_file_location('orphan_viewer_control',path)
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        child=multiprocessing.get_context('spawn').Process(target=sleeping_viewer_backend,args=(self.config,))
+        child.start()
+        try:
+            with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row) as reader:
+                deadline=time.monotonic()+8;value=None
+                while time.monotonic()<deadline:
+                    rows=reader.execute(module.LEASE_SQL).fetchall()
+                    if rows:
+                        current=reader.execute('SELECT wait_event FROM pg_stat_activity WHERE pid=%s',(rows[0]['pid'],)).fetchone()
+                        if current and current['wait_event']=='PgSleep':value=dict(rows[0]);break
+                    time.sleep(.05)
+                self.assertIsNotNone(value,'own child did not enter its bounded sleep')
+                child.terminate();child.join(5);self.assertFalse(child.is_alive())
+                self.assertTrue(module.same_lease(value,dict(reader.execute(module.LEASE_SQL).fetchone())))
+                self.assertTrue(module.terminate_lease(reader,value))
+                def lease():
+                    rows=reader.execute(module.LEASE_SQL).fetchall()
+                    return dict(rows[0]) if rows else None
+                result=module.observe_release(lease,value,{'process_stopped':True},timeout=3)
+                self.assertEqual(result['status'],'VIEWER_WORKER_STOPPED')
+                self.assertTrue(result['postgres_lock_released'])
+        finally:
+            if child.is_alive():child.terminate();child.join(5)
 
     def test_control_normalizes_native_inet_text_and_preserves_local_only_guard(self):
         import importlib.util

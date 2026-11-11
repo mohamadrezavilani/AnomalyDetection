@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "e853e7440d48a1db76c55e89502b5617d4f708ddf5edcf9f1de6aceb35b0b398",
+    "Pishkhan24_Project_Roadmap.md": "1a11d4c86fbfa6d9eb87fce2e8f8723763b7945b450bc7f3b14769a9175842c4",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "165b304abcb744154126091556359d3f9fdeb1e3cc4809bc4b3b7d8fc69c7045",
+    "VIEWER_README_FA.md": "2e1c16656bdf8d003733cd04f2834bb93db46b636f0376d4be852f5623dac843",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -250,7 +250,7 @@
     "tests/test_viewer_lc3d_payment_integrity.py": "fdcdc385e9c1de33e6f31615989a57c6dd06e9fd4ca28ad7a2e3071fd79284c0",
     "tests/test_viewer_lc3e_real_subset_replay.py": "4a460ac598ac616551dabbb9fc384fa86474416d41ee0e50c7a3796444ccf82d",
     "tests/test_viewer_logic_v024.py": "e7fdcdee9a3ee78bd65bc50ccb26699065760c30f4972f771a053e1d2ead7e5c",
-    "tests/test_viewer_minimal_pg.py": "2efdac1f1a34c0e0ed555a0a8189508a3cc5d316b4618a556b0f06fb81023697",
+    "tests/test_viewer_minimal_pg.py": "83d20d05c6c139b2d069aac0026b8c1dc9b0cd0cca41a288835d4f4720240396",
     "tests/test_viewer_minimal_publication.py": "0cdec4cde3e390db43e5b90647a178bfc3763083bebe0b1198a9df68938236e5",
     "tests/test_viewer_online.py": "e870cc7a4555f65af27b41c056186ec7dd0081a99e68fcf313106eb083b4f92e",
     "tests/test_viewer_payment_correlations.py": "19dff140d5a2c318c2fd5e63455d076b116bdb025fdb4bda6e8ed3ee61d57c85",
@@ -260,7 +260,7 @@
     "tests/test_viewer_pit_capture.py": "7b02c3353803eb8bc6b14dd851b930fa34994eeda5f47ebbb0a8675e705482fd",
     "tests/test_viewer_postgres_resources.py": "2f93739b48fc561ea39841156323a46051c239fb506472eee8f8a87b9061776d",
     "tests/test_viewer_prefetch.py": "042a09855d9620944b47cfd91478e9360519e4f7119ee4cbc588887b8fcf3e53",
-    "tests/test_viewer_process_control.py": "3e47f9c3520d9c5c14017d01d6c741491492c7082685bc5c6538a2436b958193",
+    "tests/test_viewer_process_control.py": "fecb2e03a375469722dc9cc98c9f2e79377cb1da6b7fbf13c516d7addef14a49",
     "tests/test_viewer_r6_s1b_quality.py": "744a2f9e77538ff9f20dc5534970d639182cee70fd74e08229694230e6424962",
     "tests/test_viewer_r6_s1c_behavior_evidence.py": "7a26ebb2733a0b70128bd5af93a89f3bfac5bcce5c2866b2b0b066e6e9c3d6e5",
     "tests/test_viewer_r6_service_journey.py": "8fbb4c622d8a744381c319d0c61823391e2d82284ebf053bb021bfe9cdf1982d",
@@ -428,7 +428,7 @@
     "viewer_performance/Restore_Viewer_Full_Keys.py": "1ae495a4c778d21c2eea6029fbd9f7f0b0fd03badaf23a6be64f9aa49ff3b54a",
     "viewer_performance/Run_Viewer_Memory.py": "9bc4a76f306ba853e6b3907dac6cc470a36ceec98239990d5be4b582a14de645",
     "viewer_performance/Run_Viewer_Web.py": "ac69bee7f87a91f4a72c2fb580a6d428b8e7229d57c9ca922a9794e6c7fd2b96",
-    "viewer_performance/Stop_Viewer_Worker.py": "403f8eaae169157c6d782bcae2c026d332f5b9c96237b946574d3c3b3905bb12",
+    "viewer_performance/Stop_Viewer_Worker.py": "f867e64966737fa06d137772d8bcfbb9c1360c4d0228f06cca9ac0a4b63c8540",
     "viewer_performance/viewer.ps1": "a0d3390f3a51007b9fdc92eb9262aee426b54b1a865dcc6197e6fc7da57c3a21"
   },
   "pilot_diagnostics_fix": true,
@@ -1022,5 +1022,12 @@
     "projection_write_method": "SCOPED_TID_DELTA_STRICT_COPY",
     "rollback_before_code_downgrade": "viewer_performance/Restore_Viewer_Full_Keys.py --restore",
     "first_anomaly_page_changed": false
+  },
+  "viewer_stop_recovery": {
+    "bounded_release_observation_seconds": 20,
+    "orphan_backend_requires_two_successful_tcp_absence_observations": true,
+    "backend_termination_matches_full_live_lease": true,
+    "replacement_owner_blocks_deployment": true,
+    "runtime_processing_changed": false
   }
 }
