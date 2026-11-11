@@ -250,7 +250,7 @@
     "tests/test_viewer_lc3d_payment_integrity.py": "fdcdc385e9c1de33e6f31615989a57c6dd06e9fd4ca28ad7a2e3071fd79284c0",
     "tests/test_viewer_lc3e_real_subset_replay.py": "4a460ac598ac616551dabbb9fc384fa86474416d41ee0e50c7a3796444ccf82d",
     "tests/test_viewer_logic_v024.py": "e7fdcdee9a3ee78bd65bc50ccb26699065760c30f4972f771a053e1d2ead7e5c",
-    "tests/test_viewer_minimal_pg.py": "d76c42325c517e1ad20c77a0844af4fbb083ab2e2afc9724a066614bf69d95cc",
+    "tests/test_viewer_minimal_pg.py": "99c4b76529f4f24d3789a2f8c49ed5f06edddfa1d36dbb2f35ee061f973e8dcc",
     "tests/test_viewer_minimal_publication.py": "0cdec4cde3e390db43e5b90647a178bfc3763083bebe0b1198a9df68938236e5",
     "tests/test_viewer_online.py": "e870cc7a4555f65af27b41c056186ec7dd0081a99e68fcf313106eb083b4f92e",
     "tests/test_viewer_payment_correlations.py": "19dff140d5a2c318c2fd5e63455d076b116bdb025fdb4bda6e8ed3ee61d57c85",

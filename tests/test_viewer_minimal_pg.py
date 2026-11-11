@@ -267,7 +267,10 @@ class NativeMinimalPublicationTests(unittest.TestCase):
     def test_bounded_technical_census_advances_empty_raw_pages_and_equals_complete_root_query(self):
         from AnomalyDetection.anomaly_detection.scenario_traffic import read_page
         rows=[log(n,'provider-'+str(n),'ClientFixture.Call','Output:[]') for n in range(1,131)]
-        rows.append(log(201,'root','Services.v1/WaterBills Line:1','POST (G00000 | successful)'))
+        for n,row in enumerate(rows,1):row['@timestamp']=iso(START+n*1_000_000_000)
+        root=log(201,'root','Services.v1/WaterBills Line:1','POST (G00000 | successful)')
+        root['@timestamp']=iso(START+201*1_000_000_000)
+        rows.append(root)
         self.publish(rows)
         expected=[r['request_key'] for r in self.db.all("SELECT e.request_key FROM viewer_events e JOIN viewer_requests r ON r.request_key=e.request_key WHERE e.kind IN ('client','other') AND trim(split_part(e.callpath,' Line:',1))=trim(split_part(r.root_call,' Line:',1)) ORDER BY e.at_ns,e.origin_key")]
         source,queries=self.bounded_ad_source();cursor={'page_size':64};found=[];scanned=0
