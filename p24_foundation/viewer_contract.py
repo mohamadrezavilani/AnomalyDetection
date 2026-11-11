@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from collections import defaultdict
 from .parser import sql_parameters
 from .viewer_projection_writes import CONTRACT_TABLES
+from .viewer_storage_keys import conflict_clause
 from .payment_correlation import correlation_facts
 from .service_dispatch import dispatch_facts
 
@@ -349,7 +350,7 @@ class PaymentContractMixin:
                         for issuer,kind,scope,path,value in occ:
                             key=typed_id(issuer,kind,value,scope=scope)
                             if not key:continue
-                            self.sql('''INSERT INTO viewer_contract_identifiers VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING''',
+                            self.sql('''INSERT INTO viewer_contract_identifiers VALUES(?,?,?,?,?,?,?,?,?)'''+conflict_clause(self,'viewer_contract_identifiers'),
                                (e['origin_key'],e['version_key'],e['request_key'],issuer,kind,scope,path,key,value))
                             identifiers+=1
                             # Directed, evidence-specific membership, not a claim that
@@ -417,7 +418,7 @@ class PaymentContractMixin:
                                                   'sql.paymentKey+externalPurchaseKey+status','reported_not_final','A');edges+=1
                         for axis,value,path in observed_states(raw):
                             self.sql('''INSERT INTO viewer_contract_observations(origin_key,version_key,request_key,at_ns,callpath,axis,value,field_path,authority)
-                                  VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING''',
+                                  VALUES(?,?,?,?,?,?,?,?,?)'''+conflict_clause(self,'viewer_contract_observations'),
                                   (e['origin_key'],e['version_key'],e['request_key'],e['at_ns'],e['callpath'],axis,str(value),path,'reported'))
                             observations+=1
                 process_seconds+=time.monotonic()-began

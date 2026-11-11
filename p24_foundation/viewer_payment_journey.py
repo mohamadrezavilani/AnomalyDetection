@@ -99,8 +99,9 @@ class ServicePaymentJourneyMixin:
         partial_statuses = set()
         for begin in range(0, len(payment_ids), 200):
             batch = sorted(payment_ids)[begin:begin + 200]
+            from .viewer_storage_keys import exact_origin_join
             query = ('''SELECT DISTINCT o.*,c.identity_key FROM viewer_contract_observations o
-                JOIN viewer_contract_identifiers c ON c.origin_key=o.origin_key AND c.version_key=o.version_key
+                JOIN viewer_contract_identifiers c ON '''+exact_origin_join(self,'c','o')+'''
                 WHERE c.issuer='pishkhan24' AND c.kind='internal_payment' AND o.axis=?
                   AND c.identity_key IN (''' + ','.join('?' for _ in batch) + ') AND ' +
                 self._correlation_clean('o') + ' ORDER BY o.at_ns,o.origin_key,o.version_key')
