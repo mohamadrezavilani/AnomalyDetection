@@ -7,6 +7,8 @@ on:
       - 'tests/test_viewer_minimal*'
       - 'tests/test_viewer_scoped_inputs.py'
       - 'tests/test_viewer_web_existing.py'
+      - 'tests/test_viewer_lan_access.py'
+      - 'AnomalyDetection/**'
       - 'viewer_performance/**'
       - 'Start_Viewer*.cmd'
       - 'tools/viewer.ps1'
@@ -54,6 +56,7 @@ jobs:
           tests.test_viewer_minimal_pg
           tests.test_viewer_scoped_inputs
           tests.test_viewer_web_existing
+          tests.test_viewer_lan_access
           tests.test_viewer_launcher_bytes
           tests.test_viewer_process_control
           tests.test_viewer_online
@@ -62,6 +65,11 @@ jobs:
           tests.test_viewer_final_semantic_index
       - name: AD compatibility and unit regressions
         working-directory: AnomalyDetection
+        env:
+          P24_DELTA_PG_HOST: 127.0.0.1
+          P24_DELTA_PG_PORT: '5432'
+          P24_DELTA_PG_USER: postgres
+          PGPASSWORD: ephemeral-test-only
         run: python -B -m unittest discover -s tests -q
   windows-launchers:
     runs-on: windows-latest
@@ -75,4 +83,4 @@ jobs:
       - name: Recheck byte preservation with Windows Git conversion enabled
         run: git -c core.autocrlf=true -c core.eol=crlf checkout -- Start_Viewer.cmd Start_Viewer_Standard.cmd tools/viewer.ps1
       - name: Exact bytes and real Windows process handles
-        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing
+        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing tests.test_viewer_lan_access

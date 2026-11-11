@@ -5,17 +5,24 @@ import hmac
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, abort, redirect, url_for, jsonify, g
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException,SecurityError
 from pathlib import Path
 from .viewer_data import ViewerDB,VIEWER_VERSION,tehran,SERVICE_ROLES,SERVICE_INITIATIONS
 from .store import ROOT
 
 
-def create_viewer_app(db_opts):
+def create_viewer_app(db_opts,*,lan_host=None):
     app=Flask(__name__,template_folder=str(ROOT/'review_ui/templates'),static_folder=str(ROOT/'review_ui/static'))
     from .viewer_display_time import tehran_time
     app.jinja_env.filters['tehran_time']=tehran_time
-    app.config.update(TRUSTED_HOSTS=['127.0.0.1','localhost','[::1]'])
+    trusted_hosts=['127.0.0.1','localhost','[::1]']
+    allowed_networks=[ipaddress.ip_network('127.0.0.0/8'),ipaddress.ip_network('::1/128')]
+    if lan_host is not None:
+        address=ipaddress.ip_address(lan_host)
+        private_lan=[ipaddress.ip_network(n) for n in ('10.0.0.0/8','172.16.0.0/12','192.168.0.0/16')]
+        if not any(address in network for network in private_lan):raise ValueError('viewer_lan_host_must_be_private_ipv4')
+        trusted_hosts.append(str(address));allowed_networks+=private_lan
+    app.config.update(TRUSTED_HOSTS=trusted_hosts)
     def db(*,write=False):
         d=ViewerDB(**db_opts)
         if not write:
@@ -33,13 +40,20 @@ def create_viewer_app(db_opts):
     @app.before_request
     def loopback():
         try:
-            if not ipaddress.ip_address(request.remote_addr).is_loopback:abort(403)
-        except ValueError:abort(403)
+            address=ipaddress.ip_address(request.remote_addr)
+            if address.version==6 and address.ipv4_mapped:address=address.ipv4_mapped
+            if not any(address in network for network in allowed_networks):abort(403)
+        except (ValueError,TypeError):abort(403)
     @app.after_request
     def secure(resp):
         resp.headers.update({'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'self'; img-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",'Referrer-Policy':'no-referrer',
                              'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY'})
         return resp
+    from .viewer_runtime import runtime_source_digest
+    serving_sha=runtime_source_digest(ROOT)
+    @app.get('/healthz')
+    def health():
+        return jsonify(status='ok',service='viewer',runtime_sha256=serving_sha)
     def pagination():
         try:
             page=int(request.args.get('page',1));limit=int(request.args.get('limit',25))
@@ -222,6 +236,7 @@ def create_viewer_app(db_opts):
         return render_template('viewer_find.html',version=VIEWER_VERSION,search=raw,not_found=bool(raw)),(404 if raw else 200)
     @app.errorhandler(Exception)
     def error(error):
+        if isinstance(error,SecurityError):return error.get_response()
         if isinstance(error,HTTPException):return render_template('viewer_error.html',code=error.code,version=VIEWER_VERSION),error.code
         app.logger.exception('Viewer error (sensitive raw data withheld)')
         return render_template('viewer_error.html',code=500,version=VIEWER_VERSION),500

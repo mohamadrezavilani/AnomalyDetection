@@ -300,8 +300,8 @@ class ProductStore:
                     'last_audit_ns=%s,next_audit_ns=%s WHERE request_key=%s',
                 (canonical(value),signature,fact is not None,now,
                      now+(60 if value.get('input_subject',{}).get('status')=='READ_DEFERRED' else 600)*1_000_000_000,key))
-            from .population import enqueue
-            enqueue(self,[old['at_ns'] for old in self.raw.execute('SELECT at_ns FROM anomaly_detection.adp_facts WHERE request_key=ANY(%s)',(list(snapshot.keys),)).fetchall()])
+            # invalidate_many below already queues every changed window. An
+            # unchanged periodic audit is not a new population model input.
             self.invalidate_many(windows)
             from .product_dependencies import context_changed_many
             context_changed_many(self,contexts)

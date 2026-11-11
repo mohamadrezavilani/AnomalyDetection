@@ -31,5 +31,11 @@ class ExistingWebTests(unittest.TestCase):
         factory.assert_called_once_with(options)
         factory.return_value.run.assert_called_once_with(host='127.0.0.1',port=5021,use_reloader=False,debug=False)
 
+    def test_explicit_lan_binding_reaches_the_factory_and_listener_together(self):
+        factory=Mock();options={'fixture':'existing'}
+        web.serve_existing(options,factory=factory,host='10.20.30.40')
+        factory.assert_called_once_with(options,lan_host='10.20.30.40')
+        factory.return_value.run.assert_called_once_with(host='10.20.30.40',port=5021,use_reloader=False,debug=False)
+
 
 if __name__=='__main__':unittest.main()

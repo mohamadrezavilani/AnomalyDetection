@@ -45,9 +45,10 @@ def step(store,source,clock,cycle,state):
         try:outcome=process_one(store,clock.time_ns())
         except Exception:
             active=getattr(store,'active_scenario_scope',None)
-            if active:store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET due_ns=%s WHERE scope_key=%s AND dirty=TRUE',(clock.time_ns()+30_000_000_000,active))
+            if active:store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET due_ns=%s,claimed_version=0 WHERE scope_key=%s AND dirty=TRUE',(clock.time_ns()+30_000_000_000,active))
             raise
         if outcome:
+            results=state.setdefault('scenario_results',{});status=outcome['status'];results[status]=results.get(status,0)+1
             state['scenario_evaluations']=state.get('scenario_evaluations',0)+int(outcome['status']=='APPLIED')
             state['last_scenario_scope']=outcome.get('scope_key')
     attempt('evaluate_content_network',model)
@@ -67,3 +68,4 @@ def step(store,source,clock,cycle,state):
             raise
     if cycle%8==1:attempt('read_technical_request_census',traffic)
     state['last_scenario_failure']=max(errors.values(),key=lambda x:x['at_ns']) if errors else None
+    state['scenario_queue_activity']=getattr(store,'scenario_queue_activity',{})

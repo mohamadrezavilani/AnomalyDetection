@@ -69,6 +69,11 @@ TABLES_SQL = """SELECT s.schemaname,s.relname,s.n_live_tup,s.n_dead_tup,
     WHERE (s.schemaname='public' AND left(s.relname,7)='viewer_')
        OR s.schemaname='anomaly_detection'
     ORDER BY s.schemaname,s.relname LIMIT 256"""
+AD_COUNTERS_SQL="""SELECT relname,n_tup_ins,n_tup_upd,n_tup_del,n_tup_hot_upd,
+    seq_scan,idx_scan,autovacuum_count,n_live_tup,n_dead_tup
+    FROM pg_catalog.pg_stat_user_tables WHERE schemaname='anomaly_detection'
+    AND relname IN ('adp_scenario_jobs','adp_jobs','adp_facts','adp_population_jobs',
+                   'adp_window_members','adp_profile_tasks') ORDER BY relname"""
 INDEXES_SQL = """SELECT s.schemaname,s.relname,s.indexrelname,s.idx_scan,
     s.idx_tup_read,s.idx_tup_fetch,i.indisvalid,i.indisready,
     pg_relation_size(s.indexrelid) AS index_bytes
@@ -266,6 +271,24 @@ def counter_deltas(before, after):
     return result
 
 
+def ad_counter_deltas(before,after,seconds,*,stats_reset=False):
+    if stats_reset:return {'status':'STATS_RESET'}
+    if before.get('status')!='READ' or after.get('status')!='READ':return {'status':'COUNTERS_UNAVAILABLE'}
+    old={row['relname']:row for row in before['value']};result={}
+    for row in after['value']:
+        name=row['relname'];previous=old.get(name)
+        if previous is None:continue
+        values={key:row[key]-previous[key] for key in
+            ('n_tup_ins','n_tup_upd','n_tup_del','n_tup_hot_upd','seq_scan','idx_scan','autovacuum_count')
+            if type(row.get(key)) is int and type(previous.get(key)) is int}
+        if any(value<0 for value in values.values()):result[name]={'status':'STATS_RESET_OR_OBJECT_REPLACED'};continue
+        result[name]={'status':'DELTA','values':values,
+            'updates_per_second':round(values.get('n_tup_upd',0)/max(seconds,.001),3),
+            'estimated_live_rows':row['n_live_tup'],'estimated_dead_rows':row['n_dead_tup']}
+    return {'status':'DELTA','observation_seconds':round(seconds,3),'tables':result,
+            'counts_are_row_mutations_not_unique_jobs_or_sql_calls':True}
+
+
 def collect(reader, *, seconds, allowed_names, clock=time.monotonic, wall=time.time_ns, wait=time.sleep, progress=lambda _: None):
     guard = reader.rows("SELECT current_database() AS database,current_setting('transaction_read_only') AS read_only")
     if not guard or guard[0] != {'database': 'p24_design_viewer', 'read_only': 'on'}:
@@ -285,6 +308,7 @@ def collect(reader, *, seconds, allowed_names, clock=time.monotonic, wall=time.t
             'pg_settings describes this observer session; publisher memory/JIT overrides are not observable here.',
             'Receipt rates are historical samples, not a sustained capacity qualification.',
             'No SQL, parameters, application names, credentials or user evidence are exported.']}
+    report['ad_counters_before']=reader.optional(AD_COUNTERS_SQL);ad_started=clock()
     deadline = clock() + seconds
     next_progress = clock() + 15
     while True:
@@ -302,6 +326,9 @@ def collect(reader, *, seconds, allowed_names, clock=time.monotonic, wall=time.t
         wait(min(3, max(0, deadline - clock())))
     report['counters_after'] = {name: reader.optional(sql) for name, sql in COUNTERS.items()}
     report['counter_deltas'] = counter_deltas(report['counters_before'], report['counters_after'])
+    report['ad_counters_after']=reader.optional(AD_COUNTERS_SQL)
+    report['ad_counter_deltas']=ad_counter_deltas(report['ad_counters_before'],report['ad_counters_after'],clock()-ad_started,
+        stats_reset=report['counter_deltas'].get('database',{}).get('status')=='STATS_RESET')
     report['recent_forward_receipts'] = reader.optional(RECEIPTS_SQL)
     report['recent_resume_records'] = reader.optional(RESUMES_SQL)
     latest = report['samples'][-1]
@@ -358,6 +385,13 @@ def main(argv=None):
         report['installed_source'] = {'status': 'READ', 'value': inventory['value'][0]} if inventory['status'] == 'READ' else inventory
         report['installed_ad_build'] = launcher['EXPECTED_BUILD']
         report['installed_ad_source_sha256'] = ad_sha
+        status_file=root/'reports/product_status.json'
+        if status_file.is_file():
+            def owned_progress():
+                value=json.loads(status_file.read_text(encoding='utf-8-sig'))
+                return {key:value.get(key) for key in ('build_id','source_sha256','state','phase','heartbeat_ns',
+                    'evaluated_jobs','audited_requests','scenario_evaluations','scenario_results','scenario_queue_activity')}
+            report['ad_owned_progress']=attempt(owned_progress)
         startup=project/'validation/viewer_startup.json'
         if startup.is_file():
             def read_startup():

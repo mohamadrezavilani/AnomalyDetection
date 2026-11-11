@@ -33,6 +33,39 @@ def git_fixture(root):
 
 
 class LauncherBytesTests(unittest.TestCase):
+    @unittest.skipUnless(os.name=='nt','Windows launcher forwarding and readiness')
+    def test_windows_start_forwards_lan_host_and_reports_only_matching_health(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'tools').mkdir();(root/'viewer_performance').mkdir()
+            (root/'viewer_config.local.py').write_text('# fixture only\n')
+            (root/'RELEASE_MANIFEST.json').write_text(json.dumps({'runtime_source_sha256':'fixture-runtime'}))
+            (root/'tools/check_viewer_install.py').write_text("print('{\"status\":\"READY_TO_START\"}')\n")
+            for name in ('tools/viewer.ps1','viewer_performance/viewer.ps1'):
+                (root/name).write_bytes((ROOT/name).read_bytes())
+            capture=root/'children.jsonl'
+            code="""$ErrorActionPreference='Stop'
+function Start-Process { param($FilePath,$WorkingDirectory,$ArgumentList)
+    @{argv=$ArgumentList} | ConvertTo-Json -Compress | Add-Content -Encoding UTF8 -LiteralPath $env:P24_VIEWER_TEST_CAPTURE
+}
+function Invoke-WebRequest { param($Uri,[switch]$UseBasicParsing,$TimeoutSec)
+    [pscustomobject]@{Content='{"status":"ok","service":"viewer","runtime_sha256":"fixture-runtime"}'}
+}
+& (Join-Path $env:P24_VIEWER_TEST_ROOT $env:P24_VIEWER_TEST_SCRIPT) -Action Start -Python $env:P24_VIEWER_TEST_PYTHON -WebHost '10.20.30.40' -ResumeCheckpoint
+"""
+            for script in ('tools/viewer.ps1','viewer_performance/viewer.ps1'):
+                env=dict(os.environ,P24_VIEWER_TEST_CAPTURE=str(capture),P24_VIEWER_TEST_ROOT=str(root),
+                         P24_VIEWER_TEST_SCRIPT=script,P24_VIEWER_TEST_PYTHON=sys.executable)
+                result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',code],
+                    cwd=root,env=env,capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+                self.assertIn('VIEWER_WEB_READY',result.stdout)
+                self.assertIn('10.20.30.40:5021',result.stdout)
+            children=[json.loads(line)['argv'] for line in capture.read_text(encoding='utf-8-sig').splitlines()]
+            self.assertEqual(len(children),4)
+            for args in children:
+                self.assertIn('-ResumeCheckpoint',args)
+                self.assertEqual(args[args.index('-WebHost')+1],'"10.20.30.40"')
+
     def test_matching_manifest_with_mode_changes_is_repaired_in_git_too(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);git=git_fixture(root)
@@ -160,11 +193,14 @@ class LauncherBytesTests(unittest.TestCase):
             self.assertEqual(verify_release(root)['status'],'PASS')
             (root/name).write_bytes(data.replace(b'\r\n',b'\n'))
             self.assertEqual(verify_release(root)['mismatches'],[name])
-    def test_launcher_only_fix_preserves_viewer_runtime_and_ad_identity(self):
-        self.assertEqual(runtime_source_digest(ROOT),'7664ee33a6f2be3257796f9b53780e9b1a1e6d06e37f7022bed46ca66cbbce55')
+    def test_release_runtime_has_an_exact_supported_pin_and_verified_ad_identity(self):
         import runpy
+        profiles=runpy.run_path(str(ROOT/'AnomalyDetection/anomaly_detection/source_profiles.py'))
+        self.assertEqual(runtime_source_digest(ROOT),profiles['R34_RUNTIME'])
         module=runpy.run_path(str(ROOT/'AnomalyDetection/run_anomaly.py'))
-        self.assertEqual(module['verify_build'](),'49495da2c80b81208ebaae0834de301160b7e73794653938cdfbd3082449a86d')
+        declared=json.loads((ROOT/'AnomalyDetection/RELEASE_MANIFEST.json').read_text())
+        self.assertEqual(module['verify_build'](),declared['source_sha256'])
+        self.assertEqual(module['EXPECTED_BUILD'],'AD-20261111-EVENT-DRIVEN')
 
     @unittest.skipUnless(os.name=='nt','Windows PowerShell parser')
     def test_both_launcher_scripts_parse_in_windows_powershell(self):

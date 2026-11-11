@@ -265,8 +265,19 @@ def seed(store,limit=8):
         low=max(0,high-2*DAY) if fresh else 0
         cursor={'through':high,'after':[low,'','']}
     after=cursor['after']
-    rows=store.raw.execute("SELECT DISTINCT m.start_ns,f.session_key,f.service_path FROM anomaly_detection.adp_window_members m JOIN anomaly_detection.adp_facts f USING(request_key) JOIN anomaly_detection.adp_source_windows w ON w.start_ns=m.start_ns AND w.complete=TRUE WHERE (m.start_ns,f.session_key,f.service_path)>(%s,%s,%s) AND m.start_ns<=%s AND f.at_ns>=m.start_ns AND f.at_ns<m.start_ns+%s AND f.session_key IS NOT NULL AND f.eligible=TRUE AND f.source_present=TRUE AND f.state='active' ORDER BY m.start_ns,f.session_key,f.service_path LIMIT %s",(*after,cursor['through'],FIVE_NS,limit)).fetchall()
-    for r in rows:enqueue(store,'longitudinal',r['session_key'],r['service_path'],r['start_ns'])
+    # Complete owned summaries already contain the distinct actor/service
+    # census. Do not reconstruct that same census by probing every Fact PK
+    # for each eight-job seed page. The time/session index fences old pages.
+    rows=store.raw.execute("SELECT w.start_ns,w.session_key,s.key AS service_path FROM anomaly_detection.adp_windows w "
+        "JOIN anomaly_detection.adp_source_windows p ON p.start_ns=w.start_ns AND p.complete=TRUE "
+        "CROSS JOIN LATERAL jsonb_each_text(CASE WHEN jsonb_typeof(w.body::jsonb->'counts')='object' "
+        "THEN w.body::jsonb->'counts' ELSE '{}'::jsonb END) s "
+        "WHERE (w.start_ns,w.session_key)>=(%s,%s) AND (w.start_ns,w.session_key,s.key)>(%s,%s,%s) "
+        "AND w.start_ns<=%s AND w.body::jsonb->>'coverage_complete'='true' "
+        "AND COALESCE(w.body::jsonb->>'population_complete','true')='true' AND s.value::bigint>0 "
+        "AND s.key<>'Services.v1/InvoiceRegister' ORDER BY w.start_ns,w.session_key,s.key LIMIT %s",
+        (after[0],after[1],*after,cursor['through'],limit)).fetchall()
+    for r in rows:enqueue(store,'longitudinal',r['session_key'],r['service_path'],r['start_ns'],invalidate=False)
     if rows:cursor['after']=[rows[-1]['start_ns'],rows[-1]['session_key'],rows[-1]['service_path']]
     if len(rows)<limit:
         high=cursor['through'];cursor={'after':[high,'\uffff','\uffff'],'through':high}
@@ -278,7 +289,9 @@ def seed(store,limit=8):
 
 def coverage_changed(store,target):
     """Both invalidation and completion of a source receipt affect long jobs."""
-    store.raw.execute("UPDATE anomaly_detection.adp_scenario_jobs SET version=version+1,dirty=TRUE,due_ns=0 WHERE kind='longitudinal' AND target_ns>=%s AND target_ns<=%s",(target,target+30*DAY))
+    from .scenario_store import invalidatable,record_queue_write
+    cursor=store.raw.execute("UPDATE anomaly_detection.adp_scenario_jobs SET version=version+1,dirty=TRUE,due_ns=0 WHERE "+invalidatable()+" AND kind='longitudinal' AND target_ns>=%s AND target_ns<=%s",(target,target+30*DAY))
+    record_queue_write(store,'coverage_change',cursor)
 
 
 def publish(store,target,summaries):

@@ -67,7 +67,7 @@ def apply_window(store,packet,*,cursor_name='fresh_cursor'):
     if target is None or target<store.history_floor_ns:return {'status':'CAUGHT_UP'}
     with store.transaction():
         store.bind(packet['source'])
-        previous_proof=store.raw.execute('SELECT stamp,complete FROM anomaly_detection.adp_source_windows WHERE start_ns=%s',(target,)).fetchone()
+        previous_proof=store.raw.execute('SELECT stamp,complete,source FROM anomaly_detection.adp_source_windows WHERE start_ns=%s',(target,)).fetchone()
         def discard():
             store.raw.execute('DELETE FROM anomaly_detection.adp_window_staging WHERE lane=%s AND start_ns=%s',(cursor_name,target))
         if packet.get('available') and not packet.get('restart') and previous_proof and previous_proof['complete'] and previous_proof['stamp']==packet['stamp']:
@@ -162,8 +162,12 @@ def apply_window(store,packet,*,cursor_name='fresh_cursor'):
             store.raw.execute("INSERT INTO anomaly_detection.adp_windows SELECT v->>'session_key',(v->>'start_ns')::bigint,(v->'body')::text,v->>'content_digest' FROM jsonb_array_elements(%s::jsonb) AS v "
                 'ON CONFLICT(session_key,start_ns) DO UPDATE SET body=excluded.body,content_digest=excluded.content_digest',
                 (canonical(replacements[offset:offset+256]),))
-        store.raw.execute('DELETE FROM anomaly_detection.adp_window_members WHERE start_ns=%s',(target,))
-        store.raw.execute('INSERT INTO anomaly_detection.adp_window_members SELECT start_ns,request_key,body FROM anomaly_detection.adp_window_staging WHERE lane=%s AND start_ns=%s',(cursor_name,target))
+        old_proof=json.loads(previous_proof['source']) if previous_proof else {}
+        membership_digest=digest(rows)
+        membership_changed=old_proof.get('membership_digest')!=membership_digest
+        if membership_changed:
+            store.raw.execute('DELETE FROM anomaly_detection.adp_window_members WHERE start_ns=%s',(target,))
+            store.raw.execute('INSERT INTO anomaly_detection.adp_window_members SELECT start_ns,request_key,body FROM anomaly_detection.adp_window_staging WHERE lane=%s AND start_ns=%s',(cursor_name,target))
         store.invalidate_many(changed,create_targets=[(s,target) for s in grouped if grouped[s]])
         counts=[{'session_key':row['session_key'],'n':row['observed_count']} for row in summaries]
         counts.extend({'session_key':row['session_key'],'n':0} for row in replacements if not grouped[row['session_key']])
@@ -174,15 +178,20 @@ def apply_window(store,packet,*,cursor_name='fresh_cursor'):
                 (canonical(counts[offset:offset+256]),target))
         from .product_dependencies import context_changed_many
         context_changed_many(store,contexts)
-        source_proof=dict(packet['source'],scope_contract='atomic-lane-window-v3',peer_population_valid=all(r.get('identity_state')=='assigned' and not r.get('conflicted') and r.get('request_session_key')==r.get('session_key') for r in rows if r.get('session_key')))
+        source_proof=dict(packet['source'],scope_contract='atomic-lane-window-v3',membership_digest=membership_digest,
+            peer_population_valid=all(r.get('identity_state')=='assigned' and not r.get('conflicted') and r.get('request_session_key')==r.get('session_key') for r in rows if r.get('session_key')))
+        inputs_changed=bool(membership_changed or changed or not previous_proof or not previous_proof['complete'] or
+            old_proof.get('peer_population_valid')!=source_proof['peer_population_valid'])
         store.raw.execute('INSERT INTO anomaly_detection.adp_source_windows VALUES(%s,%s,%s,TRUE) ON CONFLICT(start_ns) '
             'DO UPDATE SET stamp=excluded.stamp,source=excluded.source,complete=TRUE',(target,packet['stamp'],canonical(source_proof)))
         from .longitudinal import coverage_changed,publish as publish_longitudinal
-        coverage_changed(store,target)
+        if inputs_changed:coverage_changed(store,target)
         publish_longitudinal(store,target,summaries)
         from .population import enqueue
-        enqueue(store,[target])
-        refresh_cohort(store,target);discard();store.save_state(cursor_name,{'next_ns':target+FIVE_NS})
+        if inputs_changed:
+            enqueue(store,[target])
+            refresh_cohort(store,target)
+        discard();store.save_state(cursor_name,{'next_ns':target+FIVE_NS})
         return {'status':'COMPLETE','behaviors':len(rows),'sessions':len(grouped)}
 
 def read_window_burst(source,store,*,clock,cursor_name='fresh_cursor',initial_cursor=None,max_pages=4,max_seconds=1.5,progress=None):
