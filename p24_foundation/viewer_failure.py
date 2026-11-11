@@ -27,9 +27,12 @@ invalid_closed_window window_not_closed requested_read_model_anchor_missing
 set_private_elasticsearch_host set_private_elasticsearch_index invalid_es_request_timeout
 invalid_es_page_size invalid_capture_budget pit_id_missing pit_id_invalid
 pit_sort_cursor_invalid invalid_source_catalog_role source_catalog_evidence_missing
-invalid_recent_window_count invalid_recent_start_time'''.split())
+invalid_recent_window_count invalid_recent_start_time storage_digest_definition_mismatch
+storage_index_definition_mismatch storage_primary_key_definition_mismatch
+storage_requires_deterministic_collation invalid_storage_layout'''.split())
 OWN_FILES=frozenset(('viewer_elastic.py','viewer_online.py','viewer_data.py',
-    'viewer_contract.py','viewer_semantic_index.py','run_viewer_pilot.py','viewer_service_sync.py','viewer_service_catalog.py'))
+    'viewer_contract.py','viewer_semantic_index.py','run_viewer_pilot.py','viewer_service_sync.py','viewer_service_catalog.py',
+    'viewer_storage_keys.py','viewer_projection_writes.py'))
 
 
 def _chain(error):

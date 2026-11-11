@@ -363,22 +363,17 @@ def publish_capture(db,path,start,end,*,mode='forward',epoch_ns=None,fault=None,
         else:
             keys=affected_closure(db,db._ingest_impacted)
             impacted=len(keys);bootstrap=False
-            added_requests=0
-            for begin in range(0,len(keys),500):
-                batch=keys[begin:begin+500]
-                existing=db.one('SELECT COUNT(*) AS n FROM viewer_requests WHERE request_key IN ('+
-                    ','.join('?' for _ in batch)+')',batch)['n']
-                added_requests+=len(batch)-existing
-            if keys:
+            with db.publication_projection_delta(keys) as added_requests:
                 # Existing requests can make index probes cost more than the
                 # original semijoin. Use them only for sparse forward work.
                 existing_requests=len(keys)-added_requests
-                use_indexed_scope=mode=='forward' and existing_requests*100<=len(keys)
-                db.rebuild(request_keys=keys,commit=False,use_indexed_scope=use_indexed_scope)
-                stage('after_requests')
-                db.rebuild_payment_contract(request_keys=keys,commit=False,reuse_projection_events=True)
-                stage('after_relations')
-                db.reconcile_semantic_requests(keys,commit=False)
+                if keys:
+                    use_indexed_scope=mode=='forward' and existing_requests*100<=len(keys)
+                    db.rebuild(request_keys=keys,commit=False,use_indexed_scope=use_indexed_scope)
+                    stage('after_requests')
+                    db.rebuild_payment_contract(request_keys=keys,commit=False,reuse_projection_events=True)
+                    stage('after_relations')
+                    db.reconcile_semantic_requests(keys,commit=False)
         stage('after_semantics')
         # Any new evidence may affect the journey even when its semantic anchor
         # stayed unchanged. Fence every published generation, including rechecks.

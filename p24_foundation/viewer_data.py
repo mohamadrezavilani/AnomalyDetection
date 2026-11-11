@@ -516,7 +516,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 if method not in ('copy_binary','insert_select_ordered','insert_select_unordered'):
                     raise ValueError('invalid_qualification_final_write_method')
                 if method=='copy_binary':
-                    self._copy_ingest_stage_into_table(stage,table,columns,self._INGEST_ORDER[table])
+                    from .viewer_storage_keys import KEYS,detect,digest_sql
+                    order=digest_sql(KEYS[table]) if table in KEYS and detect(self) else self._INGEST_ORDER[table]
+                    self._copy_ingest_stage_into_table(stage,table,columns,order)
                 else:
                     self._insert_ingest_stage_into_table(stage,table,columns,
                         self._INGEST_ORDER[table] if method=='insert_select_ordered' else None)
@@ -673,6 +675,11 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         self.init_payment_contract()
         self.init_capture()
         self.sync_service_catalog()
+        layout=getattr(self,'_qualification_storage_layout','compact_evidence_keys_v1')
+        if layout not in ('legacy','compact_evidence_keys_v1'):raise ValueError('invalid_storage_layout')
+        if layout!='legacy':
+            from .viewer_storage_keys import ensure
+            ensure(self)
 
     def ensure_service_roles(self, paths=None):
         # Discover real HTTP root paths without overwriting operator decisions.
@@ -875,12 +882,13 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
     def backfill_identity_assertions(self):
         """Upgrade existing v0.2.3 raw evidence without reimport or erasure."""
         import zlib
+        from .viewer_storage_keys import exact_origin_join
         query="""SELECT e.origin_key,e.version_key,e.request_key,b.payload
           FROM viewer_events e JOIN viewer_raw_events b
            ON b.origin_key=e.origin_key AND b.version_key=e.version_key
           WHERE e.callpath LIKE ? AND NOT EXISTS(
-            SELECT 1 FROM viewer_links l WHERE l.origin_key=e.origin_key
-               AND l.version_key=e.version_key AND l.link_domain='access_session')"""
+            SELECT 1 FROM viewer_links l WHERE """+exact_origin_join(self,'l','e')+"""
+               AND l.link_domain='access_session')"""
         cur=self.sql(query,('%ud_prc_userSessionHasAccess%',))
         checked=written=0
         while True:
@@ -898,7 +906,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                                         'access_session',token(self.keys,'session',value)))
                 except (ValueError,TypeError,KeyError):continue
             for value in inserts:
-                self.sql('INSERT INTO viewer_links(origin_key,version_key,request_key,link_domain,link_key) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',value)
+                from .viewer_storage_keys import conflict_clause
+                self.sql('INSERT INTO viewer_links(origin_key,version_key,request_key,link_domain,link_key) VALUES(?,?,?,?,?)'+conflict_clause(self,'viewer_links'),value)
             written+=len(inserts)
         self.conn.commit()
         return dict(scanned=checked,assertions_written=written)
@@ -926,7 +935,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 updated+=max(r.rowcount,0)
                 if 'ud_prc_inquiryInvoiceResult2' in call:
                     for domain,value in sql_links(row.get('message','')).items():
-                        self.sql('INSERT INTO viewer_links(origin_key,version_key,request_key,link_domain,link_key) VALUES(?,?,?,?,?) ON CONFLICT DO NOTHING',
+                        from .viewer_storage_keys import conflict_clause
+                        self.sql('INSERT INTO viewer_links(origin_key,version_key,request_key,link_domain,link_key) VALUES(?,?,?,?,?)'+conflict_clause(self,'viewer_links'),
                             (origin,signature,token(self.keys,'request',opaque(row.get('RequestID'))),domain,token(self.keys,domain,value)))
             self.conn.commit()
         return dict(scanned=scanned,updated=updated)
@@ -1035,11 +1045,13 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             cls._single_version_origin_sql(indexed=indexed,cached=cached))
 
     @classmethod
-    def _access_session_conflicts_sql(cls, events, *, scoped=False, indexed=False,cached=False):
+    def _access_session_conflicts_sql(cls, events, *, scoped=False, indexed=False,cached=False,compact=False):
         # The link PK begins with origin/version. Keep both probes correlated
         # to the bounded event relation rather than joining all retained links.
+        from .viewer_storage_keys import digest_sql
+        accelerated=(digest_sql(('origin_key','version_key'),'l')+'='+digest_sql(('origin_key','version_key'),'e')+' AND ') if compact and not cached else ''
         links='''SELECT COUNT(*) FROM '''+('viewer_projection_links' if cached else 'viewer_links')+''' l
-            WHERE l.origin_key=e.origin_key AND l.version_key=e.version_key
+            WHERE '''+accelerated+'''l.origin_key=e.origin_key AND l.version_key=e.version_key
               AND l.link_domain='access_session' AND l.link_key<>e.session_key'''
         access=('('+links+')>0' if indexed else 'EXISTS('+links.replace('COUNT(*)','1')+')')
         scope=' AND request_key IN (SELECT request_key FROM viewer_projection_scope)' if scoped else ''
@@ -1239,7 +1251,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         # Session field. Disagreement is explicit and never forcibly relinked.
         self.progress('rebuild_access_session_conflicts')
         access_started=time.monotonic()
-        self.sql(self._access_session_conflicts_sql(events,scoped=scoped,indexed=scoped and not self.sqlite,cached=scoped and not self.sqlite))
+        from .viewer_storage_keys import detect
+        self.sql(self._access_session_conflicts_sql(events,scoped=scoped,indexed=scoped and not self.sqlite,cached=scoped and not self.sqlite,compact=detect(self)))
         self.progress('rebuild_access_session_conflicts_complete',seconds=round(time.monotonic()-access_started,3))
         # Actions remain separate per HTTP RequestID, including manual retries.
         self.progress('rebuild_service_roles')
@@ -1339,7 +1352,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 AND source.version_key=e.version_key AND source.link_domain='platform_payment'
                 AND source.request_key IS NOT NULL OFFSET 0) l'''
         else:
-            link_source='viewer_links l JOIN '+events+' e ON e.origin_key=l.origin_key AND e.version_key=l.version_key'
+            from .viewer_storage_keys import exact_origin_join
+            link_source='viewer_links l JOIN '+events+' e ON '+exact_origin_join(self,'l','e')
         clean_links=self.all("""SELECT l.link_domain,l.link_key,l.request_key,e.origin_key,e.version_key
           FROM """+link_source+"""
           WHERE l.request_key IS NOT NULL AND l.link_domain='platform_payment'

@@ -63,6 +63,8 @@ jobs:
           tests.test_viewer_scoped_fetch
           tests.test_viewer_finalized_projection
           tests.test_viewer_final_semantic_index
+          tests.test_viewer_storage_keys_pg
+          tests.test_viewer_direct_web
       - name: AD compatibility and unit regressions
         working-directory: AnomalyDetection
         env:
@@ -83,4 +85,4 @@ jobs:
       - name: Recheck byte preservation with Windows Git conversion enabled
         run: git -c core.autocrlf=true -c core.eol=crlf checkout -- Start_Viewer.cmd Start_Viewer_Standard.cmd tools/viewer.ps1
       - name: Exact bytes and real Windows process handles
-        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing tests.test_viewer_lan_access
+        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing tests.test_viewer_lan_access tests.test_viewer_direct_web
