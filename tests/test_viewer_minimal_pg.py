@@ -119,7 +119,7 @@ class NativeMinimalPublicationTests(unittest.TestCase):
             reader.execute('ROLLBACK');self.assertEqual(count(),2)
             probe=observer.Reader(reader)
             for statement in (observer.STATE_SQL,observer.RECEIPTS_SQL,observer.RESUMES_SQL,
-                    observer.ACTIVITY_SQL,observer.TABLES_SQL,observer.INDEXES_SQL,*observer.COUNTERS.values()):
+                    observer.ACTIVITY_SQL,observer.TABLES_SQL,observer.AD_COUNTERS_SQL,observer.INDEXES_SQL,*observer.COUNTERS.values()):
                 self.assertEqual(probe.optional(statement)['status'],'READ')
             guard=probe.rows("SELECT current_setting('transaction_read_only') AS read_only")
             self.assertEqual(guard,[{'read_only':'on'}])

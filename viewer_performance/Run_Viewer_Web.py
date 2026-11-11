@@ -1,6 +1,7 @@
 """Serve the existing Viewer without schema/catalog initialization or a worker."""
 from __future__ import annotations
 import argparse
+import ipaddress
 import json
 from pathlib import Path
 import runpy
@@ -43,33 +44,40 @@ def check_existing(opts,*,database_factory=None):
         if not set(REQUIRED)<=present:raise ValueError('start_existing_viewer_worker_first')
 
 
-def serve_existing(opts,*,factory=None):
+def serve_existing(opts,*,factory=None,host='127.0.0.1'):
     if factory is None:
         from p24_foundation.viewer_ui import create_viewer_app
         factory=create_viewer_app
-    app=factory(opts)
-    app.run(host='127.0.0.1',port=5021,use_reloader=False,debug=False)
+    address=ipaddress.ip_address(host)
+    if address.is_loopback:app=factory(opts)
+    else:app=factory(opts,lan_host=str(address))
+    app.run(host=str(address),port=5021,use_reloader=False,debug=False)
 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[1])
+    parser.add_argument('--host',default='127.0.0.1',help='Loopback or the server private IPv4 address for LAN access')
     args=parser.parse_args(argv);project=args.project_root.resolve()
     sys.path.insert(0,str(project))
     try:
         from p24_foundation.viewer_runtime import runtime_source_digest
         declared=json.loads((project/'RELEASE_MANIFEST.json').read_text(encoding='utf-8-sig'))['runtime_source_sha256']
         if runtime_source_digest(project)!=declared:raise ValueError('viewer_runtime_manifest_mismatch')
+        address=ipaddress.ip_address(args.host)
+        if not address.is_loopback and not any(address in ipaddress.ip_network(n) for n in ('10.0.0.0/8','172.16.0.0/12','192.168.0.0/16')):
+            raise ValueError('viewer_lan_host_must_be_private_ipv4')
         opts=existing_options(project);check_existing(opts)
-        print(json.dumps({'status':'VIEWER_WEB_STARTING','url':'http://127.0.0.1:5021/',
+        print(json.dumps({'status':'VIEWER_WEB_STARTING','url':f'http://{address}:5021/',
             'schema_initialized':False,'worker_started':False}),flush=True)
-        serve_existing(opts)
+        serve_existing(opts,host=str(address))
         return 0
     except KeyboardInterrupt:return 130
     except Exception as exc:
         failure={'error_type':type(exc).__name__}
         if isinstance(exc,ValueError) and str(exc) in ('existing_viewer_keys_required','existing_offline_database_required',
-                'only_p24_design_viewer_allowed','start_existing_viewer_worker_first','viewer_runtime_manifest_mismatch'):
+                'only_p24_design_viewer_allowed','start_existing_viewer_worker_first','viewer_runtime_manifest_mismatch',
+                'viewer_lan_host_must_be_private_ipv4'):
             failure['code']=str(exc)
         if type(getattr(exc,'errno',None)) is int:failure['errno']=exc.errno
         print(json.dumps({'status':'VIEWER_WEB_START_FAILED','failure':failure}));return 2

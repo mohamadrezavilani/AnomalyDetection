@@ -18,6 +18,8 @@ TARGET=100*FIVE_NS
 
 class Cursor:
     def __init__(self,cursor):self.cursor=cursor
+    @property
+    def rowcount(self):return self.cursor.rowcount
     def fetchone(self):
         row=self.cursor.fetchone()
         return dict(row) if row is not None else None
@@ -36,7 +38,7 @@ class Database:
           CREATE TABLE anomaly_detection.adp_window_members(start_ns INTEGER,request_key TEXT,body TEXT);
           CREATE TABLE anomaly_detection.adp_facts(request_key TEXT PRIMARY KEY,details TEXT,revision INTEGER,anchor_key TEXT,source_present INTEGER,state TEXT);
           CREATE TABLE anomaly_detection.adp_population(service_path TEXT,start_ns INTEGER,body TEXT,content_digest TEXT,PRIMARY KEY(service_path,start_ns));
-          CREATE TABLE anomaly_detection.adp_scenario_jobs(scope_key TEXT PRIMARY KEY,kind TEXT,entity_key TEXT,service_path TEXT,target_ns INTEGER,version INTEGER DEFAULT 1,processed_version INTEGER DEFAULT 0,dirty INTEGER DEFAULT 1,due_ns INTEGER DEFAULT 0);
+          CREATE TABLE anomaly_detection.adp_scenario_jobs(scope_key TEXT PRIMARY KEY,kind TEXT,entity_key TEXT,service_path TEXT,target_ns INTEGER,version INTEGER DEFAULT 1,processed_version INTEGER DEFAULT 0,dirty INTEGER DEFAULT 1,due_ns INTEGER DEFAULT 0,claimed_version INTEGER NOT NULL DEFAULT 0);
           CREATE TABLE anomaly_detection.adp_case_signals(case_key TEXT,target_ns INTEGER,state TEXT,qualified INTEGER,review_eligible INTEGER,end_ns INTEGER);
           CREATE TABLE anomaly_detection.adp_case_feedback(case_key TEXT,id INTEGER,case_revision INTEGER,reviewed_end_ns INTEGER,label TEXT);
           CREATE TABLE anomaly_detection.adp_cases(case_key TEXT,revision INTEGER);
@@ -110,9 +112,32 @@ class PopulationInvalidationTests(unittest.TestCase):
         self.assertEqual(self.job('edge')['version'],8)
         for key in ('before','after','unrelated'):
             self.assertEqual(self.job(key)['version'],7)
-        # Even an already dirty/in-flight job needs a new input version.
+        # A deferred dirty job must wake for its new input.
         self.assertTrue(self.job('shared')['dirty'])
         self.assertEqual(self.job('shared')['version'],8)
+
+    def test_pending_updates_coalesce_but_an_inflight_read_is_invalidated_once(self):
+        raw=self.store.raw
+        raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET due_ns=0 WHERE scope_key=%s',('shared',))
+        scenario_store.changed_many(self.store,[(self.services[0],TARGET)])
+        self.assertEqual(self.job('shared')['version'],7)
+        raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET claimed_version=version WHERE scope_key=%s',('shared',))
+        scenario_store.changed_many(self.store,[(self.services[0],TARGET)])
+        self.assertEqual(self.job('shared')['version'],8)
+        scenario_store.changed_many(self.store,[(self.services[0],TARGET)])
+        self.assertEqual(self.job('shared')['version'],8)
+        self.assertEqual(self.job('shared')['claimed_version'],7)
+
+    def test_profile_changes_do_not_invalidate_canonical_or_technical_traffic(self):
+        raw=self.store.raw
+        service=self.services[0]
+        raw.execute("INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,service_path,target_ns,dirty) VALUES('technical','traffic',%s,%s,FALSE)",(service,TARGET))
+        canonical_key=scenario_store.scope_key('canonical_traffic',service,service,TARGET)
+        scenario_store.changed(self.store,[service],TARGET,profile_only=True)
+        self.assertEqual(self.job('technical')['version'],1)
+        self.assertFalse(self.job('technical')['dirty'])
+        self.assertEqual(self.job(canonical_key)['version'],7)
+        self.assertFalse(self.job(canonical_key)['dirty'])
 
     def test_unchanged_publication_does_not_dirty_an_already_evaluated_scenario(self):
         self.run_population()

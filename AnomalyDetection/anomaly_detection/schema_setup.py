@@ -83,6 +83,17 @@ def ensure(raw,statements):
             actual=tables[name][col]['default']
             needed=actual not in (expected,expected+'::text')
             if needed:tables[name][col]['default']=expected
-        if needed:raw.execute(query);report['executed']+=1
+        if needed:
+            if kind=='index' and name=='adp_scenario_invalidatable':
+                # The existing queue can be large. Only this one-time owned
+                # index build gets a bounded DDL budget. Savepoint rollback
+                # restores the caller's setting on failure as well.
+                with raw.transaction():
+                    previous=raw.execute("SELECT current_setting('statement_timeout') AS budget").fetchone()['budget']
+                    raw.execute("SET LOCAL statement_timeout='120s'")
+                    raw.execute(query)
+                    raw.execute("SELECT set_config('statement_timeout',%s,TRUE)",(previous,))
+            else:raw.execute(query)
+            report['executed']+=1
         else:report['skipped_existing']+=1
     return report

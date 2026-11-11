@@ -51,11 +51,11 @@ def refresh_points(store,target,proof,rows):
     before=[dict(r) for r in store.raw.execute('SELECT service_path,kind,session_key,value,qualified FROM anomaly_detection.adp_service_reference_points WHERE start_ns=%s',(target,)).fetchall()]
     incoming=[{'service_path':r['service'],'kind':r['kind'],'session_key':r['session'],'value':r['n'],'qualified':r['valid']} for r in values]
     changed=canonical(sorted(before,key=lambda r:(r['service_path'],r['kind'],r['session_key'])))!=canonical(sorted(incoming,key=lambda r:(r['service_path'],r['kind'],r['session_key'])))
-    store.raw.execute('DELETE FROM anomaly_detection.adp_service_reference_points WHERE start_ns=%s',(target,))
-    if values:
+    if changed:store.raw.execute('DELETE FROM anomaly_detection.adp_service_reference_points WHERE start_ns=%s',(target,))
+    if changed and values:
         store.raw.execute("INSERT INTO anomaly_detection.adp_service_reference_points SELECT v->>'service',v->>'kind',v->>'session',"
             "(v->>'at')::bigint,(v->>'n')::integer,(v->>'valid')::boolean FROM jsonb_array_elements(%s::jsonb) AS v",(canonical(values),))
-    store.raw.execute('INSERT INTO anomaly_detection.adp_service_reference_scopes VALUES(%s,%s) ON CONFLICT(start_ns) DO UPDATE SET stamp=excluded.stamp',
+    store.raw.execute('INSERT INTO anomaly_detection.adp_service_reference_scopes VALUES(%s,%s) ON CONFLICT(start_ns) DO UPDATE SET stamp=excluded.stamp WHERE adp_service_reference_scopes.stamp IS DISTINCT FROM excluded.stamp',
                       (target,canonical({k:proof.get(k) for k in ('namespace','stream_key','keys_fingerprint','generation','semantic_generation','scope_contract','source_finality')})))
     if changed:
         from .model_queue import reference_changed

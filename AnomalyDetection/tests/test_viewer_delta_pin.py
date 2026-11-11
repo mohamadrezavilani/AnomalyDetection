@@ -2,10 +2,16 @@
 import unittest
 from anomaly_detection.source_profiles import (R3_RUNTIME,R31_RUNTIME,R32_RUNTIME,R32_FILES,
     R31_VIEWER_DATA,r31_overlay_allowed,r32_release_allowed,SUPPORTED_RUNTIMES,
-    R33_RUNTIME,R33_FILES,r33_release_allowed)
+    R33_RUNTIME,R33_FILES,r33_release_allowed,R34_RUNTIME,R34_FILES,r34_release_allowed)
 
 
 class ViewerDeltaPinTests(unittest.TestCase):
+    def test_lan_runtime_has_its_own_exact_manifest_and_file_count(self):
+        self.assertIn(R34_RUNTIME,SUPPORTED_RUNTIMES)
+        self.assertTrue(r34_release_allowed(R34_RUNTIME,R34_RUNTIME,R34_FILES))
+        self.assertFalse(r34_release_allowed(R33_RUNTIME,R34_RUNTIME,R34_FILES))
+        self.assertFalse(r34_release_allowed(R34_RUNTIME,R33_RUNTIME,R34_FILES))
+        self.assertFalse(r34_release_allowed(R34_RUNTIME,R34_RUNTIME,R34_FILES+1))
     def test_exact_new_manifest_runtime_and_inventory_are_required(self):
         self.assertIn(R32_RUNTIME,SUPPORTED_RUNTIMES)
         self.assertTrue(r32_release_allowed(R32_RUNTIME,R32_RUNTIME,R32_FILES))

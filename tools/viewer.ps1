@@ -4,6 +4,8 @@ param(
     [string]$Action = 'Start',
     [string]$Config = '',
     [string]$Python = '',
+    [ValidatePattern('^[0-9a-fA-F:.]+$')]
+    [string]$WebHost = '127.0.0.1',
     [switch]$ResumeCheckpoint
 )
 $ErrorActionPreference = 'Stop'
@@ -69,7 +71,7 @@ switch ($Action) {
     }
     'Web' {
         if ($viewerConfig -ieq (Join-Path $viewerRoot 'viewer_config.local.py')) {
-            & $viewerPython '.\viewer_performance\Run_Viewer_Web.py' --project-root $viewerRoot
+            & $viewerPython '.\viewer_performance\Run_Viewer_Web.py' --project-root $viewerRoot --host $WebHost
         } else {
             & $viewerPython '.\tools\run_behavior_viewer.py' serve --config $viewerConfig --progress
         }
@@ -85,10 +87,32 @@ switch ($Action) {
         foreach ($viewerMode in @('Worker','Web')) {
             $viewerArguments = @('-NoProfile','-ExecutionPolicy','Bypass','-NoExit',
                 '-File', ('"' + $PSCommandPath + '"'), '-Action', $viewerMode,
-                '-Config', ('"' + $viewerConfig + '"'), '-Python', ('"' + $viewerPython + '"'))
+                '-Config', ('"' + $viewerConfig + '"'), '-Python', ('"' + $viewerPython + '"'),
+                '-WebHost', ('"' + $WebHost + '"'))
             if ($ResumeCheckpoint) { $viewerArguments += '-ResumeCheckpoint' }
             Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -WorkingDirectory $viewerRoot -ArgumentList $viewerArguments
         }
-        Write-Output 'Viewer started. Open http://127.0.0.1:5021/ . Stop each window with Ctrl+C.'
+        $viewerAuthority = $WebHost
+        if ($WebHost.Contains(':')) { $viewerAuthority = '[' + $WebHost + ']' }
+        $viewerUrl = 'http://' + $viewerAuthority + ':5021/'
+        $viewerExpectedSha = (Get-Content -Raw -LiteralPath (Join-Path $viewerRoot 'RELEASE_MANIFEST.json') | ConvertFrom-Json).runtime_source_sha256
+        $viewerDeadline = (Get-Date).AddSeconds(12)
+        $viewerReady = $false
+        while ((Get-Date) -lt $viewerDeadline) {
+            try {
+                $viewerHealth = (Invoke-WebRequest -Uri ($viewerUrl + 'healthz') -UseBasicParsing -TimeoutSec 1).Content | ConvertFrom-Json
+                if ($viewerHealth.status -eq 'ok' -and $viewerHealth.service -eq 'viewer' -and $viewerHealth.runtime_sha256 -eq $viewerExpectedSha) {
+                    $viewerReady = $true
+                    break
+                }
+            } catch { }
+            Start-Sleep -Milliseconds 250
+        }
+        if ($viewerReady) {
+            Write-Output (@{status='VIEWER_WEB_READY';url=$viewerUrl;worker='CHECK_WORKER_WINDOW_FOR_PUBLISHED'} | ConvertTo-Json -Compress)
+        } else {
+            Write-Output (@{status='VIEWER_WEB_NOT_CONFIRMED';url=$viewerUrl;next='READ_WEB_WINDOW_OUTPUT'} | ConvertTo-Json -Compress)
+            exit 2
+        }
     }
 }

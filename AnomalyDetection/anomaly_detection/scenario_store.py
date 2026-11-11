@@ -23,8 +23,10 @@ DDL=[
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_service_sample_members(service_path TEXT NOT NULL,start_ns BIGINT NOT NULL,request_key TEXT NOT NULL,PRIMARY KEY(service_path,start_ns,request_key))''',
  'CREATE INDEX IF NOT EXISTS adp_service_sample_request ON anomaly_detection.adp_service_sample_members(request_key,start_ns)',
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_scenario_jobs(scope_key TEXT PRIMARY KEY,kind TEXT NOT NULL,entity_key TEXT NOT NULL,service_path TEXT NOT NULL,target_ns BIGINT NOT NULL,version BIGINT NOT NULL DEFAULT 1,processed_version BIGINT NOT NULL DEFAULT 0,dirty BOOLEAN NOT NULL DEFAULT TRUE,due_ns BIGINT NOT NULL DEFAULT 0,evaluation TEXT,last_evaluated_ns BIGINT)''',
+ 'ALTER TABLE anomaly_detection.adp_scenario_jobs ADD COLUMN IF NOT EXISTS claimed_version BIGINT NOT NULL DEFAULT 0',
  'CREATE INDEX IF NOT EXISTS adp_scenario_job_due ON anomaly_detection.adp_scenario_jobs(dirty,due_ns,target_ns DESC,scope_key)',
  'CREATE INDEX IF NOT EXISTS adp_scenario_job_service ON anomaly_detection.adp_scenario_jobs(service_path,target_ns)',
+ 'CREATE INDEX IF NOT EXISTS adp_scenario_invalidatable ON anomaly_detection.adp_scenario_jobs(service_path,target_ns) WHERE NOT dirty OR due_ns<>0 OR (claimed_version>0 AND claimed_version=version)',
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_traffic_counts(service_path TEXT NOT NULL,start_ns BIGINT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(service_path,start_ns))''',
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_traffic_staging(lane TEXT NOT NULL,start_ns BIGINT NOT NULL,origin_key TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(lane,start_ns,origin_key))''',
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_traffic_members(start_ns BIGINT NOT NULL,request_key TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(start_ns,request_key))''',
@@ -34,11 +36,31 @@ DDL=[
 def scope_key(kind,entity,service,target):return 'sc1:'+digest([kind,entity,service,target])
 
 
+def invalidatable(alias=''):
+    """One dirty epoch suffices until the single writer claims its inputs.
+
+    A running evaluation must fail CAS on the first newer input. A deferred
+    job must wake promptly. An unclaimed, ready dirty job already reads the
+    latest owned inputs when claimed; rewriting it again adds no information.
+    """
+    p=alias+'.' if alias else ''
+    return f'(NOT {p}dirty OR {p}due_ns<>0 OR ({p}claimed_version>0 AND {p}claimed_version={p}version))'
+
+
+def record_queue_write(store,path,cursor):
+    rows=getattr(cursor,'rowcount',None)
+    if type(rows) is not int or rows<0:return
+    if not hasattr(store,'scenario_queue_activity'):store.scenario_queue_activity={}
+    counter=store.scenario_queue_activity.setdefault(path,{'calls':0,'rows_affected':0})
+    counter['calls']+=1;counter['rows_affected']+=rows
+
+
 def enqueue(store,kind,entity,service,target,*,invalidate=True):
     """Ensure a scope exists; callers may already have invalidated its inputs."""
     key=scope_key(kind,entity,service,target)
-    conflict='DO UPDATE SET version=adp_scenario_jobs.version+1,dirty=TRUE,due_ns=0' if invalidate else 'DO NOTHING'
-    store.raw.execute('INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns) VALUES(%s,%s,%s,%s,%s) ON CONFLICT(scope_key) '+conflict,(key,kind,entity,service,target))
+    conflict=('DO UPDATE SET version=adp_scenario_jobs.version+1,dirty=TRUE,due_ns=0 WHERE '+invalidatable('adp_scenario_jobs')) if invalidate else 'DO NOTHING'
+    cursor=store.raw.execute('INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns) VALUES(%s,%s,%s,%s,%s) ON CONFLICT(scope_key) '+conflict,(key,kind,entity,service,target))
+    record_queue_write(store,'enqueue',cursor)
 
 
 def changed(store,services,at,*,profile_only=False):
@@ -47,10 +69,11 @@ def changed(store,services,at,*,profile_only=False):
     # Canonical traffic reads the population census and case feedback. A
     # profile write alone changes neither input. Member profile revisions
     # are already checked separately by the case feedback token.
-    job_filter = " AND kind<>'canonical_traffic'" if profile_only else ""
-    store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET version=version+1,dirty=TRUE,due_ns=0 '
-                      'WHERE service_path=ANY(%s) AND target_ns>=%s AND target_ns<=%s'+job_filter,
+    job_filter = " AND kind NOT IN ('canonical_traffic','traffic')" if profile_only else ""
+    cursor=store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET version=version+1,dirty=TRUE,due_ns=0 '
+                      'WHERE '+invalidatable()+' AND service_path=ANY(%s) AND target_ns>=%s AND target_ns<=%s'+job_filter,
                       (sorted(set(services)|{'*'}),at//FIVE_NS*FIVE_NS,at+HORIZON))
+    record_queue_write(store,'profile_change' if profile_only else 'scope_change',cursor)
 
 
 def changed_many(store,contexts):
@@ -60,7 +83,8 @@ def changed_many(store,contexts):
             before=bounds.get(name,(at,at));bounds[name]=(min(before[0],at),max(before[1],at))
     if bounds:
         incoming=canonical([{'service':s,'first':lo//FIVE_NS*FIVE_NS,'last':hi+HORIZON} for s,(lo,hi) in bounds.items()])
-        store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs j SET version=version+1,dirty=TRUE,due_ns=0 FROM jsonb_to_recordset(%s::jsonb) AS x(service TEXT,first BIGINT,last BIGINT) WHERE j.service_path=x.service AND j.target_ns>=x.first AND j.target_ns<=x.last',(incoming,))
+        cursor=store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs j SET version=version+1,dirty=TRUE,due_ns=0 FROM jsonb_to_recordset(%s::jsonb) AS x(service TEXT,first BIGINT,last BIGINT) WHERE '+invalidatable('j')+' AND j.service_path=x.service AND j.target_ns>=x.first AND j.target_ns<=x.last',(incoming,))
+        record_queue_write(store,'batched_scope_change',cursor)
 
 
 def queue_keys(store,keys,priority=0,*,force=False):
@@ -69,7 +93,11 @@ def queue_keys(store,keys,priority=0,*,force=False):
     if not force:
         present={r['request_key'] for r in store.raw.execute("SELECT request_key FROM anomaly_detection.adp_profiles WHERE request_key=ANY(%s) AND body::jsonb->>'version'=%s",(keys,PROFILE_VERSION)).fetchall()}
         keys=[k for k in keys if k not in present]
-    if keys:store.raw.execute('INSERT INTO anomaly_detection.adp_profile_tasks(request_key,priority) SELECT x,%s FROM unnest(%s::text[]) x ON CONFLICT(request_key) DO UPDATE SET priority=GREATEST(adp_profile_tasks.priority,excluded.priority)'+(',due_ns=0' if force else ''),(priority,keys))
+    if keys:
+        update='priority=GREATEST(adp_profile_tasks.priority,excluded.priority)'+(',due_ns=0' if force else '')
+        needed='adp_profile_tasks.priority<excluded.priority'+(' OR adp_profile_tasks.due_ns<>0' if force else '')
+        cursor=store.raw.execute('INSERT INTO anomaly_detection.adp_profile_tasks(request_key,priority) SELECT x,%s FROM unnest(%s::text[]) x ON CONFLICT(request_key) DO UPDATE SET '+update+' WHERE '+needed,(priority,keys))
+        record_queue_write(store,'profile_task_enqueue',cursor)
 
 
 def publish_scope(store,session,service,target,keys,*,independent=False,available=True,authority='canonical'):
@@ -230,8 +258,15 @@ def process_one(store,now):
     order='ASC' if turn%4==0 or turn%8==3 else 'DESC'
     choose="AND kind='longitudinal' " if turn%4==3 else "AND kind<>'longitudinal' "
     query='SELECT * FROM anomaly_detection.adp_scenario_jobs WHERE dirty=TRUE AND due_ns<=%s '
-    row=store.raw.execute(query+choose+'ORDER BY target_ns '+order+',scope_key LIMIT 1',(now,)).fetchone()
-    if not row:row=store.raw.execute(query+'ORDER BY target_ns '+order+',scope_key LIMIT 1',(now,)).fetchone()
+    # The global owned writer lease permits reclaim after a crash. Claim is
+    # committed BEFORE input reads so a concurrent feedback/input mutation
+    # knows that a CAS-visible evaluation is now in flight.
+    with store.transaction():
+        row=store.raw.execute(query+choose+'ORDER BY target_ns '+order+',scope_key LIMIT 1 FOR UPDATE',(now,)).fetchone()
+        if not row:row=store.raw.execute(query+'ORDER BY target_ns '+order+',scope_key LIMIT 1 FOR UPDATE',(now,)).fetchone()
+        if row:
+            cursor=store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET claimed_version=version WHERE scope_key=%s',(row['scope_key'],))
+            record_queue_write(store,'claim',cursor)
     if not row:store.active_scenario_scope=None;return None
     job=dict(row);store.active_scenario_scope=job['scope_key'];store.save_state('scenario_schedule_v1',{'turn':turn+1});target=job['target_ns'];service=job['service_path']
     from . import scenario_models as models
@@ -276,7 +311,9 @@ def process_one(store,now):
             'reference_frame_floor_ns':min((f['start_ns'] for f in frames if f['start_ns']<target),default=None)}
     elif job['kind']=='canonical_traffic':
         r=store.raw.execute('SELECT body FROM anomaly_detection.adp_population WHERE service_path=%s AND start_ns=%s',(service,target)).fetchone()
-        if not r:return None
+        if not r:
+            store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET claimed_version=0,due_ns=%s WHERE scope_key=%s AND version=%s',(now+30_000_000_000,job['scope_key'],job['version']))
+            return {'status':'WAITING_FOR_INPUT','scope_key':job['scope_key']}
         def volume(body):return {'start_ns':body['start_ns'],'requests':body['executions'],'sessions':body['sessions'],'complete':body['covered'],'count_scope':'canonical_meaningful_executions'}
         current=volume(json.loads(r['body']));past=[volume(v) for v in volume_history(store,service,target,canonical_scope=True)]
         decisions=models.traffic(service,target,current,past)
@@ -284,7 +321,9 @@ def process_one(store,now):
         for d in decisions:d.pop('request_keys',None);d['count_scope']='canonical_meaningful_executions'
     elif job['kind']=='traffic':
         r=store.raw.execute('SELECT body FROM anomaly_detection.adp_traffic_counts WHERE service_path=%s AND start_ns=%s',(service,target)).fetchone()
-        if not r:return None
+        if not r:
+            store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET claimed_version=0,due_ns=%s WHERE scope_key=%s AND version=%s',(now+30_000_000_000,job['scope_key'],job['version']))
+            return {'status':'WAITING_FOR_INPUT','scope_key':job['scope_key']}
         current=json.loads(r['body']);past=volume_history(store,service,target,canonical_scope=False)
         decisions=models.traffic(service,target,current,past)
         input_receipt={'current':current,'history_digest':digest(past),'history_points':len(past)}
@@ -331,7 +370,9 @@ def process_one(store,now):
         d['model_id']='scm1:'+digest(model_identity)
     with store.transaction():
         locked=store.raw.execute('SELECT version FROM anomaly_detection.adp_scenario_jobs WHERE scope_key=%s FOR UPDATE',(job['scope_key'],)).fetchone()
-        if not locked or locked['version']!=job['version']:return {'status':'INPUT_CHANGED_RETRY'}
+        if not locked or locked['version']!=job['version']:
+            store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET claimed_version=0 WHERE scope_key=%s AND claimed_version=%s',(job['scope_key'],job['version']))
+            return {'status':'INPUT_CHANGED_RETRY','scope_key':job['scope_key']}
         from .cases import replace_scope,normal_observations
         for d in decisions:
             model={'method_version':METHOD_VERSION,'cutoff_ns':target,'service_path':service,'family':d['family'],
@@ -341,7 +382,8 @@ def process_one(store,now):
         replace_scope(store,job['scope_key'],decisions,now,source_kind='feature',job={'session_key':job['entity_key'] if job['kind'] in ('actor','longitudinal') else None,'target_ns':target,'version':job['version']})
         normal_observations(store,decisions,now,entity_key=job['entity_key'] if job['kind'] in ('actor','longitudinal') else None)
         pending=any(d['status']=='INSUFFICIENT_DATA' for d in decisions)
-        store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET dirty=FALSE,processed_version=version,evaluation=%s,last_evaluated_ns=%s,due_ns=%s WHERE scope_key=%s',(canonical({'decisions':decisions,'models_executed':True,'pending_evidence_or_reference':pending,'input_receipt':input_receipt}),now,now+30_000_000_000,job['scope_key']))
+        cursor=store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET dirty=FALSE,claimed_version=0,processed_version=version,evaluation=%s,last_evaluated_ns=%s,due_ns=%s WHERE scope_key=%s',(canonical({'decisions':decisions,'models_executed':True,'pending_evidence_or_reference':pending,'input_receipt':input_receipt}),now,now+30_000_000_000,job['scope_key']))
+        record_queue_write(store,'complete',cursor)
     return {'status':'APPLIED','scope_key':job['scope_key'],'decisions':decisions}
 
 
