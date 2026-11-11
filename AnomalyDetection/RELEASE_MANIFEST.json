@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261111-COMPACT-KEYS",
-  "source_sha256": "21f90bf1e5e0f9d8ba54733942607958bf2fc9362d489f84683232f01766aa49",
+  "source_sha256": "4ba13ce90845bd518e117b584294d2ab792ec6dc52e6f4117ef0e5b0ce687b03",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -95,7 +95,7 @@
     "anomaly_detection/service_reference.py": "c65cc7e09b190ac843f92ae4d65b93ec3612f7ec563de77f0e15ea41d8d401fa",
     "anomaly_detection/service_sampling.py": "816d7a599b8bc4f5ad516904edf2b54fae05e4a7a0131c166f23e91edb06e515",
     "anomaly_detection/snapshot.py": "b43d97f0bb21585e6b0a64289adef6764471081dae1efe065c0fc162c65b6a20",
-    "anomaly_detection/source_profiles.py": "71c5e7cecca26408bf31a1c1b752b3aab035f0b2b4df7942cb6da4bb03a9d4b8",
+    "anomaly_detection/source_profiles.py": "54a00a0305040d112cbcca3d723fe1e326eaf6bde1dee95b7cd9c687b391c526",
     "anomaly_detection/source_scheduling.py": "77d101b13f2dd42d8a576679be61af097372ed0a03cd7dc54f18f991b6352106",
     "anomaly_detection/sql_budget.py": "9fbe210df15555412601f3352e66b188e119052b22e3e2c8f42e40bb90784b6a",
     "anomaly_detection/temporal.py": "88b5bc27a8bf526ab9ef73a94728509d62cb6ecb2b733d27c10c341cae9f6b78",
@@ -272,7 +272,7 @@
     "normal_statement_budget_restored": true
   },
   "viewer_compact_storage_compatibility": {
-    "runtime_sha256": "34abf7b163769d31471ebbb9bb1d6e4d283b89e0271123337d81207c28e038fb",
+    "runtime_sha256": "f992eb57d6d53cc205aac9f25b03deee1bc3bc606ff56b701fb213ead04e35da",
     "runtime_files": 181,
     "method_thresholds_changed": false,
     "source_evidence_fields_changed": false

@@ -110,6 +110,24 @@ class FinalizedProjectionTests(unittest.TestCase):
         self.assertEqual(route_projection_statement(statement, {'viewer_requests': 'viewer_build_requests'}),
                          "SELECT 'viewer_requests', 'it''s viewer_actions' FROM viewer_build_requests")
 
+    def test_failed_delta_classification_cleans_context_and_same_connection_can_retry(self):
+        self.publish_both([log(1, 'first', 'Services.v1/WaterBills Line:1', 'POST (G00000 | successful)')])
+        db = self.databases[1]
+        before = snapshot(db)
+        row = log(2, 'next', 'Services.v1/WaterBills Line:1', 'POST (G00000 | successful)')
+        row['@timestamp'] = iso(START + FIVE_NS + 1_000_000_000)
+        path = verified_file(self.root/'classification-failure.gz', [row], START + FIVE_NS)
+        def fail(event):
+            if event['stage'] == 'projection_delta':
+                raise RuntimeError('classification_interrupted')
+        db.progress_callback = fail
+        with self.assertRaisesRegex(RuntimeError, 'classification_interrupted'):
+            publish_capture(db, path, START + FIVE_NS, START + 2*FIVE_NS)
+        self.assertIsNone(db._prior_projection_requests)
+        self.assertEqual(before, snapshot(db))
+        db.progress_callback = None
+        self.assertEqual(publish_capture(db, path, START + FIVE_NS, START + 2*FIVE_NS)['status'], 'PUBLISHED')
+
     def test_postgres_scoped_delete_uses_indexable_array_only_for_small_fraction(self):
         for table, key, size, estimate, strategy in (
             ('viewer_requests', 'request_key', 26_000, 1_300_000, 'array'),

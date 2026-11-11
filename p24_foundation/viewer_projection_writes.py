@@ -62,9 +62,9 @@ class ProjectionWritesMixin:
                     'WHERE r.request_key=k.request_key OFFSET 0) r')
             prior.update(r['request_key'] for r in self.all(query, batch))
         self._prior_projection_requests = tuple(sorted(prior))
-        self.progress('projection_delta', requests=len(keys), existing_requests=len(prior),
-                      new_requests=len(keys) - len(prior))
         try:
+            self.progress('projection_delta', requests=len(keys), existing_requests=len(prior),
+                          new_requests=len(keys) - len(prior))
             yield len(keys) - len(prior)
         finally:
             self._prior_projection_requests = None

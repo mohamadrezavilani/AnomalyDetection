@@ -190,7 +190,14 @@ def restore_original_keys(db):
                 if present:
                     continue
                 name = table + '_restore_key_v1'
-                status = db.one('SELECT indisvalid FROM pg_index WHERE indexrelid=to_regclass(?)', ('public.' + name,))
+                status = db.one('''SELECT i.indisvalid,i.indisunique,
+                    i.indrelid=CAST(? AS regclass) AND i.indexprs IS NULL AND i.indpred IS NULL
+                      AND i.indnatts=i.indnkeyatts AS correct_table,
+                    ARRAY(SELECT a.attname FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum,n)
+                      JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum ORDER BY k.n) AS columns
+                    FROM pg_index i WHERE i.indexrelid=to_regclass(?)''', (table, 'public.' + name))
+                if status and (not status['correct_table'] or not status['indisunique'] or tuple(status['columns']) != keys):
+                    raise ValueError('storage_index_definition_mismatch')
                 if status and not status['indisvalid']:
                     db.sql('DROP INDEX CONCURRENTLY public.' + name)
                     status = None

@@ -62,7 +62,8 @@ class NativeStorageKeysTests(unittest.TestCase):
                 for table, keys in KEYS.items()}
 
     def test_online_upgrade_retains_all_original_values_and_reduces_index_working_set(self):
-        self.fixture()
+        count = 50000
+        self.fixture(count=count)
         before = self.rows()
         old_bytes = {table: self.db.one('SELECT pg_relation_size(CAST(? AS regclass)) AS n',
                      (table + '_pkey',))['n'] for table in KEYS}
@@ -78,7 +79,7 @@ class NativeStorageKeysTests(unittest.TestCase):
         for name in INDEXES:
             self.assertEqual(self.db.one('SELECT indisvalid,indisready FROM pg_index WHERE indexrelid=CAST(? AS regclass)',
                 (name,)), {'indisvalid': True, 'indisready': True})
-        print('STORAGE_NATIVE_RESULT=' + json.dumps({'rows_per_table': 6000, 'old_primary_index_bytes': old_bytes,
+        print('STORAGE_NATIVE_RESULT=' + json.dumps({'rows_per_table': count, 'old_primary_index_bytes': old_bytes,
             'new_unique_and_origin_index_bytes': sizes, 'upgrade_seconds': round(time.monotonic() - began, 3),
             'all_original_rows_equal': True, 'production_capacity': 'NOT_MEASURED'}))
         self.db.conn.commit()
@@ -103,6 +104,7 @@ class NativeStorageKeysTests(unittest.TestCase):
         self.db.conn.commit()
         restore_original_keys(self.db)
         self.assertEqual(before, self.rows())
+
         for table, keys in KEYS.items():
             row = before[table][0]
             columns = list(row)
@@ -111,6 +113,13 @@ class NativeStorageKeysTests(unittest.TestCase):
                 [row[c] for c in columns])
         self.db.conn.commit()
         self.assertEqual(before, self.rows())
+
+    def test_restore_rejects_an_unrecognized_index_instead_of_repurposing_it(self):
+        self.upgrade()
+        self.db.sql('CREATE UNIQUE INDEX viewer_links_restore_key_v1 ON viewer_links(request_key)')
+        self.db.conn.commit()
+        with self.assertRaisesRegex(ValueError, 'storage_index_definition_mismatch'):
+            restore_original_keys(self.db)
 
     def test_interrupted_concurrent_build_preserves_old_primary_keys_and_resumes(self):
         seen = []
