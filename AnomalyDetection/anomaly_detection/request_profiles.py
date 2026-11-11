@@ -143,19 +143,28 @@ def read(source,key):
         if not request:return {'source':meta,'profile':None,'request_key':key}
         semantic=q(SELECT+'WHERE s.request_key=%s',(key,),cap=1)
         events=q('SELECT * FROM (SELECT e.origin_key,e.version_key,e.request_key,e.session_key,e.ip_key,e.at_ns,e.callpath,e.kind,e.code,'
-            '(SELECT COUNT(*) FROM public.viewer_events c WHERE c.origin_key=e.origin_key) AS variant_count,'
+            '(SELECT COUNT(*) FROM (SELECT 1 FROM public.viewer_events c WHERE c.origin_key=e.origin_key LIMIT 2) versions) AS variant_count,'
             'EXISTS(SELECT 1 FROM public.viewer_raw_events b WHERE b.origin_key=e.origin_key AND b.version_key=e.version_key) AS raw_available '
-            'FROM public.viewer_events e WHERE e.request_key=%s ORDER BY e.at_ns,e.origin_key LIMIT 513) x',(key,),cap=513)
+            'FROM (SELECT * FROM public.viewer_events WHERE request_key=%s ORDER BY at_ns,origin_key LIMIT 513) e) x',(key,),cap=513)
         links=q('SELECT l.*,NOT EXISTS(SELECT 1 FROM public.viewer_events e WHERE e.origin_key=l.origin_key AND e.version_key<>l.version_key) AS qualified FROM public.viewer_links l WHERE l.request_key=%s',(key,),cap=256)
         root=api_path(request[0].get('root_call'));candidates=[e for e in events if api_path(e.get('callpath'))==root or e.get('kind')=='provider']
         raw={}
         from p24_foundation.parser import json_section,field
         if len(candidates)<=12:
-            for e in candidates:
-                if e['variant_count']==1 and e['raw_available']:
-                    body=facade.get_raw(e['origin_key'],e['version_key'])
+            import zlib
+            pairs=[(e['origin_key'],e['version_key']) for e in candidates if e['variant_count']==1 and e['raw_available']]
+            if pairs:
+                # One bounded batch of exact PK probes, not twelve separate
+                # source round trips or a global raw-body join.
+                bodies=q('SELECT k.origin_key,k.version_key,b.payload FROM (VALUES '+
+                    ','.join('(%s,%s)' for _ in pairs)+') k(origin_key,version_key) CROSS JOIN LATERAL '
+                    '(SELECT payload FROM public.viewer_raw_events r WHERE r.origin_key=k.origin_key '
+                    'AND r.version_key=k.version_key OFFSET 0) b',
+                    [part for pair in pairs for part in pair],cap=len(pairs))
+                for item in bodies:
+                    body=json.loads(zlib.decompress(bytes(item['payload'])).decode('utf-8'))
                     message,status=field(body,'message') if body else (None,'missing')
-                    raw[(e['origin_key'],e['version_key'])]={'message':message if status=='present' else None}
+                    raw[(item['origin_key'],item['version_key'])]={'message':message if status=='present' else None}
         profile=build(request[0],events,raw,links,json_section,semantic=semantic[0] if semantic else None)
         # Read existing raw identity columns; never infer an IP from provider
         # messages or rewrite the pinned Viewer's identity contract.
