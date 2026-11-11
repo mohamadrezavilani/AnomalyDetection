@@ -7,6 +7,7 @@ import subprocess
 import socket
 import sys
 import unittest
+from unittest.mock import patch
 
 spec=importlib.util.spec_from_file_location('viewer_control',Path(__file__).resolve().parents[1]/'viewer_performance/Stop_Viewer_Worker.py')
 control=importlib.util.module_from_spec(spec);spec.loader.exec_module(control)
@@ -26,7 +27,7 @@ class ProcessControlTests(unittest.TestCase):
         self.lease={'pid':7001,'backend_start':STAMP,'client_port':40001,'client_addr':'127.0.0.1'}
         self.process=Process();self.cleaned=[]
     def run_control(self,*,stop=False,lease=None,owner=None):
-        return control.control(lease or (lambda:dict(self.lease)),owner or (lambda _:2002),
+        return control.control(lease or (lambda:dict(self.lease) if not self.cleaned else None),owner or (lambda _:2002),
             lambda pid:self.process,self.cleaned.append,stop=stop,self_pid=9999)
 
     def test_inspection_never_stops_or_cleans_a_session(self):
@@ -85,6 +86,67 @@ class ProcessControlTests(unittest.TestCase):
         self.run_control(stop=True,lease=lambda:next(observations))
         self.assertTrue(self.process.stopped);self.assertFalse(self.cleaned)
 
+    def test_delayed_server_release_is_observed_after_the_python_process_exits(self):
+        observations=iter([dict(self.lease)]*5+[None])
+        now=[0.0]
+        result=control.control(lambda:next(observations),lambda _:2002,lambda _:self.process,
+            lambda value:True,stop=True,self_pid=9999,clock=lambda:now[0],wait=lambda n:now.__setitem__(0,now[0]+n))
+        self.assertEqual(result['status'],'VIEWER_WORKER_STOPPED')
+        self.assertTrue(result['postgres_lock_released']);self.assertTrue(self.process.stopped)
+        self.assertGreater(result['release_observation_seconds'],0)
+
+    def test_timeout_retains_verified_stop_information_and_can_recover_without_a_client(self):
+        now=[0.0]
+        result=control.control(lambda:dict(self.lease),lambda _:2002,lambda _:self.process,
+            lambda value:False,stop=True,self_pid=9999,release_timeout=1,
+            clock=lambda:now[0],wait=lambda n:now.__setitem__(0,now[0]+n))
+        self.assertEqual(result['status'],'VIEWER_BACKEND_STOP_PENDING')
+        self.assertTrue(result['process_stopped']);self.assertFalse(result['postgres_lock_released'])
+        self.assertEqual(result['postgres_backend_pid'],7001)
+        observations=iter((dict(self.lease),dict(self.lease),None))
+        opened=[];cleaned=[]
+        recovered=control.control(lambda:next(observations),lambda _:None,opened.append,
+            lambda value:cleaned.append(value) or True,stop=True)
+        self.assertEqual(recovered['status'],'VIEWER_BACKEND_STOPPED')
+        self.assertIsNone(recovered['process_stopped']);self.assertTrue(recovered['postgres_lock_released'])
+        self.assertEqual(cleaned,[self.lease]);self.assertFalse(opened)
+
+    def test_readonly_orphan_inspection_has_no_stop_side_effect(self):
+        opened=[];cleaned=[]
+        result=control.control(lambda:dict(self.lease),lambda _:None,opened.append,cleaned.append)
+        self.assertEqual(result['status'],'VIEWER_BACKEND_WITHOUT_CLIENT')
+        self.assertFalse(opened);self.assertFalse(cleaned)
+
+    def test_tcp_query_failure_is_not_misclassified_as_an_absent_client(self):
+        with patch.object(control.subprocess,'run',return_value=subprocess.CompletedProcess([],1,'','access denied')):
+            with self.assertRaisesRegex(control.ControlError,'TCP_OWNER_UNAVAILABLE'):
+                control.tcp_owner(40001,5432)
+        with patch.object(control.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'[]','')) as run:
+            self.assertIsNone(control.tcp_owner(40001,5432))
+            self.assertNotIn('SilentlyContinue',run.call_args.args[0][-1])
+
+    def test_bootstrap_script_runs_from_stdin_before_installation_is_updated(self):
+        path=Path(control.__file__)
+        result=subprocess.run([sys.executable,'-B','-','--project-root',str(path.parents[1]),'--help'],
+            input=path.read_text(encoding='utf-8'),capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('--project-root',result.stdout)
+
+    def test_a_client_appearing_during_orphan_recovery_blocks_server_termination(self):
+        owners=iter((None,3003));cleaned=[]
+        with self.assertRaisesRegex(control.ControlError,'VIEWER_LEASE_OR_TCP_OWNER_CHANGED'):
+            control.control(lambda:dict(self.lease),lambda _:next(owners),lambda _:self.process,cleaned.append,stop=True)
+        self.assertFalse(cleaned);self.assertFalse(self.process.stopped)
+
+    def test_owner_replacement_while_waiting_is_reported_without_stopping_replacement(self):
+        observations=iter([dict(self.lease)]*3+[dict(self.lease,pid=9009)])
+        cleaned=[]
+        result=control.control(lambda:next(observations),lambda _:2002,lambda _:self.process,
+            lambda value:cleaned.append(value) or True,stop=True,self_pid=9999)
+        self.assertEqual(result['status'],'VIEWER_STOP_BLOCKED_REPLACEMENT_OWNER')
+        self.assertEqual(result['replacement_postgres_backend_pid'],9009)
+        self.assertEqual(cleaned,[self.lease])
+
 
 @unittest.skipUnless(os.name=='nt','Windows kernel API test')
 class WindowsHandleTests(unittest.TestCase):
@@ -100,8 +162,9 @@ class WindowsHandleTests(unittest.TestCase):
                     value={'pid':7001,'backend_start':datetime.now(timezone.utc),
                         'client_port':address[1],'client_addr':'127.0.0.1'}
                     cleaned=[]
-                    result=control.control(lambda:dict(value),lambda p:control.tcp_owner(p,port),
-                        lambda p:control.WindowsProcess(p,allow_stop=True),cleaned.append,stop=True)
+                    def cleanup(lease):cleaned.append(lease);return True
+                    result=control.control(lambda:dict(value) if not cleaned else None,lambda p:control.tcp_owner(p,port),
+                        lambda p:control.WindowsProcess(p,allow_stop=True),cleanup,stop=True)
                     self.assertEqual(result['python_pid'],child.pid)
                     self.assertTrue(result['process_stopped']);self.assertEqual(cleaned,[value])
                 self.assertIsNotNone(child.wait(timeout=5))

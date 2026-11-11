@@ -1,7 +1,9 @@
 """Identify or explicitly stop only the local Viewer singleton's Python client.
 
-No PID from an old file is trusted. Match the live PostgreSQL singleton lease
-to its Windows TCP client, open that exact process, then verify both again.
+No PID from an old file is trusted. Match a connected singleton to its Windows
+TCP client and stable process handle. A disconnected leftover SQL backend can
+be ended only through its unchanged live lease and two successful TCP-absence
+observations; that path makes no claim that an OS process was identified.
 Default is observation; --stop aborts the current uncommitted publication.
 Committed evidence and checkpoint are retained. The PostgreSQL service is not stopped.
 """
@@ -15,6 +17,7 @@ from pathlib import Path
 import runpy
 import subprocess
 import sys
+import time
 
 GUARD_SQL='SELECT current_database() AS db,host(inet_server_addr()) AS address,inet_server_port() AS port'
 LEASE_SQL="""SELECT a.pid,a.backend_start,a.client_port,host(a.client_addr) AS client_addr
@@ -42,14 +45,15 @@ def loopback(value):
 def tcp_owner(client_port,server_port):
     if not all(type(v) is int and 1<=v<=65535 for v in (client_port,server_port)):
         raise ControlError('INVALID_LOCAL_TCP_PORTS')
-    command=("$ErrorActionPreference='Stop'; $rows=@(Get-NetTCPConnection -State Established "
-        f"-LocalPort {client_port} -RemotePort {server_port} -ErrorAction SilentlyContinue | "
+    command=("$ErrorActionPreference='Stop'; $rows=@(Get-NetTCPConnection -State Established -ErrorAction Stop | "
+        f"Where-Object {{ $_.LocalPort -eq {client_port} -and $_.RemotePort -eq {server_port} }} | "
         "Select-Object OwningProcess,RemoteAddress); ConvertTo-Json -InputObject $rows -Compress")
     result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',command],
         capture_output=True,text=True,timeout=10)
     if result.returncode:raise ControlError('TCP_OWNER_UNAVAILABLE')
     rows=json.loads(result.stdout or '[]')
     owners={int(row['OwningProcess']) for row in rows if loopback(row['RemoteAddress'])}
+    if not owners:return None
     if len(owners)!=1:raise ControlError('LOCAL_TCP_OWNER_NOT_UNIQUE')
     return owners.pop()
 
@@ -97,18 +101,58 @@ def same_lease(a,b):
 def terminate_lease(connection,value):
     rows=connection.execute('''SELECT pg_terminate_backend(a.pid,5000) AS terminated
         FROM pg_catalog.pg_stat_activity a WHERE a.pid=%s AND a.backend_start=%s
-        AND a.datname=current_database() AND EXISTS(SELECT 1 FROM pg_catalog.pg_locks l
+        AND a.client_port=%s AND host(a.client_addr)=%s
+        AND a.backend_type='client backend' AND a.datname=current_database()
+        AND EXISTS(SELECT 1 FROM pg_catalog.pg_locks l
           WHERE l.pid=a.pid AND l.locktype='advisory' AND l.classid=240026 AND l.objid=1
           AND l.objsubid=2 AND l.mode='ExclusiveLock' AND l.granted)''',
-        (value['pid'],value['backend_start'])).fetchall()
+        (value['pid'],value['backend_start'],value['client_port'],value['client_addr'])).fetchall()
     return bool(rows and rows[0]['terminated'])
 
 
-def control(lease,owner,open_process,cleanup,*,stop=False,self_pid=None):
+def observe_release(lease,first,result,*,timeout=20,clock=time.monotonic,wait=time.sleep):
+    """Observe the exact server lease until released, replaced, or still pending.
+
+    PostgreSQL can retain a lease briefly after its Windows client has exited.
+    A termination acknowledgement is not itself a lock-release observation.
+    """
+    began=clock()
+    while True:
+        current=lease()
+        if current is None:
+            result.update(status='VIEWER_WORKER_STOPPED' if result['process_stopped'] else 'VIEWER_BACKEND_STOPPED',
+                          postgres_lock_released=True,release_observation_seconds=round(clock()-began,3))
+            return result
+        if not same_lease(first,current):
+            result.update(status='VIEWER_STOP_BLOCKED_REPLACEMENT_OWNER',postgres_lock_released=False,
+                          replacement_postgres_backend_pid=current.get('pid'))
+            return result
+        if clock()-began>=timeout:
+            result.update(status='VIEWER_BACKEND_STOP_PENDING',postgres_lock_released=False,
+                          release_observation_seconds=round(clock()-began,3),retry_same_stop_command=True)
+            return result
+        wait(min(.25,max(0,timeout-(clock()-began))))
+
+
+def control(lease,owner,open_process,cleanup,*,stop=False,self_pid=None,
+            release_timeout=20,clock=time.monotonic,wait=time.sleep):
     first=lease()
     if not first:return {'status':'NO_VIEWER_LOCK_OWNER_OBSERVED','process_stopped':False}
     if not first.get('client_addr') or not loopback(first['client_addr']):raise ControlError('VIEWER_CLIENT_NOT_LOCAL')
     pid=owner(first['client_port'])
+    if pid is None:
+        # Recovery after a previous stop killed Python but its SQL backend was
+        # still rolling back. Absence must be observed twice around a fresh,
+        # unchanged server lease. Never open/kill a PID from an old status file.
+        if not same_lease(first,lease()) or owner(first['client_port']) is not None:
+            raise ControlError('VIEWER_LEASE_OR_TCP_OWNER_CHANGED')
+        result={'status':'VIEWER_BACKEND_WITHOUT_CLIENT','python_pid':None,
+            'postgres_backend_pid':first['pid'],'process_stopped':None,
+            'client_process_observed':False,'checkpoint_seek_performed':False,'committed_data_deleted':False}
+        if stop:
+            result['backend_termination_acknowledged']=bool(cleanup(first))
+            return observe_release(lease,first,result,timeout=release_timeout,clock=clock,wait=wait)
+        return result
     if pid==(os.getpid() if self_pid is None else self_pid):raise ControlError('REFUSE_SELF_STOP')
     process=open_process(pid)
     try:
@@ -124,15 +168,22 @@ def control(lease,owner,open_process,cleanup,*,stop=False,self_pid=None):
             # A long SQL operation may not notice a lost TCP client yet. Only
             # its unchanged, verified lease may be terminated through PG.
             remaining=lease()
-            if same_lease(first,remaining):cleanup(first)
-            result.update(status='VIEWER_WORKER_STOPPED',process_stopped=True)
+            result.update(process_stopped=True,client_process_observed=True)
+            if same_lease(first,remaining):
+                result['backend_termination_acknowledged']=bool(cleanup(first))
+            elif remaining is not None:
+                result.update(status='VIEWER_STOP_BLOCKED_REPLACEMENT_OWNER',postgres_lock_released=False,
+                              replacement_postgres_backend_pid=remaining.get('pid'))
+                return result
+            return observe_release(lease,first,result,timeout=release_timeout,clock=clock,wait=wait)
         return result
     finally:process.close()
 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[1])
+    default_project=Path.cwd() if __file__ in ('<stdin>','-') else Path(__file__).resolve().parents[1]
+    parser.add_argument('--project-root',type=Path,default=default_project)
     parser.add_argument('--stop',action='store_true')
     args=parser.parse_args(argv);project=args.project_root.resolve();root=project/'AnomalyDetection'
     stage='verify_platform'
@@ -168,9 +219,10 @@ def main(argv=None):
             stage='identify_and_control_viewer'
             result=control(lease,lambda port:tcp_owner(port,guard['port']),
                 lambda pid:WindowsProcess(pid,allow_stop=args.stop),cleanup,stop=args.stop)
-            stage='verify_viewer_lease_released'
-            if args.stop and lease() is not None:raise ControlError('VIEWER_LOCK_OWNER_STILL_PRESENT')
-        print(json.dumps(result));return 0
+        print(json.dumps(result))
+        if args.stop and result['status'] not in ('VIEWER_WORKER_STOPPED','VIEWER_BACKEND_STOPPED','NO_VIEWER_LOCK_OWNER_OBSERVED'):
+            return 2
+        return 0
     except Exception as exc:
         result={'status':'VIEWER_CONTROL_BLOCKED','stage':stage,'error_type':type(exc).__name__}
         if isinstance(exc,ControlError):result['code']=str(exc)
