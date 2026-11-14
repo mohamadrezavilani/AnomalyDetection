@@ -238,7 +238,7 @@ class PaymentContractMixin:
             query+=''' FROM viewer_projection_scope s CROSS JOIN LATERAL
                 (SELECT source.* FROM viewer_events source WHERE source.request_key=s.request_key OFFSET 0) e'''
         else:query+=' FROM viewer_events e'
-        if payload:query+=' JOIN viewer_raw_events b USING(origin_key,version_key)'
+        if payload:query+=' JOIN viewer_raw_events b ON b.origin_key=e.origin_key AND b.version_key=e.version_key'
         query+=' WHERE e.request_key IS NOT NULL'+scope+' AND '+clean+' AND ('+ ' OR '.join('e.callpath LIKE ?' for _ in CONTRACT_PATTERNS)+')'
         if payload:query+=' ORDER BY e.origin_key,e.version_key'
         elif scoped and not self.sqlite:

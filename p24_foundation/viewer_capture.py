@@ -50,7 +50,8 @@ class CaptureMixin:
         self.conn.commit()
 
     def compatible_known_capture(self,origin,row,*,known_versions=None,raw_lookup=None):
-        versions=known_versions if known_versions is not None else self.all('SELECT version_key FROM viewer_events WHERE origin_key=?',(origin,))
+        from .viewer_origin_storage import parameter_equal
+        versions=known_versions if known_versions is not None else self.all('SELECT version_key FROM viewer_events WHERE '+parameter_equal(self,'origin_key'),(origin,))
         for old in versions:
             original=raw_lookup.get((origin,old['version_key'])) if raw_lookup is not None else self.get_raw(origin,old['version_key'])
             if original and compatible_capture(original,row):return old['version_key']

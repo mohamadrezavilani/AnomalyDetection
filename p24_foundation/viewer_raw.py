@@ -39,8 +39,9 @@ class RawEvidenceMixin:
         if getattr(self,'_ingest_buffers',None) is not None:
             self._ingest_insert('viewer_raw_events',(origin,version,*self.raw_fields(row)))
             return
+        from .viewer_origin_storage import raw_conflict
         self.sql('''INSERT INTO viewer_raw_events(origin_key,version_key,raw_request_id,raw_session_id,raw_ip,payload)
-                    VALUES (?,?,?,?,?,?) ON CONFLICT(origin_key,version_key) DO NOTHING''',
+                    VALUES (?,?,?,?,?,?)'''+raw_conflict(self),
                  (origin,version,*self.raw_fields(row)))
 
     def hydrate_raw(self,paths):
@@ -85,11 +86,11 @@ class RawEvidenceMixin:
                           FROM STDIN''') as copy:
                             for n,row in enumerate(rows):
                                 copy.write_row((*self.raw_keys(row,sha256,n),*self.raw_fields(row)))
+                    from .viewer_origin_storage import raw_conflict
                     self.sql('''INSERT INTO viewer_raw_events(origin_key,version_key,raw_request_id,raw_session_id,raw_ip,payload)
                        SELECT t.origin_key,t.version_key,t.raw_request_id,t.raw_session_id,t.raw_ip,t.payload
                        FROM viewer_raw_stage t JOIN viewer_events e
-                       ON e.origin_key=t.origin_key AND e.version_key=t.version_key
-                       ON CONFLICT(origin_key,version_key) DO NOTHING''')
+                       ON e.origin_key=t.origin_key AND e.version_key=t.version_key'''+raw_conflict(self))
                     self.sql('DROP TABLE viewer_raw_stage')
                 after=self.one('SELECT COUNT(*) AS n FROM viewer_raw_events')['n']
                 self.conn.commit()
@@ -105,7 +106,9 @@ class RawEvidenceMixin:
         return dict(events=total,raw_events=stored,missing=total-stored,complete=(total==stored))
 
     def get_raw(self,origin,version):
-        row=self.one('SELECT payload FROM viewer_raw_events WHERE origin_key=? AND version_key=?',(origin,version))
+        from .viewer_origin_storage import parameter_equal
+        row=self.one('SELECT payload FROM viewer_raw_events WHERE '+parameter_equal(self,'origin_key')+
+            ' AND '+parameter_equal(self,'version_key'),(origin,version))
         if not row:return None
         return json.loads(zlib.decompress(bytes(row['payload'])).decode('utf-8'))
 

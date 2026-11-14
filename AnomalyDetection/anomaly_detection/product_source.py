@@ -56,7 +56,7 @@ class ProductSource:
             query=None
             try:
                 raw.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
-                query=BudgetQuery(raw)
+                query=BudgetQuery(raw,project=self.project)
                 yield query
                 require(installed_source_identity(self.project)==self.identity,'SOURCE_RUNTIME_CHANGED')
             finally:

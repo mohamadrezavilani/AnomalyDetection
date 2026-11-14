@@ -135,7 +135,9 @@ def initialize_live(db):
        resumed_from_ns BIGINT NOT NULL,resumed_at_ns BIGINT NOT NULL,
        stream_key TEXT NOT NULL,keys_fingerprint TEXT NOT NULL,reason TEXT NOT NULL,
        CHECK(resumed_from_ns>previous_next_ns))''')
-    db.sql('CREATE INDEX IF NOT EXISTS vei_origin_request ON viewer_events(origin_key,request_key)')
+    from .viewer_origin_storage import active as binary_origins
+    if not binary_origins(db):
+        db.sql('CREATE INDEX IF NOT EXISTS vei_origin_request ON viewer_events(origin_key,request_key)')
     db.conn.commit()
 
 
