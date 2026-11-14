@@ -131,6 +131,41 @@ class NativeMinimalPublicationTests(unittest.TestCase):
             guard=probe.rows("SELECT current_setting('transaction_read_only') AS read_only")
             self.assertEqual(guard,[{'read_only':'on'}])
 
+    def test_fresh_measurement_sees_only_committed_forwards_after_its_snapshot(self):
+        import importlib.util
+        import psycopg
+        from psycopg.rows import dict_row
+        from p24_foundation.viewer_online import single_worker
+        path=Path(__file__).resolve().parents[1]/'AnomalyDetection/validation/observe_viewer_live.py'
+        spec=importlib.util.spec_from_file_location('fresh_native_observer',path)
+        observer=importlib.util.module_from_spec(spec);spec.loader.exec_module(observer)
+        self.publish([log(1,'old','Services.v1/WaterBills Line:1','POST (G00000 | successful)')])
+        with single_worker(self.db,self.root/'worker.lock'):
+            with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row,
+                    options='-c default_transaction_read_only=on -c statement_timeout=2000 -c lock_timeout=100') as raw:
+                reader=observer.Reader(raw);fresh=observer.FreshForward()
+                def observe(t):
+                    value=reader.optional(observer.FRESH_SQL,fresh.parameters())
+                    self.assertEqual(value['status'],'READ',value)
+                    fresh.observe(value,started=t,finished=t+.1,observed_ns=int(t*1e9))
+                    self.assertIsNone(fresh.failure)
+                observe(0)
+                self.assertEqual(fresh.summary(.1)['sample_windows'],0)
+                def before_commit(stage):
+                    if stage=='after_relations':
+                        observe(2)
+                        self.assertEqual(fresh.summary(2.1)['sample_windows'],0)
+                self.publish([],START+FIVE_NS,fault=before_commit)
+                observe(10)
+                self.assertEqual(fresh.summary(10.1)['sample_windows'],1)
+                self.publish([],START+2*FIVE_NS)
+                observe(210)
+                result=fresh.summary(210.1)
+                self.assertEqual(result['sample_windows'],2)
+                self.assertAlmostEqual(result['observed_forward_windows_per_hour'],18)
+                self.assertEqual(reader.rows('SELECT COUNT(*) AS n FROM public.viewer_live_receipts')[0]['n'],3)
+                self.assertEqual(reader.rows("SELECT current_setting('transaction_read_only') AS ro"),[{'ro':'on'}])
+
     def test_process_crash_rolls_back_then_retry_and_postcommit_crash_remains_committed(self):
         self.publish([log(1,'first','Services.v1/WaterBills Line:1','POST (G00000 | successful)')])
         row=log(2,'second','Services.v1/ElectricBills Line:1','POST (G00000 | successful)')
