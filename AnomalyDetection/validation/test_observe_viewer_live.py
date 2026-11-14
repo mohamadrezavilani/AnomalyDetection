@@ -1,5 +1,6 @@
 """Read-only isolation, privacy and honest capacity calculations for live probe."""
 import importlib.util
+import copy
 import json
 from pathlib import Path
 import tempfile
@@ -13,6 +14,16 @@ def receipt(window, published_seconds, *, elapsed=475):
     return {'start_ns': window * probe.FIVE_NS, 'end_ns': (window + 1) * probe.FIVE_NS,
         'mode': 'forward', 'published_ns': int(published_seconds * probe.SECOND_NS),
         'elapsed_seconds': elapsed, 'capture_seconds': 9}
+
+
+def fresh_snapshot(count=0, **changes):
+    rows = [dict(start_ns=(i+1)*probe.FIVE_NS, end_ns=(i+2)*probe.FIVE_NS,
+        generation=9+i, published_ns=100-i) for i in range(count)]
+    value = dict(stream_key='private-stream', keys_fingerprint='private-keys', start_ns=0,
+        next_ns=(count+1)*probe.FIVE_NS, generation=8+count, server_started='boot-1',
+        publishers=[{'pid': 7, 'backend_start': 'worker-1'}], receipts=rows)
+    value.update(changes)
+    return {'status': 'READ', 'value': [value]}
 
 
 class Clock:
@@ -40,6 +51,8 @@ class FakeReader:
                 'viewer_singleton_owner': True, 'wait_event_type': 'IO', 'wait_event': 'DataFileRead'}]
         if sql == probe.RECEIPTS_SQL:
             return [receipt(0, 475), receipt(1, 950)]
+        if sql == probe.FRESH_SQL:
+            return fresh_snapshot()['value']
         return []
 
     def optional(self, sql, parameters=()):
@@ -144,10 +157,120 @@ class ViewerObservationTests(unittest.TestCase):
         self.assertEqual(value['latest_viewer_state']['backlog_windows'], 98)
         self.assertFalse(value['checkpoint_seek_performed'])
         self.assertFalse(value['database_modified'])
+        self.assertEqual(value['throughput']['throughput_status'], 'INSUFFICIENT_FRESH_COMMITS')
+        self.assertNotIn('observed_forward_windows_per_hour', value['throughput'])
+        self.assertEqual(value['historical_throughput']['sample_windows'], 2)
         serialized = json.dumps(value)
         for secret in ('never-export', 'private-request', 'SELECT * FROM'):
             self.assertNotIn(secret, serialized)
         self.assertTrue(all(sql.startswith('SELECT ') for sql in reader.statements))
+
+    def test_collect_stops_on_two_fresh_commits_without_using_old_receipts(self):
+        class PublishingReader(FakeReader):
+            calls = 0
+            def rows(self, sql, parameters=()):
+                if sql == probe.FRESH_SQL:
+                    self.statements.append(sql)
+                    result = fresh_snapshot(self.calls)['value']
+                    self.calls += 1
+                    return result
+                return super().rows(sql, parameters)
+        reader = PublishingReader(); clock = Clock(); messages = []
+        value = probe.collect(reader, seconds=1800, forward_windows=2, allowed_names=set(),
+            clock=clock.read, wall=lambda: 1, wait=clock.wait, progress=messages.append)
+        self.assertEqual(clock.now, 6)
+        self.assertEqual(value['measurement_stop_reason'], 'TARGET_FRESH_WINDOWS_OBSERVED')
+        self.assertEqual(value['throughput']['sample_windows'], 2)
+        self.assertEqual(value['throughput']['observed_forward_windows_per_hour'], 1200)
+        self.assertFalse(value['throughput']['historical_receipts_used'])
+
+
+class FreshForwardTests(unittest.TestCase):
+    def setUp(self):
+        self.fresh = probe.FreshForward()
+        self.observe(fresh_snapshot(), 0)
+
+    def observe(self, result, started, finished=None):
+        self.fresh.observe(result, started=started, finished=started if finished is None else finished,
+            observed_ns=int(started*probe.SECOND_NS))
+
+    def test_only_intervals_between_new_commits_count_and_wall_times_do_not_set_rate(self):
+        # Receipt timestamps deliberately go backwards; the publisher's old
+        # 475-second timers and the first partial cycle cannot set fresh rate.
+        self.observe(fresh_snapshot(1), 100)
+        self.observe(fresh_snapshot(2), 300)
+        result = self.fresh.summary(300)
+        self.assertEqual(result['observed_forward_windows_per_hour'], 18)
+        self.assertEqual(result['interval_seconds_min'], 0)
+        self.assertEqual(result['interval_seconds_max'], 300)
+        self.assertTrue(result['first_completion_excluded_from_cycle_timing'])
+        self.assertNotIn('private-stream', json.dumps(result))
+        self.assertNotIn('private-keys', json.dumps(result))
+
+    def test_polling_bounds_enclose_commit_latency_instead_of_publisher_precommit_timer(self):
+        self.observe(fresh_snapshot(), 97, 98)
+        self.observe(fresh_snapshot(1), 100, 101)
+        self.observe(fresh_snapshot(1), 297, 298)
+        self.observe(fresh_snapshot(2), 300, 301)
+        result = self.fresh.summary(301)
+        self.assertEqual(result['interval_seconds_min'], 196)
+        self.assertEqual(result['interval_seconds_max'], 204)
+        self.assertEqual(result['throughput_status'], 'FRESH_SAMPLE_EXCEEDS_ARRIVAL')
+        self.assertLess(result['windows_per_hour_min'], 18)
+        self.assertGreater(result['windows_per_hour_max'], 18)
+
+    def test_rechecks_and_repeated_polls_do_not_count_as_forward_progress(self):
+        self.observe(fresh_snapshot(generation=9), 3)
+        value = fresh_snapshot(1, generation=10)
+        value['value'][0]['receipts'][0]['generation'] = 10
+        self.observe(value, 6)
+        value = copy.deepcopy(value); value['value'][0]['generation'] = 11
+        self.observe(value, 9)
+        self.assertEqual(self.fresh.summary(9)['sample_windows'], 1)
+        self.assertEqual(self.fresh.summary(9)['throughput_status'], 'INSUFFICIENT_FRESH_COMMITS')
+
+    def test_worker_restart_reboot_stream_change_or_cursor_regression_invalidate_rate(self):
+        for changes in ({'publishers': [{'pid': 7, 'backend_start': 'reused-pid'}]},
+                {'server_started': 'new-boot'}, {'stream_key': 'new-stream'},
+                {'keys_fingerprint': 'new-keys'}, {'generation': 7}, {'next_ns': 0}):
+            with self.subTest(changes=changes):
+                self.setUp(); self.observe(fresh_snapshot(**changes), 3)
+                result = self.fresh.summary(3)
+                self.assertIn(result['throughput_status'], ('MEASUREMENT_EPOCH_CHANGED', 'SOURCE_CURSOR_REGRESSED'))
+                self.assertNotIn('observed_forward_windows_per_hour', result)
+
+    def test_seek_duplicate_missing_or_rewritten_receipts_do_not_fabricate_rate(self):
+        for kind in ('seek', 'duplicate', 'missing', 'changed'):
+            with self.subTest(kind=kind):
+                self.setUp(); self.observe(fresh_snapshot(1), 3)
+                value = fresh_snapshot(2)
+                rows = value['value'][0]['receipts']
+                if kind == 'seek': rows[1]['start_ns'] += probe.FIVE_NS
+                if kind == 'duplicate': rows[1] = copy.deepcopy(rows[0])
+                if kind == 'missing': del rows[1]
+                if kind == 'changed': rows[0]['published_ns'] += 1
+                self.observe(value, 6)
+                self.assertIsNotNone(self.fresh.failure)
+                self.assertNotIn('observed_forward_windows_per_hour', self.fresh.summary(6))
+
+    def test_unavailable_reads_or_owner_never_claim_zero_throughput(self):
+        for value in ({'status': 'READ_FAILED'}, {'status': 'READ', 'value': []},
+                fresh_snapshot(publishers=[]), fresh_snapshot(publishers=[{'pid': 7, 'backend_start': None}])):
+            with self.subTest(value=value):
+                self.setUp(); self.observe(value, 3)
+                self.assertIsNotNone(self.fresh.failure)
+                self.assertNotIn('observed_forward_windows_per_hour', self.fresh.summary(3))
+
+    def test_two_commits_in_one_poll_have_a_rate_bound_and_no_invented_point_estimate(self):
+        self.observe(fresh_snapshot(2), 3)
+        result = self.fresh.summary(3)
+        self.assertIsNone(result['observed_forward_windows_per_hour'])
+        self.assertEqual(result['windows_per_hour_min'], 1200)
+        self.assertIsNone(result['windows_per_hour_max'])
+
+    def test_receipt_overflow_invalidates_instead_of_reporting_a_partial_population(self):
+        self.observe(fresh_snapshot(257), 3)
+        self.assertEqual(self.fresh.summary(3)['throughput_status'], 'FRESH_RECEIPTS_TRUNCATED')
 
 
 if __name__ == '__main__': unittest.main()

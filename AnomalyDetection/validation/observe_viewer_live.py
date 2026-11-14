@@ -61,6 +61,26 @@ RECEIPTS_SQL = """SELECT start_ns,end_ns,mode,generation,records,new_events,
     ORDER BY start_ns DESC,published_ns DESC LIMIT 24"""
 RESUMES_SQL = """SELECT previous_next_ns,resumed_from_ns,resumed_at_ns
     FROM public.viewer_live_resumes ORDER BY resumed_from_ns DESC LIMIT 32"""
+# One MVCC snapshot ties committed receipts to the durable cursor. The window
+# range uses vlr_window; a new measurement never scans the whole old ledger.
+FRESH_SQL = """SELECT s.stream_key,s.keys_fingerprint,s.start_ns,s.next_ns,s.generation,
+    pg_postmaster_start_time()::text AS server_started,
+    (SELECT json_agg(p) FROM (
+        SELECT a.pid,a.backend_start::text AS backend_start
+        FROM pg_catalog.pg_stat_activity a
+        WHERE a.datname=current_database() AND a.backend_type='client backend'
+          AND EXISTS(SELECT 1 FROM pg_catalog.pg_locks l WHERE l.pid=a.pid
+            AND l.locktype='advisory' AND l.classid=240026 AND l.objid=1
+            AND l.objsubid=2 AND l.mode='ExclusiveLock' AND l.granted
+            AND l.database=(SELECT oid FROM pg_catalog.pg_database WHERE datname=current_database()))
+        ORDER BY a.pid LIMIT 2) p) AS publishers,
+    (SELECT json_agg(r) FROM (
+        SELECT start_ns,end_ns,generation,published_ns
+        FROM public.viewer_live_receipts
+        WHERE start_ns>=COALESCE(%s::bigint,s.next_ns) AND start_ns<s.next_ns
+          AND generation>COALESCE(%s::bigint,s.generation) AND mode='forward'
+        ORDER BY start_ns,generation LIMIT 257) r) AS receipts
+    FROM public.viewer_live_state s WHERE s.id=1"""
 TABLES_SQL = """SELECT s.schemaname,s.relname,s.n_live_tup,s.n_dead_tup,
     s.n_mod_since_analyze,s.seq_scan,s.idx_scan,s.last_autovacuum,s.last_autoanalyze,
     s.last_analyze,c.reltuples AS planner_rows,
@@ -214,6 +234,118 @@ def state_summary(rows, observed_ns):
     return value
 
 
+class FreshForward:
+    """Measure committed forwards seen after a baseline, using a monotonic clock.
+
+    The first completion may contain work done before observation. Only the
+    intervals between fresh completions count toward rate. Polling uncertainty
+    is retained as bounds; publisher wall timestamps/timers do not set rate.
+    """
+    def __init__(self):
+        self.baseline = None
+        self.last = None
+        self.previous_read_started = None
+        self.baseline_finished = None
+        self.baseline_utc = None
+        self.commits = {}
+        self.failure = None
+
+    def parameters(self):
+        return (self.baseline['next_ns'], self.baseline['generation']) if self.baseline else (None, None)
+
+    def observe(self, result, *, started, finished, observed_ns):
+        if self.failure:
+            return
+        if result['status'] != 'READ' or len(result.get('value', [])) != 1:
+            self.failure = 'FRESH_SNAPSHOT_UNAVAILABLE'
+            return
+        current = result['value'][0]
+        publishers = current.get('publishers') or []
+        if len(publishers) != 1 or not publishers[0].get('backend_start'):
+            self.failure = 'PUBLISHER_IDENTITY_UNAVAILABLE'
+            return
+        if self.baseline is None:
+            self.baseline = current
+            self.baseline_finished = finished
+            self.baseline_utc = ns_iso(observed_ns)
+        else:
+            if any(current.get(k) != self.baseline.get(k) for k in
+                   ('stream_key', 'keys_fingerprint', 'start_ns', 'server_started', 'publishers')):
+                self.failure = 'MEASUREMENT_EPOCH_CHANGED'
+                return
+            if current['generation'] < self.last['generation'] or current['next_ns'] < self.last['next_ns']:
+                self.failure = 'SOURCE_CURSOR_REGRESSED'
+                return
+            rows = current.get('receipts') or []
+            if len(rows) > 256:
+                self.failure = 'FRESH_RECEIPTS_TRUNCATED'
+                return
+            expected = self.baseline['next_ns']
+            generation = self.baseline['generation']
+            validated = {}
+            for row in sorted(rows, key=lambda r: (r['start_ns'], r['generation'])):
+                # Repeated forwards, seeks, malformed ranges and missing
+                # receipts must not inflate the number of complete windows.
+                if (row['start_ns'] != expected or row['end_ns'] - row['start_ns'] != FIVE_NS
+                        or not generation < row['generation'] <= current['generation']):
+                    self.failure = 'FRESH_RECEIPTS_NOT_CONTIGUOUS'
+                    return
+                expected = row['end_ns']; generation = row['generation']
+                validated[row['start_ns']] = row
+            if expected != current['next_ns'] or not self.commits.keys() <= validated.keys():
+                self.failure = 'FRESH_RECEIPTS_NOT_RECONCILED'
+                return
+            for key, row in validated.items():
+                if key in self.commits:
+                    if row != self.commits[key]['receipt']:
+                        self.failure = 'FRESH_RECEIPT_CHANGED'
+                        return
+                else:
+                    if row['generation'] <= self.last['generation']:
+                        self.failure = 'FRESH_RECEIPT_PRECEDES_LAST_SNAPSHOT'
+                        return
+                    self.commits[key] = {'receipt': dict(row),
+                        'lower': self.previous_read_started, 'upper': finished}
+        self.last = current
+        self.previous_read_started = started
+
+    def summary(self, finished):
+        result = {'basis': 'COMMIT_VISIBILITY_AFTER_OBSERVATION_BASELINE',
+            'throughput_status': self.failure or 'INSUFFICIENT_FRESH_COMMITS',
+            'historical_receipts_used': False, 'sample_windows': len(self.commits),
+            'arrival_windows_per_hour': 12, 'production_capacity_acceptance': 'NOT_ASSIGNED_BY_OBSERVER',
+            'first_completion_excluded_from_cycle_timing': True,
+            'measurement_started_utc': self.baseline_utc}
+        if self.baseline is not None:
+            result.update(baseline_generation=self.baseline['generation'],
+                baseline_next_ns=self.baseline['next_ns'],
+                elapsed_seconds=round(finished-self.baseline_finished, 3),
+                publisher=dict(self.baseline['publishers'][0]))
+        if self.failure or len(self.commits) < 2:
+            return result
+        commits = sorted(self.commits.values(), key=lambda x: x['receipt']['start_ns'])
+        first, last = commits[0], commits[-1]
+        intervals = len(commits)-1
+        shortest = max(0., last['lower']-first['upper'])
+        longest = last['upper']-first['lower']
+        estimated = last['upper']-first['upper']
+        if longest <= 0:
+            result['throughput_status'] = 'INSUFFICIENT_MONOTONIC_SPAN'
+            return result
+        rate_min = intervals*3600/longest
+        rate_max = intervals*3600/shortest if shortest > 0 else None
+        result.update(measured_intervals=intervals,
+            interval_seconds_min=round(shortest, 3), interval_seconds_max=round(longest, 3),
+            observed_forward_windows_per_hour=round(intervals*3600/estimated, 3) if estimated > 0 else None,
+            windows_per_hour_min=round(rate_min, 3),
+            windows_per_hour_max=round(rate_max, 3) if rate_max is not None else None,
+            rate_is_polling_estimate=True,
+            throughput_status='FRESH_SAMPLE_EXCEEDS_ARRIVAL' if rate_min > 12 else
+                'FRESH_SAMPLE_BELOW_ARRIVAL' if rate_max is not None and rate_max < 12 else
+                'FRESH_SAMPLE_AT_ARRIVAL_BOUNDARY')
+        return result
+
+
 def receipt_summary(rows, backlog=None):
     # One receipt per distinct window; duplicate forwards must not inflate rate.
     windows = {}
@@ -289,7 +421,8 @@ def ad_counter_deltas(before,after,seconds,*,stats_reset=False):
             'counts_are_row_mutations_not_unique_jobs_or_sql_calls':True}
 
 
-def collect(reader, *, seconds, allowed_names, clock=time.monotonic, wall=time.time_ns, wait=time.sleep, progress=lambda _: None):
+def collect(reader, *, seconds, allowed_names, forward_windows=0,
+            clock=time.monotonic, wall=time.time_ns, wait=time.sleep, progress=lambda _: None):
     guard = reader.rows("SELECT current_database() AS database,current_setting('transaction_read_only') AS read_only")
     if not guard or guard[0] != {'database': 'p24_design_viewer', 'read_only': 'on'}:
         raise ValueError('read_only_database_guard_failed')
@@ -306,22 +439,30 @@ def collect(reader, *, seconds, allowed_names, clock=time.monotonic, wall=time.t
             'I/O time counters require the corresponding PostgreSQL timing setting; zero is not proof of fast storage.',
             'Source hashes describe installed files, not already-imported code in a running process.',
             'pg_settings describes this observer session; publisher memory/JIT overrides are not observable here.',
-            'Receipt rates are historical samples, not a sustained capacity qualification.',
+            'historical_throughput describes saved receipts, not this observation or the current hardware.',
+            'throughput uses only fresh commit visibility; polling uncertainty is bounded and this is not sustained capacity qualification.',
             'No SQL, parameters, application names, credentials or user evidence are exported.']}
     report['ad_counters_before']=reader.optional(AD_COUNTERS_SQL);ad_started=clock()
     deadline = clock() + seconds
     next_progress = clock() + 15
+    fresh = FreshForward()
     while True:
         at = wall()
         state = reader.optional(STATE_SQL)
         activity = attempt(lambda: activity_rows(reader.rows(ACTIVITY_SQL), allowed_names))
+        read_started = clock()
+        snapshot = reader.optional(FRESH_SQL, fresh.parameters())
+        fresh.observe(snapshot, started=read_started, finished=clock(), observed_ns=at)
         report['samples'].append({'observed_ns': at, 'observed_utc': ns_iso(at),
             'elapsed_seconds': round(clock() - started, 3), 'viewer_state': state,
             'activity': activity})
+        if forward_windows and (fresh.failure or len(fresh.commits) >= forward_windows):
+            break
         if clock() >= deadline:
             break
         if clock() >= next_progress:
-            progress({'status': 'OBSERVING', 'elapsed_seconds': round(clock() - started, 1)})
+            progress({'status': 'OBSERVING', 'elapsed_seconds': round(clock() - started, 1),
+                'fresh_forward_windows': len(fresh.commits), 'target_forward_windows': forward_windows or None})
             next_progress = clock() + 15
         wait(min(3, max(0, deadline - clock())))
     report['counters_after'] = {name: reader.optional(sql) for name, sql in COUNTERS.items()}
@@ -335,7 +476,10 @@ def collect(reader, *, seconds, allowed_names, clock=time.monotonic, wall=time.t
     state = state_summary(latest['viewer_state']['value'], latest['observed_ns']) if latest['viewer_state']['status'] == 'READ' else None
     report['latest_viewer_state'] = state
     receipts = report['recent_forward_receipts']
-    report['throughput'] = receipt_summary(receipts['value'], state['backlog_windows'] if state else None) if receipts['status'] == 'READ' else {'throughput_status': 'RECEIPTS_UNAVAILABLE'}
+    report['historical_throughput'] = receipt_summary(receipts['value'], state['backlog_windows'] if state else None) if receipts['status'] == 'READ' else {'throughput_status': 'RECEIPTS_UNAVAILABLE'}
+    report['throughput'] = fresh.summary(clock())
+    report['measurement_stop_reason'] = ('FRESH_MEASUREMENT_INVALID' if fresh.failure else
+        'TARGET_FRESH_WINDOWS_OBSERVED' if forward_windows and len(fresh.commits) >= forward_windows else 'OBSERVATION_DEADLINE')
     waits = Counter(); fingerprints = Counter(); publisher_seen = set(); visibility = Counter()
     for sample in report['samples']:
         if sample['activity']['status'] != 'READ':
@@ -354,6 +498,7 @@ def collect(reader, *, seconds, allowed_names, clock=time.monotonic, wall=time.t
     failures = sum(1 for x in report.values() if isinstance(x, dict) and x.get('status') == 'READ_FAILED')
     failures += sum(1 for sample in report['samples'] for key in ('viewer_state', 'activity') if sample[key]['status'] == 'READ_FAILED')
     failures += sum(1 for key in ('counters_before', 'counters_after') for value in report[key].values() if value['status'] == 'READ_FAILED')
+    failures += int(fresh.failure is not None)
     report.update(status='PARTIAL_READ_ONLY_OBSERVATION' if failures else 'READ_ONLY_OBSERVATION_EXPORTED',
         read_failures=failures, elapsed_seconds=round(clock() - started, 3),
         production_capacity_acceptance='NOT_ASSIGNED_BY_OBSERVER')
@@ -364,10 +509,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True, type=Path)
     parser.add_argument('--seconds', type=int, default=60)
+    parser.add_argument('--forward-windows', type=int, default=0,
+        help='Stop after 2..32 new committed forward windows; --seconds is the observation time limit')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args(argv)
-    if not 3 <= args.seconds <= 300:
-        parser.error('--seconds must be 3..300')
+    if args.forward_windows != 0 and not 2 <= args.forward_windows <= 32:
+        parser.error('--forward-windows must be 2..32')
+    max_seconds = 3600 if args.forward_windows else 300
+    if not 3 <= args.seconds <= max_seconds:
+        parser.error(f'--seconds must be 3..{max_seconds}')
     project = args.project.resolve(); root = project / 'AnomalyDetection'
     try:
         launcher = runpy.run_path(str(root / 'run_anomaly.py'))
@@ -381,6 +531,7 @@ def main(argv=None):
         from psycopg.rows import dict_row
         with psycopg.connect(**connection_parameters(database), autocommit=True, row_factory=dict_row) as conn:
             report = collect(Reader(conn), seconds=args.seconds, allowed_names=allowed_names,
+                forward_windows=args.forward_windows,
                 progress=lambda value: print(json.dumps(value), flush=True))
         report['installed_source'] = {'status': 'READ', 'value': inventory['value'][0]} if inventory['status'] == 'READ' else inventory
         report['installed_ad_build'] = launcher['EXPECTED_BUILD']
@@ -409,6 +560,9 @@ def main(argv=None):
         with output.open('x', encoding='utf-8') as stream:
             json.dump(report, stream, ensure_ascii=False, indent=2, default=str); stream.write('\n')
         print(json.dumps({'status': report['status'], 'output': str(output),
+            'fresh_forward_windows': report['throughput']['sample_windows'],
+            'throughput_status': report['throughput']['throughput_status'],
+            'measurement_stop_reason': report['measurement_stop_reason'],
             'database_modified': False, 'workers_restarted': False}))
         return 0
     except Exception as exc:
