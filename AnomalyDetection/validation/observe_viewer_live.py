@@ -135,6 +135,7 @@ def attempt(call):
 
 
 def source_inventory(project):
+    project = Path(project).resolve()
     digest = hashlib.sha256(); count = 0; names = set()
     for folder in ('p24_foundation', 'tools', 'review_ui', 'catalogs'):
         for path in sorted((project / folder).rglob('*')):

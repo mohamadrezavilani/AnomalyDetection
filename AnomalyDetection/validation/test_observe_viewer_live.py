@@ -116,6 +116,12 @@ class ViewerObservationTests(unittest.TestCase):
         self.assertEqual(probe.statement_summary("SELECT 1 FROM viewer_events WHERE request_key='a'", allowed),
                          probe.statement_summary("SELECT 2 FROM viewer_events WHERE request_key='b'", allowed))
 
+    def test_source_inventory_normalizes_the_project_alias_before_checking_containment(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'p24_foundation').mkdir();(root/'alias').mkdir()
+            (root/'p24_foundation/viewer_data.py').write_bytes(b'TABLE="viewer_events"\n')
+            self.assertEqual(probe.source_inventory(root/'alias'/'..'),probe.source_inventory(root.resolve()))
+
     def test_475_second_publisher_cannot_reduce_a_continuing_backlog(self):
         result = probe.receipt_summary([receipt(i, (i + 1) * 475) for i in range(4)], 11461)
         self.assertEqual(result['throughput_status'], 'HISTORICAL_SAMPLE_CANNOT_CATCH_UP')
