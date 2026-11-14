@@ -1120,7 +1120,19 @@
     "proof_required_before_skip": true,
     "publication_and_replay_progress_atomic": true,
     "ad_handoff": "NON_DESTRUCTIVE_IDEMPOTENT_RESCAN_THEN_START",
-    "native_crash_and_retained_projection_tests": "PENDING_CI",
+    "native_crash_and_retained_projection_tests": {
+      "status": "PASS",
+      "workflow_run": 43606709394,
+      "tested_commit": "04dc9eade4b2764e5d872d8fe7c1c9ab30aeb072",
+      "native_pg18_root_tests": 154,
+      "native_pg18_root_platform_skips": 8,
+      "ad_tests": 304,
+      "ad_skips": 0,
+      "windows_root_tests": 86,
+      "windows_pg_or_linux_skips": 15,
+      "observer_tests_each_platform": 22,
+      "production_speed_or_precision_assigned": false
+    },
     "production_capacity": "NOT_ASSIGNED",
     "source_retention": "NOT_VERIFIED_ON_OWNER_SERVER"
   }

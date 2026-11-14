@@ -309,7 +309,19 @@
     "main_viewer_checkpoint_rewound": false,
     "detector_methods_changed": false,
     "replay_identity_idempotent": true,
-    "native_recovery_tests": "PENDING_CI",
+    "native_recovery_tests": {
+      "status": "PASS",
+      "workflow_run": 43606709394,
+      "tested_commit": "04dc9eade4b2764e5d872d8fe7c1c9ab30aeb072",
+      "native_pg18_root_tests": 154,
+      "native_pg18_root_platform_skips": 8,
+      "ad_tests": 304,
+      "ad_skips": 0,
+      "windows_root_tests": 86,
+      "windows_pg_or_linux_skips": 15,
+      "observer_tests_each_platform": 22,
+      "production_speed_or_precision_assigned": false
+    },
     "production_accuracy": "NOT_EVALUATED"
   }
 }
