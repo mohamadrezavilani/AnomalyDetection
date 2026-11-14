@@ -17,6 +17,7 @@ on:
       - 'tests/test_viewer_origin_storage.py'
       - 'tests/test_viewer_web_budget.py'
       - 'tests/test_viewer_web_control.py'
+      - 'tests/test_viewer_catchup.py'
       - '.gitattributes'
       - 'RELEASE_MANIFEST.json'
       - '.github/workflows/viewer-delta.yml'
@@ -72,6 +73,7 @@ jobs:
           tests.test_viewer_origin_storage
           tests.test_viewer_web_budget
           tests.test_viewer_web_control
+          tests.test_viewer_catchup
           tests.test_viewer_direct_web
       - name: AD compatibility and unit regressions
         working-directory: AnomalyDetection
@@ -95,4 +97,4 @@ jobs:
       - name: Recheck byte preservation with Windows Git conversion enabled
         run: git -c core.autocrlf=true -c core.eol=crlf checkout -- Start_Viewer.cmd Start_Viewer_Standard.cmd tools/viewer.ps1
       - name: Exact bytes and real Windows process handles
-        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing tests.test_viewer_lan_access tests.test_viewer_direct_web tests.test_viewer_origin_storage tests.test_viewer_web_budget tests.test_viewer_web_control
+        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing tests.test_viewer_lan_access tests.test_viewer_direct_web tests.test_viewer_origin_storage tests.test_viewer_web_budget tests.test_viewer_web_control tests.test_viewer_catchup
