@@ -91,6 +91,30 @@ def _autocommit(db):
         db.conn.autocommit = previous
 
 
+
+def ensure_expression_statistics(db, indexes):
+    """Collect missing expression statistics once, before layout readiness.
+
+    Concurrent CREATE INDEX doesn't populate expression pg_statistic rows.
+    A full-table ANALYZE (without a column list) collects them. Empty tables
+    need no scan; their normal future autoanalyze remains available.
+    """
+    tables=set()
+    for name, definition in indexes.items():
+        table=definition if isinstance(definition,str) else definition[0]
+        row=db.one("""SELECT t.reltuples,
+            (SELECT COUNT(*) FROM unnest(i.indkey) k(attnum) WHERE k.attnum=0) AS expressions,
+            (SELECT COUNT(*) FROM pg_catalog.pg_statistic s
+             WHERE s.starelid=i.indexrelid AND NOT s.stainherit) AS statistics
+            FROM pg_catalog.pg_index i JOIN pg_catalog.pg_class t ON t.oid=i.indrelid
+            WHERE i.indexrelid=to_regclass(?) AND i.indisvalid AND i.indisready""",('public.'+name,))
+        if row and row['reltuples']>0 and row['statistics']<row['expressions']:tables.add(table)
+    for table in sorted(tables):
+        db.progress('index_statistics',table=table,operation='ANALYZE')
+        db.sql('ANALYZE public.'+table)
+        db.progress('index_statistics_ready',table=table)
+
+
 def ensure(db):
     if db.sqlite:
         return
@@ -152,6 +176,7 @@ def _ensure(db):
         db.sql('CREATE ' + ('UNIQUE ' if unique else '') + 'INDEX CONCURRENTLY ' + name +
                ' ON public.' + table + ' (' + digest_sql(columns) + ')')
         db.progress('storage_index_ready', table=table, index=name)
+    ensure_expression_statistics(db,INDEXES)
     # All replacement indexes are valid before acquiring table locks. A lock
     # timeout rolls back the complete cutover; a restart resumes at this point.
     with db.conn.transaction():

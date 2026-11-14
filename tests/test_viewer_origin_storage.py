@@ -134,6 +134,38 @@ class NativeOriginStorageTests(unittest.TestCase):
         self.assertFalse(any(n.get('Node Type')=='Seq Scan' and n.get('Relation Name')=='viewer_raw_events' for n in plan_nodes(plan)))
         self.assertEqual(self.db.get_raw(key('o11'),key('v11'))['value'],11)
 
+    def test_cold_expression_statistics_use_bounded_point_probes_for_large_batches(self):
+        from p24_foundation import viewer_origin_storage as origin
+        self.fixture(50000)
+        self.db.sql('ANALYZE viewer_events');self.db.sql('ANALYZE viewer_raw_events')
+        self.db.sql('CREATE FUNCTION '+origin.FUNCTION+'(key_text text) RETURNS bytea LANGUAGE SQL '
+            'IMMUTABLE STRICT PARALLEL SAFE SET search_path=pg_catalog AS $origin$'+origin.BODY+'$origin$')
+        for name,table in origin.INDEXES.items():
+            self.db.sql('CREATE UNIQUE INDEX '+name+' ON '+table+'('+origin.key_sql('origin_key')+','+origin.key_sql('version_key')+')')
+            self.assertEqual(self.db.one('SELECT COUNT(*) AS n FROM pg_statistic WHERE starelid=CAST(? AS regclass)',(name,))['n'],0)
+        self.db._binary_origin_keys=True
+        wanted=sorted([key('o'+str(n)) for n in range(1024)]+[key('missing'+str(n)) for n in range(1024)])
+        old='SELECT origin_key,version_key,request_key FROM viewer_events WHERE '+origin.origin_list(self.db,len(wanted))
+        old_plan=self.db.one('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+old,wanted)['QUERY PLAN'][0]
+        query,params=origin.origin_lookup_sql(self.db,'viewer_events',('origin_key','version_key','request_key'),wanted)
+        new_plan=self.db.one('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+query,params)['QUERY PLAN'][0]
+        nodes=list(plan_nodes(new_plan['Plan']))
+        self.assertFalse(any(n.get('Relation Name')=='viewer_events' and n['Node Type']=='Seq Scan' for n in nodes))
+        self.assertTrue(any(n.get('Index Name')=='vei_binary_origin_v1' for n in nodes))
+        self.assertEqual(sorted(self.db.all(old,wanted),key=lambda r:r['origin_key']),
+            sorted(origin.lookup_origins(self.db,'viewer_events',wanted),key=lambda r:r['origin_key']))
+        # The whole body table is not scanned for revision evidence either.
+        query,params=origin.origin_lookup_sql(self.db,'viewer_raw_events',('origin_key','version_key','payload'),wanted)
+        raw_plan=self.db.one('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+query,params)['QUERY PLAN'][0]
+        self.assertTrue(any(n.get('Index Name')=='vre_binary_origin_v1' for n in plan_nodes(raw_plan['Plan'])))
+        self.assertFalse(any(n.get('Relation Name')=='viewer_raw_events' and n['Node Type']=='Seq Scan' for n in plan_nodes(raw_plan['Plan'])))
+        self.db.conn.commit();origin.ensure(self.db)
+        for name in origin.INDEXES:
+            self.assertEqual(self.db.one('SELECT COUNT(*) AS n FROM pg_statistic WHERE starelid=CAST(? AS regclass)',(name,))['n'],2)
+        print('COLD_ORIGIN_PROBES '+json.dumps({'history_rows':50000,'batch':len(wanted),
+            'old_root':old_plan['Plan']['Node Type'],'old_shared_blocks':old_plan['Plan']['Shared Hit Blocks']+old_plan['Plan']['Shared Read Blocks'],
+            'new_root':new_plan['Plan']['Node Type'],'old_ms':old_plan['Execution Time'],'new_ms':new_plan['Execution Time']}))
+
     def test_cutover_reader_lock_rolls_back_and_the_next_upgrade_resumes(self):
         import psycopg
         self.fixture(200);before=self.rows();reader=psycopg.connect(**self.config)
@@ -171,6 +203,22 @@ class NativeOriginStorageTests(unittest.TestCase):
         self.db.rebuild();self.db.rebuild_payment_contract();self.db.build_semantic_index()
         self.assertEqual(before,snapshot(self.db))
         self.assertEqual(self.db.lookup_request('pay')['conflicted'],1)
+
+    def test_native_web_query_timeout_cancels_only_its_reader_and_returns_unavailable(self):
+        import time
+        from p24_foundation.viewer_ui import create_viewer_app
+        seen=[]
+        def slow(db,origin_key,version_key):
+            seen.append(db.one("SELECT current_setting('application_name') AS app,current_setting('transaction_read_only') AS readonly,current_setting('max_parallel_workers_per_gather') AS parallel"))
+            db.one('SELECT pg_sleep(3)')
+        with patch.object(native.ViewerDB,'get_raw',slow):
+            app=create_viewer_app({'config':self.config,'keys_path':self.keys})
+            began=time.monotonic()
+            with app.test_client() as client:response=client.get('/evidence/'+key('o')+'/'+key('v'))
+        self.assertEqual(response.status_code,503)
+        self.assertLess(time.monotonic()-began,4)
+        self.assertEqual(seen,[{'app':'P24.Viewer.web','readonly':'on','parallel':'0'}])
+        self.assertEqual(self.db.one("SELECT COUNT(*) AS n FROM pg_stat_activity WHERE datname=current_database() AND application_name='P24.Viewer.web'")['n'],0)
 
     def test_read_only_ad_bridge_uses_the_installed_binary_layout(self):
         import psycopg

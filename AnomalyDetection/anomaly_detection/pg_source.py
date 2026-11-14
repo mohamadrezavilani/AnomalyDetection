@@ -11,7 +11,7 @@ from contextvars import ContextVar
 
 from . import SOURCE_SHA, CATALOG_SHA, SEMANTIC_SCHEMA, CONTRACT
 from .snapshot import Snapshot, ContractError, api_path, require, MAX_ROWS
-from .source_profiles import SUPPORTED_RUNTIMES,r31_overlay_allowed,r32_release_allowed,r33_release_allowed,r34_release_allowed,r35_release_allowed,r36_release_allowed
+from .source_profiles import SUPPORTED_RUNTIMES,r31_overlay_allowed,r32_release_allowed,r33_release_allowed,r34_release_allowed,r35_release_allowed,r36_release_allowed,r37_release_allowed
 
 DEFAULT_SAMPLE = 32
 MAX_SAMPLE = 64
@@ -57,7 +57,7 @@ def installed_source_identity(project):
     actual=value.hexdigest();viewer=project/'p24_foundation/viewer_data.py'
     overlay=r31_overlay_allowed(declared,actual,count,hashlib.sha256(viewer.read_bytes()).hexdigest() if viewer.is_file() else None)
     require(count > 0 and (declared==SOURCE_SHA and actual==SOURCE_SHA or overlay or
-        r32_release_allowed(declared,actual,count) or r33_release_allowed(declared,actual,count) or r34_release_allowed(declared,actual,count) or r35_release_allowed(declared,actual,count) or r36_release_allowed(declared,actual,count)), "SOURCE_INSTALLED_BYTES_MISMATCH")
+        r32_release_allowed(declared,actual,count) or r33_release_allowed(declared,actual,count) or r34_release_allowed(declared,actual,count) or r35_release_allowed(declared,actual,count) or r36_release_allowed(declared,actual,count) or r37_release_allowed(declared,actual,count)), "SOURCE_INSTALLED_BYTES_MISMATCH")
     return {"runtime_sha256": value.hexdigest(), "checked_runtime_files": count}
 
 

@@ -87,6 +87,31 @@ def origin_list(db, count, column='origin_key'):
         if active(db) else column+' IN ('+','.join('?' for _ in range(count))+')')
 
 
+
+def origin_lookup_sql(db, table, columns, origins):
+    """One indexed parameterized probe per origin, including cold index stats.
+
+    A large IN list on an unanalyzed expression can be estimated as matching
+    the whole history. OFFSET 0 fences the lateral subquery: the origin list
+    cannot be flattened into another whole-table scan. No version is limited.
+    """
+    allowed={'viewer_events':('origin_key','version_key','request_key'),
+        'viewer_raw_events':('origin_key','version_key','payload')}
+    if table not in allowed or tuple(columns)!=allowed[table] or not 1<=len(origins)<=4096:
+        raise ValueError('invalid_origin_lookup')
+    if not active(db):
+        return ('SELECT '+','.join(columns)+' FROM '+table+' WHERE '+origin_list(db,len(origins)),tuple(origins))
+    return ('SELECT found.* FROM unnest(CAST(? AS text[])) AS wanted(origin_key) CROSS JOIN LATERAL ('+
+        'SELECT '+','.join('source.'+c for c in columns)+' FROM public.'+table+' source WHERE '+
+        key_sql('source.origin_key')+'='+key_sql('wanted.origin_key')+' OFFSET 0) found',(list(origins),))
+
+
+def lookup_origins(db, table, origins):
+    columns=('origin_key','version_key','request_key' if table=='viewer_events' else 'payload')
+    statement,params=origin_lookup_sql(db,table,columns,origins)
+    return db.all(statement,params)
+
+
 def raw_conflict(db):
     if active(db):
         return ' ON CONFLICT (('+key_sql('origin_key')+'),('+key_sql('version_key')+')) DO NOTHING'
@@ -187,6 +212,8 @@ def ensure(db):
             db.sql('CREATE UNIQUE INDEX CONCURRENTLY '+name+' ON public.'+table+
                 '('+key_sql('origin_key')+','+key_sql('version_key')+')')
             db.progress('origin_index_ready',table=table,index=name)
+        from .viewer_storage_keys import ensure_expression_statistics
+        ensure_expression_statistics(db,INDEXES)
         redundant=_redundant(db)
         with db.conn.transaction():
             db.sql('SET LOCAL lock_timeout=1000')
