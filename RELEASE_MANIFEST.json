@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "c94f645ed2c942e5561da4433cf6c04c8de0cda1e6aed1145ef3cdaca00d7ee4",
+    "Pishkhan24_Project_Roadmap.md": "013ec97a3ceddef430fdec4326454bb8efd48632123045d8566d17b49b56d605",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "335bbbea238b37572ca56c8b084e46119b192e36cfd1989d5ab62f8a1b8c8d24",
+    "VIEWER_README_FA.md": "b124cbc7f4292b2c7f69bb6293ecf587666adbdf5e6cca06e4a00e4b57136318",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -235,7 +235,7 @@
     "tests/test_viewer_install_check.py": "06b2dcd0775869f7ebe72a1ba269fece3e311fadba6c38dd04d80f5732e887af",
     "tests/test_viewer_install_regressions.py": "71f6475fa5bfdc767e12cb4f0e657f27c6da7291f8d3bd83459c7462bc69f6ca",
     "tests/test_viewer_lan_access.py": "6353dbbc3c6ee2502a36b1fade715642e67211bf938fed2c5241e42f7a6972fb",
-    "tests/test_viewer_launcher_bytes.py": "7c9751d207183ae84bf9c93da23f45767eac59da2dc01e6a3d2c3c5055e4215d",
+    "tests/test_viewer_launcher_bytes.py": "deb56604b9748944389f7b1b6af7326410fb6b1788bccae9715e33d6a1ee96d4",
     "tests/test_viewer_lc1_anchor_resolver.py": "a08d3e2e981841536c1823442ee7941700aa3cc4907457c6a571e97a070e69e6",
     "tests/test_viewer_lc1b_gap_sampling.py": "0d845f08930523f4523aa91fb90aac2495ee9ca37214eb588b8b0ce2eaaa0c31",
     "tests/test_viewer_lc1c_correlation_preflight.py": "1788666fb02afcd32b75b8a578d01bb03a9f69fe8c9bddf7e3b4c30058b76ed2",
@@ -436,8 +436,10 @@
     "viewer_performance/Stop_Viewer_Web.py": "32ca5e84361b1cf8bde77df122a51385ed96efd6750593fc564d4be3856045d6",
     "tests/test_viewer_web_budget.py": "bcb89f3f72e93ede4a6e743e35a71512584d0ccf74a9da28a298da90c5cec934",
     "tests/test_viewer_web_control.py": "c42cdfadbd1046b9b4d539913fabeefda0dc3237815208f525a77f852bfcc0a2",
-    "viewer_performance/Run_Viewer_Catchup.py": "5973bf02a09805c093e292c8ff3ffee6b19a758c376fc0e645998b1cd4f16590",
-    "tests/test_viewer_catchup.py": "0f5dc467e6bad173d760768348c75ab5314f2151de31db660edbf1ef2ac17e3f"
+    "viewer_performance/Run_Viewer_Catchup.py": "6d89f4d8bbd4fa2fe12d572156f6b15b7c92f897c8ede739e117314fb7b820a6",
+    "tests/test_viewer_catchup.py": "0f5dc467e6bad173d760768348c75ab5314f2151de31db660edbf1ef2ac17e3f",
+    "viewer_performance/history_replay.py": "b4342cf6c1316fdbde9fd1b9587bf499317b768bcfc48bb38f3ff16a0012f534",
+    "tests/test_viewer_history_replay.py": "7e16821096c8554675476cb5f6bd41dbf2ea6a4185ad0ce094831f6f307f03e3"
   },
   "pilot_diagnostics_fix": true,
   "owner_runtime_reports_excluded": [
@@ -513,7 +515,7 @@
     "validation/d2_ab_local_tests.json",
     "validation/d2_fast_smoke_owner_evidence.json"
   ],
-  "checked_file_count_expected": 320,
+  "checked_file_count_expected": 322,
   "d2_wal_status": {
     "D2_A": "OWNER_PROBE_CAPTURED",
     "D2_B": "WAL_OPT_IN_TRIAL_NOT_RUN",
@@ -1110,5 +1112,28 @@
     "adaptive_writer_memory": true,
     "wal_compression": "CAPABILITY_AND_PRIVILEGE_PROBED_ZSTD_THEN_LZ4_THEN_PGLZ",
     "production_capacity": "AWAITING_FRESH_OWNER_MEASUREMENT"
+  },
+  "history_replay": {
+    "start_tehran": "2026-10-01 00:00:00",
+    "mode": "MISSING_WINDOWS_ONLY_THEN_RESUME_CHECKPOINT",
+    "durable_cursor_independent_of_main": true,
+    "proof_required_before_skip": true,
+    "publication_and_replay_progress_atomic": true,
+    "ad_handoff": "NON_DESTRUCTIVE_IDEMPOTENT_RESCAN_THEN_START",
+    "native_crash_and_retained_projection_tests": {
+      "status": "PASS",
+      "workflow_run": 43606709394,
+      "tested_commit": "04dc9eade4b2764e5d872d8fe7c1c9ab30aeb072",
+      "native_pg18_root_tests": 154,
+      "native_pg18_root_platform_skips": 8,
+      "ad_tests": 304,
+      "ad_skips": 0,
+      "windows_root_tests": 86,
+      "windows_pg_or_linux_skips": 15,
+      "observer_tests_each_platform": 22,
+      "production_speed_or_precision_assigned": false
+    },
+    "production_capacity": "NOT_ASSIGNED",
+    "source_retention": "NOT_VERIFIED_ON_OWNER_SERVER"
   }
 }

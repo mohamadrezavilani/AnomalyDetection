@@ -60,6 +60,21 @@ class FakeReader:
 
 
 class ViewerObservationTests(unittest.TestCase):
+    def test_history_progress_separates_verified_skips_from_actual_publication(self):
+        base=dict(run_id='one',from_ns=0,next_ns=2*probe.FIVE_NS,end_ns=100*probe.FIVE_NS,
+            skipped_windows=2,published_windows=0,status='RUNNING',ad_prepared=0,ad_started=0)
+        after={**base,'next_ns':82*probe.FIVE_NS,'skipped_windows':80,'published_windows':2}
+        summary=probe.replay_progress({'status':'READ','value':[base]},{'status':'READ','value':[after]})
+        self.assertEqual(summary['remaining_windows'],18)
+        self.assertEqual(summary['new_missing_windows_published_during_observation'],2)
+        self.assertEqual(summary['complete_windows_skipped_during_observation'],78)
+        self.assertTrue(summary['forward_publication_paused_for_history_replay'])
+        self.assertNotIn('observed_forward_windows_per_hour',summary)
+        self.assertEqual(probe.replay_snapshot(FakeReader()),{'status':'NOT_SCHEDULED'})
+        changed={**after,'run_id':'another'}
+        summary=probe.replay_progress({'status':'READ','value':[base]},{'status':'READ','value':[changed]})
+        self.assertNotIn('new_missing_windows_published_during_observation',summary)
+
     def test_connection_overrides_private_writable_options_and_rejects_other_db(self):
         options = probe.connection_parameters({'dbname': 'p24_design_viewer', 'password': 'secret',
             'options': '-c default_transaction_read_only=off', 'application_name': 'private'})

@@ -61,6 +61,8 @@ RECEIPTS_SQL = """SELECT start_ns,end_ns,mode,generation,records,new_events,
     ORDER BY start_ns DESC,published_ns DESC LIMIT 24"""
 RESUMES_SQL = """SELECT previous_next_ns,resumed_from_ns,resumed_at_ns
     FROM public.viewer_live_resumes ORDER BY resumed_from_ns DESC LIMIT 32"""
+REPLAY_SQL = """SELECT run_id,from_ns,next_ns,end_ns,skipped_windows,published_windows,
+    status,ad_prepared,ad_started FROM public.viewer_history_replay_state WHERE id=1"""
 # One MVCC snapshot ties committed receipts to the durable cursor. The window
 # range uses vlr_window; a new measurement never scans the whole old ledger.
 FRESH_SQL = """SELECT s.stream_key,s.keys_fingerprint,s.start_ns,s.next_ns,s.generation,
@@ -132,6 +134,31 @@ def attempt(call):
         return {'status': 'READ', 'value': call()}
     except Exception as exc:
         return {'status': 'READ_FAILED', 'failure': safe_failure(exc)}
+
+
+def replay_snapshot(reader):
+    present=reader.optional("SELECT to_regclass('public.viewer_history_replay_state') AS present")
+    if present['status']!='READ':return present
+    if not present['value'] or not present['value'][0]['present']:return {'status':'NOT_SCHEDULED'}
+    return reader.optional(REPLAY_SQL)
+
+
+def replay_progress(before,after):
+    if after.get('status')!='READ' or not after.get('value'):return after
+    row=after['value'][0]
+    result={'status':row['status'],'from_utc':ns_iso(row['from_ns']),
+        'next_utc':ns_iso(row['next_ns']),'target_utc':ns_iso(row['end_ns']),
+        'remaining_windows':(row['end_ns']-row['next_ns'])//FIVE_NS,
+        'published_missing_windows':row['published_windows'],'skipped_complete_windows':row['skipped_windows'],
+        'ad_prepared':bool(row['ad_prepared']),'ad_started':bool(row['ad_started']),
+        'forward_publication_paused_for_history_replay':row['status']=='RUNNING',
+        'skipped_windows_are_not_publication_throughput':True}
+    if before.get('status')=='READ' and before.get('value'):
+        old=before['value'][0]
+        if old['run_id']==row['run_id'] and all(row[k]>=old[k] for k in ('published_windows','skipped_windows','next_ns')):
+            result['new_missing_windows_published_during_observation']=row['published_windows']-old['published_windows']
+            result['complete_windows_skipped_during_observation']=row['skipped_windows']-old['skipped_windows']
+    return result
 
 
 def source_inventory(project):
@@ -450,6 +477,7 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,
             'throughput uses only fresh commit visibility; polling uncertainty is bounded and this is not sustained capacity qualification.',
             'No SQL, parameters, application names, credentials or user evidence are exported.']}
     report['ad_counters_before']=reader.optional(AD_COUNTERS_SQL);ad_started=clock()
+    replay_before=replay_snapshot(reader)
     deadline = clock() + seconds
     next_progress = clock() + 15
     fresh = FreshForward()
@@ -479,6 +507,7 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,
         stats_reset=report['counter_deltas'].get('database',{}).get('status')=='STATS_RESET')
     report['recent_forward_receipts'] = reader.optional(RECEIPTS_SQL)
     report['recent_resume_records'] = reader.optional(RESUMES_SQL)
+    report['history_replay']=replay_progress(replay_before,replay_snapshot(reader))
     latest = report['samples'][-1]
     state = state_summary(latest['viewer_state']['value'], latest['observed_ns']) if latest['viewer_state']['status'] == 'READ' else None
     report['latest_viewer_state'] = state
@@ -570,6 +599,7 @@ def main(argv=None):
             'fresh_forward_windows': report['throughput']['sample_windows'],
             'throughput_status': report['throughput']['throughput_status'],
             'measurement_stop_reason': report['measurement_stop_reason'],
+            'history_replay':report['history_replay'],
             'database_modified': False, 'workers_restarted': False}))
         return 0
     except Exception as exc:

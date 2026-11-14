@@ -14,18 +14,25 @@ ROOT=Path(__file__).resolve().parents[1]
 def main(sha):
     parser=argparse.ArgumentParser(description='Autonomous PostgreSQL AnomalyDetection')
     parser.add_argument('command',choices=('version','worker-start','worker-stop','worker-status','worker-run','worker-report',
-        'case-review','acceptance-report','history-reset','worker-observe','worker-follow','web-run','serve','product-check','reference-report','presentation-check'))
+        'case-review','acceptance-report','history-reset','history-rescan','worker-observe','worker-follow','web-run','serve','product-check','reference-report','presentation-check'))
     parser.add_argument('--seconds',type=int,choices=range(0,91),metavar='0..90',default=None)
     parser.add_argument('--session',default=None)
     parser.add_argument('--target-tehran',default=None)
     parser.add_argument('--from-tehran-date',metavar='YYYY-MM-DD')
     parser.add_argument('--pg-data-dir',type=Path)
+    parser.add_argument('--replay-id',help='Durable Viewer history replay identity')
     parser.add_argument('--instance-token',help=argparse.SUPPRESS)
     parser.add_argument('--apply',action='store_true')
     args=parser.parse_args()
-    if args.command=='history-reset' and not args.from_tehran_date:
-        parser.error('history-reset requires --from-tehran-date')
-    if args.command!='history-reset' and (args.from_tehran_date or args.apply or args.pg_data_dir):
+    if args.command in ('history-reset','history-rescan') and not args.from_tehran_date:
+        parser.error('history command requires --from-tehran-date')
+    if args.command=='history-rescan' and not args.replay_id:
+        parser.error('history-rescan requires --replay-id')
+    if args.command!='history-rescan' and args.replay_id:
+        parser.error('--replay-id requires history-rescan')
+    if args.command=='history-rescan' and (args.apply or args.pg_data_dir):
+        parser.error('history-rescan preserves data and does not use reset flags')
+    if args.command not in ('history-reset','history-rescan') and (args.from_tehran_date or args.apply or args.pg_data_dir):
         parser.error('history reset arguments require history-reset')
     if args.command!='worker-run' and args.instance_token is not None:
         parser.error('the startup token requires worker-run')
@@ -38,6 +45,9 @@ def main(sha):
         elif command=='worker-stop':
             value=stop(ROOT);print(json.dumps(value,ensure_ascii=False));return 0 if value['status'] in ('STOPPED','ALREADY_STOPPED') else 2
         elif command=='worker-status':value=status(ROOT)
+        elif command=='history-rescan':
+            from .history_rescan import run as rescan_history
+            value=rescan_history(ROOT,sha,args.from_tehran_date,args.replay_id)
         elif command=='history-reset':
             from .history_reset import run as reset_history
             value=reset_history(ROOT,sha,args.from_tehran_date,apply=args.apply,pg_data_dir=args.pg_data_dir)
