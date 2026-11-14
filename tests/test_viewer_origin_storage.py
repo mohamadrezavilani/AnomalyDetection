@@ -142,7 +142,7 @@ class NativeOriginStorageTests(unittest.TestCase):
             'IMMUTABLE STRICT PARALLEL SAFE SET search_path=pg_catalog AS $origin$'+origin.BODY+'$origin$')
         for name,table in origin.INDEXES.items():
             self.db.sql('CREATE UNIQUE INDEX '+name+' ON '+table+'('+origin.key_sql('origin_key')+','+origin.key_sql('version_key')+')')
-            self.assertEqual(self.db.one('SELECT COUNT(*) AS n FROM pg_statistic WHERE starelid=CAST(? AS regclass)',(name,))['n'],0)
+            self.assertEqual(self.db.one("SELECT COUNT(*) AS n FROM pg_stats WHERE schemaname='public' AND tablename=?",(name,))['n'],0)
         self.db._binary_origin_keys=True
         wanted=sorted([key('o'+str(n)) for n in range(1024)]+[key('missing'+str(n)) for n in range(1024)])
         old='SELECT origin_key,version_key,request_key FROM viewer_events WHERE '+origin.origin_list(self.db,len(wanted))
@@ -159,9 +159,24 @@ class NativeOriginStorageTests(unittest.TestCase):
         raw_plan=self.db.one('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+query,params)['QUERY PLAN'][0]
         self.assertTrue(any(n.get('Index Name')=='vre_binary_origin_v1' for n in plan_nodes(raw_plan['Plan'])))
         self.assertFalse(any(n.get('Relation Name')=='viewer_raw_events' and n['Node Type']=='Seq Scan' for n in plan_nodes(raw_plan['Plan'])))
+        # A table owner does not need SELECT on restricted pg_statistic.
+        import uuid
+        from p24_foundation.viewer_storage_keys import ensure_expression_statistics
+        role='p24_stats_'+uuid.uuid4().hex
+        self.admin.execute('CREATE ROLE '+role+' NOLOGIN')
+        self.addCleanup(lambda:self.admin.execute('DROP ROLE '+role))
+        self.db.sql('ALTER TABLE viewer_events OWNER TO '+role)
+        self.db.sql('SET ROLE '+role)
+        try:
+            self.assertFalse(self.db.one("SELECT has_table_privilege('pg_catalog.pg_statistic','SELECT') AS allowed")['allowed'])
+            ensure_expression_statistics(self.db,{'vei_binary_origin_v1':'viewer_events'})
+            self.assertEqual(self.db.one("SELECT COUNT(*) AS n FROM pg_stats WHERE schemaname='public' AND tablename='vei_binary_origin_v1'")['n'],2)
+        finally:
+            self.db.sql('RESET ROLE')
+            self.db.conn.execute(self.pgsql.SQL('ALTER TABLE viewer_events OWNER TO {}').format(self.pgsql.Identifier(self.parameters['user'])))
         self.db.conn.commit();origin.ensure(self.db)
         for name in origin.INDEXES:
-            self.assertEqual(self.db.one('SELECT COUNT(*) AS n FROM pg_statistic WHERE starelid=CAST(? AS regclass)',(name,))['n'],2)
+            self.assertEqual(self.db.one("SELECT COUNT(*) AS n FROM pg_stats WHERE schemaname='public' AND tablename=?",(name,))['n'],2)
         print('COLD_ORIGIN_PROBES '+json.dumps({'history_rows':50000,'batch':len(wanted),
             'old_root':old_plan['Plan']['Node Type'],'old_shared_blocks':old_plan['Plan']['Shared Hit Blocks']+old_plan['Plan']['Shared Read Blocks'],
             'new_root':new_plan['Plan']['Node Type'],'old_ms':old_plan['Execution Time'],'new_ms':new_plan['Execution Time']}))

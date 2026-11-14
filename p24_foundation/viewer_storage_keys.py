@@ -104,10 +104,10 @@ def ensure_expression_statistics(db, indexes):
         table=definition if isinstance(definition,str) else definition[0]
         row=db.one("""SELECT t.reltuples,
             (SELECT COUNT(*) FROM unnest(i.indkey) k(attnum) WHERE k.attnum=0) AS expressions,
-            (SELECT COUNT(*) FROM pg_catalog.pg_statistic s
-             WHERE s.starelid=i.indexrelid AND NOT s.stainherit) AS statistics
+            (SELECT COUNT(*) FROM pg_catalog.pg_stats s
+             WHERE s.schemaname='public' AND s.tablename=? AND NOT s.inherited) AS statistics
             FROM pg_catalog.pg_index i JOIN pg_catalog.pg_class t ON t.oid=i.indrelid
-            WHERE i.indexrelid=to_regclass(?) AND i.indisvalid AND i.indisready""",('public.'+name,))
+            WHERE i.indexrelid=to_regclass(?) AND i.indisvalid AND i.indisready""",(name,'public.'+name))
         if row and row['reltuples']>0 and row['statistics']<row['expressions']:tables.add(table)
     for table in sorted(tables):
         db.progress('index_statistics',table=table,operation='ANALYZE')
