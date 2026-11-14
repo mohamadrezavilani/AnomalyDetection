@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261114-READY-QUEUES",
-  "source_sha256": "634f91c427f9418cbde6d438f2c770668d3449b2bb594d6ccbbd51a5633eb6c8",
+  "source_sha256": "2cafe1e849e6e0aad646505657a030ce8c9c362ccf819a0c4fce5689877419a5",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -146,7 +146,7 @@
     "tests/test_queue_observation.py": "d70a867d317af2b64639831a8abf924cbd458c5ae656e1f46be331aa878a734e",
     "tests/test_rank_screen.py": "50d62d865aa81a4916a3aa8d45fe483909093379908f2c3ba8d1c1df49bbf446",
     "tests/test_review_policy.py": "18c103108c6af9abd745050bef4e9b7f39a0ce3724bc8a4fc38f1ec74daaba5f",
-    "tests/test_scenario_invalidation_pg.py": "f002b004b0be43ff15baa3b18ce70186531f1f5ee7f26cfe209cf95a36e1ddb1",
+    "tests/test_scenario_invalidation_pg.py": "ed0c62b8d53c3513e425b1495978221d638de950303d703168c176a42c821bfb",
     "tests/test_scenarios.py": "c0fa611c9ab290061043e47fcf2b775fce27217f5f77f751069ab3f8ebc6d8d2",
     "tests/test_schema_setup.py": "5632c5d3f52c5e848797c87d8014fd1662c7bdb7f33446c5b2c18e235424b91f",
     "tests/test_service_reference.py": "d84ae4a6ed393ecdbebac33c487c83ae6c2046722ca738977ebea457686d9afe",

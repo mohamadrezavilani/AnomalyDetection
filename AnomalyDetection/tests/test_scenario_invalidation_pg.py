@@ -219,7 +219,7 @@ class NativeScenarioInvalidationTests(unittest.TestCase):
     def test_native_ready_claim_plans_remove_full_queue_sorts_and_match_legacy_choice(self):
         from anomaly_detection.ready_work import scenario_query
         count=50000
-        self.raw.execute("INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns,evaluation) SELECT 'q'||lpad(i::text,8,'0'),CASE WHEN i%3=0 THEN 'longitudinal' ELSE 'actor' END,'A','S',i/4,repeat('x',512) FROM generate_series(1,%s) i",(count,))
+        self.raw.execute("INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns,evaluation) SELECT 'q'||lpad(i::text,8,'0'),CASE WHEN mod(i,3)=0 THEN 'longitudinal' ELSE 'actor' END,'A','S',i/4,repeat('x',512) FROM generate_series(1,%s) i",(count,))
         self.raw.execute('ANALYZE anomaly_detection.adp_scenario_jobs');self.raw.execute("SET work_mem='64kB'")
         def explain(q,params=()):return self.raw.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+q,params).fetchone()['QUERY PLAN'][0]['Plan']
         promotion=explain('SELECT scope_key FROM anomaly_detection.adp_scenario_jobs WHERE dirty=TRUE AND due_ns<>0 AND due_ns<=%s ORDER BY due_ns,target_ns DESC,scope_key LIMIT 64 FOR UPDATE SKIP LOCKED',(50000,))
