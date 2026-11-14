@@ -2,6 +2,8 @@
 from __future__ import annotations
 import ipaddress
 import hmac
+from contextlib import contextmanager
+from threading import BoundedSemaphore
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from flask import Flask, render_template, request, abort, redirect, url_for, jsonify, g
@@ -23,17 +25,33 @@ def create_viewer_app(db_opts,*,lan_host=None):
         if not any(address in network for network in private_lan):raise ValueError('viewer_lan_host_must_be_private_ipv4')
         trusted_hosts.append(str(address));allowed_networks+=private_lan
     app.config.update(TRUSTED_HOSTS=trusted_hosts)
+    read_slots=BoundedSemaphore(2)
+    @contextmanager
     def db(*,write=False):
-        d=ViewerDB(**db_opts)
-        if not write:
-            # Multiple queries composing a page must see the same publication.
-            if d.sqlite:d.sql('BEGIN')
-            else:d.sql('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
-            from .viewer_online import live_history_coverage
-            try:g.viewer_history_coverage=live_history_coverage(d)
-            except BaseException:
-                d.close();raise
-        return d
+        # Fast admission instead of accumulating browser refreshes behind I/O.
+        if not read_slots.acquire(blocking=False):abort(503)
+        d=None
+        try:
+            options=dict(db_opts)
+            if 'config' in options:
+                config=dict(options['config'])
+                config['application_name']='P24.Viewer.web'
+                config['options']=' '.join(filter(None,(config.get('options',''),
+                    '-c statement_timeout=2000 -c lock_timeout=100 '
+                    '-c idle_in_transaction_session_timeout=5000 -c max_parallel_workers_per_gather=0')))
+                options['config']=config
+            d=ViewerDB(**options)
+            if not write:
+                # Multiple queries composing a page see one publication.
+                if d.sqlite:d.sql('BEGIN')
+                else:d.sql('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+                from .viewer_online import live_history_coverage
+                g.viewer_history_coverage=live_history_coverage(d)
+            yield d
+        finally:
+            try:
+                if d is not None:d.close()
+            finally:read_slots.release()
     @app.context_processor
     def coverage_notice():
         return dict(viewer_history_coverage=getattr(g,'viewer_history_coverage',{}))
@@ -237,7 +255,10 @@ def create_viewer_app(db_opts,*,lan_host=None):
     @app.errorhandler(Exception)
     def error(error):
         if isinstance(error,SecurityError):return error.get_response()
-        if isinstance(error,HTTPException):return render_template('viewer_error.html',code=error.code,version=VIEWER_VERSION),error.code
+        if isinstance(error,HTTPException):
+            return render_template('viewer_error.html',code=error.code,version=VIEWER_VERSION),error.code,({'Retry-After':'2'} if error.code==503 else {})
+        if getattr(error,'sqlstate',None) in ('57014','55P03','25P03'):
+            return render_template('viewer_error.html',code=503,version=VIEWER_VERSION),503,{'Retry-After':'2'}
         app.logger.exception('Viewer error (sensitive raw data withheld)')
         return render_template('viewer_error.html',code=500,version=VIEWER_VERSION),500
     return app

@@ -614,9 +614,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         # *globally*, not independently in 500-row source-order batches.
         for offset in range(0,len(all_origins),lookup_chunk):
             origins=all_origins[offset:offset+lookup_chunk]
-            placeholders=','.join('?' for _ in origins)
-            from .viewer_origin_storage import origin_list
-            for old in self.all('SELECT origin_key,version_key,request_key FROM viewer_events WHERE '+origin_list(self,len(origins)),origins):
+            from .viewer_origin_storage import lookup_origins
+            for old in lookup_origins(self,'viewer_events',origins):
                 known[old['origin_key']].append(old)
         self._ingest_timing['lookup_seconds']+=time.monotonic()-lookup_started
         for offset in range(0,len(prepared),batch_size):
@@ -629,7 +628,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 started=time.monotonic()
                 for piece in range(0,len(candidates),lookup_chunk):
                     group=candidates[piece:piece+lookup_chunk]
-                    for raw in self.all('SELECT origin_key,version_key,payload FROM viewer_raw_events WHERE '+origin_list(self,len(group)),group):
+                    for raw in lookup_origins(self,'viewer_raw_events',group):
                         raw_lookup[(raw['origin_key'],raw['version_key'])]=json.loads(
                             zlib.decompress(bytes(raw['payload'])).decode('utf-8'))
                 self._ingest_timing['lookup_seconds']+=time.monotonic()-started
@@ -657,18 +656,17 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 origin=token(self.keys,'origin',[index,doc_id] if index else [digest,n])
                 prepared.append((n,row,origin,token(self.keys,'version',row)))
             origins=sorted({x[2] for x in prepared if x[2] not in known})
-            slots=','.join('?' for _ in origins)
             lookup_started=time.monotonic()
             for origin in origins:known[origin]=[]
             if origins:
-                from .viewer_origin_storage import origin_list
-                for old in self.all('SELECT origin_key,version_key,request_key FROM viewer_events WHERE '+origin_list(self,len(origins)),origins):
+                from .viewer_origin_storage import lookup_origins
+                for old in lookup_origins(self,'viewer_events',origins):
                     known[old['origin_key']].append(old)
             candidates=sorted({origin for _,_,origin,sig in prepared
                 if known[origin] and not any(v['version_key']==sig for v in known[origin])
                 and any((origin,v['version_key']) not in raw_lookup for v in known[origin])})
             if candidates:
-                for raw in self.all('SELECT origin_key,version_key,payload FROM viewer_raw_events WHERE '+origin_list(self,len(candidates)),candidates):
+                for raw in lookup_origins(self,'viewer_raw_events',candidates):
                     raw_lookup[(raw['origin_key'],raw['version_key'])]=json.loads(zlib.decompress(bytes(raw['payload'])).decode('utf-8'))
             self._ingest_timing['lookup_seconds']+=time.monotonic()-lookup_started
             for n,row,origin,sig in prepared:
