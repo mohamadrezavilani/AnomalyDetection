@@ -4,6 +4,7 @@ from collections import defaultdict
 from . import FIVE_NS
 from .snapshot import canonical,digest
 from .request_profiles import VERSION as PROFILE_VERSION
+from .ready_work import DDL as READY_DDL, promote, scenario_query, profile_scope_query, PROFILE_INDEPENDENT
 
 HORIZON=56*288*FIVE_NS
 PROFILE_JOB_KINDS=('actor','response','request_workflow','request_response','longitudinal')
@@ -30,7 +31,7 @@ DDL=[
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_traffic_counts(service_path TEXT NOT NULL,start_ns BIGINT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(service_path,start_ns))''',
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_traffic_staging(lane TEXT NOT NULL,start_ns BIGINT NOT NULL,origin_key TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(lane,start_ns,origin_key))''',
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_traffic_members(start_ns BIGINT NOT NULL,request_key TEXT NOT NULL,body TEXT NOT NULL,PRIMARY KEY(start_ns,request_key))''',
-]
+]+READY_DDL
 
 
 def scope_key(kind,entity,service,target):return 'sc1:'+digest([kind,entity,service,target])
@@ -182,31 +183,32 @@ def seed(store,now):
 
 
 def next_profile(store,now,*,independent=False,historical=False):
+    record_queue_write(store,'profile_ready_promotion',promote(store,'adp_profile_tasks',now))
     if historical:
         # An ordered pass advances even as new live scopes arrive. Tasks not
         # due yet remain available on the next pass after their own backoff.
         state=store.state('profile_history_pass_v1')
-        query='SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE due_ns<=%s '
-        row=store.raw.execute(query+'AND request_key>%s ORDER BY request_key LIMIT 1',(now,state.get('after',''))).fetchone()
+        query='SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE due_ns=0 '
+        row=store.raw.execute(query+'AND request_key>%s ORDER BY request_key LIMIT 1',(state.get('after',''),)).fetchone()
         if not row and state.get('after'):
-            row=store.raw.execute(query+'ORDER BY request_key LIMIT 1',(now,)).fetchone()
+            row=store.raw.execute(query+'ORDER BY request_key LIMIT 1').fetchone()
         if row:
             store.save_state('profile_history_pass_v1',{'after':row['request_key']})
             return row['request_key']
     if independent:
-        row=store.raw.execute('SELECT t.request_key FROM anomaly_detection.adp_profile_tasks t JOIN anomaly_detection.adp_service_sample_members m USING(request_key) WHERE t.due_ns<=%s ORDER BY m.start_ns DESC,t.request_key LIMIT 1',(now,)).fetchone()
+        row=store.raw.execute(PROFILE_INDEPENDENT).fetchone()
         if row:return row['request_key']
     state=store.state('profile_active_scope_v1') if not independent else {}
     if state.get('keys'):
-        row=store.raw.execute('SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE request_key=ANY(%s) AND due_ns<=%s ORDER BY request_key LIMIT 1',(state['keys'],now)).fetchone()
+        row=store.raw.execute('SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE request_key=ANY(%s) AND due_ns=0 ORDER BY request_key LIMIT 1',(state['keys'],)).fetchone()
         if row:return row['request_key']
-    scope=store.raw.execute('SELECT p.request_keys FROM anomaly_detection.adp_profile_tasks t JOIN anomaly_detection.adp_profile_scope_members m USING(request_key) JOIN anomaly_detection.adp_profile_scopes p ON p.session_key=m.session_key AND p.service_path=m.service_path AND p.start_ns=m.start_ns WHERE p.available=TRUE '+('AND p.independent=TRUE ' if independent else '')+'AND t.due_ns<=%s ORDER BY p.start_ns DESC,p.session_key,p.service_path LIMIT 1',(now,)).fetchone()
+    scope=store.raw.execute(profile_scope_query(independent)).fetchone()
     if scope:
         keys=json.loads(scope['request_keys'])
         if not independent:store.save_state('profile_active_scope_v1',{'keys':keys})
-        row=store.raw.execute('SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE request_key=ANY(%s) AND due_ns<=%s ORDER BY request_key LIMIT 1',(keys,now)).fetchone()
+        row=store.raw.execute('SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE request_key=ANY(%s) AND due_ns=0 ORDER BY request_key LIMIT 1',(keys,)).fetchone()
         if row:return row['request_key']
-    row=store.raw.execute('SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE due_ns<=%s ORDER BY priority DESC,due_ns,request_key LIMIT 1',(now,)).fetchone()
+    row=store.raw.execute('SELECT request_key FROM anomaly_detection.adp_profile_tasks WHERE due_ns=0 ORDER BY priority DESC,request_key LIMIT 1').fetchone()
     return row['request_key'] if row else None
 
 
@@ -256,14 +258,14 @@ def volume_history(store,service,target,*,canonical_scope):
 def process_one(store,now):
     state=store.state('scenario_schedule_v1');turn=state.get('turn',0)
     order='ASC' if turn%4==0 or turn%8==3 else 'DESC'
-    choose="AND kind='longitudinal' " if turn%4==3 else "AND kind<>'longitudinal' "
-    query='SELECT * FROM anomaly_detection.adp_scenario_jobs WHERE dirty=TRUE AND due_ns<=%s '
+    longitudinal=turn%4==3
     # The global owned writer lease permits reclaim after a crash. Claim is
     # committed BEFORE input reads so a concurrent feedback/input mutation
     # knows that a CAS-visible evaluation is now in flight.
     with store.transaction():
-        row=store.raw.execute(query+choose+'ORDER BY target_ns '+order+',scope_key LIMIT 1 FOR UPDATE',(now,)).fetchone()
-        if not row:row=store.raw.execute(query+'ORDER BY target_ns '+order+',scope_key LIMIT 1 FOR UPDATE',(now,)).fetchone()
+        record_queue_write(store,'scenario_ready_promotion',promote(store,'adp_scenario_jobs',now))
+        row=store.raw.execute(scenario_query(longitudinal,order)).fetchone()
+        if not row:row=store.raw.execute(scenario_query(not longitudinal,order)).fetchone()
         if row:
             cursor=store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET claimed_version=version WHERE scope_key=%s',(row['scope_key'],))
             record_queue_write(store,'claim',cursor)

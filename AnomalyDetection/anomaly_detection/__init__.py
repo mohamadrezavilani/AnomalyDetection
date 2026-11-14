@@ -1,6 +1,6 @@
 """Independent PostgreSQL consumer; delegates selected pinned Viewer read models."""
 
-BUILD_ID = "AD-20261111-BOUNDED-WORK"
+BUILD_ID = "AD-20261114-READY-QUEUES"
 EVALUATOR_VERSION = 'audit-evaluator-20261110-1'
 CONTRACT = "AD-SNAPSHOT-v1"
 SOURCE_SHA = "84e9dcc984092735dd4785a26b5af02019eda63d0d5d7ee221bb0c84da37e993"
