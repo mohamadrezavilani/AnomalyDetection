@@ -1,0 +1,164 @@
+{
+  "build_id": "AD-20261114-SECONDARY-PREFIX",
+  "status": "PASS_SYNTHETIC_EQUIVALENCE_OWNER_SHADOW_PENDING",
+  "dataset": "synthetic_only",
+  "jobs": 199000,
+  "queue": 108103,
+  "backend": "PostgreSQL 18.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 14.2.1 20250110 (Red Hat 14.2.1-11), 64-bit",
+  "settings": {
+    "fsync": "on",
+    "full_page_writes": "on",
+    "synchronous_commit": "on",
+    "max_parallel_workers_per_gather": "0",
+    "work_mem": "8MB",
+    "jit": "off",
+    "statement_timeout": "3s"
+  },
+  "ab_ba_pairs_per_shape": 8,
+  "full_row_equal_comparisons": 32,
+  "schema_changes": false,
+  "model_queue_sha256": "a8efe169530983097a88c1a579a170d883c81ac7aa1a6a5724428b25db60e511",
+  "cases": [
+    {
+      "shape": "eligible_after_192_stale",
+      "times_ms": {
+        "legacy": [
+          91.05391500088444,
+          96.73439399921335,
+          90.78849599973182,
+          91.01435500087973,
+          94.54597200056014,
+          87.8463280005235,
+          84.91710900125327,
+          87.71262099980959
+        ],
+        "candidate": [
+          1.679527000305825,
+          1.1372509998182068,
+          1.597925000169198,
+          1.2465559993870556,
+          1.4904230010870378,
+          1.297613000133424,
+          1.2682279993896373,
+          0.9896090014080983
+        ]
+      },
+      "median_ms": {
+        "legacy": 90.90142550030578,
+        "candidate": 1.2829204997615307
+      }
+    },
+    {
+      "shape": "sparse_eligible",
+      "times_ms": {
+        "legacy": [
+          88.63804899920069,
+          89.22745699965162,
+          37.58493399982399,
+          30.77393500097969,
+          32.35067700006766,
+          31.191542999295052,
+          31.905376999930013,
+          31.467967999560642
+        ],
+        "candidate": [
+          91.62165999987337,
+          90.01704500042251,
+          34.32529000019713,
+          33.2512629993289,
+          35.84123000109685,
+          32.576497998888954,
+          32.44347700092476,
+          33.761250000679865
+        ]
+      },
+      "median_ms": {
+        "legacy": 32.12802699999884,
+        "candidate": 34.0432700004385
+      }
+    },
+    {
+      "shape": "eligible_at_queue_tail",
+      "times_ms": {
+        "legacy": [
+          32.64232200126571,
+          30.354880000231788,
+          39.73746499832487,
+          31.46268099953886,
+          29.552755999247893,
+          40.030946000115364,
+          29.491534998669522,
+          30.283546999271493
+        ],
+        "candidate": [
+          32.77877599975909,
+          32.4978500011639,
+          32.76704400013841,
+          30.562086001737043,
+          32.677979999789386,
+          34.05899899917131,
+          35.94431599958625,
+          30.80750499975693
+        ]
+      },
+      "median_ms": {
+        "legacy": 30.908780499885324,
+        "candidate": 32.7225119999639
+      }
+    },
+    {
+      "shape": "all_pending_parents_dirty",
+      "times_ms": {
+        "legacy": [
+          35.47403800075699,
+          34.99017499962065,
+          36.01559300113877,
+          33.29800800020166,
+          33.20949999942968,
+          36.10509399914008,
+          32.644185001117876,
+          30.36350299953483
+        ],
+        "candidate": [
+          32.31926100124838,
+          37.62625800118258,
+          36.751104998984374,
+          40.09448800024984,
+          35.59751000102551,
+          35.46551600084058,
+          32.32233499875292,
+          32.82977899834805
+        ]
+      },
+      "median_ms": {
+        "legacy": 34.144091499911156,
+        "candidate": 35.531513000933046
+      }
+    }
+  ],
+  "native_windows_postgresql": "NOT_RUN",
+  "owner_production_access": false,
+  "all_30_family_acceptance": "NOT_ASSIGNED",
+  "capacity_precision_recall": "NOT_EVALUATED",
+  "known_independent_oracle_failure": "isolation_forest positive remains open",
+  "qualification": {
+    "unit": {
+      "status": "PASS",
+      "tests": 308,
+      "native_postgresql_tests": 27,
+      "skipped": 0,
+      "seconds": 28.086
+    },
+    "independent_oracle": {
+      "PASS": 178,
+      "FAIL": 1,
+      "failure": "isolation_forest positive"
+    },
+    "continuation": {
+      "PASS": 52,
+      "FAIL": 0
+    },
+    "owner_shadow": "NOT_RUN",
+    "native_windows_postgresql": "NOT_RUN"
+  }
+}

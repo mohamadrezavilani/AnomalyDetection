@@ -19,7 +19,36 @@ def schedule(store,job,families,now):
 
 
 def next_job(store,now):
-    row=store.raw.execute('SELECT j.* FROM anomaly_detection.adp_model_queue r JOIN anomaly_detection.adp_jobs j USING(session_key,target_ns) WHERE r.due_ns<=%s AND r.expected_version=j.version AND j.dirty=FALSE AND j.processed_version=j.version ORDER BY r.due_ns,r.target_ns,r.session_key LIMIT 1',(now,)).fetchone()
+    # A bounded prefix avoids a full parent scan for early ready work. When
+    # none is ready there, the original query still searches the entire queue.
+    # Both paths share one snapshot and retain the exact global due/key order.
+    row=store.raw.execute('''WITH head AS MATERIALIZED (
+        SELECT session_key,target_ns,expected_version,due_ns
+        FROM anomaly_detection.adp_model_queue WHERE due_ns<=%s
+        ORDER BY due_ns,target_ns,session_key LIMIT 256
+    ), fast AS MATERIALIZED (
+        SELECT r.session_key,r.target_ns FROM head r
+        CROSS JOIN LATERAL (
+            SELECT 1 FROM anomaly_detection.adp_jobs candidate
+            WHERE candidate.session_key=r.session_key AND candidate.target_ns=r.target_ns
+              AND candidate.version=r.expected_version AND candidate.dirty=FALSE
+              AND candidate.processed_version=candidate.version
+            LIMIT 1 OFFSET 0
+        ) valid
+        ORDER BY r.due_ns,r.target_ns,r.session_key LIMIT 1
+    ), fallback AS MATERIALIZED (
+        SELECT j.* FROM anomaly_detection.adp_model_queue r
+        JOIN anomaly_detection.adp_jobs j USING(session_key,target_ns)
+        WHERE r.due_ns<=%s AND r.expected_version=j.version AND j.dirty=FALSE
+          AND j.processed_version=j.version
+        ORDER BY r.due_ns,r.target_ns,r.session_key
+        LIMIT (SELECT CASE WHEN EXISTS(SELECT 1 FROM fast) THEN 0 ELSE 1 END)
+    ), picked AS MATERIALIZED (
+        SELECT session_key,target_ns FROM fast
+        UNION ALL
+        SELECT session_key,target_ns FROM fallback
+    ) SELECT j.* FROM picked p
+      JOIN anomaly_detection.adp_jobs j USING(session_key,target_ns)''',(now,now)).fetchone()
     return dict(row) if row else None
 
 
