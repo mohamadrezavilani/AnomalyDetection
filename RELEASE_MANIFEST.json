@@ -235,7 +235,7 @@
     "tests/test_viewer_install_check.py": "06b2dcd0775869f7ebe72a1ba269fece3e311fadba6c38dd04d80f5732e887af",
     "tests/test_viewer_install_regressions.py": "71f6475fa5bfdc767e12cb4f0e657f27c6da7291f8d3bd83459c7462bc69f6ca",
     "tests/test_viewer_lan_access.py": "6353dbbc3c6ee2502a36b1fade715642e67211bf938fed2c5241e42f7a6972fb",
-    "tests/test_viewer_launcher_bytes.py": "7c9751d207183ae84bf9c93da23f45767eac59da2dc01e6a3d2c3c5055e4215d",
+    "tests/test_viewer_launcher_bytes.py": "91f3fca82366132f3fe67985905a32d3e34374acc7c4147ff52785132afd7094",
     "tests/test_viewer_lc1_anchor_resolver.py": "a08d3e2e981841536c1823442ee7941700aa3cc4907457c6a571e97a070e69e6",
     "tests/test_viewer_lc1b_gap_sampling.py": "0d845f08930523f4523aa91fb90aac2495ee9ca37214eb588b8b0ce2eaaa0c31",
     "tests/test_viewer_lc1c_correlation_preflight.py": "1788666fb02afcd32b75b8a578d01bb03a9f69fe8c9bddf7e3b4c30058b76ed2",
