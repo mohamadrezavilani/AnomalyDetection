@@ -59,10 +59,13 @@ def control(find_listener,health,ports,open_process,backends,terminate,*,support
         captured=ports(pid);sessions=backends(captured)
         if any(row['backend_start']<process.created or row['worker_lock'] for row in sessions):
             raise ControlError('VIEWER_WEB_DATABASE_IDENTITY_MISMATCH')
-        # New requests can change the live connection set. Retry after browser
-        # traffic settles; never substitute an old PID or unverified SQL client.
-        if find_listener()!=pid or ports(pid)!=captured:
-            raise ControlError('VIEWER_WEB_OWNER_OR_CONNECTIONS_CHANGED')
+        # The process handle and listener identify the web server. Browser
+        # refreshes legitimately open/close DB connections during inspection;
+        # requiring the whole connection set to stay identical prevents a
+        # busy server from ever stopping. Cleanup uses only the exact backend
+        # identities proven by the original TCP snapshot.
+        if find_listener()!=pid:
+            raise ControlError('VIEWER_WEB_OWNER_CHANGED')
         result.update(status='VIEWER_WEB_IDENTIFIED',python_pid=pid,matched_database_sessions=len(sessions))
         if stop:
             process.terminate()
@@ -82,6 +85,22 @@ TERMINATE_SQL="""SELECT pg_terminate_backend(a.pid,5000) AS terminated FROM pg_s
       AND a.datname=current_database() AND a.backend_type='client backend'
       AND NOT EXISTS(SELECT 1 FROM pg_locks l WHERE l.pid=a.pid AND l.locktype='advisory'
          AND l.classid=240026 AND l.objid IN (1,2) AND l.granted)"""
+
+
+
+def verified_backends(rows,endpoints,captured_before):
+    """Exclude later port reuse and ambiguous endpoint identities.
+
+    captured_before comes from PostgreSQL immediately before the OS TCP
+    inventory. A backend born after that instant cannot be established as
+    belonging to the process by that inventory, even if its port is reused.
+    """
+    matches={}
+    for row in rows:
+        endpoint=(row['client_port'],str(ipaddress.ip_address(row['client_addr'])))
+        if endpoint in endpoints:matches.setdefault(endpoint,[]).append(row)
+    return [group[0] for group in matches.values() if len(group)==1
+        and group[0]['backend_start']<=captured_before]
 
 
 def main(argv=None):
@@ -111,15 +130,19 @@ def main(argv=None):
             guard=conn.execute('SELECT current_database() AS db,host(inet_server_addr()) AS address,inet_server_port() AS port').fetchone()
             if guard['db']!='p24_design_viewer' or not loopback(guard['address']):
                 raise ControlError('LOCAL_VIEWER_DATABASE_REQUIRED')
+            captured_before=None
+            def endpoints(pid):
+                nonlocal captured_before
+                captured_before=conn.execute('SELECT clock_timestamp() AS captured_before').fetchone()['captured_before']
+                return client_endpoints(pid,guard['port'])
             def backends(endpoints):
                 rows=conn.execute(BACKENDS_SQL,([port for port,address in endpoints],)).fetchall() if endpoints else []
-                return [row for row in rows if loopback(row['client_addr'])
-                    and (row['client_port'],str(ipaddress.ip_address(row['client_addr']))) in endpoints]
+                return verified_backends([row for row in rows if loopback(row['client_addr'])],endpoints,captured_before)
             def terminate(row):
                 item=conn.execute(TERMINATE_SQL,(row['pid'],row['backend_start'],row['client_port'],row['client_addr'])).fetchone()
                 return bool(item and item['terminated'])
             result=control(listener,lambda:probe('127.0.0.1',5021,'/healthz',timeout=3),
-                lambda pid:client_endpoints(pid,guard['port']),lambda pid:WindowsProcess(pid,allow_stop=args.stop),
+                endpoints,lambda pid:WindowsProcess(pid,allow_stop=args.stop),
                 backends,terminate,supported=SUPPORTED_RUNTIMES,stop=args.stop)
         print(json.dumps(result));return 0
     except Exception as exc:
