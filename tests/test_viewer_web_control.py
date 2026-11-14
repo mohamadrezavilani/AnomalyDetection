@@ -52,12 +52,38 @@ class WebControlTests(unittest.TestCase):
             if change=='recycled':self.process.created=STAMP+timedelta(seconds=2)
             with self.assertRaises(web.ControlError):self.run_control(stop=True)
             self.assertFalse(self.process.stopped);self.assertFalse(self.cleaned)
-    def test_changed_listener_or_connection_set_blocks_stop(self):
-        for changed in ('listener','ports'):
-            self.setUp();observations=iter((2002,2003) if changed=='listener' else (frozenset({40001}),frozenset({40002})))
-            args={'find_listener':lambda:next(observations)} if changed=='listener' else {'ports':lambda pid:next(observations)}
-            with self.assertRaises(web.ControlError):self.run_control(stop=True,**args)
-            self.assertFalse(self.process.stopped);self.assertFalse(self.cleaned)
+    def test_replaced_listener_still_blocks_stop(self):
+        observations=iter((2002,2003))
+        with self.assertRaises(web.ControlError):
+            self.run_control(stop=True,find_listener=lambda:next(observations))
+        self.assertFalse(self.process.stopped);self.assertFalse(self.cleaned)
+
+    def test_connection_churn_does_not_block_stopping_the_same_verified_web_process(self):
+        calls=[]
+        def changing(pid):
+            calls.append(pid)
+            return frozenset({40001}) if len(calls)==1 else frozenset({40002,40003})
+        result=self.run_control(stop=True,ports=changing)
+        self.assertEqual(result['status'],'VIEWER_WEB_STOPPED')
+        self.assertTrue(self.process.stopped);self.assertEqual(self.cleaned,self.sessions)
+        self.assertEqual(calls,[2002])
+
+    def test_disappearing_backends_are_not_a_reason_to_leave_the_web_server_running(self):
+        result=self.run_control(stop=True,terminate=lambda row:False)
+        self.assertEqual(result['status'],'VIEWER_WEB_STOPPED')
+        self.assertEqual(result['database_termination_acknowledged'],0)
+        self.assertTrue(self.process.stopped)
+
+    def test_port_reuse_after_tcp_snapshot_or_ambiguous_backend_is_not_terminated(self):
+        original=self.sessions[0]
+        endpoints=frozenset({(40001,'127.0.0.1')})
+        cutoff=STAMP+timedelta(seconds=2)
+        self.assertEqual(web.verified_backends([original],endpoints,cutoff),[original])
+        later=dict(original,pid=7000,backend_start=cutoff+timedelta(microseconds=1))
+        self.assertEqual(web.verified_backends([later],endpoints,cutoff),[])
+        self.assertEqual(web.verified_backends([original,dict(original,pid=7001)],endpoints,cutoff),[])
+        self.assertEqual(web.verified_backends([dict(original,client_port=40002)],endpoints,cutoff),[])
+
     def test_tcp_query_failure_is_not_an_absent_listener(self):
         with patch.object(web.subprocess,'run',return_value=subprocess.CompletedProcess([],1,'','access denied')):
             with self.assertRaises(web.ControlError):web.listener()

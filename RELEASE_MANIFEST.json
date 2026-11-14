@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "5a11370b01b51c400b82373f430175ac1bf5a0b16166304e239a20ed05801def",
+    "Pishkhan24_Project_Roadmap.md": "2892cb00e15e039666df0c5845c384c4f42a21bd929803bf73fed382ccdea4be",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "d7f66052582f9e2202c9bca035d3bcbd5780bcad63292b19a270f289c469d82f",
+    "VIEWER_README_FA.md": "52aa60b703849268d2f1a3b876fa83de2e7e07ebf7331969b850658e7e432cd7",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -433,9 +433,9 @@
     "p24_foundation/viewer_origin_storage.py": "820da23fdf599fd7cd7fe44a8fe2544e08476ca7e69bdd361693ca266a31c9c3",
     "tests/test_viewer_origin_storage.py": "0c49e3b56f99c108550772f96cfad1d83ce83b77c5ef0d3bd66d1b5acf0e197f",
     "viewer_performance/Restore_Viewer_Origin_Keys.py": "783a840c37000ab77a3a721dc1aff6b8fa3b3abcfdadd7a6e83b7894dc6d2171",
-    "viewer_performance/Stop_Viewer_Web.py": "93c1bf642c87caece6fd7c5880b7834f6c71e0f26e55fdc9aa7759d76ff9787c",
+    "viewer_performance/Stop_Viewer_Web.py": "32ca5e84361b1cf8bde77df122a51385ed96efd6750593fc564d4be3856045d6",
     "tests/test_viewer_web_budget.py": "bcb89f3f72e93ede4a6e743e35a71512584d0ccf74a9da28a298da90c5cec934",
-    "tests/test_viewer_web_control.py": "1eec187cefcfa2c08c4c927288555b1a2f6e8b9715d19c22b5d8ddbb55c370c5"
+    "tests/test_viewer_web_control.py": "c42cdfadbd1046b9b4d539913fabeefda0dc3237815208f525a77f852bfcc0a2"
   },
   "pilot_diagnostics_fix": true,
   "owner_runtime_reports_excluded": [
@@ -1095,6 +1095,7 @@
     "evidence_deleted": false,
     "checkpoint_seek_performed": false,
     "owner_capacity": "NOT_MEASURED",
-    "native_qualification": "REQUIRED_GITHUB_ACTIONS"
+    "native_qualification": "REQUIRED_GITHUB_ACTIONS",
+    "web_stop_connection_churn": "SUPPORTED_WITH_PINNED_LISTENER_HANDLE_AND_PRE_SNAPSHOT_BACKEND_IDENTITIES"
   }
 }
