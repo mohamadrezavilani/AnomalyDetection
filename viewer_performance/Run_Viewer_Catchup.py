@@ -1,7 +1,8 @@
-"""Resume the current Viewer checkpoint with bounded writer-only resources.
+"""Resume Viewer, optionally filling missing history with its own durable cursor.
 
 No global PostgreSQL setting, data model, index, source cursor or durability
-flag is changed. This uses the ordinary publication/late-evidence pipeline.
+flag is changed. History replay preserves the main publication high-watermark.
+This uses the ordinary publication/late-evidence pipeline.
 """
 from contextlib import contextmanager
 import argparse
@@ -103,6 +104,7 @@ def activate_profile(module,before,overrides,*,notice=lambda value:None):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[1])
+    parser.add_argument('--from-tehran-date',metavar='YYYY-MM-DD',help='Replay missing history from this date, then resume live publication')
     args=parser.parse_args(argv);root=args.project_root.resolve();sys.path.insert(0,str(root));os.chdir(root)
     try:
         from viewer_performance.Run_Viewer_Memory import memory_info,BASE_RUNTIME
@@ -136,6 +138,11 @@ def main(argv=None):
         from p24_foundation import viewer_data
         from tools.run_behavior_viewer import main as runner
         with activate_profile(viewer_data,before,overrides,notice=lambda value:print(json.dumps(value),flush=True)):
+            from viewer_performance.history_replay import pending_day,run as replay_history
+            if args.from_tehran_date:day=args.from_tehran_date
+            else:
+                with viewer_data.ViewerDB(**options) as probe:day=pending_day(probe)
+            if day:replay_history(root,day)
             previous=sys.argv
             sys.argv=['run_behavior_viewer.py','live','--config',str(root/'viewer_config.local.py'),'--progress','--resume-checkpoint']
             try:runner()

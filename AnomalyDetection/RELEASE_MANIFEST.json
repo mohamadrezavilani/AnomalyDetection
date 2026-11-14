@@ -1,6 +1,6 @@
 {
-  "build_id": "AD-20261114-POINT-PROBES",
-  "source_sha256": "159d9707f0af469399d3f15138d3bbd6483a75885083f5fdfd4f9b0098ede0d5",
+  "build_id": "AD-20261114-HISTORY-RESCAN",
+  "source_sha256": "be7ceec4257c464752ae860ff5420c3317d1675ce72f5515df0a9bf3b8c6d77d",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -13,7 +13,7 @@
     "MEETING_REQUIREMENTS_25_FA.md": "54ef408ba1af82cf13fe06f74cc75e99617bc1bb424bbf15a3278841d18746af",
     "METHODS_AND_LATE_DATA_FA.md": "ecc521f538f384b5cacb559bf05416cc67705b3f5de545108a08e1d7ae85bfbb",
     "PRESENTATION_GUIDE_FA.md": "53954989b5a1cf636e98f0a894d07179651e77e44ded72a6051f713f692dd456",
-    "PROJECT_MAP_FA.md": "1815371278e2e36648546a1f085cb977b7dd56fe5782d5b9684c5f651d03c6cc",
+    "PROJECT_MAP_FA.md": "1f5c1a0be0d2bb2e544d4b1ca0109961a1bd240f17396d1eef26ba4cb36459e6",
     "README_FA.md": "29b86b40eb42df27ba9185eb2e3daa27246be454293798c368557f99d640e966",
     "RELEASE_NOTES_06_FA.md": "30ee9d107f2d6e4593314c4000d40595a044421dfdb70f62961f14a46d086aa7",
     "RELEASE_NOTES_07_FA.md": "d693652cfea8136acaabe44a86a3fb3dd249e74f861390c52ee7bc0d1f481b8b",
@@ -42,7 +42,7 @@
     "SCENARIO_COVERAGE_19_FA.md": "30154a0cb8acd0baace636b43098f536f6ca0b3903a0bcf375d506c981b1d12e",
     "Start_AnomalyDetection.cmd": "6c48527d9ea32d3678d444803476348e723ad5c177495df80808b195fc198a30",
     "Stop_AnomalyDetection.cmd": "668f06eadaca8ceafd10072d48e11f1aab0457bb22bb3e879710d09190f69a27",
-    "anomaly_detection/__init__.py": "26fd3294f4154adb1ffd695593128e5f9322ef7e2ed54c197ef36365d65799fa",
+    "anomaly_detection/__init__.py": "deb728fd19d34d8003686e6c78a73ba8d1a20f31ff7cba0e1f0f571e45586cfa",
     "anomaly_detection/acceptance_report.py": "4b013da1291c117a3ec4deb2e539f8e1a414a6d9ee177ecc66e9176b9d8c9426",
     "anomaly_detection/audit_scope.py": "0db68a07e65604240d536484ee2001ad65e86d1da1a93df340362c1cf1a27d18",
     "anomaly_detection/case_export.py": "316df0e33ec60cbfb815feacfb61d7c890f316e4ae1f5b247416defff9a761fe",
@@ -53,6 +53,7 @@
     "anomaly_detection/context_models.py": "5ea6ab3ea6d3eae1bea59ce79a68b8b68469eebce84d1a51ebed4042b610ba52",
     "anomaly_detection/continuous.py": "392c0e8abe8eb630829ce31bed16cf5bca5b70b85ef0077730192988439efb43",
     "anomaly_detection/files_io.py": "54f686a03ea7778d0590057b2a68863b111cf98be5d851c71e7a2e96cc5b2c3a",
+    "anomaly_detection/history_rescan.py": "9f6589619405ce0cec2dd8fa3c8e3295f9bfed4f8f87a55a560c7da3e1aabb62",
     "anomaly_detection/history_reset.py": "f5f1fc8fa465b3ad31b10a33a7abdbf98a83bb785c04a768009525c46397a839",
     "anomaly_detection/history_scope.py": "91ef8f1be069af9d8dab85e29d5449387f78b419ded8ced7c7dc29dc80bddce5",
     "anomaly_detection/input_subjects.py": "197d05ac640f1abb22c0c368b886e9f727cb7e3506174fbff751f6996404b0b1",
@@ -67,7 +68,7 @@
     "anomaly_detection/presentation_proof.py": "0714368a1e9473203f00553901090eb906fc9f9ce20b0217fd6b7858ea530e29",
     "anomaly_detection/primary_pipeline.py": "6784f8e4547577fb163ff562a9054fb888ade36028abf7bac5c8abeaa7e347d4",
     "anomaly_detection/process_control.py": "f02ba887733131017468f36d3eb3cdaae115106faac210ba5dbf96c8af68a1da",
-    "anomaly_detection/product_cli.py": "7d56cd5af1e35d235ed4bb6017825f2070d035cd4c4e517bd4428837ef0eaf28",
+    "anomaly_detection/product_cli.py": "98dda261e5719c86d96d749f703731695d6c75607a2c15c93bfb731429a5c5c6",
     "anomaly_detection/product_control.py": "657efa8af906a10d14ea07c8ef1cc993dcee1654af424c8a6edf6379dcc06c4c",
     "anomaly_detection/product_dependencies.py": "202750186be42307294be02d5039c9f2456f40050b73955951a2827a46d9e99e",
     "anomaly_detection/product_diagnostics.py": "75268b6ae364e0038cbde079fc3127ba3dcf8b233e927f16d253665ec1491805",
@@ -82,6 +83,7 @@
     "anomaly_detection/product_store.py": "5f45da08b0d1fce49e5891c81a9bc0d0c9282ed0b63714577becf3c887a6d62d",
     "anomaly_detection/product_web.py": "5553688832b3343d27f6012f3ba2974077dea0668dae24294b4f3b78a15df023",
     "anomaly_detection/product_worker.py": "9297c398150c0d6119869bc1b2000bf1846b79f1a10d9f75664c0e346499f5b8",
+    "anomaly_detection/ready_work.py": "5cdfc2c1ec1ecfe422e33f1ad736694f7ab514d0df4231326e8eb9bce76fa156",
     "anomaly_detection/request_profiles.py": "1efbc76a59881e6663ef02dfff81a81a5c24f46f6ed02266046dcd10aba0ae76",
     "anomaly_detection/review_policy.py": "2b9cf8f11bb5182f92c2589d84308ce4fd8f5ba06d5402861de5cad354a99d2f",
     "anomaly_detection/runtime_lanes.py": "f7ca66a1bd6506172c9c14ee7547659e08c5a0f99f19f4967aa4f4398528931e",
@@ -121,7 +123,7 @@
     "fixtures/demo_05_restoration.json": "8d2bc7dd7d8d1d9f68ebeeb35461e5361f9327ae7bd16b7a4a0d028df6de624a",
     "fixtures/demo_06_retention.json": "dd6f1634c7d7acf2956dc722d8e5b22c1076ad1807b1219568f9e941aa2c1f6d",
     "reference/handoff_20261031/reference/viewer_schema_reference.json": "b85f1ee17a805501956201e11431ab487a023bd3b1487d40a3415d40708888bc",
-    "run_anomaly.py": "d5c00042108eec067b95a6d288162a10c49f33f053c3632b901c30072b46319e",
+    "run_anomaly.py": "9da9bc7c6075bc9026b8d17e4c7842ad578521b4719cdcdb712cca27e9317f9b",
     "tests/__init__.py": "135c5937466770f9218b73b49369d32bc98909b753600d979102750d9b620b9a",
     "tests/fixture_factory.py": "0f412cdbc1616f542927947bb0212058e5e121095082e9f2ecbbc8e4aba3ec65",
     "tests/test_acceptance_report.py": "45f4f93ab93366f2c4736d2b6869d3a499781890553589b802b5df50a7660876",
@@ -130,6 +132,7 @@
     "tests/test_bounded_source_work.py": "825a1520e97b4fe083006da9910494804246adf4bd47febe010e929c5ea36523",
     "tests/test_context_models.py": "98216183ae4ba2c2ca34fda6c257ddb89f3ddb75dac1183e31a2e6e2869a4463",
     "tests/test_continuous_cases.py": "1e35954e734d564092cb11de7f4b1002d6ca11eac5bc97b58fd7ec5136b5215f",
+    "tests/test_history_rescan.py": "1217e0b40a6dea2b136ff2a154ff98659423cf08ad5c49dde7d67e8f472498c5",
     "tests/test_independent_regressions.py": "4fee86b48634270616d49663efd1469da07b9b91f1d23b69d55823df068841b3",
     "tests/test_input_subjects.py": "5bb9bf507b7476507d7fd7020634332e13bf750b9ae8fb02ada5e26f37e179f4",
     "tests/test_longitudinal.py": "341c8975ad57591f5a86bc2456300d2b0b82e969bc755e0855970ed7ad6391d2",
@@ -230,8 +233,7 @@
     "validation/pg_engine/transport.py": "b3f9bf29d9e69ba97bbeca152d61b2d049b550903e63081fdadee67a7b87b630",
     "validation/qualify_audit_candidate.py": "4a08a04c402c5e3fe14019e99b0c20a24e9b3845cdf53438376acfb72a53c37c",
     "validation/qualify_audit_native.py": "07afbbdec7ffc00280e66eb9aa0b51c0bc5cc6cae12b5044e6f09eda301920e2",
-    "validation/recheck_input.py": "97de2e9a8b6724e57592cac8d05a5de9b753d44ddc79160e7cfe13dd7af05537",
-    "anomaly_detection/ready_work.py": "5cdfc2c1ec1ecfe422e33f1ad736694f7ab514d0df4231326e8eb9bce76fa156"
+    "validation/recheck_input.py": "97de2e9a8b6724e57592cac8d05a5de9b753d44ddc79160e7cfe13dd7af05537"
   },
   "storage_backend": "postgresql",
   "production_sqlite_imports": false,
@@ -301,5 +303,13 @@
     "runtime_sha256": "c536b19dd64f08b25b2cdab447f0def88969ea3629c015c326fb7cbaf386b26c",
     "runtime_files": 182,
     "method_versions_changed": false
+  },
+  "history_rescan": {
+    "deletes_canonical_or_human_data": false,
+    "main_viewer_checkpoint_rewound": false,
+    "detector_methods_changed": false,
+    "replay_identity_idempotent": true,
+    "native_recovery_tests": "PENDING_CI",
+    "production_accuracy": "NOT_EVALUATED"
   }
 }

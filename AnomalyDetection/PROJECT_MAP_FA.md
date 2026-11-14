@@ -1,3 +1,9 @@
+# تاریخچهٔ تکمیل‌شده و بازخوانی بدون حذف — ۱۴ نوامبر ۲۰۲۶
+
+`AD-20261114-HISTORY-RESCAN` فرمان داخلی `history-rescan --from-tehran-date YYYY-MM-DD --replay-id HEX_UUID` را برای تحویل خودکار از Viewer Catchup اضافه می‌کند. این فرمان maintenance بعد از توقف Worker و وب AD است؛ leaseهای baseline/actor/web و قفل writer خود AD را می‌گیرد. فقط مرز تحلیل و cursorهای خواندن/یادگیری/traffic/نمونه‌گیری و semantic keyset تنظیم می‌شوند. Factها، source binding/watermark، مدل‌ها، صف‌های نسخه‌دار، پرونده‌ها و بازخوردها حذف نمی‌شوند. retry همان replay_id پیشرفت جدید cursorها را به عقب برنمی‌گرداند. روش‌های تشخیص، EVALUATOR_VERSION و METHOD_VERSION تغییر ندارند.
+
+برای تکمیل تاریخچهٔ Viewer از ۱ اکتبر، AD در طول replay تاریخی متوقف می‌ماند. پس از تکمیل، helper بازخوانی را آماده و AD را شروع می‌کند؛ صفحهٔ اول محصول ثابت است. منبع همچنان SELECT-only و pin R3.7 ثابت است. بازخوانی قدیمی‌ترین پنجره‌ها برای منابع مرجع لازم است و اجرای مجدد مدل/مقایسهٔ مرجع به‌تدریج در صف‌های عادی پیش می‌رود؛ شروع مجدد، تأیید accuracy/precision/recall نیست. دستور نصب جاری در VIEWER_README_FA.md ریشه است. فرمان قدیمی history-reset برای این درخواست استفاده نشود.
+
 # سازگاری R3.7 — ۱۴ نوامبر ۲۰۲۶
 
 Build جاری AD-20261114-POINT-PROBES فقط pin دقیق R3.7 با ۱۸۲ فایل را به نسخه‌های شناخته‌شده اضافه می‌کند. Detector، صف، METHOD_VERSION و EVALUATOR_VERSION عوض نشده‌اند. گزارش مالک بعد از R3.6، ۳۰ دقیقه بدون انتشار تازه و SELECT طولانی خود Viewer و چند خوانندهٔ وب را نشان می‌دهد؛ AD بیشتر در WAITING_FOR_VIEWER_PUBLICATION بوده است. اصلاح جاری روی lookup ورودی، آمار expression index و بودجهٔ خواندن وب خود Viewer است. توقف و نصب و اندازه‌گیری در راهنمای ریشه آمده است؛ سرعت بالاتر از آنلاین هنوز پذیرش Production ندارد.
