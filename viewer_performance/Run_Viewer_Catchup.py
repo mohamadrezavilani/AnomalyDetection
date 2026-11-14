@@ -43,7 +43,7 @@ def connection_options(original,overrides):
     output=dict(original)
     if not str(output.get('dbname','')).startswith('p24_design_'):
         raise ValueError('viewer_database_required')
-    valid={'work_mem':{'16MB','64MB'},'temp_buffers':{'64MB','128MB'},'jit':{'off'},'wal_compression':{'lz4','pglz'}}
+    valid={'work_mem':{'16MB','64MB'},'temp_buffers':{'64MB','128MB'},'jit':{'off'},'wal_compression':{'zstd','lz4','pglz'}}
     if any(name not in valid or value not in valid[name] for name,value in overrides.items()):
         raise ValueError('invalid_catchup_override')
     output['options']=' '.join(filter(None,(str(output.get('options') or ''),
@@ -53,16 +53,16 @@ def connection_options(original,overrides):
 
 
 def supported_compression(connection):
-    """Probe in read-only, rollback-only transactions before any publication.
+    """Probe in short READ ONLY transactions before any publication.
 
-    Keep an already active supported compressor. Older builds without lz4
-    fall back to pglz. A role lacking SET privilege retains its current mode.
+    Keep an already active supported compressor. Try zstd first for entropy in hex/text index pages,
+    then lz4 and pglz when a build lacks a codec. A role lacking SET privilege retains its current mode.
     """
     with connection.transaction():
         connection.execute('SET TRANSACTION READ ONLY')
         current=connection.execute("SELECT current_setting('wal_compression') AS value").fetchone()['value']
     if current in ('lz4','pglz','zstd'):return current
-    for candidate in ('lz4','pglz'):
+    for candidate in ('zstd','lz4','pglz'):
         try:
             with connection.transaction():
                 connection.execute('SET TRANSACTION READ ONLY')

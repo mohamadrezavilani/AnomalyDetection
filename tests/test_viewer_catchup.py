@@ -2,7 +2,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 import json
-import multiprocessing
+import subprocess
+import sys
 import os
 import unittest
 from viewer_performance import Run_Viewer_Catchup as profile
@@ -38,12 +39,12 @@ class ResourceTests(unittest.TestCase):
             def execute(self,query,params=()):
                 if params:
                     self.selected.append(params[0])
-                    if params[0]=='lz4':raise Error(self.fail)
+                    if params[0] in ('zstd','lz4'):raise Error(self.fail)
                 return SimpleNamespace(fetchone=lambda:{'value':'off'})
         connection=Connection('0A000');self.assertEqual(profile.supported_compression(connection),'pglz')
-        self.assertEqual(connection.selected,['lz4','pglz'])
+        self.assertEqual(connection.selected,['zstd','lz4','pglz'])
         connection=Connection('42501');self.assertIsNone(profile.supported_compression(connection))
-        self.assertEqual(connection.selected,['lz4'])
+        self.assertEqual(connection.selected,['zstd'])
         with self.assertRaises(Error):profile.supported_compression(Connection('08006'))
 
 
@@ -76,11 +77,13 @@ class NativeCatchupTests(unittest.TestCase):
             late['@timestamp']=iso(START+FIVE_NS+1_000_000_000)
             before_rows=snapshot(self.db);before_state=self.db.one('SELECT * FROM viewer_live_state');self.db.conn.rollback()
             path=verified_file(self.root/'crash-catchup.gz',[late],START+FIVE_NS)
-            child=multiprocessing.get_context('spawn').Process(target=native.crash_publish,
-                args=(profile.connection_options(self.config,overrides),str(self.keys),str(path),START+FIVE_NS,'after_relations'))
-            child.start();child.join(20)
-            if child.is_alive():child.terminate();child.join(5)
-            self.assertEqual(child.exitcode,73)
+            program=("import json,sys; from tests.test_viewer_minimal_pg import crash_publish; "
+                "a=json.load(sys.stdin); crash_publish(a['config'],a['keys'],a['path'],a['start'],'after_relations')")
+            child=subprocess.run([sys.executable,'-B','-c',program],
+                input=json.dumps({'config':profile.connection_options(self.config,overrides),
+                    'keys':str(self.keys),'path':str(path),'start':START+FIVE_NS}),
+                text=True,capture_output=True,timeout=20,cwd=Path(__file__).resolve().parents[1])
+            self.assertEqual(child.returncode,73,child.stderr)
             self.assertEqual(before_rows,snapshot(self.db));self.assertEqual(before_state,self.db.one('SELECT * FROM viewer_live_state'))
             self.db.conn.rollback();self.publish([late],START+FIVE_NS)
             expected=snapshot(self.db)
