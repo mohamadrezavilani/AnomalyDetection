@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "f86845fc75bf15716bdc400c7e2462536e7e3b5a6b66ad33c6d4b634dfdb1cca",
+    "Pishkhan24_Project_Roadmap.md": "bbcf600a548758fe1c8580b9ecef6daf17835a34ef4519b6968804d06d46d5e5",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "cd80b1421be3557f4ab559dbdb96a428c02ce24c0716eaa307d12c7a19733a6b",
+    "VIEWER_README_FA.md": "14c7f71b934b7295aeab904cb4327f0f7bdc060447c15b6bc87f1251c4b47ea5",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -235,7 +235,7 @@
     "tests/test_viewer_install_check.py": "06b2dcd0775869f7ebe72a1ba269fece3e311fadba6c38dd04d80f5732e887af",
     "tests/test_viewer_install_regressions.py": "71f6475fa5bfdc767e12cb4f0e657f27c6da7291f8d3bd83459c7462bc69f6ca",
     "tests/test_viewer_lan_access.py": "6353dbbc3c6ee2502a36b1fade715642e67211bf938fed2c5241e42f7a6972fb",
-    "tests/test_viewer_launcher_bytes.py": "9908181a7f1331a233df5c779030f65c035bb3b97dd112cc3df34f72038c80f9",
+    "tests/test_viewer_launcher_bytes.py": "c814d83adae959cfe06a8dbee1bf0e099b870ef447ef837d273129488ea26950",
     "tests/test_viewer_lc1_anchor_resolver.py": "a08d3e2e981841536c1823442ee7941700aa3cc4907457c6a571e97a070e69e6",
     "tests/test_viewer_lc1b_gap_sampling.py": "0d845f08930523f4523aa91fb90aac2495ee9ca37214eb588b8b0ce2eaaa0c31",
     "tests/test_viewer_lc1c_correlation_preflight.py": "1788666fb02afcd32b75b8a578d01bb03a9f69fe8c9bddf7e3b4c30058b76ed2",
@@ -1046,5 +1046,15 @@
     "throughput_basis": "FRESH_COMMIT_VISIBILITY_MONOTONIC",
     "historical_rates_field": "historical_throughput",
     "production_capacity": "NOT_ASSIGNED_BY_OBSERVER"
+  },
+  "ad_ready_queues": {
+    "build_id": "AD-20261114-READY-QUEUES",
+    "source_sha256": "2cafe1e849e6e0aad646505657a030ce8c9c362ccf819a0c4fce5689877419a5",
+    "viewer_runtime_changed": false,
+    "viewer_restart_required": false,
+    "schema_changes": "EIGHT_OWNED_PARTIAL_QUEUE_INDEXES",
+    "detector_method_versions_changed": false,
+    "historical_work_retained": true,
+    "production_capacity": "AWAITING_FRESH_OWNER_MEASUREMENT"
   }
 }

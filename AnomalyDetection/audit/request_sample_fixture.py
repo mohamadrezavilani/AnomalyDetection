@@ -55,6 +55,7 @@ class Store:
     def bind(self,source):pass
     def execute(self,sql,params=()):
         self.queries.append(sql)
+        if sql.startswith('WITH expired AS MATERIALIZED (SELECT scope_key '):return Result()
         if sql.startswith('SELECT * FROM anomaly_detection.adp_scenario_jobs'):
             return Result([dict(scope_key='synthetic-scope',kind='request_workflow' if self.family=='service_workflow_change' else 'request_response',
                 entity_key=S,service_path=S,target_ns=T,version=2)])

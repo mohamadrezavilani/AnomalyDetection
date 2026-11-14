@@ -148,6 +148,12 @@ def source_inventory(project):
             digest.update(hashlib.sha256(data).digest()); count += 1
             if path.suffix == '.py':
                 names.update(n.lower() for n in SQL_NAME.findall(data.decode('utf-8-sig')))
+    # Classification also needs published AD table names. They do not belong
+    # to the Viewer runtime digest and never change its byte definition.
+    for path in (project/'AnomalyDetection/anomaly_detection').glob('*.py'):
+        if not path.resolve().is_relative_to(project):
+            raise ValueError('source_outside_project')
+        names.update(n.lower() for n in SQL_NAME.findall(path.read_text(encoding='utf-8-sig')))
     for name in tuple(names):
         if name.startswith('viewer_'):
             names.add('viewer_stage_' + name.removeprefix('viewer_'))

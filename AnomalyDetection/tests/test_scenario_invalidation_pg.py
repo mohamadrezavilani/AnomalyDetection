@@ -1,6 +1,7 @@
 """Real queue/CAS tests on disposable PostgreSQL, never the product database."""
 from contextlib import ExitStack
 import os
+import json
 import unittest
 import uuid
 from unittest.mock import patch
@@ -11,6 +12,11 @@ from anomaly_detection.product_store import ProductStore
 from anomaly_detection.snapshot import canonical,digest
 
 TARGET=100*FIVE_NS
+
+
+def plan_nodes(plan):
+    yield plan
+    for child in plan.get('Plans',[]):yield from plan_nodes(child)
 
 
 @unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'native AD test cluster not configured')
@@ -157,6 +163,100 @@ class NativeScenarioInvalidationTests(unittest.TestCase):
         self.assertFalse(self.read()['dirty']);self.assertEqual(self.read()['version'],7)
         self.assertEqual(ensure(self.raw,scenarios.DDL)['executed'],0)
         self.assertEqual(self.raw.execute('SHOW statement_timeout').fetchone()['statement_timeout'],'3s')
+
+    def test_backoff_promotion_is_bounded_and_preserves_future_work_versions_and_attempts(self):
+        from anomaly_detection.ready_work import promote
+        for i in range(70):self.job('expired'+str(i),due_ns=-1 if i==0 else 123,claimed_version=5)
+        self.job('future',due_ns=999);self.job('done',dirty=False,due_ns=123,processed_version=7)
+        self.raw.execute("INSERT INTO anomaly_detection.adp_profile_tasks SELECT 'p'||i,123,2,5 FROM generate_series(1,70) i")
+        self.raw.execute("INSERT INTO anomaly_detection.adp_profile_tasks VALUES('future',999,2,5)")
+        self.assertEqual(promote(self.store,'adp_scenario_jobs',500,limit=3).rowcount,3)
+        self.assertEqual(promote(self.store,'adp_profile_tasks',500,limit=3).rowcount,3)
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_scenario_jobs WHERE due_ns=0').fetchone()['n'],3)
+        self.assertEqual(self.read('future')['due_ns'],999);self.assertEqual(self.read('done')['due_ns'],123)
+        rows=self.raw.execute("SELECT version,claimed_version,dirty FROM anomaly_detection.adp_scenario_jobs WHERE scope_key LIKE 'expired%'").fetchall()
+        self.assertTrue(all(r['version']==7 and r['claimed_version']==5 and r['dirty'] for r in rows))
+        for _ in range(30):promote(self.store,'adp_scenario_jobs',500,limit=3);promote(self.store,'adp_profile_tasks',500,limit=3)
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_scenario_jobs').fetchone()['n'],72)
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n,MIN(attempts) AS lo,MAX(attempts) AS hi FROM anomaly_detection.adp_profile_tasks').fetchone(),{'n':71,'lo':5,'hi':5})
+
+    def test_ready_queries_keep_lane_and_target_order_without_touching_job_versions(self):
+        from anomaly_detection.ready_work import scenario_query,promote
+        for i in range(8):self.job('work'+str(i),kind='longitudinal' if i%2 else 'actor',target_ns=TARGET+i//2,due_ns=123 if i==0 else 0)
+        promote(self.store,'adp_scenario_jobs',500)
+        for longitudinal in (False,True):
+            predicate="kind='longitudinal'" if longitudinal else "kind<>'longitudinal'"
+            for order in ('ASC','DESC'):
+                old=self.raw.execute('SELECT * FROM anomaly_detection.adp_scenario_jobs WHERE dirty=TRUE AND due_ns<=%s AND '+predicate+' ORDER BY target_ns '+order+',scope_key LIMIT 1 FOR UPDATE',(500,)).fetchone()
+                new=self.raw.execute(scenario_query(longitudinal,order)).fetchone()
+                self.assertEqual(dict(old),dict(new))
+        self.assertTrue(all(r['version']==7 for r in self.raw.execute('SELECT version FROM anomaly_detection.adp_scenario_jobs').fetchall()))
+
+    def test_profile_scope_stays_coherent_and_history_wraps_without_losing_pending_tasks(self):
+        scenarios.publish_scope(self.store,'A','S',TARGET,['a','b'])
+        scenarios.queue_keys(self.store,['z','future'],force=True)
+        self.raw.execute("UPDATE anomaly_detection.adp_profile_tasks SET due_ns=999 WHERE request_key='future'")
+        self.assertEqual(scenarios.next_profile(self.store,500),'a')
+        self.raw.execute("DELETE FROM anomaly_detection.adp_profile_tasks WHERE request_key='a'")
+        self.assertEqual(scenarios.next_profile(self.store,500),'b')
+        self.raw.execute("DELETE FROM anomaly_detection.adp_profile_tasks WHERE request_key='b'")
+        self.assertEqual(scenarios.next_profile(self.store,500,historical=True),'z')
+        scenarios.queue_keys(self.store,['0'],force=True)
+        self.assertEqual(scenarios.next_profile(self.store,500,historical=True),'0')
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_profile_tasks').fetchone()['n'],3)
+        self.assertEqual(self.raw.execute("SELECT due_ns FROM anomaly_detection.adp_profile_tasks WHERE request_key='future'").fetchone()['due_ns'],999)
+
+    def test_ready_index_migration_preserves_queue_tuples_and_restarts_without_ddl(self):
+        from anomaly_detection.ready_work import DDL
+        from anomaly_detection.schema_setup import ensure,declaration
+        self.job();scenarios.queue_keys(self.store,['r'],force=True)
+        before=(dict(self.read()),self.raw.execute('SELECT *,ctid::text AS tuple FROM anomaly_detection.adp_profile_tasks').fetchall())
+        for q in DDL:self.raw.execute('DROP INDEX anomaly_detection.'+declaration(q)[1])
+        self.assertEqual(ensure(self.raw,scenarios.DDL)['executed'],len(DDL))
+        self.assertEqual(ensure(self.raw,scenarios.DDL)['executed'],0)
+        self.assertEqual(before,(dict(self.read()),self.raw.execute('SELECT *,ctid::text AS tuple FROM anomaly_detection.adp_profile_tasks').fetchall()))
+
+    def test_native_ready_claim_plans_remove_full_queue_sorts_and_match_legacy_choice(self):
+        from anomaly_detection.ready_work import scenario_query
+        count=50000
+        self.raw.execute("INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns,evaluation) SELECT 'q'||lpad(i::text,8,'0'),CASE WHEN mod(i,3)=0 THEN 'longitudinal' ELSE 'actor' END,'A','S',i/4,repeat('x',512) FROM generate_series(1,%s) i",(count,))
+        self.raw.execute('ANALYZE anomaly_detection.adp_scenario_jobs');self.raw.execute("SET work_mem='64kB'")
+        def explain(q,params=()):return self.raw.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+q,params).fetchone()['QUERY PLAN'][0]['Plan']
+        promotion=explain('SELECT scope_key FROM anomaly_detection.adp_scenario_jobs WHERE dirty=TRUE AND due_ns<>0 AND due_ns<=%s ORDER BY due_ns,target_ns DESC,scope_key LIMIT 64 FOR UPDATE SKIP LOCKED',(50000,))
+        self.assertTrue(any(n.get('Index Name')=='adp_scenario_deferred_due' for n in plan_nodes(promotion)))
+        self.assertFalse(any(n.get('Rows Removed by Filter',0)>0 for n in plan_nodes(promotion)))
+        evidence=[]
+        for longitudinal in (False,True):
+            predicate="kind='longitudinal'" if longitudinal else "kind<>'longitudinal'"
+            for order in ('ASC','DESC'):
+                old='SELECT * FROM anomaly_detection.adp_scenario_jobs WHERE dirty=TRUE AND due_ns<=%s AND '+predicate+' ORDER BY target_ns '+order+',scope_key LIMIT 1 FOR UPDATE'
+                expected=self.raw.execute(old,(50000,)).fetchone()['scope_key']
+                new=scenario_query(longitudinal,order)
+                self.assertEqual(self.raw.execute(new).fetchone()['scope_key'],expected)
+                old_plan=explain(old,(50000,));new_plan=explain(new)
+                old_sorts=[n for n in plan_nodes(old_plan) if n['Node Type']=='Sort']
+                self.assertTrue(old_sorts);self.assertTrue(any(n['Actual Rows']>10000 for n in plan_nodes(old_plan)))
+                self.assertFalse(any(n['Node Type'] in ('Sort','Incremental Sort') for n in plan_nodes(new_plan)))
+                scans=[n for n in plan_nodes(new_plan) if n.get('Index Name','').startswith('adp_scenario_ready_')]
+                self.assertTrue(scans);self.assertTrue(all(n['Actual Rows']<=1 for n in scans))
+                evidence.append({'lane':'long' if longitudinal else 'content','order':order,'old_rows':max(n['Actual Rows'] for n in plan_nodes(old_plan)),'new_rows':max(n['Actual Rows'] for n in plan_nodes(new_plan)),'old_temp_written_blocks':old_plan.get('Temp Written Blocks',0),'new_temp_written_blocks':new_plan.get('Temp Written Blocks',0)})
+        print('READY_QUEUE_PLANS '+json.dumps(evidence))
+
+    def test_profile_candidate_work_is_bounded_before_membership_and_scope_joins(self):
+        from anomaly_detection.ready_work import profile_scope_query,PROFILE_INDEPENDENT
+        self.raw.execute("INSERT INTO anomaly_detection.adp_profile_tasks SELECT 'r'||lpad(i::text,8,'0'),0,0,0 FROM generate_series(1,2000) i")
+        self.raw.execute("INSERT INTO anomaly_detection.adp_profile_scopes SELECT 'A','S',i,'[]',TRUE,FALSE,'canonical' FROM generate_series(1,32) i")
+        self.raw.execute("INSERT INTO anomaly_detection.adp_profile_scope_members SELECT 'A','S',s,t.request_key FROM generate_series(1,32) s CROSS JOIN anomaly_detection.adp_profile_tasks t")
+        self.raw.execute('ANALYZE anomaly_detection.adp_profile_tasks');self.raw.execute('ANALYZE anomaly_detection.adp_profile_scope_members')
+        for query in (profile_scope_query(),profile_scope_query(True)):
+            plan=self.raw.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+query).fetchone()['QUERY PLAN'][0]['Plan']
+            members=[n for n in plan_nodes(plan) if n.get('Index Name')=='adp_profile_scope_request']
+            self.assertTrue(members);self.assertTrue(all(n['Actual Loops']<=64 and n['Actual Rows']<=8 for n in members))
+            self.assertIsNone(self.raw.execute(query).fetchone())
+        self.assertIsNone(self.raw.execute(PROFILE_INDEPENDENT).fetchone())
+        self.assertEqual(scenarios.next_profile(self.store,500),'r00000001')
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_profile_tasks').fetchone()['n'],2000)
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_profile_scopes WHERE available=FALSE').fetchone()['n'],32)
 
     def test_new_global_generation_with_identical_membership_does_not_rewrite_or_requeue(self):
         from anomaly_detection.product_pipeline import apply_window

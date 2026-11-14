@@ -20,7 +20,7 @@ class SchemaSetupTests(unittest.TestCase):
         from importlib import import_module
         modules=('product_store','product_dependencies','product_pipeline','product_enrichment','service_reference','product_priority','job_scope','cases','population','model_queue','scenario_store')
         statements=[q for name in modules for q in import_module('anomaly_detection.'+name).DDL]
-        self.assertEqual(len(statements),113)
+        self.assertEqual(len(statements),121)
         self.assertEqual({declaration(q)[0] for q in statements},{'table','index','column','default'})
 
 
