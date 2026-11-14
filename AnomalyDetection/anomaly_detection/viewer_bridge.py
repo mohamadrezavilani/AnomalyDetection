@@ -34,7 +34,9 @@ def reader(project,q):
                 'field_path':row['evidence_path'] if edge else row['field_path'],'request_key':row['request_key'],
                 'raw_request_id':None,'at_ns':at,'when_fa':datetime.fromtimestamp(at/1e9,timezone.utc).astimezone(ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%d %H:%M:%S'),
                 'callpath':row.get('callpath')}
-    return ReadOnlyFacade()
+    facade=ReadOnlyFacade()
+    facade._binary_origin_keys=bool(getattr(q,'origin_keys_active',lambda:False)())
+    return facade
 
 def read_journey(source,key):
     from .product_source import SELECT

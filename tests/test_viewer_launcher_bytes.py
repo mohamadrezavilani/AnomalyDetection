@@ -196,11 +196,11 @@ function Invoke-WebRequest { param($Uri,[switch]$UseBasicParsing,$TimeoutSec)
     def test_release_runtime_has_an_exact_supported_pin_and_verified_ad_identity(self):
         import runpy
         profiles=runpy.run_path(str(ROOT/'AnomalyDetection/anomaly_detection/source_profiles.py'))
-        self.assertEqual(runtime_source_digest(ROOT),profiles['R35_RUNTIME'])
+        self.assertEqual(runtime_source_digest(ROOT),profiles['R36_RUNTIME'])
         module=runpy.run_path(str(ROOT/'AnomalyDetection/run_anomaly.py'))
         declared=json.loads((ROOT/'AnomalyDetection/RELEASE_MANIFEST.json').read_text())
         self.assertEqual(module['verify_build'](),declared['source_sha256'])
-        self.assertEqual(module['EXPECTED_BUILD'],'AD-20261114-READY-QUEUES')
+        self.assertEqual(module['EXPECTED_BUILD'],'AD-20261114-BINARY-ORIGINS')
 
     @unittest.skipUnless(os.name=='nt','Windows PowerShell parser')
     def test_both_launcher_scripts_parse_in_windows_powershell(self):

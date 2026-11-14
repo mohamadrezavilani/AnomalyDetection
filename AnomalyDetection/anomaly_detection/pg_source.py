@@ -1,4 +1,4 @@
-"""One bounded PostgreSQL projection read. No Viewer imports, DDL or worker."""
+"""One bounded PostgreSQL projection read. No Viewer DB initialization, DDL or worker."""
 from __future__ import annotations
 
 import ast
@@ -11,7 +11,7 @@ from contextvars import ContextVar
 
 from . import SOURCE_SHA, CATALOG_SHA, SEMANTIC_SCHEMA, CONTRACT
 from .snapshot import Snapshot, ContractError, api_path, require, MAX_ROWS
-from .source_profiles import SUPPORTED_RUNTIMES,r31_overlay_allowed,r32_release_allowed,r33_release_allowed,r34_release_allowed,r35_release_allowed
+from .source_profiles import SUPPORTED_RUNTIMES,r31_overlay_allowed,r32_release_allowed,r33_release_allowed,r34_release_allowed,r35_release_allowed,r36_release_allowed
 
 DEFAULT_SAMPLE = 32
 MAX_SAMPLE = 64
@@ -57,7 +57,7 @@ def installed_source_identity(project):
     actual=value.hexdigest();viewer=project/'p24_foundation/viewer_data.py'
     overlay=r31_overlay_allowed(declared,actual,count,hashlib.sha256(viewer.read_bytes()).hexdigest() if viewer.is_file() else None)
     require(count > 0 and (declared==SOURCE_SHA and actual==SOURCE_SHA or overlay or
-        r32_release_allowed(declared,actual,count) or r33_release_allowed(declared,actual,count) or r34_release_allowed(declared,actual,count) or r35_release_allowed(declared,actual,count)), "SOURCE_INSTALLED_BYTES_MISMATCH")
+        r32_release_allowed(declared,actual,count) or r33_release_allowed(declared,actual,count) or r34_release_allowed(declared,actual,count) or r35_release_allowed(declared,actual,count) or r36_release_allowed(declared,actual,count)), "SOURCE_INSTALLED_BYTES_MISMATCH")
     return {"runtime_sha256": value.hexdigest(), "checked_runtime_files": count}
 
 
@@ -120,15 +120,40 @@ def connection_parameters(database):
 
 
 class BudgetQuery:
-    def __init__(self, connection, *, budget_seconds=None):
+    def __init__(self, connection, *, budget_seconds=None, project=None):
         self.connection = connection
+        self.project = Path(project).resolve() if project is not None else None
+        self._origin_module = None
+        self._binary_origin_keys = None
         policy=read_limits()
         self.statement_ms=policy['statement_ms']
         self.deadline = time.monotonic() + (policy['total_seconds'] if budget_seconds is None else min(policy['total_seconds'],budget_seconds))
         self.metrics = []
 
+    def origin_keys_active(self):
+        if self._binary_origin_keys is not None:return self._binary_origin_keys
+        self._binary_origin_keys=False
+        if self.project is None or not (self.project/'p24_foundation/viewer_origin_storage.py').is_file():return False
+        import sys
+        from types import SimpleNamespace
+        if str(self.project) not in sys.path:sys.path.insert(0,str(self.project))
+        from p24_foundation import viewer_origin_storage as origin
+        require(Path(origin.__file__).resolve().is_relative_to(self.project),'VIEWER_READMODEL_FROM_DIFFERENT_INSTALLATION')
+        def one(sql):
+            remaining=int((self.deadline-time.monotonic())*1000)
+            require(remaining>0,'SOURCE_TOTAL_READ_BUDGET_EXCEEDED')
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT set_config('statement_timeout', %s, true)",(str(min(self.statement_ms,remaining)),))
+                cursor.execute(sql)
+                return cursor.fetchone()
+        self._binary_origin_keys=origin.active(SimpleNamespace(sqlite=False,one=one))
+        self._origin_module=origin
+        return self._binary_origin_keys
+
     def __call__(self, sql, parameters=(), *, cap=MAX_ROWS):
         require(sql.lstrip().upper().startswith("SELECT "), "NON_SELECT_QUERY_REJECTED")
+        if self.project is not None and self.origin_keys_active() and self._origin_module.needs_qualification(sql):
+            sql=self._origin_module.qualify(sql)
         remaining_ms = int((self.deadline - time.monotonic()) * 1000)
         require(remaining_ms > 0, "SOURCE_TOTAL_READ_BUDGET_EXCEEDED")
         started = time.monotonic()
@@ -199,9 +224,13 @@ def collect_sample(query, *, runtime_sha256, sample_limit=DEFAULT_SAMPLE, captur
     ordered_origins = sorted(origins)
     for begin in range(0, len(ordered_origins), 200):
         batch = ordered_origins[begin:begin + 200]
+        origin_column='e.origin_key';origin_parameter='%s'
+        if getattr(query,'origin_keys_active',lambda:False)():
+            origin_column=query._origin_module.key_sql(origin_column)
+            origin_parameter=query._origin_module.key_sql(origin_parameter)
         events.extend(query("SELECT e.origin_key,e.version_key,e.request_key,e.at_ns,e.callpath, "
             "EXISTS(SELECT 1 FROM public.viewer_raw_events r WHERE r.origin_key=e.origin_key AND r.version_key=e.version_key) AS raw_available "
-            "FROM public.viewer_events e WHERE e.origin_key IN (" + ",".join("%s" for _ in batch) + ")", batch))
+            "FROM public.viewer_events e WHERE "+origin_column+" IN (" + ",".join(origin_parameter for _ in batch) + ")", batch))
         require(len(events) <= MAX_ROWS, "SOURCE_VERSION_BUDGET_EXCEEDED")
     for row in events:
         row["raw_available"] = bool(row["raw_available"])
@@ -254,7 +283,7 @@ def read_native_sample(project, *, config_path=None, sample_limit=DEFAULT_SAMPLE
     connection = psycopg.connect(**connection_parameters(database), autocommit=False, row_factory=dict_row)
     try:
         connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
-        query = BudgetQuery(connection)
+        query = BudgetQuery(connection,project=project)
         snapshot, report = collect_sample(query, runtime_sha256=identity["runtime_sha256"], sample_limit=sample_limit)
         report.update(identity, query_metrics=query.metrics, driver_version=psycopg.__version__)
         return snapshot, report

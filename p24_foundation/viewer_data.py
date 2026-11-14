@@ -414,7 +414,10 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
     def __exit__(self,*args):self.close()
     def sql(self,statement,params=()):
         statement=route_projection_statement(statement,getattr(self,'_projection_routes',None))
-        if not self.sqlite: statement=statement.replace('?',self.param)
+        if not self.sqlite:
+            from .viewer_origin_storage import needs_qualification,qualify,active
+            if needs_qualification(statement) and active(self):statement=qualify(statement)
+            statement=statement.replace('?',self.param)
         return self.conn.execute(statement,params)
     def all(self,q,p=()):return [dict(x) for x in self.sql(q,p).fetchall()]
     def one(self,q,p=()):
@@ -457,7 +460,11 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         columns,conflict=self._INGEST_INSERTS[table]
         buffers=getattr(self,'_ingest_buffers',None)
         if buffers is not None:buffers.setdefault(table,[]).append(values)
-        else:self.sql('INSERT INTO '+table+'('+columns+') VALUES ('+','.join('?' for _ in values)+')'+conflict,values)
+        else:
+            if table=='viewer_raw_events':
+                from .viewer_origin_storage import raw_conflict
+                conflict=raw_conflict(self)
+            self.sql('INSERT INTO '+table+'('+columns+') VALUES ('+','.join('?' for _ in values)+')'+conflict,values)
     @contextmanager
     def _ingest_writer(self):
         # COPY buffers are bounded. Stages append for one capture, then merge
@@ -504,6 +511,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             self.progress('ingest_merge',table=table,rows=count)
             started=time.monotonic()
             columns,conflict=self._INGEST_INSERTS[table]
+            if table=='viewer_raw_events':
+                from .viewer_origin_storage import raw_conflict
+                conflict=raw_conflict(self)
             stage='viewer_stage_'+table.removeprefix('viewer_')
             # These two tables already contain only genuinely new versions.
             # Keep their strict PK errors, while using PostgreSQL's bulk heap
@@ -605,7 +615,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         for offset in range(0,len(all_origins),lookup_chunk):
             origins=all_origins[offset:offset+lookup_chunk]
             placeholders=','.join('?' for _ in origins)
-            for old in self.all('SELECT origin_key,version_key,request_key FROM viewer_events WHERE origin_key IN ('+placeholders+')',origins):
+            from .viewer_origin_storage import origin_list
+            for old in self.all('SELECT origin_key,version_key,request_key FROM viewer_events WHERE '+origin_list(self,len(origins)),origins):
                 known[old['origin_key']].append(old)
         self._ingest_timing['lookup_seconds']+=time.monotonic()-lookup_started
         for offset in range(0,len(prepared),batch_size):
@@ -618,8 +629,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 started=time.monotonic()
                 for piece in range(0,len(candidates),lookup_chunk):
                     group=candidates[piece:piece+lookup_chunk]
-                    for raw in self.all('SELECT origin_key,version_key,payload FROM viewer_raw_events WHERE origin_key IN ('+
-                                        ','.join('?' for _ in group)+')',group):
+                    for raw in self.all('SELECT origin_key,version_key,payload FROM viewer_raw_events WHERE '+origin_list(self,len(group)),group):
                         raw_lookup[(raw['origin_key'],raw['version_key'])]=json.loads(
                             zlib.decompress(bytes(raw['payload'])).decode('utf-8'))
                 self._ingest_timing['lookup_seconds']+=time.monotonic()-started
@@ -651,14 +661,14 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             lookup_started=time.monotonic()
             for origin in origins:known[origin]=[]
             if origins:
-                for old in self.all('SELECT origin_key,version_key,request_key FROM viewer_events WHERE origin_key IN ('+slots+')',origins):
+                from .viewer_origin_storage import origin_list
+                for old in self.all('SELECT origin_key,version_key,request_key FROM viewer_events WHERE '+origin_list(self,len(origins)),origins):
                     known[old['origin_key']].append(old)
             candidates=sorted({origin for _,_,origin,sig in prepared
                 if known[origin] and not any(v['version_key']==sig for v in known[origin])
                 and any((origin,v['version_key']) not in raw_lookup for v in known[origin])})
             if candidates:
-                for raw in self.all('SELECT origin_key,version_key,payload FROM viewer_raw_events WHERE origin_key IN ('+
-                                     ','.join('?' for _ in candidates)+')',candidates):
+                for raw in self.all('SELECT origin_key,version_key,payload FROM viewer_raw_events WHERE '+origin_list(self,len(candidates)),candidates):
                     raw_lookup[(raw['origin_key'],raw['version_key'])]=json.loads(zlib.decompress(bytes(raw['payload'])).decode('utf-8'))
             self._ingest_timing['lookup_seconds']+=time.monotonic()-lookup_started
             for n,row,origin,sig in prepared:
@@ -675,11 +685,14 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         self.init_payment_contract()
         self.init_capture()
         self.sync_service_catalog()
-        layout=getattr(self,'_qualification_storage_layout','compact_evidence_keys_v1')
-        if layout not in ('legacy','compact_evidence_keys_v1'):raise ValueError('invalid_storage_layout')
+        layout=getattr(self,'_qualification_storage_layout','binary_origin_keys_v1')
+        if layout not in ('legacy','compact_evidence_keys_v1','binary_origin_keys_v1'):raise ValueError('invalid_storage_layout')
         if layout!='legacy':
             from .viewer_storage_keys import ensure
             ensure(self)
+        if layout=='binary_origin_keys_v1':
+            from .viewer_origin_storage import ensure as ensure_origins
+            ensure_origins(self)
 
     def ensure_service_roles(self, paths=None):
         # Discover real HTTP root paths without overwriting operator decisions.
@@ -930,7 +943,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 idx,docid=source_identity(row)
                 origin=token(self.keys,'origin',[idx,docid] if idx else [digest,ordinal])
                 signature=token(self.keys,'version',row)
-                r=self.sql('UPDATE viewer_events SET observation=? WHERE origin_key=? AND version_key=? AND (observation IS NULL OR observation<>?)',
+                from .viewer_origin_storage import parameter_equal
+                r=self.sql('UPDATE viewer_events SET observation=? WHERE '+parameter_equal(self,'origin_key')+
+                           ' AND '+parameter_equal(self,'version_key')+' AND (observation IS NULL OR observation<>?)',
                            (obs,origin,signature,obs))
                 updated+=max(r.rowcount,0)
                 if 'ud_prc_inquiryInvoiceResult2' in call:
