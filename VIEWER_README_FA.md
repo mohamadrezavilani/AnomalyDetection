@@ -1,3 +1,9 @@
+# ارتقای جاری: AD-20261115-READ-ISOLATION — ۱۵ نوامبر ۲۰۲۶
+
+فقط AD را متوقف کنید؛ پس از STOPPED/ALREADY_STOPPED، git pull --ff-only origin main و سپس worker-start. Viewer/Catchup و وب آن روشن می‌مانند و از همان cursor اول آبان ادامه می‌دهند. history-rescan یا تغییر محدوده لازم نیست. این اصلاح از کوچک‌شدن اشتباه صفحه‌های پنجره بر اثر خطای شاهد جلوگیری می‌کند؛ شاهدها، نسخه‌های متعارض و بودجهٔ عادی batch حفظ می‌شوند. یک درخواست سرد، بودجهٔ خواندن محدود مستقل دارد.
+
+گزارش بعدی: `python -B AnomalyDetection/validation/observe_viewer_live.py --project . --seconds 1800 --history-windows 3`. گزارش قبلی پیشرفت AD را اثبات کرد، اما نرخ انتشار حدود ۸ پنجره/ساعت و خطای منبع داشت؛ پذیرش ظرفیت آنلاین و دقت هنوز صادر نشده‌اند. دستورهای پایین سابقهٔ نسخه‌های پیشین هستند.
+
 # ارتقای جاری: AD-20261115-RUNTIME-BOUNDS — ۱۵ نوامبر ۲۰۲۶
 
 این ارتقا برای timeoutهای صف و ثبت پنجرهٔ AD است. Root runtime همان R3.10 و شروع انتخابی همان اول آبان است. Viewer/Catchup و وب آن می‌توانند در حال اجرا بمانند. فقط AD را با worker-stop متوقف کنید؛ پس از STOPPED یا ALREADY_STOPPED، git pull --ff-only origin main و سپس worker-start اجرا شود. helperهای Catchup یا history-rescan دوباره اجرا نشوند؛ cursorهای موجود ادامه پیدا می‌کنند. ساخت یک‌بارهٔ سه index در schema AD ممکن است شروع را طولانی‌تر کند؛ مرحله و شکست احتمالی در وضعیت ثبت می‌شود.

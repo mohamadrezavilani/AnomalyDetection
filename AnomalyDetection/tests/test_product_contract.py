@@ -38,7 +38,7 @@ class ProductContractTests(unittest.TestCase):
         from anomaly_detection import SOURCE_SHA
         reader.identity={'runtime_sha256':SOURCE_SHA}
         @contextmanager
-        def snapshot():yield object()
+        def snapshot(**_):yield object()
         reader.snapshot=snapshot
         from types import SimpleNamespace
         sample=SimpleNamespace(occurrences={})
@@ -72,6 +72,30 @@ class ProductContractTests(unittest.TestCase):
         self.assertEqual(query.metrics[-1]['sqlstate'],'57014')
         self.assertTrue(query.metrics[-1]['failed'])
         self.assertNotIn('private-value',str(query.metrics));self.assertNotIn('SELECT',str(query.metrics))
+        self.assertRegex(query.metrics[-1]['statement_id'],r'^[0-9a-f]{16}$')
+
+    def test_single_request_allowance_is_finite_nested_and_does_not_change_page_budget(self):
+        from anomaly_detection.pg_source import product_read_budget,read_limits,connection_parameters
+        original=read_limits()
+        with product_read_budget(single_request=True):
+            query=BudgetQuery(object())
+            self.assertEqual(query.statement_ms,2000);self.assertEqual(read_limits()['total_seconds'],6)
+            self.assertIn('statement_timeout=2000',connection_parameters({'dbname':'p24_design_viewer'})['options'])
+            with product_read_budget():
+                self.assertEqual(BudgetQuery(object()).statement_ms,1000)
+                self.assertEqual(read_limits()['total_seconds'],3)
+            self.assertEqual(read_limits()['statement_ms'],2000)
+        self.assertEqual(read_limits(),original)
+
+    def test_single_request_audit_selects_its_budget_and_batches_keep_original_budget(self):
+        from types import SimpleNamespace
+        reader=ProductSource.__new__(ProductSource);reader.identity={'runtime_sha256':'fixture'};selected=[]
+        @contextmanager
+        def snapshot(**options):selected.append(options);yield object()
+        reader.snapshot=snapshot
+        with patch('anomaly_detection.product_source.collect_sample',return_value=(SimpleNamespace(occurrences={}),{})):
+            reader.audit([key(1)]);reader.audit([key(1),key(2)])
+        self.assertEqual(selected,[{'single_request':True},{'single_request':False}])
 
 
 if __name__=='__main__':unittest.main()

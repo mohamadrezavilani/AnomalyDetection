@@ -203,7 +203,7 @@ class SourceCompatibilityControls(unittest.TestCase):
         from contextlib import nullcontext
         from types import SimpleNamespace
         source=ProductSource.__new__(ProductSource);source.identity={'runtime_sha256':R31_RUNTIME}
-        source.snapshot=lambda:nullcontext(object())
+        source.snapshot=lambda **_:nullcontext(object())
         with patch('anomaly_detection.product_source.collect_sample',return_value=(SimpleNamespace(occurrences={}),{})) as collect:
             source.audit(['a'*64])
             self.assertEqual(collect.call_args.kwargs['runtime_sha256'],R31_RUNTIME)

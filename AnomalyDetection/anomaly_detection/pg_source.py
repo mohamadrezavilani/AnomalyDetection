@@ -29,8 +29,12 @@ def online_read_budget():
 
 
 @contextmanager
-def product_read_budget():
-    token=_READ_POLICY.set({'statement_ms':1000,'total_seconds':3,'actor_page_limit':128})
+def product_read_budget(*,single_request=False):
+    # A cold, exact RequestID can need more than one second on the shared
+    # disk. Only a one-request audit gets this finite allowance; window pages
+    # and background scans keep their ordinary budget.
+    token=_READ_POLICY.set({'statement_ms':2000 if single_request else 1000,
+                           'total_seconds':6 if single_request else 3,'actor_page_limit':128})
     try:yield
     finally:_READ_POLICY.reset(token)
 
@@ -157,19 +161,32 @@ class BudgetQuery:
         remaining_ms = int((self.deadline - time.monotonic()) * 1000)
         require(remaining_ms > 0, "SOURCE_TOTAL_READ_BUDGET_EXCEEDED")
         started = time.monotonic()
+        identity={'statement_id':hashlib.sha256(sql.encode()).hexdigest()[:16],
+                  'statement_budget_ms':min(self.statement_ms,remaining_ms)}
         try:
             with self.connection.cursor() as cursor:
                 cursor.execute("SELECT set_config('statement_timeout', %s, true)", (str(min(self.statement_ms, remaining_ms)),))
                 cursor.execute(sql + " LIMIT %s", (*parameters, cap + 1))
                 rows = [dict(row) for row in cursor.fetchall()]
         except Exception as exc:
-            self.metrics.append({'query':len(self.metrics)+1,'rows':None,'failed':True,
-                'elapsed_seconds':round(time.monotonic()-started,4),'sqlstate':getattr(exc,'sqlstate',None)})
+            self.metrics.append(dict(identity,query=len(self.metrics)+1,rows=None,failed=True,
+                elapsed_seconds=round(time.monotonic()-started,4),sqlstate=getattr(exc,'sqlstate',None)))
             raise
         require(len(rows) <= cap, "SOURCE_ROW_BUDGET_EXCEEDED")
-        self.metrics.append({"query": len(self.metrics) + 1, "rows": len(rows),
-                             "elapsed_seconds": round(time.monotonic() - started, 4)})
+        self.metrics.append(dict(identity,query=len(self.metrics)+1,rows=len(rows),
+                                 elapsed_seconds=round(time.monotonic()-started,4)))
         return rows
+
+
+def origin_events(query,origins):
+    """One indexed origin probe retains every version and raw-presence check."""
+    equal='e.origin_key=wanted.origin_key'
+    if getattr(query,'origin_keys_active',lambda:False)():
+        equal=query._origin_module.key_sql('e.origin_key')+'='+query._origin_module.key_sql('wanted.origin_key')
+    return query("SELECT found.* FROM unnest(CAST(%s AS text[])) AS wanted(origin_key) CROSS JOIN LATERAL ("
+        "SELECT e.origin_key,e.version_key,e.request_key,e.at_ns,e.callpath, "
+        "EXISTS(SELECT 1 FROM public.viewer_raw_events r WHERE r.origin_key=e.origin_key AND r.version_key=e.version_key) AS raw_available "
+        "FROM public.viewer_events e WHERE "+equal+" OFFSET 0) found",(origins,))
 
 
 def collect_sample(query, *, runtime_sha256, sample_limit=DEFAULT_SAMPLE, captured_at_ns=None,request_keys=None,coverage_window_ns=None):
@@ -225,13 +242,7 @@ def collect_sample(query, *, runtime_sha256, sample_limit=DEFAULT_SAMPLE, captur
     ordered_origins = sorted(origins)
     for begin in range(0, len(ordered_origins), 200):
         batch = ordered_origins[begin:begin + 200]
-        origin_column='e.origin_key';origin_parameter='%s'
-        if getattr(query,'origin_keys_active',lambda:False)():
-            origin_column=query._origin_module.key_sql(origin_column)
-            origin_parameter=query._origin_module.key_sql(origin_parameter)
-        events.extend(query("SELECT e.origin_key,e.version_key,e.request_key,e.at_ns,e.callpath, "
-            "EXISTS(SELECT 1 FROM public.viewer_raw_events r WHERE r.origin_key=e.origin_key AND r.version_key=e.version_key) AS raw_available "
-            "FROM public.viewer_events e WHERE "+origin_column+" IN (" + ",".join(origin_parameter for _ in batch) + ")", batch))
+        events.extend(origin_events(query,batch))
         require(len(events) <= MAX_ROWS, "SOURCE_VERSION_BUDGET_EXCEEDED")
     for row in events:
         row["raw_available"] = bool(row["raw_available"])
