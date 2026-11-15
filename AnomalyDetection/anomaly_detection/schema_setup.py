@@ -84,8 +84,9 @@ def ensure(raw,statements):
             needed=actual not in (expected,expected+'::text')
             if needed:tables[name][col]['default']=expected
         if needed:
-            if kind=='index' and name=='adp_scenario_invalidatable':
-                # The existing queue can be large. Only this one-time owned
+            if kind=='index' and name in ('adp_scenario_invalidatable','adp_peer_reference_scan_v1',
+                    'adp_signal_candidate_scan_v1','adp_fact_candidate_needed_v1'):
+                # The existing history can be large. Only this one-time owned
                 # index build gets a bounded DDL budget. Savepoint rollback
                 # restores the caller's setting on failure as well.
                 with raw.transaction():

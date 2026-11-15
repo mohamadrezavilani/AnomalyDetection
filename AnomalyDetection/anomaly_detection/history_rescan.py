@@ -33,6 +33,7 @@ def prepare(store,day,replay_id):
         store.save_state('overlap_cursor',{})
         store.save_state('scope_repair_cursor',{})
         store.save_state('candidate_audit_scope_v4',{})
+        store.save_state('candidate_audit_pass_v1',{})
         store.save_state('assessed_recheck_pass_v1',{})
         store.save_state('profile_independent_sample_v1',{'through_ns':start-FIVE_NS})
         for name in ('profile_floor_pass_v1','profile_actor_seed_pass_v1','profile_active_scope_v1','profile_history_pass_v1','longitudinal_seed_v2'):

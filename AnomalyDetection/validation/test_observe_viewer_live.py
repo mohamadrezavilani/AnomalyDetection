@@ -60,6 +60,60 @@ class FakeReader:
 
 
 class ViewerObservationTests(unittest.TestCase):
+    def test_owned_progress_keeps_failure_and_window_counters_without_cursor_identifiers(self):
+        value={'pid':3,'instance_token':'worker','cohort_windows':7,'owned_apply_failures_total':2,
+            'last_source_failure_event':{'phase':'read_request_evidence','failure':{'sqlstate':'57014'}},
+            'window_lanes':{'fresh_cursor':{'completed':7,'page_reads':19,'snapshot_restarts':1,
+                'cursor':{'target_ns':100,'after':[101,'private-request'],'stamp':'private-stamp'}},
+                'untrusted-lane':{'request_key':'private-request'}},'request_keys':['private-request']}
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'status.json';path.write_text(json.dumps(value),encoding='utf-8')
+            result=probe.owned_progress(path)
+        self.assertEqual(result['status'],'READ')
+        self.assertEqual(result['value']['cohort_windows'],7)
+        self.assertEqual(result['value']['window_lanes']['fresh_cursor']['cursor'],{'target_ns':100,'next_ns':None})
+        self.assertEqual(result['value']['owned_apply_failures_total'],2)
+        self.assertNotIn('private-request',json.dumps(result));self.assertNotIn('private-stamp',json.dumps(result))
+
+    def test_history_target_counts_committed_publications_only_and_keeps_two_ad_snapshots(self):
+        class ReplayingReader(FakeReader):
+            calls=0
+            def rows(self,sql,parameters=()):
+                if 'to_regclass' in sql:return [{'present':'viewer_history_replay_state'}]
+                if sql==probe.REPLAY_SQL:
+                    # Initial snapshot, 20 skips, then two real commits.
+                    i=self.calls;self.calls+=1
+                    return [dict(run_id='one',from_ns=probe.FIVE_NS,next_ns=(1+20*min(i,1)+max(0,i-1))*probe.FIVE_NS,
+                        end_ns=100*probe.FIVE_NS,skipped_windows=20*min(i,1),published_windows=max(0,i-1),
+                        status='RUNNING',ad_prepared=1,ad_started=1)]
+                return super().rows(sql,parameters)
+        clock=Clock();calls=[]
+        def ad():calls.append(1);return {'status':'READ','value':{'cohort_windows':len(calls)}}
+        value=probe.collect(ReplayingReader(),seconds=1800,history_windows=2,allowed_names=set(),
+            clock=clock.read,wall=lambda:1,wait=clock.wait,ad_progress=ad)
+        self.assertEqual(clock.now,6)
+        self.assertEqual(value['measurement_stop_reason'],'TARGET_HISTORY_WINDOWS_OBSERVED')
+        self.assertEqual(value['history_replay']['new_missing_windows_published_during_observation'],2)
+        self.assertEqual(value['history_replay']['complete_windows_skipped_during_observation'],20)
+        self.assertEqual(value['ad_owned_progress_before']['value']['cohort_windows'],1)
+        self.assertEqual(value['ad_owned_progress']['value']['cohort_windows'],2)
+
+    def test_replaced_history_run_cannot_satisfy_target_with_other_counters(self):
+        class ReplacedReader(FakeReader):
+            calls=0
+            def rows(self,sql,parameters=()):
+                if 'to_regclass' in sql:return [{'present':'viewer_history_replay_state'}]
+                if sql==probe.REPLAY_SQL:
+                    self.calls+=1
+                    return [dict(run_id=str(self.calls),from_ns=probe.FIVE_NS,next_ns=99*probe.FIVE_NS,
+                        end_ns=100*probe.FIVE_NS,skipped_windows=0,published_windows=98,status='RUNNING',ad_prepared=1,ad_started=1)]
+                return super().rows(sql,parameters)
+        clock=Clock()
+        value=probe.collect(ReplacedReader(),seconds=1800,history_windows=2,allowed_names=set(),
+            clock=clock.read,wall=lambda:1,wait=clock.wait)
+        self.assertEqual(value['measurement_stop_reason'],'HISTORY_MEASUREMENT_INVALID')
+        self.assertEqual(value['status'],'PARTIAL_READ_ONLY_OBSERVATION')
+
     def test_history_progress_separates_verified_skips_from_actual_publication(self):
         base=dict(run_id='one',from_ns=0,next_ns=2*probe.FIVE_NS,end_ns=100*probe.FIVE_NS,
             skipped_windows=2,published_windows=0,status='RUNNING',ad_prepared=0,ad_started=0)

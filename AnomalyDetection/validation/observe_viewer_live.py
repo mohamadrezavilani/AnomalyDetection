@@ -455,7 +455,25 @@ def ad_counter_deltas(before,after,seconds,*,stats_reset=False):
             'counts_are_row_mutations_not_unique_jobs_or_sql_calls':True}
 
 
-def collect(reader, *, seconds, allowed_names, forward_windows=0,
+def owned_progress(path):
+    """Fixed runtime counters only; cursor request keys and case data stay local."""
+    def read():
+        value=json.loads(Path(path).read_text(encoding='utf-8-sig'))
+        result={key:value.get(key) for key in ('build_id','source_sha256','pid','instance_token','state','phase','heartbeat_ns',
+            'evaluated_jobs','audited_requests','cohort_windows','fresh_windows','fresh_page_reads','fresh_snapshot_restarts',
+            'source_pages','source_attempts','source_page_sizes','scenario_evaluations','scenario_results',
+            'scenario_queue_activity','viewer_admission','source_failures_total','owned_apply_failures_total',
+            'evaluation_timeouts_total','last_source_failure','last_storage_failure','last_evidence_queue_failure',
+            'last_source_failure_event','last_owned_apply_failure_event','last_evaluation_failure_event','last_owned_query_metrics')}
+        result['window_lanes']={lane:{**{k:progress.get(k) for k in ('page_reads','completed','snapshot_restarts','last_status')},
+            'cursor':{k:progress.get('cursor',{}).get(k) for k in ('target_ns','next_ns')}}
+            for lane,progress in value.get('window_lanes',{}).items()
+            if lane in ('fresh_cursor','learning_cursor','overlap_cursor')}
+        return result
+    return attempt(read)
+
+
+def collect(reader, *, seconds, allowed_names, forward_windows=0,history_windows=0,ad_progress=None,
             clock=time.monotonic, wall=time.time_ns, wait=time.sleep, progress=lambda _: None):
     guard = reader.rows("SELECT current_database() AS database,current_setting('transaction_read_only') AS read_only")
     if not guard or guard[0] != {'database': 'p24_design_viewer', 'read_only': 'on'}:
@@ -477,7 +495,9 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,
             'throughput uses only fresh commit visibility; polling uncertainty is bounded and this is not sustained capacity qualification.',
             'No SQL, parameters, application names, credentials or user evidence are exported.']}
     report['ad_counters_before']=reader.optional(AD_COUNTERS_SQL);ad_started=clock()
+    if ad_progress:report['ad_owned_progress_before']=ad_progress()
     replay_before=replay_snapshot(reader)
+    replay_after=replay_before;history_invalid=False;new_history=0
     deadline = clock() + seconds
     next_progress = clock() + 15
     fresh = FreshForward()
@@ -491,13 +511,20 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,
         report['samples'].append({'observed_ns': at, 'observed_utc': ns_iso(at),
             'elapsed_seconds': round(clock() - started, 3), 'viewer_state': state,
             'activity': activity})
+        if history_windows:
+            replay_after=replay_snapshot(reader)
+            history=replay_progress(replay_before,replay_after)
+            new_history=history.get('new_missing_windows_published_during_observation',0)
+            history_invalid='new_missing_windows_published_during_observation' not in history
+            if history_invalid or new_history>=history_windows:break
         if forward_windows and (fresh.failure or len(fresh.commits) >= forward_windows):
             break
         if clock() >= deadline:
             break
         if clock() >= next_progress:
             progress({'status': 'OBSERVING', 'elapsed_seconds': round(clock() - started, 1),
-                'fresh_forward_windows': len(fresh.commits), 'target_forward_windows': forward_windows or None})
+                'fresh_forward_windows': len(fresh.commits), 'target_forward_windows': forward_windows or None,
+                'new_history_windows':new_history if history_windows else None,'target_history_windows':history_windows or None})
             next_progress = clock() + 15
         wait(min(3, max(0, deadline - clock())))
     report['counters_after'] = {name: reader.optional(sql) for name, sql in COUNTERS.items()}
@@ -507,14 +534,17 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,
         stats_reset=report['counter_deltas'].get('database',{}).get('status')=='STATS_RESET')
     report['recent_forward_receipts'] = reader.optional(RECEIPTS_SQL)
     report['recent_resume_records'] = reader.optional(RESUMES_SQL)
-    report['history_replay']=replay_progress(replay_before,replay_snapshot(reader))
+    report['history_replay']=replay_progress(replay_before,replay_after if history_windows else replay_snapshot(reader))
+    if ad_progress:report['ad_owned_progress']=ad_progress()
     latest = report['samples'][-1]
     state = state_summary(latest['viewer_state']['value'], latest['observed_ns']) if latest['viewer_state']['status'] == 'READ' else None
     report['latest_viewer_state'] = state
     receipts = report['recent_forward_receipts']
     report['historical_throughput'] = receipt_summary(receipts['value'], state['backlog_windows'] if state else None) if receipts['status'] == 'READ' else {'throughput_status': 'RECEIPTS_UNAVAILABLE'}
     report['throughput'] = fresh.summary(clock())
-    report['measurement_stop_reason'] = ('FRESH_MEASUREMENT_INVALID' if fresh.failure else
+    report['measurement_stop_reason'] = ('HISTORY_MEASUREMENT_INVALID' if history_invalid else
+        'TARGET_HISTORY_WINDOWS_OBSERVED' if history_windows and new_history>=history_windows else
+        'FRESH_MEASUREMENT_INVALID' if fresh.failure else
         'TARGET_FRESH_WINDOWS_OBSERVED' if forward_windows and len(fresh.commits) >= forward_windows else 'OBSERVATION_DEADLINE')
     waits = Counter(); fingerprints = Counter(); publisher_seen = set(); visibility = Counter()
     for sample in report['samples']:
@@ -534,7 +564,7 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,
     failures = sum(1 for x in report.values() if isinstance(x, dict) and x.get('status') == 'READ_FAILED')
     failures += sum(1 for sample in report['samples'] for key in ('viewer_state', 'activity') if sample[key]['status'] == 'READ_FAILED')
     failures += sum(1 for key in ('counters_before', 'counters_after') for value in report[key].values() if value['status'] == 'READ_FAILED')
-    failures += int(fresh.failure is not None)
+    failures += int(fresh.failure is not None)+int(history_invalid)
     report.update(status='PARTIAL_READ_ONLY_OBSERVATION' if failures else 'READ_ONLY_OBSERVATION_EXPORTED',
         read_failures=failures, elapsed_seconds=round(clock() - started, 3),
         production_capacity_acceptance='NOT_ASSIGNED_BY_OBSERVER')
@@ -547,11 +577,16 @@ def main(argv=None):
     parser.add_argument('--seconds', type=int, default=60)
     parser.add_argument('--forward-windows', type=int, default=0,
         help='Stop after 2..32 new committed forward windows; --seconds is the observation time limit')
+    parser.add_argument('--history-windows',type=int,default=0,
+        help='Stop after 2..32 new committed missing-history windows; skips do not count')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args(argv)
     if args.forward_windows != 0 and not 2 <= args.forward_windows <= 32:
         parser.error('--forward-windows must be 2..32')
-    max_seconds = 3600 if args.forward_windows else 300
+    if args.history_windows != 0 and not 2 <= args.history_windows <= 32:
+        parser.error('--history-windows must be 2..32')
+    if args.history_windows and args.forward_windows:parser.error('choose history or forward observation')
+    max_seconds = 3600 if args.forward_windows or args.history_windows else 300
     if not 3 <= args.seconds <= max_seconds:
         parser.error(f'--seconds must be 3..{max_seconds}')
     project = args.project.resolve(); root = project / 'AnomalyDetection'
@@ -565,20 +600,15 @@ def main(argv=None):
         allowed_names = inventory['value'][1] if inventory['status'] == 'READ' else set()
         import psycopg
         from psycopg.rows import dict_row
+        status_file=root/'reports/product_status.json'
         with psycopg.connect(**connection_parameters(database), autocommit=True, row_factory=dict_row) as conn:
             report = collect(Reader(conn), seconds=args.seconds, allowed_names=allowed_names,
-                forward_windows=args.forward_windows,
+                forward_windows=args.forward_windows,history_windows=args.history_windows,
+                ad_progress=lambda:owned_progress(status_file),
                 progress=lambda value: print(json.dumps(value), flush=True))
         report['installed_source'] = {'status': 'READ', 'value': inventory['value'][0]} if inventory['status'] == 'READ' else inventory
         report['installed_ad_build'] = launcher['EXPECTED_BUILD']
         report['installed_ad_source_sha256'] = ad_sha
-        status_file=root/'reports/product_status.json'
-        if status_file.is_file():
-            def owned_progress():
-                value=json.loads(status_file.read_text(encoding='utf-8-sig'))
-                return {key:value.get(key) for key in ('build_id','source_sha256','state','phase','heartbeat_ns',
-                    'evaluated_jobs','audited_requests','scenario_evaluations','scenario_results','scenario_queue_activity','viewer_admission')}
-            report['ad_owned_progress']=attempt(owned_progress)
         startup=project/'validation/viewer_startup.json'
         if startup.is_file():
             def read_startup():

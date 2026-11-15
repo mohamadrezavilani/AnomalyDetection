@@ -205,8 +205,9 @@ def collect_sample(query, *, runtime_sha256, sample_limit=DEFAULT_SAMPLE, captur
         rows = []
         for begin in range(0, len(keys), 200):
             batch = keys[begin:begin + 200]
-            rows.extend(query("SELECT " + columns + " FROM public." + table + " WHERE request_key IN (" +
-                              ",".join("%s" for _ in batch) + ")", batch))
+            rows.extend(query("SELECT found.* FROM unnest(CAST(%s AS text[])) AS wanted(request_key) "
+                "CROSS JOIN LATERAL (SELECT " + columns + " FROM public." + table +
+                " source WHERE source.request_key=wanted.request_key OFFSET 0) found",(batch,)))
             require(len(rows) <= MAX_ROWS, "SOURCE_ROW_BUDGET_EXCEEDED")
         return rows
 

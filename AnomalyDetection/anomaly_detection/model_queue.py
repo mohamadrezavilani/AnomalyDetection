@@ -2,12 +2,15 @@
 from .snapshot import canonical
 DDL=[
  'ALTER TABLE anomaly_detection.adp_jobs ADD COLUMN IF NOT EXISTS primary_version BIGINT NOT NULL DEFAULT 1',
+ 'ALTER TABLE anomaly_detection.adp_jobs ADD COLUMN IF NOT EXISTS primary_processed_version BIGINT',
+ 'ALTER TABLE anomaly_detection.adp_peer_dependencies ADD COLUMN IF NOT EXISTS reference_notified_epoch BIGINT',
  'ALTER TABLE anomaly_detection.adp_case_signals ADD COLUMN IF NOT EXISTS primary_version BIGINT',
  '''CREATE TABLE IF NOT EXISTS anomaly_detection.adp_model_queue(session_key TEXT NOT NULL,target_ns BIGINT NOT NULL,
  expected_version BIGINT NOT NULL,due_ns BIGINT NOT NULL,families TEXT NOT NULL,attempts BIGINT NOT NULL DEFAULT 0,
  PRIMARY KEY(session_key,target_ns))''',
  'CREATE INDEX IF NOT EXISTS adp_model_due ON anomaly_detection.adp_model_queue(due_ns,target_ns,session_key)',
  "CREATE INDEX IF NOT EXISTS adp_signal_audit_scope ON anomaly_detection.adp_case_signals(target_ns DESC,job_session) WHERE state='ACTIVE' AND review_eligible=TRUE AND source_kind='actor'",
+ 'CREATE INDEX IF NOT EXISTS adp_peer_reference_scan_v1 ON anomaly_detection.adp_peer_dependencies(service_path,target_ns,session_key) INCLUDE(begin_ns,epoch) WHERE reference_notified_epoch IS NULL',
 ]
 
 
@@ -29,7 +32,13 @@ def defer(store,job,now):
 
 
 def reference_changed(store,items):
-    """Only semantic reference changes invalidate primary-model versions."""
+    """Invalidate once while primary inputs are pending, in bounded PK batches.
+
+    Epochs still advance on EVERY actual reference change. A computation whose
+    job was already pending is rejected by the existing dependency-epoch CAS.
+    Completion replaces dependency rows, reopening their notification tokens.
+    Everything remains in the caller's atomic publication transaction.
+    """
     scopes={}
     for service,at in items:
         if not service:continue
@@ -37,5 +46,33 @@ def reference_changed(store,items):
     if not scopes:return
     values=canonical([{'name':'reference:'+s,'low':lo,'high':hi} for s,(lo,hi) in sorted(scopes.items())])
     source='SELECT * FROM jsonb_to_recordset(%s::jsonb) AS x(name TEXT,low BIGINT,high BIGINT)'
-    store.raw.execute('INSERT INTO anomaly_detection.adp_peer_epochs SELECT name,1 FROM ('+source+') x ORDER BY name ON CONFLICT(service_path) DO UPDATE SET version=adp_peer_epochs.version+1',(values,))
-    store.raw.execute('WITH x AS ('+source+'), affected AS (SELECT DISTINCT d.session_key,d.target_ns FROM x JOIN anomaly_detection.adp_peer_dependencies d ON d.service_path=x.name AND d.begin_ns<=x.high AND d.target_ns>x.low) UPDATE anomaly_detection.adp_jobs j SET primary_version=primary_version+1,version=version+1,dirty=TRUE,due_ns=0 FROM affected a WHERE j.session_key=a.session_key AND j.target_ns=a.target_ns',(values,))
+    with store.transaction():
+        epochs=store.raw.execute('INSERT INTO anomaly_detection.adp_peer_epochs SELECT name,1 FROM ('+source+') x ORDER BY name '
+            'ON CONFLICT(service_path) DO UPDATE SET version=adp_peer_epochs.version+1 RETURNING service_path,version',(values,)).fetchall()
+        for row in epochs:
+            name=row['service_path'];low,high=scopes[name.removeprefix('reference:')]
+            after=None
+            while True:
+                fence='AND (target_ns,session_key)>(%s,%s) ' if after else ''
+                page=store.raw.execute('SELECT session_key,target_ns FROM anomaly_detection.adp_peer_dependencies '
+                    'WHERE service_path=%s AND reference_notified_epoch IS NULL AND target_ns>%s AND begin_ns<=%s '
+                    +fence+'ORDER BY target_ns,session_key LIMIT 128',(name,low,high,*(after or ()))).fetchall()
+                if not page:break
+                after=(page[-1]['target_ns'],page[-1]['session_key'])
+                keys=canonical([dict(r) for r in page])
+                # First lock exact PKs, then mutate by TID in this statement.
+                # A large pending queue cannot become a whole-table UPDATE.
+                store.raw.execute('WITH wanted AS MATERIALIZED (SELECT * FROM jsonb_to_recordset(%s::jsonb) '
+                    'AS x(session_key TEXT,target_ns BIGINT)) UPDATE anomaly_detection.adp_jobs SET '
+                    'primary_processed_version=COALESCE(primary_processed_version,primary_version),'
+                    'primary_version=primary_version+1,version=version+1,dirty=TRUE,due_ns=0 '
+                    'WHERE ctid=ANY(ARRAY(SELECT j.ctid FROM wanted w CROSS JOIN LATERAL '
+                    '(SELECT ctid FROM anomaly_detection.adp_jobs j WHERE j.session_key=w.session_key AND j.target_ns=w.target_ns '
+                    'AND (NOT j.dirty OR j.due_ns<>0 OR j.primary_processed_version IS NULL '
+                    'OR j.primary_processed_version=j.primary_version) LIMIT 1 FOR UPDATE) j))',(keys,))
+                store.raw.execute('WITH wanted AS MATERIALIZED (SELECT * FROM jsonb_to_recordset(%s::jsonb) '
+                    'AS x(session_key TEXT,target_ns BIGINT)) UPDATE anomaly_detection.adp_peer_dependencies '
+                    'SET reference_notified_epoch=%s WHERE ctid=ANY(ARRAY(SELECT d.ctid FROM wanted w CROSS JOIN LATERAL '
+                    '(SELECT ctid FROM anomaly_detection.adp_peer_dependencies d WHERE d.session_key=w.session_key '
+                    'AND d.target_ns=w.target_ns AND d.service_path=%s AND d.reference_notified_epoch IS NULL '
+                    'LIMIT 1 FOR UPDATE) d))',(keys,row['version'],name))

@@ -115,10 +115,11 @@ class ProductStore:
         from .model_queue import DDL as model_ddl
         from .population import DDL as population_ddl
         from .scenario_store import DDL as scenario_ddl
+        from .audit_scope import DDL as audit_ddl
         from .schema_setup import ensure
         self.initialization_step='inspect_owned_catalog_and_migrate_missing_objects'
         with self.transaction():
-            self.initialization_schema=ensure(self.raw,DDL+dependency_ddl+pipeline_ddl+enrichment_ddl+reference_ddl+priority_ddl+scope_ddl+case_ddl+population_ddl+model_ddl+scenario_ddl)
+            self.initialization_schema=ensure(self.raw,DDL+dependency_ddl+pipeline_ddl+enrichment_ddl+reference_ddl+priority_ddl+scope_ddl+case_ddl+population_ddl+model_ddl+scenario_ddl+audit_ddl)
             self.raw.execute("INSERT INTO anomaly_detection.adp_state VALUES('format','{\"version\":1}') ON CONFLICT DO NOTHING")
         self.initialization_step='verify_format_and_existing_migration_markers'
         require(self.state('format')['version']==1,'PRODUCT_SCHEMA_VERSION_MISMATCH')
@@ -629,7 +630,7 @@ class ProductStore:
             # Includes imported windows and qualified evidence used by models,
             # even when the latest source page has a narrower retained scope.
             begin=max(FIVE_NS,job['target_ns']-HISTORY_NS)
-            self.raw.execute('UPDATE anomaly_detection.adp_jobs SET dirty=FALSE,processed_version=version,training_begin_ns=%s,'
+            self.raw.execute('UPDATE anomaly_detection.adp_jobs SET dirty=FALSE,processed_version=version,primary_processed_version=primary_version,training_begin_ns=%s,'
                 'last_evaluated_ns=%s,input_digest=%s,evaluation=%s,due_ns=%s WHERE session_key=%s AND target_ns=%s',
                 (begin,now,digest(context),canonical(evaluation),now+600_000_000_000,*key))
             self.raw.execute('DELETE FROM anomaly_detection.adp_evidence_ready WHERE session_key=%s AND target_ns=%s',key)

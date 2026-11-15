@@ -36,7 +36,7 @@ def commit_dependencies(store,job,inputs):
     store.raw.execute('DELETE FROM anomaly_detection.adp_peer_dependencies WHERE session_key=%s AND target_ns=%s',
         (job['session_key'],job['target_ns']))
     for service,epoch in sorted(inputs.items()):
-        store.raw.execute('INSERT INTO anomaly_detection.adp_peer_dependencies VALUES(%s,%s,%s,%s,%s)',
+        store.raw.execute('INSERT INTO anomaly_detection.adp_peer_dependencies(session_key,target_ns,service_path,begin_ns,epoch) VALUES(%s,%s,%s,%s,%s)',
             (job['session_key'],job['target_ns'],service,max(FIVE_NS,job['target_ns']-HISTORY_NS),epoch))
     return True
 
