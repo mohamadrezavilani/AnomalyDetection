@@ -127,7 +127,7 @@ class ProjectionWritesMixin:
         unchanged history never probes its wide permanent primary key, and a
         fresh request never performs six redundant historical deletion scans.
         """
-        from .viewer_storage_keys import KEYS, detect, digest_sql
+        from .viewer_storage_keys import KEYS, detect, ordered_key_sql
         keys, scope_column = TABLE_KEYS[table]
         began = time.monotonic()
         self.progress('projection_publish', table=table, method='scoped_delta_copy')
@@ -170,7 +170,7 @@ class ProjectionWritesMixin:
         inserted = self.sql('INSERT INTO ' + new + ' SELECT s.* FROM ' + stage +
             ' s WHERE NOT EXISTS (SELECT 1 FROM ' + old + ' o WHERE ' + equal + ')').rowcount
         if inserted:
-            order = digest_sql(keys) if table in KEYS and detect(self) else ','.join(keys)
+            order = ordered_key_sql(self,table) if table in KEYS and detect(self) else ','.join(keys)
             self._copy_ingest_stage_into_table(new, table, ','.join(columns), order)
         self.progress('projection_publish_complete', table=table, deleted_rows=removed,
                       written_rows=updated + inserted, updated_rows=updated, inserted_rows=inserted,

@@ -3,10 +3,18 @@ import unittest
 from anomaly_detection.source_profiles import (R3_RUNTIME,R31_RUNTIME,R32_RUNTIME,R32_FILES,
     R31_VIEWER_DATA,r31_overlay_allowed,r32_release_allowed,SUPPORTED_RUNTIMES,
     R33_RUNTIME,R33_FILES,r33_release_allowed,R34_RUNTIME,R34_FILES,r34_release_allowed,
-    R35_RUNTIME,R35_FILES,r35_release_allowed,R36_RUNTIME,R36_FILES,r36_release_allowed,R37_RUNTIME,R37_FILES,r37_release_allowed)
+    R35_RUNTIME,R35_FILES,r35_release_allowed,R36_RUNTIME,R36_FILES,r36_release_allowed,R37_RUNTIME,R37_FILES,r37_release_allowed,
+    R38_RUNTIME,R38_FILES,r38_release_allowed)
 
 
 class ViewerDeltaPinTests(unittest.TestCase):
+    def test_prefix_index_runtime_requires_exact_bytes_and_its_own_inventory(self):
+        self.assertIn(R38_RUNTIME,SUPPORTED_RUNTIMES)
+        self.assertTrue(r38_release_allowed(R38_RUNTIME,R38_RUNTIME,R38_FILES))
+        for declared,actual,count in ((R37_RUNTIME,R38_RUNTIME,R38_FILES),(R38_RUNTIME,R37_RUNTIME,R38_FILES),
+                (R38_RUNTIME,'0'*64,R38_FILES),(R38_RUNTIME,R38_RUNTIME,R38_FILES-1)):
+            self.assertFalse(r38_release_allowed(declared,actual,count))
+
     def test_point_probe_runtime_requires_its_own_exact_source_and_inventory(self):
         self.assertIn(R37_RUNTIME,SUPPORTED_RUNTIMES)
         self.assertTrue(r37_release_allowed(R37_RUNTIME,R37_RUNTIME,R37_FILES))

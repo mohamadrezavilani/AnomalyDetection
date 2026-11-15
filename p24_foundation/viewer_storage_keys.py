@@ -47,6 +47,8 @@ def digest_sql(columns, alias=''):
 def exact_origin_join(db, left, right):
     exact = left + '.origin_key=' + right + '.origin_key AND ' + left + '.version_key=' + right + '.version_key'
     if detect(db):
+        from .viewer_prefix_storage import active,origin_sql
+        if active(db):return origin_sql(left)+'='+origin_sql(right)+' AND '+exact
         return digest_sql(('origin_key', 'version_key'), left) + '=' + digest_sql(('origin_key', 'version_key'), right) + ' AND ' + exact
     return exact
 
@@ -61,9 +63,16 @@ def conflict_clause(db, table):
             or table not in KEYS or not detect(db)):
         return ' ON CONFLICT DO NOTHING'
     keys = KEYS[table]
+    from .viewer_prefix_storage import active,conflict_target
+    target=conflict_target(table) if active(db) else '(('+digest_sql(keys)+'))'
     same = ' AND '.join(table + '.' + c + '=excluded.' + c for c in keys)
-    return (' ON CONFLICT ((' + digest_sql(keys) + ')) DO UPDATE SET request_key=' + table +
+    return (' ON CONFLICT ' + target + ' DO UPDATE SET request_key=' + table +
             '.request_key WHERE public.viewer_reject_key_collision_v1(' + same + ')')
+
+
+def ordered_key_sql(db,table):
+    from .viewer_prefix_storage import active,ordered_key_sql as prefix_order
+    return prefix_order(table) if active(db) else digest_sql(KEYS[table])
 
 
 def detect(db):
@@ -129,7 +138,7 @@ def ensure(db):
     db._compact_storage_keys = True
 
 
-def _ensure(db):
+def _ensure(db,*,allow_prefix=True):
     function = db.one("""SELECT p.prosrc,p.provolatile,p.proparallel,p.proconfig,p.proisstrict,
         p.prorettype='bytea'::regtype AS returns_bytea
         FROM pg_catalog.pg_proc p WHERE p.oid=to_regprocedure('public.viewer_key_digest_v1(text[])')""")
@@ -154,6 +163,11 @@ def _ensure(db):
           AND a.attnum>0 AND NOT a.attisdropped AND NOT c.collisdeterministic) AS present''', tuple(KEYS))
     if nondeterministic['present']:
         raise ValueError('storage_requires_deterministic_collation')
+    if allow_prefix:
+        from .viewer_prefix_storage import active,_ensure as ensure_prefix
+        if active(db):
+            ensure_prefix(db)
+            return
     for name, (table, columns, unique) in INDEXES.items():
         row = db.one('''SELECT i.indisvalid,i.indisready,i.indisunique,
             i.indrelid=CAST(? AS regclass) AS correct_table,
