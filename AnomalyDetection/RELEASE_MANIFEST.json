@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261115-PREFIX-INDEX",
-  "source_sha256": "e62433003367d89960afb50670b9dd58f9ad480c4082351525e455469ec1192b",
+  "source_sha256": "536f5bcfb5af176af317277f22bba2c145d9119fd469f4ba063c1d4a268086ed",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -13,7 +13,7 @@
     "MEETING_REQUIREMENTS_25_FA.md": "54ef408ba1af82cf13fe06f74cc75e99617bc1bb424bbf15a3278841d18746af",
     "METHODS_AND_LATE_DATA_FA.md": "ecc521f538f384b5cacb559bf05416cc67705b3f5de545108a08e1d7ae85bfbb",
     "PRESENTATION_GUIDE_FA.md": "53954989b5a1cf636e98f0a894d07179651e77e44ded72a6051f713f692dd456",
-    "PROJECT_MAP_FA.md": "1f5c1a0be0d2bb2e544d4b1ca0109961a1bd240f17396d1eef26ba4cb36459e6",
+    "PROJECT_MAP_FA.md": "eacb38be3b7c83996cc34609cf464da7c1fa85ccc61072849c1a797d5274980c",
     "README_FA.md": "29b86b40eb42df27ba9185eb2e3daa27246be454293798c368557f99d640e966",
     "RELEASE_NOTES_06_FA.md": "30ee9d107f2d6e4593314c4000d40595a044421dfdb70f62961f14a46d086aa7",
     "RELEASE_NOTES_07_FA.md": "d693652cfea8136acaabe44a86a3fb3dd249e74f861390c52ee7bc0d1f481b8b",
@@ -97,7 +97,7 @@
     "anomaly_detection/service_reference.py": "c65cc7e09b190ac843f92ae4d65b93ec3612f7ec563de77f0e15ea41d8d401fa",
     "anomaly_detection/service_sampling.py": "816d7a599b8bc4f5ad516904edf2b54fae05e4a7a0131c166f23e91edb06e515",
     "anomaly_detection/snapshot.py": "b43d97f0bb21585e6b0a64289adef6764471081dae1efe065c0fc162c65b6a20",
-    "anomaly_detection/source_profiles.py": "6d9874eadf69bbe22e5d4ddbb2c981b79f1d19073abd065ae032f9ef0268d09c",
+    "anomaly_detection/source_profiles.py": "1dd29eb83d65dad58434e9c148a79770271cb66a080d709112a1ce7d30c6c015",
     "anomaly_detection/source_scheduling.py": "77d101b13f2dd42d8a576679be61af097372ed0a03cd7dc54f18f991b6352106",
     "anomaly_detection/sql_budget.py": "9fbe210df15555412601f3352e66b188e119052b22e3e2c8f42e40bb90784b6a",
     "anomaly_detection/temporal.py": "88b5bc27a8bf526ab9ef73a94728509d62cb6ecb2b733d27c10c341cae9f6b78",
@@ -325,7 +325,7 @@
     "production_accuracy": "NOT_EVALUATED"
   },
   "viewer_prefix_index_compatibility": {
-    "runtime": "15a3a68ec7a0c6f9e5f4529aed0ee8ecc7d20e638930aba9aee1bddfabded65c",
+    "runtime": "31b008b82ac241bbc6f7e39ab6e1bda0f2b799fac5d398a62ea6528594ffffa3",
     "files": 183,
     "detector_methods_changed": false,
     "history_rescan_preserved": true,

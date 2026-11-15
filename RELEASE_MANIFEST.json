@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "34c7961a54ef525dc5d13b3794c75893b3f5c38f8b7a650cc0e3bd0a24ea514a",
+    "Pishkhan24_Project_Roadmap.md": "712464d357fe3fa7e938d06d28d128b0862c29d281d2cd510163e2bab7537d4b",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "e3eed923e0352dfd1ca4f3e2bf8498802f7a6898f60455969b054005b4fb0153",
+    "VIEWER_README_FA.md": "956fd2a82b962624e079f034d813290bf4ff92d6a5c856cb43ba561bd0a81673",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -426,7 +426,7 @@
     "viewer_performance/Diagnose_Viewer_Web.py": "fe9c4d19fcff9cf368a8c5943c9f50d32eea5d5923f9959464ebbc642ab6dc5f",
     "viewer_performance/Repair_Viewer_Launchers.py": "91dddefe42597ab7f39489ffbda0d1325575439f3ff7dbaca36ccacc2f2eb37b",
     "viewer_performance/Restore_Viewer_Full_Keys.py": "1ae495a4c778d21c2eea6029fbd9f7f0b0fd03badaf23a6be64f9aa49ff3b54a",
-    "viewer_performance/Run_Viewer_Memory.py": "46f1cbca76c3b203feb2b9cdec48c951cc4b25341b4c7b026eeb4b3fb6e96a6e",
+    "viewer_performance/Run_Viewer_Memory.py": "5e8337ed6ecd87ce3e65bf721cf85695320aabc2c5c66c9d2008fc8461e4a02a",
     "viewer_performance/Run_Viewer_Web.py": "d37ce47989dada7d693d7a39883004f07dffcae9f2aacbe206a4db397297b75d",
     "viewer_performance/Stop_Viewer_Worker.py": "f867e64966737fa06d137772d8bcfbb9c1360c4d0228f06cca9ac0a4b63c8540",
     "viewer_performance/viewer.ps1": "a0d3390f3a51007b9fdc92eb9262aee426b54b1a865dcc6197e6fc7da57c3a21",
@@ -440,8 +440,8 @@
     "tests/test_viewer_catchup.py": "0f5dc467e6bad173d760768348c75ab5314f2151de31db660edbf1ef2ac17e3f",
     "viewer_performance/history_replay.py": "2f20bcd5e95816be4b64eb906fd855f8699d2d300634e6a894368af2b25ad2db",
     "tests/test_viewer_history_replay.py": "b042bed936ad8207dc0af0fa60a2b387550b74a1bbbe4618bc81d90110350ccb",
-    "p24_foundation/viewer_prefix_storage.py": "d98ab72894428fa74cbdd2eb1689ec5c7078a16c93230c59688ced38c763546e",
-    "tests/test_viewer_prefix_storage.py": "cdcabf627394f79768162e7c9938a91aabc6cfa6ae50c679f62921385838937c",
+    "p24_foundation/viewer_prefix_storage.py": "b7d28697dd58ce897c259b191e6de89bde9e76c23b569eaae9aa88f3d79498d4",
+    "tests/test_viewer_prefix_storage.py": "8a1c6547d0258b23aeb80075c63db74b2fbb78ea886737c5b0a84f38aabf9951",
     "viewer_performance/Restore_Viewer_Prefix_Keys.py": "bc6e7f7176a862f1d4942e03a5f16f1952cf80c4b02c4e014f05312d2cee6eda"
   },
   "pilot_diagnostics_fix": true,
@@ -471,7 +471,7 @@
   "assembled_at_utc": "2026-11-02T06:02:33.586394+00:00",
   "delivery": "complete_viewer_source_with_native_qualified_memory_profile_worker",
   "operational_acceptance": "PENDING_NATIVE_AND_PRODUCTION_CAPACITY",
-  "runtime_source_sha256": "15a3a68ec7a0c6f9e5f4529aed0ee8ecc7d20e638930aba9aee1bddfabded65c",
+  "runtime_source_sha256": "31b008b82ac241bbc6f7e39ab6e1bda0f2b799fac5d398a62ea6528594ffffa3",
   "source_catalog_sha256": "05ebff4db5829cc2f72a73e2813dce3002f7afd26793c9efd61947d246005d92",
   "windows_python_resolution_fix": true,
   "recent_start_with_explicit_history_gap": true,
@@ -1159,6 +1159,9 @@
     "full_columns_and_exact_origin_predicates_preserved": true,
     "native_tests": "PR_CHECKS",
     "owner_throughput": "NOT_MEASURED",
-    "source_report": "Viewer_Live_Performance_20261115_053301_1e9e0f5d.json"
+    "source_report": "Viewer_Live_Performance_20261115_053301_1e9e0f5d.json",
+    "origin_prefix_bits": 128,
+    "suffix_digest_bits": 256,
+    "collision_policy": "REJECT_NEVER_MERGE_ORIGINAL_COMPONENTS"
   }
 }

@@ -75,6 +75,15 @@ class NativePrefixStorageTests(unittest.TestCase):
         self.db.conn.commit();prefix.ensure(self.db);legacy.ensure(self.db)
         self.assertEqual(before,self.rows())
 
+    def test_fixed_origin_prefix_matches_the_original_encoding_for_unicode_delimiters_and_empty_values(self):
+        self.upgrade()
+        for origin,version in (('', ''),('ab','c'),('a','bc'),('آب','ی'),('آ','بی'),('a:b','c|d'),
+                ('quote\\"','é'),(key('o'),key('v'))):
+            row=self.db.one('SELECT '+prefix.FUNCTION+'(?,?)=substring('+legacy.FUNCTION+'(?,?),1,16) AS same',
+                (origin,version,origin,version))
+            self.assertTrue(row['same'])
+        self.assertIsNone(self.db.one('SELECT '+prefix.FUNCTION+'(NULL,?) AS value',('value',))['value'])
+
     def test_interrupted_concurrent_build_keeps_old_indexes_and_restart_finishes_without_row_changes(self):
         self.fixture(40);before=self.rows();callback=self.db.progress_callback if hasattr(self.db,'progress_callback') else None
         def crash(event):

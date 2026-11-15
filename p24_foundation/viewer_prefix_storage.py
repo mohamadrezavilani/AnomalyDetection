@@ -11,7 +11,10 @@ from . import viewer_storage_keys as legacy
 
 LAYOUT='prefix_evidence_keys_v2'
 FUNCTION='public.viewer_origin_prefix_v2'
-BODY='SELECT pg_catalog.substring(public.viewer_key_digest_v1(origin_text,version_text),1,16)'
+BODY=("SELECT pg_catalog.substring(pg_catalog.sha256(pg_catalog.convert_to("
+    "pg_catalog.length(origin_text)::pg_catalog.text OPERATOR(pg_catalog.||) ':' OPERATOR(pg_catalog.||) origin_text "
+    "OPERATOR(pg_catalog.||) pg_catalog.length(version_text)::pg_catalog.text "
+    "OPERATOR(pg_catalog.||) ':' OPERATOR(pg_catalog.||) version_text,'UTF8')),1,16)")
 INDEXES={
     'vli_prefix_key_v2':'viewer_links',
     'vci_prefix_key_v2':'viewer_contract_identifiers',
