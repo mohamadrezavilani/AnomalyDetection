@@ -142,7 +142,7 @@ class NativePrefixStorageTests(unittest.TestCase):
         db.sql('INSERT INTO '+new+' SELECT * FROM '+old+' ORDER BY ctid')
         db.sql('CREATE UNIQUE INDEX prefix_bench_old_key ON '+old+' ('+order_old+')')
         db.sql('CREATE INDEX prefix_bench_old_origin ON '+old+' ('+legacy.digest_sql(('origin_key','version_key'))+')')
-        db.sql('CREATE UNIQUE INDEX prefix_bench_new_key ON '+new+' ('+order_new+')')
+        db.sql('CREATE UNIQUE INDEX prefix_bench_new_key ON '+new+' ('+','.join(prefix.expressions('viewer_links'))+')')
         for table in (old,new):
             db.sql('CREATE INDEX '+table+'_request ON '+table+'(request_key)')
             db.sql('CREATE INDEX '+table+'_value ON '+table+'(link_domain,link_key)')

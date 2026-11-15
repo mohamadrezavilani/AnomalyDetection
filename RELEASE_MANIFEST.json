@@ -426,7 +426,7 @@
     "viewer_performance/Diagnose_Viewer_Web.py": "fe9c4d19fcff9cf368a8c5943c9f50d32eea5d5923f9959464ebbc642ab6dc5f",
     "viewer_performance/Repair_Viewer_Launchers.py": "91dddefe42597ab7f39489ffbda0d1325575439f3ff7dbaca36ccacc2f2eb37b",
     "viewer_performance/Restore_Viewer_Full_Keys.py": "1ae495a4c778d21c2eea6029fbd9f7f0b0fd03badaf23a6be64f9aa49ff3b54a",
-    "viewer_performance/Run_Viewer_Memory.py": "c07a81fa446d5863a9b6f39625b53488c7993b5fa0872a1e32bf67376b688106",
+    "viewer_performance/Run_Viewer_Memory.py": "f52d709b85edb964a26f08b52ba8a7ae576e00a1bcfb111dfdc09fca11ab9a00",
     "viewer_performance/Run_Viewer_Web.py": "d37ce47989dada7d693d7a39883004f07dffcae9f2aacbe206a4db397297b75d",
     "viewer_performance/Stop_Viewer_Worker.py": "f867e64966737fa06d137772d8bcfbb9c1360c4d0228f06cca9ac0a4b63c8540",
     "viewer_performance/viewer.ps1": "a0d3390f3a51007b9fdc92eb9262aee426b54b1a865dcc6197e6fc7da57c3a21",
@@ -440,9 +440,9 @@
     "tests/test_viewer_catchup.py": "0f5dc467e6bad173d760768348c75ab5314f2151de31db660edbf1ef2ac17e3f",
     "viewer_performance/history_replay.py": "2f20bcd5e95816be4b64eb906fd855f8699d2d300634e6a894368af2b25ad2db",
     "tests/test_viewer_history_replay.py": "b042bed936ad8207dc0af0fa60a2b387550b74a1bbbe4618bc81d90110350ccb",
-    "p24_foundation/viewer_prefix_storage.py": "f5052f7b6a09bd0dbc72cf7e2a3e72619b13c0a9f8518c6ae2238da1d84fe538",
-    "tests/test_viewer_prefix_storage.py": "51fad7966ad6a70e3d69e1bdc85a1792cbbcd76dae97305c35ec6fb310f1b2ad",
-    "viewer_performance/Restore_Viewer_Prefix_Keys.py": "e37eea4d240d2d683a0dafb885be9ac56b9434db7ba8bb3299baeb096d0bbdc4"
+    "p24_foundation/viewer_prefix_storage.py": "8f35e6aae9f4231ab720111a3ff189c86b6c920db5d8535e9c20f3f4a1b0f076",
+    "tests/test_viewer_prefix_storage.py": "db05385878cea29e3c1981ffcfddb13093d3dfeb50d0b4b1c31ce6e1266a559b",
+    "viewer_performance/Restore_Viewer_Prefix_Keys.py": "bc6e7f7176a862f1d4942e03a5f16f1952cf80c4b02c4e014f05312d2cee6eda"
   },
   "pilot_diagnostics_fix": true,
   "owner_runtime_reports_excluded": [
@@ -471,7 +471,7 @@
   "assembled_at_utc": "2026-11-02T06:02:33.586394+00:00",
   "delivery": "complete_viewer_source_with_native_qualified_memory_profile_worker",
   "operational_acceptance": "PENDING_NATIVE_AND_PRODUCTION_CAPACITY",
-  "runtime_source_sha256": "b68ba48973867583a0bde1850cba282e9157eb38c457d460b66354b1d3cb512d",
+  "runtime_source_sha256": "e7cd42ac6b789b1454d6175b34bd64bb3ea5b37ab253794777b0786b0639e102",
   "source_catalog_sha256": "05ebff4db5829cc2f72a73e2813dce3002f7afd26793c9efd61947d246005d92",
   "windows_python_resolution_fix": true,
   "recent_start_with_explicit_history_gap": true,

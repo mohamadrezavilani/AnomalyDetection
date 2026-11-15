@@ -22,7 +22,10 @@ def expressions(table):
     return legacy.digest_sql(keys[:2]),legacy.digest_sql(keys[2:])
 
 
-def ordered_key_sql(table):return ','.join(expressions(table))
+def ordered_key_sql(table):
+    # Rows sharing an origin fit adjacent leaves. Sorting the suffix again
+    # adds a second per-row digest evaluation without helping global locality.
+    return expressions(table)[0]
 def conflict_target(table):return '('+','.join('('+part+')' for part in expressions(table))+')'
 
 
@@ -59,7 +62,7 @@ def _ensure(db):
         if status and status['indisvalid'] and status['indisready']:continue
         if status:db.sql('DROP INDEX CONCURRENTLY public.'+name)
         db.progress('prefix_index_build',table=table,index=name,concurrent=True)
-        db.sql('CREATE UNIQUE INDEX CONCURRENTLY '+name+' ON public.'+table+' ('+ordered_key_sql(table)+')')
+        db.sql('CREATE UNIQUE INDEX CONCURRENTLY '+name+' ON public.'+table+' ('+','.join(expressions(table))+')')
         db.progress('prefix_index_ready',table=table,index=name)
     legacy.ensure_expression_statistics(db,INDEXES)
     # Both old indexes protect all rows until every replacement is valid.
