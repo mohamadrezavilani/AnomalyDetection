@@ -4,6 +4,7 @@ Only disposable native fixture databases are opened. The benchmark preserves
 the same logged table, secondary indexes, rows and binary COPY transport.
 """
 from hashlib import sha256
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import statistics
@@ -66,7 +67,7 @@ class NativePrefixStorageTests(unittest.TestCase):
             status=prefix.index_status(self.db,name,table,(keys[:2],keys[2:]),unique=True)
             self.assertTrue(status['indisvalid'] and status['indisready'])
         for name in legacy.INDEXES:self.assertIsNone(self.db.one('SELECT to_regclass(?) AS present',(name,))['present'])
-        query='SELECT * FROM viewer_links WHERE '+legacy.digest_sql(('origin_key','version_key'))+'='+legacy.FUNCTION+'(?,?) AND origin_key=? AND version_key=?'
+        query='SELECT * FROM viewer_links WHERE '+prefix.origin_sql()+'='+prefix.FUNCTION+'(?,?) AND origin_key=? AND version_key=?'
         origin,version=key('o100'),key('v100')
         plan=self.db.one('EXPLAIN(FORMAT JSON) '+query,(origin,version,origin,version))['QUERY PLAN'][0]['Plan']
         self.assertIn('vli_prefix_key_v2',{p.get('Index Name') for p in nodes(plan)})
@@ -92,18 +93,63 @@ class NativePrefixStorageTests(unittest.TestCase):
         self.assertEqual(self.db.one('SELECT layout FROM viewer_storage_layout')['layout'],'compact_evidence_keys_v1')
         self.assertIsNotNone(self.db.one("SELECT to_regclass('vli_compact_key_v1') AS present")['present'])
 
+    def test_cancelled_real_concurrent_build_leaves_valid_legacy_and_restart_rebuilds_only_invalid_replacement(self):
+        import psycopg
+        self.fixture(20);before=self.rows();prefix.ensure_function(self.db);self.db.conn.commit()
+        writer=psycopg.connect(**self.config)
+        builder=psycopg.connect(**self.config,autocommit=True)
+        pool=ThreadPoolExecutor(max_workers=1);future=None
+        try:
+            # An old writer holds the build at PostgreSQL's real wait phase;
+            # no timing guess or large artificial sleep is needed.
+            writer.execute('INSERT INTO viewer_links VALUES(%s,%s,%s,%s,%s)',
+                (key('pending-o'),key('pending-v'),key('pending-r'),'domain',key('pending-id')))
+            future=pool.submit(builder.execute,'CREATE UNIQUE INDEX CONCURRENTLY vli_prefix_key_v2 ON viewer_links ('+
+                ','.join(prefix.expressions('viewer_links'))+')')
+            deadline=time.monotonic()+10;seen=False
+            while time.monotonic()<deadline:
+                row=self.db.one('SELECT phase FROM pg_stat_progress_create_index WHERE pid=?',(builder.info.backend_pid,))
+                self.db.conn.commit()
+                if row and 'waiting for writers' in row['phase']:
+                    seen=True;break
+                if future.done():future.result();break
+                time.sleep(.02)
+            self.assertTrue(seen,'concurrent index did not reach the controlled writer wait')
+            self.assertTrue(self.db.one('SELECT pg_cancel_backend(?) AS cancelled',(builder.info.backend_pid,))['cancelled'])
+            self.db.conn.commit()
+            with self.assertRaises(Exception) as raised:future.result(timeout=10)
+            self.assertEqual(getattr(raised.exception,'sqlstate',None),'57014')
+        finally:
+            writer.rollback();writer.close()
+            if future is not None and not future.done():
+                self.db.one('SELECT pg_cancel_backend(?) AS cancelled',(builder.info.backend_pid,));self.db.conn.commit()
+            pool.shutdown(wait=True);builder.close()
+        status=prefix.index_status(self.db,'vli_prefix_key_v2','viewer_links',
+            (legacy.KEYS['viewer_links'][:2],legacy.KEYS['viewer_links'][2:]),unique=True)
+        self.assertFalse(status['indisvalid'])
+        self.assertEqual(self.db.one('SELECT layout FROM viewer_storage_layout')['layout'],'compact_evidence_keys_v1')
+        self.upgrade();self.assertEqual(before,self.rows())
+
     def test_repeated_identity_is_idempotent_but_forced_digest_collision_cannot_merge_witnesses(self):
         self.upgrade()
-        self.db.sql("CREATE OR REPLACE FUNCTION public.viewer_key_digest_v1(VARIADIC parts text[]) RETURNS bytea LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE SET search_path=pg_catalog AS $$ SELECT decode(repeat('00',32),'hex') $$")
+        self.db.sql('DROP INDEX vli_prefix_key_v2')
+        self.db.sql("CREATE OR REPLACE FUNCTION public.viewer_origin_prefix_v2(origin_text text,version_text text) RETURNS bytea LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE AS $$ SELECT decode(repeat('00',16),'hex') $$")
+        # Rebuild under the injected hash so stored index values and any
+        # planner inlining describe the same deliberately colliding prefix.
+        self.db.sql('CREATE UNIQUE INDEX vli_prefix_key_v2 ON viewer_links ('+','.join(prefix.expressions('viewer_links'))+')')
         first=(key('o1'),key('v1'),key('r1'),'platform_payment',key('p1'))
         query='INSERT INTO viewer_links VALUES(?,?,?,?,?)'+legacy.conflict_clause(self.db,'viewer_links')
         self.db.sql(query,first);self.db.conn.commit()
         self.db.sql(query,first);self.db.conn.commit()
-        self.assertEqual(self.db.one('SELECT COUNT(*) AS n FROM viewer_links')['n'],1);self.db.conn.commit()
+        self.db.sql(query,(key('o2'),key('v2'),key('r2'),'platform_payment',key('p2')));self.db.conn.commit()
+        # Prefix collisions alone cannot join distinct witnesses.
+        joined='SELECT l.* FROM viewer_links l JOIN (VALUES (?,?)) e(origin_key,version_key) ON '+legacy.exact_origin_join(self.db,'l','e')
+        self.assertEqual(self.db.all(joined,first[:2]),[dict(zip(('origin_key','version_key','request_key','link_domain','link_key'),first))])
+        self.assertEqual(self.db.one('SELECT COUNT(*) AS n FROM viewer_links')['n'],2);self.db.conn.commit()
         with self.assertRaises(Exception) as raised:
-            self.db.sql(query,(key('o2'),key('v2'),key('r2'),'platform_payment',key('p2')))
+            self.db.sql(query,(key('o3'),key('v3'),key('r3'),'platform_payment',key('p1')))
         self.assertEqual(getattr(raised.exception,'sqlstate',None),'23505')
-        self.db.conn.rollback();self.assertEqual(tuple(self.db.one('SELECT * FROM viewer_links').values()),first)
+        self.db.conn.rollback();self.assertEqual(len(self.db.all('SELECT * FROM viewer_links')),2)
 
     def test_restore_and_reupgrade_preserve_full_values_and_the_original_conflict_target(self):
         self.fixture(40);before=self.rows();self.upgrade();self.db.conn.commit()
@@ -134,6 +180,7 @@ class NativePrefixStorageTests(unittest.TestCase):
         # smaller than the owner's 14.8M links. No production throughput claim.
         # Timing includes real binary COPY and its commit.
         db=self.db;columns='origin_key,version_key,request_key,link_domain,link_key'
+        self.upgrade()
         old='viewer_prefix_bench_old';new='viewer_prefix_bench_new';stage='viewer_prefix_bench_stage'
         for table in (old,new,stage):db.sql('CREATE TABLE '+table+' (LIKE viewer_links INCLUDING DEFAULTS)')
         generate="SELECT encode(sha256(('o'||n)::bytea),'hex'),encode(sha256(('v'||n)::bytea),'hex'),encode(sha256(('r'||(n/4))::bytea),'hex'),'domain-'||k,encode(sha256(('id'||(n/4)||':'||k)::bytea),'hex') FROM generate_series(1,?) n CROSS JOIN generate_series(1,3) k"

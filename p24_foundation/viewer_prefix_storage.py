@@ -10,6 +10,8 @@ import re
 from . import viewer_storage_keys as legacy
 
 LAYOUT='prefix_evidence_keys_v2'
+FUNCTION='public.viewer_origin_prefix_v2'
+BODY='SELECT pg_catalog.substring(public.viewer_key_digest_v1(origin_text,version_text),1,16)'
 INDEXES={
     'vli_prefix_key_v2':'viewer_links',
     'vci_prefix_key_v2':'viewer_contract_identifiers',
@@ -19,7 +21,12 @@ INDEXES={
 
 def expressions(table):
     keys=legacy.KEYS[table]
-    return legacy.digest_sql(keys[:2]),legacy.digest_sql(keys[2:])
+    return origin_sql(),legacy.digest_sql(keys[2:])
+
+
+def origin_sql(alias=''):
+    head=alias+'.' if alias else ''
+    return FUNCTION+'('+head+'origin_key,'+head+'version_key)'
 
 
 def ordered_key_sql(table):
@@ -48,14 +55,31 @@ def index_status(db,name,table,columns,*,unique):
         WHERE i.indexrelid=to_regclass(?)''',(table,'public.'+name))
     if row:
         normalized=re.sub(r'\s+','',(row['expression'] or '').replace('public.',''))
-        expected=','.join('viewer_key_digest_v1(VARIADICARRAY['+','.join(group)+'])' for group in columns)
+        expected=','.join('viewer_origin_prefix_v2('+','.join(group)+')' if len(columns)==2 and n==0
+            else 'viewer_key_digest_v1(VARIADICARRAY['+','.join(group)+'])' for n,group in enumerate(columns))
         if (not row['correct_table'] or not row['unfiltered'] or row['indisunique']!=unique
                 or row['indnkeyatts']!=len(columns) or normalized!=expected or row['amname']!='btree'):
             raise ValueError('prefix_index_definition_mismatch')
     return row
 
 
+def ensure_function(db):
+    function=db.one('''SELECT p.prosrc,p.provolatile,p.proparallel,p.proisstrict,p.proconfig,p.proretset,
+        p.prorettype='bytea'::regtype AS returns_bytea FROM pg_proc p
+        WHERE p.oid=to_regprocedure('public.viewer_origin_prefix_v2(text,text)')''')
+    if function:
+        if (function['prosrc'].strip()!=BODY or function['provolatile']!='i' or function['proparallel']!='s'
+                or not function['proisstrict'] or function['proconfig'] is not None or function['proretset']
+                or not function['returns_bytea']):raise ValueError('prefix_function_definition_mismatch')
+    else:
+        # Every function in this inlinable body is explicitly schema-qualified.
+        # The 128-bit prefix is an accelerator, never the witness identity.
+        db.sql('CREATE FUNCTION '+FUNCTION+'(origin_text text,version_text text) RETURNS bytea '
+            'LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE AS $prefix$'+BODY+'$prefix$')
+
+
 def _ensure(db):
+    ensure_function(db)
     for name,table in INDEXES.items():
         keys=legacy.KEYS[table]
         status=index_status(db,name,table,(keys[:2],keys[2:]),unique=True)

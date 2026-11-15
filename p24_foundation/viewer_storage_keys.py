@@ -47,6 +47,8 @@ def digest_sql(columns, alias=''):
 def exact_origin_join(db, left, right):
     exact = left + '.origin_key=' + right + '.origin_key AND ' + left + '.version_key=' + right + '.version_key'
     if detect(db):
+        from .viewer_prefix_storage import active,origin_sql
+        if active(db):return origin_sql(left)+'='+origin_sql(right)+' AND '+exact
         return digest_sql(('origin_key', 'version_key'), left) + '=' + digest_sql(('origin_key', 'version_key'), right) + ' AND ' + exact
     return exact
 
