@@ -1,0 +1,271 @@
+{
+  "candidate_id": "AD-20261115-CENSUS-INTEGRITY",
+  "base_commit": "d4eb76d96097d4064eeb8a25d1cb6ce910aee1e5",
+  "branch": "audit/ad-correctness-20261115",
+  "review_date_tehran": "2026-11-15",
+  "scope": "TARGETED_DATA_INTEGRITY_REVIEW_NOT_FULL_PROJECT_ACCEPTANCE",
+  "deployment": "NOT_DEPLOYED_OR_MERGED",
+  "base_build_label_retained_until_manager_release_versioning": true,
+  "environment": {
+    "database": "DISPOSABLE_TASK_OWNED_P24_DESIGN_TEST_DATABASES",
+    "postgresql": "18.6 native x86_64 Linux",
+    "fsync": true,
+    "full_page_writes": true,
+    "synchronous_commit": true,
+    "owner_database_accessed": false,
+    "native_windows_postgresql": "NOT_RUN"
+  },
+  "confirmed_findings": [
+    {
+      "id": "CENSUS-01",
+      "status": "FIXED_IN_CANDIDATE",
+      "impact": "Fresh history-rescan cursor could reuse older staging and publish a request absent from the new complete pass.",
+      "before": {
+        "expected_requests": 1,
+        "actual_requests": 2
+      },
+      "after": {
+        "requests": 1,
+        "old_request_absent_from_members": true
+      },
+      "fix": "Discard only this lane/target staging on the first page; require matching target and stamp on continuation."
+    },
+    {
+      "id": "CENSUS-02",
+      "status": "FIXED_IN_CANDIDATE",
+      "impact": "Paging at identical event time and origin skipped another origin version at a page boundary.",
+      "before": {
+        "source_rows": 66,
+        "examined_rows": 65
+      },
+      "after": {
+        "source_rows": 66,
+        "examined_rows": 66,
+        "qualified_logical_requests": 64,
+        "coverage_complete": false
+      },
+      "fix": "Use the total (at_ns,origin_key,version_key) key at every ordering and cursor boundary. Restart a legacy two-part cursor at the same target."
+    }
+  ],
+  "new_native_regressions": {
+    "module": "tests.test_traffic_census_pg",
+    "tests": 7,
+    "unmodified_base": {
+      "fail": 5,
+      "pass": 2
+    },
+    "candidate": {
+      "fail": 0,
+      "pass": 7
+    },
+    "covers": [
+      "tied-version page boundary",
+      "history-rescan stale staging",
+      "continuation stamp mismatch rollback",
+      "legacy cursor migration retaining published output",
+      "final transaction rollback and new ProductStore recovery",
+      "other-lane isolation and replacement with a genuine zero census",
+      "partial-page replay and empty filtered pages"
+    ],
+    "actual_ad_process_kill": "NOT_RUN"
+  },
+  "qualification_suites": [
+    {
+      "suite": "candidate_native",
+      "exit_code": 0,
+      "summary": [
+        "Ran 334 tests in 114.064s",
+        "OK"
+      ]
+    },
+    {
+      "suite": "root_native",
+      "exit_code": 1,
+      "summary": [
+        "FAIL: test_native_wal_compression_reduces_full_page_bytes_for_equal_random_index_inserts (tests.test_viewer_catchup.NativeCatchupTests.test_native_wal_compression_reduces_full_page_bytes_for_equal_random_index_inserts)",
+        "Ran 185 tests in 109.956s",
+        "FAILED (failures=1, skipped=8)"
+      ]
+    },
+    {
+      "suite": "observer",
+      "exit_code": 0,
+      "summary": [
+        "Ran 25 tests in 0.004s",
+        "OK"
+      ]
+    }
+  ],
+  "independent_oracle": {
+    "level": "REAL_EVALUATORS_WITH_SYNTHETIC_INPUT_AND_SOME_SCRIPTED_SQL",
+    "reference_commit": "d4eb76d96097d4064eeb8a25d1cb6ce910aee1e5",
+    "families_exercised": [
+      "business_result_change",
+      "client_ip_rotation",
+      "continuous_rate",
+      "input_subject_burst",
+      "isolation_forest",
+      "journey_profile_change",
+      "long_client_ip_rotation",
+      "long_subject_enumeration",
+      "multi_session_service",
+      "multi_session_target",
+      "otp_result_change",
+      "payment_result_change",
+      "peer_service_rate_5m",
+      "rate_5m",
+      "rate_60m",
+      "repeated_target",
+      "request_latency",
+      "response_content_change",
+      "response_schema_change",
+      "service_health",
+      "service_mix",
+      "service_population",
+      "service_sequence",
+      "service_traversal",
+      "service_volume",
+      "service_workflow_change",
+      "subject_enumeration",
+      "timing_regularization",
+      "typed_target_diversity",
+      "workflow_change"
+    ],
+    "summary": {
+      "PASS": 178,
+      "FAIL": 1
+    },
+    "failures": [
+      {
+        "family": "isolation_forest",
+        "test": "positive",
+        "status": "FAIL",
+        "expected": "CANDIDATE",
+        "actual": "NO_DEVIATION_OBSERVED",
+        "level": "real_evaluator_synthetic_input",
+        "evidence": {
+          "score": 0.6482129516527305,
+          "upper": 0.7210875496041503
+        }
+      }
+    ],
+    "accuracy_percentage_assigned": false
+  },
+  "continuation_oracle": {
+    "summary": {
+      "PASS": 52
+    },
+    "level": "REAL_PYTHON_EVALUATOR_AND_DISPATCHER_WITH_SCRIPTED_SQL",
+    "native_sql": "NOT_RUN_IN_THIS_SCRIPT"
+  },
+  "open_isolation_forest_sensitivity": {
+    "status": "NO_DEVIATION_OBSERVED",
+    "score": 0.6482129516527305,
+    "upper": 0.7210875496041503,
+    "history_windows": 180,
+    "history_max_executions": 71,
+    "observed_executions": 3000000,
+    "history_feature_bounds": [
+      [
+        1.0986122886681096,
+        4.276666119016055
+      ],
+      [
+        0.6931471805599453,
+        1.6094379124341003
+      ],
+      [
+        0.28169014084507044,
+        1.0
+      ],
+      [
+        -0.0,
+        1.3830281439768328
+      ]
+    ],
+    "current_feature_vector": [
+      14.914123179965662,
+      3.4339872044851463,
+      0.03333333333333333,
+      3.4011973816621555
+    ],
+    "production_precision_recall": "NOT_EVALUATED",
+    "model_changed": false
+  },
+  "open_viewer_wal_qualification": {
+    "compression": "pglz",
+    "source_file_changed": false,
+    "measurements": {
+      "catchup_off": {
+        "wal_bytes": 7732843,
+        "full_page_images": 767,
+        "execution_ms": 37.377
+      },
+      "catchup_packed": {
+        "wal_bytes": 7721109,
+        "full_page_images": 766,
+        "execution_ms": 135.912
+      }
+    },
+    "successful": false,
+    "test": "tests.test_viewer_catchup.NativeCatchupTests.test_native_wal_compression_reduces_full_page_bytes_for_equal_random_index_inserts",
+    "root_test_sha256": "0f5dc467e6bad173d760768348c75ab5314f2151de31db660edbf1ef2ac17e3f",
+    "root_test_identical_to_base": true,
+    "scope": "SINGLE_SYNTHETIC_PGLZ_RUN_NOT_OWNER_THROUGHPUT"
+  },
+  "preservation": {
+    "viewer_runtime_changed": false,
+    "source_pin_changed": false,
+    "history_floor_changed": false,
+    "checkpoint_changed": false,
+    "schema_migration_added": false,
+    "detector_rules_changed": false,
+    "human_tables_changed": false,
+    "historical_outputs_automatically_corrected_by_install": false,
+    "repair_path": "Existing historical census lane must revisit affected windows; normal changed/enqueue publishes corrections. The time and full owner-data reconciliation are not qualified."
+  },
+  "acceptance": {
+    "candidate_root_census_regressions": "PASS_NATIVE_SYNTHETIC",
+    "all_30_families_final_acceptance": "NOT_ASSIGNED",
+    "production_precision_recall": "NOT_EVALUATED",
+    "owner_capacity": "NOT_EVALUATED",
+    "merge_authority": "PROJECT_MANAGER_REVIEW",
+    "release_naming": "PROJECT_MANAGER_COORDINATION_REQUIRED_BEFORE_DEPLOYMENT"
+  },
+  "reproduction_commands": {
+    "new_regressions": "python -B -m unittest -v tests.test_traffic_census_pg",
+    "ad_suite": "python -B -m unittest discover -s tests -v",
+    "independent_oracle": "python -B audit/run_independent_audit.py --output oracle.json",
+    "continuation": "python -B audit/run_continuation_cases.py --ad-root . --output continuation.json",
+    "requirements": "Run AD commands from AnomalyDetection/. Configure P24_DELTA_PG_HOST/PORT/USER only for a disposable native PostgreSQL test cluster; the tests create/drop their own p24_design_* databases."
+  },
+  "next_evidence_needed": [
+    "Latest owner-server Viewer_Live_Performance JSON with AD state/counters and installed build/source SHA; 1800 seconds with at least three historical commits if available.",
+    "Current AD acceptance/coverage export and operator-confirmed positive/ordinary examples for method-by-method recall/false-alert review."
+  ],
+  "log_sha256": {
+    "baseline_native.log": "9d828d9b23e772f547b4d63e80ab22c7eb9e8bf26f24e853f269d23a3ff7bff6",
+    "census_before.log": "63c1154522933bd557fb37e7fb449c223599154c80c78db3c539d6dfad469e11",
+    "candidate_native.log": "c3e14aa82f101797fe379a635aef74dc692fd93c1cb652b22a225de32dfa2c76",
+    "root_native.log": "5720dadfea83dd98ccfb1d1bdd30ca08baa83bdf32dd668cd49954a8957a6cfb",
+    "observer.log": "86620c94aa1612a99e1c6d0215e132b88617ef4a4dbdb04df7c7ee341e5455e1",
+    "oracle.json": "1a8f5e35871424103bf2e8b9db6ca5223b06c3a4a57a2af9d7efac1b53b9d40a",
+    "continuation.json": "1a736078282a7d207ea6e103cb958612496316471093750487cd9115e19b9414"
+  },
+  "reviewed_runtime_files_sha256": {
+    "anomaly_detection/scenario_traffic.py": "0f15984f9f091d06cbb9bcc58c111a55fb63f7b4bc23711c4896f24f6954fdd5",
+    "anomaly_detection/product_models.py": "8ea9795e556d8e32d2fd172b011ec1d5a117b6a3abcb6b7342e6f1db90d71c6a",
+    "anomaly_detection/__init__.py": "8276895e307de0588dca11aadb775821ad4a5ffcf4a3cab60175e3a5b6793b6b",
+    "run_anomaly.py": "47af95cd53225b975d59e6948f5e41e2697b7c4e78257507892d03a4a3a5ad11"
+  },
+  "rollback_plan": {
+    "status": "DOCUMENTED_NOT_RUN_ON_OWNER_SERVER",
+    "requires": "Project manager stops AD before changing code or cursor state.",
+    "steps": [
+      "Retain the active target for each of scenario_traffic_cursor and scenario_old_traffic_cursor.",
+      "Before downgrading, discard only the matching in-progress traffic staging and reset these two cursors to their retained target without after/stamp. The old reader cannot consume a three-part cursor.",
+      "Revert candidate code and its matching manifest together; restart AD and verify census progress.",
+      "Keep completed counts, canonical facts, evidence, feedback, source checkpoint and floor. Reverting restores the base defects; it is not a correctness acceptance."
+    ]
+  }
+}
