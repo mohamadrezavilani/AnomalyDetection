@@ -130,13 +130,15 @@ class NativePrefixStorageTests(unittest.TestCase):
         self.assertEqual(incremental,snapshot(self.db))
 
     def test_binary_copy_balanced_ab_ba_retains_equal_rows_and_reports_index_io(self):
-        # No throughput claim: this fixture is much smaller than the owner's
-        # 14.8M links. Timing includes real binary COPY and its commit.
+        # The indexes exceed the CI server's shared buffers, while remaining
+        # smaller than the owner's 14.8M links. No production throughput claim.
+        # Timing includes real binary COPY and its commit.
         db=self.db;columns='origin_key,version_key,request_key,link_domain,link_key'
         old='viewer_prefix_bench_old';new='viewer_prefix_bench_new';stage='viewer_prefix_bench_stage'
         for table in (old,new,stage):db.sql('CREATE TABLE '+table+' (LIKE viewer_links INCLUDING DEFAULTS)')
         generate="SELECT encode(sha256(('o'||n)::bytea),'hex'),encode(sha256(('v'||n)::bytea),'hex'),encode(sha256(('r'||(n/4))::bytea),'hex'),'domain-'||k,encode(sha256(('id'||(n/4)||':'||k)::bytea),'hex') FROM generate_series(1,?) n CROSS JOIN generate_series(1,3) k"
-        db.sql('INSERT INTO '+stage+' '+generate,(40000,))
+        history_origins=400000
+        db.sql('INSERT INTO '+stage+' '+generate,(history_origins,))
         order_old=legacy.digest_sql(legacy.KEYS['viewer_links']);order_new=prefix.ordered_key_sql('viewer_links')
         db.sql('INSERT INTO '+old+' SELECT * FROM '+stage+' ORDER BY '+order_old)
         db.sql('INSERT INTO '+new+' SELECT * FROM '+old+' ORDER BY ctid')
@@ -155,7 +157,7 @@ class NativePrefixStorageTests(unittest.TestCase):
             times={'old':[],'new':[]};counts={'old':[],'new':[]}
             for turn in range(4):
                 db.sql('TRUNCATE TABLE '+stage)
-                offset=40000+turn*5000
+                offset=history_origins+turn*5000
                 db.sql('INSERT INTO '+stage+' '+generate.replace('generate_series(1,?)','generate_series(?,?)'),(offset+1,offset+5000))
                 for label,table,order in ((('old',old,order_old),('new',new,order_new)) if turn%2==0 else (('new',new,order_new),('old',old,order_old))):
                     before=io(table);began=time.monotonic()
@@ -165,9 +167,10 @@ class NativePrefixStorageTests(unittest.TestCase):
             self.assertEqual(db.one('SELECT COUNT(*) AS n FROM (TABLE '+old+' EXCEPT TABLE '+new+') d')['n'],0)
             self.assertEqual(db.one('SELECT COUNT(*) AS n FROM (TABLE '+new+' EXCEPT TABLE '+old+') d')['n'],0)
             sizes={table:db.one('SELECT pg_indexes_size(CAST(? AS regclass)) AS n',(table,))['n'] for table in (old,new)}
-            print('PREFIX_NATIVE_AB='+json.dumps({'initial_origins':40000,'rows_per_batch':15000,'balanced_pairs':4,
+            print('PREFIX_NATIVE_AB='+json.dumps({'initial_origins':history_origins,'rows_per_batch':15000,'balanced_pairs':4,
                 'seconds':times,'median_seconds':{k:statistics.median(v) for k,v in times.items()},
                 'index_io_deltas':counts,'all_indexes_bytes':sizes,'full_rows_equal':True,
+                'shared_buffers_bytes':db.one("SELECT pg_size_bytes(current_setting('shared_buffers')) AS n")['n'],
                 'production_capacity':'NOT_MEASURED','index_definition_count':{'old':4,'new':3}}))
         finally:db.conn.autocommit=False
 
