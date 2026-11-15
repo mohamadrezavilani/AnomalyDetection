@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261115-RUNTIME-BOUNDS",
-  "source_sha256": "858b0302d06c6be8f673b0ebf109a10deb21e76a4e8ae03a81830226cb68ef16",
+  "source_sha256": "f08b094d7691117374caa5a0fe20ab5c0fab9b7f0a3dc1773adb46fa197f3177",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -152,7 +152,7 @@
     "tests/test_rank_screen.py": "50d62d865aa81a4916a3aa8d45fe483909093379908f2c3ba8d1c1df49bbf446",
     "tests/test_replay_boundary.py": "700b5f0d5f1ba44a712896cc0dae5d08f4cff0cd1f6880923113d54236914cce",
     "tests/test_review_policy.py": "18c103108c6af9abd745050bef4e9b7f39a0ce3724bc8a4fc38f1ec74daaba5f",
-    "tests/test_runtime_bounds_pg.py": "45a6a3858a156879499cc9c71329ca21c6fa4e1d895727255b33e55fd6ba2340",
+    "tests/test_runtime_bounds_pg.py": "88d785529158b4fadbc2163ea1048ae634e3001f2302c5d640559c21ff0942e7",
     "tests/test_scenario_invalidation_pg.py": "ed0c62b8d53c3513e425b1495978221d638de950303d703168c176a42c821bfb",
     "tests/test_scenarios.py": "c0fa611c9ab290061043e47fcf2b775fce27217f5f77f751069ab3f8ebc6d8d2",
     "tests/test_schema_setup.py": "f50f08fbfd7977fe6457529a2147cd4fa8e71b310260cd6825bd71108b9067b8",

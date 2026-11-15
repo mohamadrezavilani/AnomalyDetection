@@ -63,7 +63,10 @@ class RuntimeBoundsTests(unittest.TestCase):
         pending=self.job();self.assertEqual(pending['primary_version'],5)
         self.assertEqual(pending['primary_processed_version'],4)
         previous=self.epoch()
-        for _ in range(10):model_queue.reference_changed(self.store,[(SERVICE,TARGET-FIVE_NS)])
+        from psycopg.rows import dict_row
+        with self.psycopg.connect(**self.params,dbname=self.name,autocommit=True,row_factory=dict_row) as other:
+            other_store=ProductStore(other)
+            for _ in range(10):model_queue.reference_changed(other_store,[(SERVICE,TARGET-FIVE_NS)])
         self.assertEqual(self.job()['version'],pending['version'])
         self.assertEqual(self.epoch(),previous+10)
         stale={'source':{'captured_at_ns':TARGET},'peer_inputs':{'reference:'+SERVICE:previous}}
@@ -94,11 +97,21 @@ class RuntimeBoundsTests(unittest.TestCase):
 
     def test_batched_notifications_and_parent_window_roll_back_together(self):
         self.seed(300)
+        raw=self.raw
+        class Interrupted:
+            pages=0
+            def __getattr__(self,name):return getattr(raw,name)
+            def execute(self,sql,params=()):
+                if 'SET reference_notified_epoch=' in sql:
+                    self.pages+=1
+                    if self.pages==2:raise RuntimeError('interrupt-publication')
+                return raw.execute(sql,params)
+        self.store.raw=Interrupted()
         with self.assertRaisesRegex(RuntimeError,'interrupt-publication'):
             with self.store.transaction():
                 self.store.save_state('publication-test',{'complete':True})
                 model_queue.reference_changed(self.store,[(SERVICE,TARGET-1)])
-                raise RuntimeError('interrupt-publication')
+        self.store.raw=raw
         self.assertEqual(self.epoch(),1);self.assertFalse(self.job()['dirty'])
         self.assertEqual(self.store.state('publication-test'),{})
         self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_peer_dependencies WHERE reference_notified_epoch IS NOT NULL').fetchone()['n'],0)
@@ -106,7 +119,7 @@ class RuntimeBoundsTests(unittest.TestCase):
         self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_jobs WHERE dirty').fetchone()['n'],300)
 
     def test_reference_history_avoids_repeated_full_queue_writes_and_keeps_pk_plans(self):
-        count=20000;repeats=12
+        count=100000;repeats=12
         self.seed(count)
         self.raw.execute('CREATE TABLE anomaly_detection.adp_legacy_jobs (LIKE anomaly_detection.adp_jobs INCLUDING ALL)')
         self.raw.execute('INSERT INTO anomaly_detection.adp_legacy_jobs SELECT * FROM anomaly_detection.adp_jobs')
@@ -157,6 +170,20 @@ class RuntimeBoundsTests(unittest.TestCase):
         self.raw.execute('INSERT INTO anomaly_detection.adp_facts(request_key,anchor_key,session_key,at_ns,service_path,kind,state,revision,eligible,body,content_digest,last_seen_ns,details) '
             "VALUES(%s,%s,%s,%s,%s,'service_execution','active',1,TRUE,'{}','fixture',1,%s)",
             (request,'anchor-'+request,session,target+1,SERVICE,details))
+
+    def test_owned_schema_upgrade_preserves_rows_restores_budget_and_skips_repeat_ddl(self):
+        self.seed(2,legacy=True)
+        for name in ('adp_peer_reference_scan_v1','adp_signal_candidate_scan_v1','adp_fact_candidate_needed_v1'):
+            self.raw.execute('DROP INDEX anomaly_detection.'+name)
+        self.raw.execute('ALTER TABLE anomaly_detection.adp_jobs DROP COLUMN primary_processed_version')
+        self.raw.execute('ALTER TABLE anomaly_detection.adp_peer_dependencies DROP COLUMN reference_notified_epoch')
+        self.raw.execute("SET statement_timeout='3s'")
+        self.store.initialize()
+        self.assertEqual(self.store.initialization_schema['executed'],5)
+        self.assertEqual(self.job()['version'],7);self.assertIsNone(self.job()['primary_processed_version'])
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_peer_dependencies').fetchone()['n'],2)
+        self.assertEqual(self.raw.execute('SHOW statement_timeout').fetchone()['statement_timeout'],'3s')
+        self.store.initialize();self.assertEqual(self.store.initialization_schema['executed'],0)
 
     def signal(self,key,session,target,*,review=True,family='rate_5m',body=None,primary=4):
         values=dict(signal_key=key,case_key='case-'+key,scope_key='scope-'+key,job_session=session,target_ns=target,
@@ -209,11 +236,21 @@ class RuntimeBoundsTests(unittest.TestCase):
         self.assertEqual(found,{'canonical','current-job'})
         self.raw.execute("INSERT INTO anomaly_detection.adp_facts(request_key,anchor_key,session_key,at_ns,service_path,state,revision,eligible,body,content_digest,last_seen_ns) "
             "SELECT 'old-'||i,'old-anchor-'||i,'actor-1',%s-i*%s,%s,'active',1,TRUE,'{}','fixture',1 FROM generate_series(1,20000) i",(TARGET,FIVE_NS,SERVICE))
+        # A dense target where almost every request is already fully audited
+        # distinguishes the needed-evidence index from a normal time lookup.
+        from anomaly_detection.input_subjects import VERSION
+        self.raw.execute("INSERT INTO anomaly_detection.adp_facts(request_key,anchor_key,session_key,at_ns,service_path,state,revision,eligible,body,content_digest,last_seen_ns,details) "
+            "SELECT 'done-'||i,'done-anchor-'||i,'actor-1',%s,%s,'active',1,TRUE,'{}','fixture',1,"
+            "jsonb_build_object('source_present',TRUE,'quality',jsonb_build_object('evidence_available',TRUE,'conflicted',FALSE),"
+            "'semantic',jsonb_build_object('state','active','revision',1,'anchor_key','done-anchor-'||i),"
+            "'input_subject',jsonb_build_object('version',%s::text,'status','VERIFIED'))::text FROM generate_series(1,20000) i",
+            (TARGET+1,SERVICE,VERSION))
         self.raw.execute('ANALYZE anomaly_detection.adp_facts')
         sql='SELECT f.request_key FROM anomaly_detection.adp_facts f WHERE '+audit_scope.FACT_SCOPE+audit_scope.needed()+' ORDER BY f.next_audit_ns,f.request_key LIMIT %s'
         plan=self.raw.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+sql,('actor-1',TARGET,TARGET+FIVE_NS,TARGET,TARGET,1)).fetchone()['QUERY PLAN'][0]['Plan']
-        self.assertTrue(any(n.get('Index Name')=='adp_fact_candidate_needed_v1' for n in nodes(plan)))
+        self.assertTrue(any(n.get('Index Name')=='adp_fact_candidate_needed_v1' for n in nodes(plan)),canonical(plan))
         self.assertFalse(any(n['Node Type'] in ('Seq Scan','Sort') for n in nodes(plan)))
+        self.assertEqual(audit_scope.due_requests(self.store,{'session_key':'actor-1','target_ns':TARGET},TARGET,1),['current-job'])
         self.store._history_floor_ns=TARGET+FIVE_NS
         self.store.save_state(audit_scope.STATE,{})
         self.assertEqual(audit_scope.keys(self.store,TARGET),[])
@@ -234,7 +271,7 @@ class RuntimeBoundsTests(unittest.TestCase):
         with self.assertRaises(StopRead):collect_sample(capture,runtime_sha256=SOURCE_SHA,request_keys=wanted,sample_limit=2)
         sql,params=next((q,p) for q,p in queries if 'public.viewer_contract_identifiers' in q)
         self.raw.execute('CREATE TABLE public.viewer_contract_identifiers(origin_key TEXT,version_key TEXT,request_key TEXT,issuer TEXT,kind TEXT,scope TEXT,field_path TEXT,identity_key TEXT)')
-        self.raw.execute("INSERT INTO public.viewer_contract_identifiers SELECT 'origin-'||i,'version-'||(i%3),lpad((i/4)::text,64,'0'),'issuer','kind','scope','field','identity-'||i FROM generate_series(1,100000) i")
+        self.raw.execute("INSERT INTO public.viewer_contract_identifiers SELECT 'origin-'||i,'version-'||(i%3),lpad((i/4)::text,64,'0'),'issuer','kind','scope','field','identity-'||i FROM generate_series(1,1000000) i")
         self.raw.execute('CREATE INDEX vci_req ON public.viewer_contract_identifiers(request_key)')
         self.raw.execute('ANALYZE public.viewer_contract_identifiers')
         old=self.raw.execute('SELECT * FROM public.viewer_contract_identifiers WHERE request_key=ANY(%s)',(wanted,)).fetchall()
