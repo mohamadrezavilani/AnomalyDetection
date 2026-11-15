@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261115-READ-ISOLATION",
-  "source_sha256": "bd27e809da4496acc9cf50f6db1d8322cc67162ee0a85023e94429e3f7795162",
+  "source_sha256": "c4608cd0a78bb12ac79063214a0f51c005e8c1d063c8913ce93c5fe7fe97ab0d",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -13,7 +13,7 @@
     "MEETING_REQUIREMENTS_25_FA.md": "54ef408ba1af82cf13fe06f74cc75e99617bc1bb424bbf15a3278841d18746af",
     "METHODS_AND_LATE_DATA_FA.md": "ecc521f538f384b5cacb559bf05416cc67705b3f5de545108a08e1d7ae85bfbb",
     "PRESENTATION_GUIDE_FA.md": "53954989b5a1cf636e98f0a894d07179651e77e44ded72a6051f713f692dd456",
-    "PROJECT_MAP_FA.md": "f3fd1a01ee917172a2af3c960280503736bf4b0bd28ed7e86040c7ad6c75659b",
+    "PROJECT_MAP_FA.md": "a5be4e45790cb777d056d92920261471d49f7abfe508f1e433e4282004dcae82",
     "README_FA.md": "29b86b40eb42df27ba9185eb2e3daa27246be454293798c368557f99d640e966",
     "RELEASE_NOTES_06_FA.md": "30ee9d107f2d6e4593314c4000d40595a044421dfdb70f62961f14a46d086aa7",
     "RELEASE_NOTES_07_FA.md": "d693652cfea8136acaabe44a86a3fb3dd249e74f861390c52ee7bc0d1f481b8b",
@@ -90,7 +90,7 @@
     "anomaly_detection/runtime_statistics.py": "15986ff1008e347543e052093ff1e34af7ad681343316bbbcb16d848692845b5",
     "anomaly_detection/scenario_models.py": "de97fcd796e4f57e0bb8f18f8a1992b8bad41fc02e4d918ff3cbd4c8746b36cc",
     "anomaly_detection/scenario_store.py": "72fd9e9087c415da9254ea84434aee2ce36cf3416a20d786a25bf2dc9ff69529",
-    "anomaly_detection/scenario_traffic.py": "ab43d8f2866b7bcf4261940194d61f13df3001e3b829b1aa2744560558aff4a0",
+    "anomaly_detection/scenario_traffic.py": "0f15984f9f091d06cbb9bcc58c111a55fb63f7b4bc23711c4896f24f6954fdd5",
     "anomaly_detection/scenario_web.py": "ae9b5a1713551693dca6a2f1fce4a2a85db38597afc58088aff2d8c2de85cb75",
     "anomaly_detection/scenario_worker.py": "0adf46a097a29f7b256c0afbec5cccda0c78239c8fc2cd556bce4da35110c8ff",
     "anomaly_detection/schema_setup.py": "141325ce3a46f63e41059346b1fd0f38e361ae38929f247f783bb4d224b2d56e",
@@ -159,9 +159,11 @@
     "tests/test_service_reference.py": "d84ae4a6ed393ecdbebac33c487c83ae6c2046722ca738977ebea457686d9afe",
     "tests/test_source_scheduling.py": "66cffa0a609435b6bfe2bcb6c5ce896399bfaa784e6317c5db51528849275137",
     "tests/test_temporal.py": "217138ea59c097c6a8c6bac05398fc2f5a6fd16b515790321cb3a81233f4be6b",
+    "tests/test_traffic_census_pg.py": "2714b4961a4afc58475de4fb859657d14a1bb244bf284a4f2c25b978c99c2f66",
     "tests/test_viewer_delta_pin.py": "51055caad15479c973a80ad534551a814eeabfb1a5315af8148870de6280abe4",
     "tests/test_web_diagnostics.py": "037cd2671149e72309e80bf2549429e6cd2999cc4ac1ff342f982ae2653c8b13",
     "tests/test_window_stamp.py": "fa06f2bd314ddd0ab045f6bcc0b856c8371f6505e6bab259c9a411ff68ae432a",
+    "validation/AD_CORRECTNESS_REVIEW.json": "2196f41ed673df0005baf18623a2d05215333f1765177374b4d4e680652a8908",
     "validation/PRODUCT_atomic_scope.json": "de897b0639171a1baa99c1cd6bc9788b1f70fa7ff0c94e01068c27e7dee6adcd",
     "validation/PRODUCT_bounds16.json": "a6f864b73c431162dad408166ce79773cfaea7bd3c6aee03d8dfb04c97a803dc",
     "validation/PRODUCT_engine_contract.json": "6736858458f4c5c5370f4ae1cf8ecfeb856cc23d20c1f6ea4d692b7d7dd926e8",
@@ -351,5 +353,21 @@
     "old_sources_keep_global_fence": true,
     "method_thresholds_changed": false,
     "owner_capacity_or_accuracy": "NOT_EVALUATED"
+  },
+  "census_integrity_review_candidate": {
+    "candidate_id": "AD-20261115-CENSUS-INTEGRITY",
+    "base_commit": "d4eb76d96097d4064eeb8a25d1cb6ce910aee1e5",
+    "release_label": "BASE_LABEL_PENDING_PROJECT_MANAGER_VERSIONING",
+    "cursor_key": [
+      "at_ns",
+      "origin_key",
+      "version_key"
+    ],
+    "legacy_partial_target_restarted": true,
+    "new_pass_discards_only_own_staging": true,
+    "continuation_stamp_and_target_checked": true,
+    "historical_outputs_repaired_on_install": false,
+    "owner_server_validation": "NOT_RUN",
+    "detector_rules_changed": false
   }
 }

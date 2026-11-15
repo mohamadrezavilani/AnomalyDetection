@@ -6,7 +6,7 @@ change Viewer roles, infer shared users from IP or call a source initializer.
 from collections import Counter,defaultdict
 import json
 from . import FIVE_NS
-from .snapshot import api_path,canonical,digest
+from .snapshot import api_path,canonical,digest,require
 from .history_scope import effective_floor
 
 
@@ -28,14 +28,19 @@ def read_page(source,state,*,oldest=False):
         stamp=window_stamp(q,meta,window)
         if window['end_ns']!=target+FIVE_NS or target<meta.get('retention_cutoff_ns',0):return {'source':meta,'target_ns':target,'status':'UNAVAILABLE'}
         if state.get('stamp') and state['stamp']!=stamp:return {'source':meta,'target_ns':target,'stamp':stamp,'status':'RESTART'}
+        # An old two-part key can already have skipped another version of the
+        # same origin. Restart this target rather than inventing a suffix.
+        cursor_after=state.get('after')
+        if cursor_after and (not isinstance(cursor_after,(list,tuple)) or len(cursor_after)!=3):
+            return {'source':meta,'target_ns':target,'stamp':stamp,'status':'RESTART'}
         args=[target,target+FIVE_NS];after=''
-        if state.get('after'):after='AND (e.at_ns,e.origin_key)>(%s,%s) ';args+=state['after']
+        if cursor_after:after='AND (e.at_ns,e.origin_key,e.version_key)>(%s,%s,%s) ';args+=cursor_after
         size=max(64,min(1024,int(state.get('page_size',1024))))
         # Fence the raw-event page before joining or qualifying roots. Empty
         # filtered pages still advance; the complete census is never sampled.
         statement=("WITH page AS MATERIALIZED (SELECT origin_key,version_key,at_ns,request_key,session_key,ip_key,callpath,kind "
             "FROM public.viewer_events e WHERE e.at_ns>=%s AND e.at_ns<%s "+after+
-            "ORDER BY e.at_ns,e.origin_key LIMIT %s), roots AS MATERIALIZED ("
+            "ORDER BY e.at_ns,e.origin_key,e.version_key LIMIT %s), roots AS MATERIALIZED ("
             "SELECT e.*,r.root_call,r.root_count,r.identity_state,r.conflicted,r.session_key AS owner_session,"
             "(e.kind IN ('client','other') AND trim(split_part(e.callpath,' Line:',1))=trim(split_part(r.root_call,' Line:',1))) AS root_match "
             "FROM page e LEFT JOIN LATERAL (SELECT root_call,root_count,identity_state,conflicted,session_key "
@@ -44,13 +49,13 @@ def read_page(source,state,*,oldest=False):
             "CASE WHEN e.root_match THEN (SELECT COUNT(*) FROM (SELECT 1 FROM public.viewer_events c WHERE c.origin_key=e.origin_key LIMIT 2) v) END AS variants,"
             "CASE WHEN e.root_match THEN EXISTS(SELECT 1 FROM public.viewer_raw_events b WHERE b.origin_key=e.origin_key AND b.version_key=e.version_key) ELSE FALSE END AS raw_available "
             "FROM roots e LEFT JOIN LATERAL (SELECT root_call,state FROM public.viewer_semantic_occurrences s "
-            "WHERE s.request_key=e.request_key AND e.root_match LIMIT 1) s ON TRUE ORDER BY e.at_ns,e.origin_key")
-        examined=q('SELECT * FROM ('+statement+') bounded_root_page ORDER BY at_ns,origin_key',(*args,size+1),cap=size+1)
+            "WHERE s.request_key=e.request_key AND e.root_match LIMIT 1) s ON TRUE ORDER BY e.at_ns,e.origin_key,e.version_key")
+        examined=q('SELECT * FROM ('+statement+') bounded_root_page ORDER BY at_ns,origin_key,version_key',(*args,size+1),cap=size+1)
         more=len(examined)>size;examined=examined[:size]
         rows=[dict(row,variants_capped_at=2) for row in examined if row.get('root_match')]
         return {'source':meta,'target_ns':target,'stamp':stamp,'status':'PAGE','page_size':size,'rows':rows,'has_more':more,
             'scanned_events':len(examined),
-            'after':[examined[-1]['at_ns'],examined[-1]['origin_key']] if more else None}
+            'after':[examined[-1]['at_ns'],examined[-1]['origin_key'],examined[-1]['version_key']] if more else None}
 
 
 
@@ -69,6 +74,14 @@ def apply(store,packet,*,cursor_name='scenario_traffic_cursor'):
                     body=json.loads(r['body']);body['complete']=False
                     store.raw.execute('UPDATE anomaly_detection.adp_traffic_counts SET body=%s WHERE service_path=%s AND start_ns=%s',(canonical(body),r['service_path'],target));changed(store,[r['service_path']],target)
             return status
+        cursor=store.state(cursor_name)
+        if not cursor.get('after'):
+            # Rescan intentionally preserves evidence tables. Its fresh cursor
+            # must not adopt staging left by an interrupted, older source pass.
+            store.raw.execute('DELETE FROM anomaly_detection.adp_traffic_staging WHERE lane=%s AND start_ns=%s',(cursor_name,target))
+        else:
+            require(cursor.get('target_ns')==target and cursor.get('stamp')==packet['stamp'],
+                'TRAFFIC_STAGE_STAMP_MISMATCH')
         for row in packet['rows']:
             store.raw.execute('INSERT INTO anomaly_detection.adp_traffic_staging VALUES(%s,%s,%s,%s) ON CONFLICT(lane,start_ns,origin_key) DO UPDATE SET body=excluded.body',(cursor_name,target,row['origin_key'],canonical(row)))
         if packet['has_more']:
