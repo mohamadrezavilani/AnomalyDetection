@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import sys
 
-EXPECTED_BUILD = "AD-20261114-HISTORY-RESCAN"
+EXPECTED_BUILD = "AD-20261115-PREFIX-INDEX"
 ROOT = Path(__file__).resolve().parent
 VERIFIED_FILES = {}
 sys.dont_write_bytecode = True

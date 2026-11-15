@@ -19,6 +19,7 @@ on:
       - 'tests/test_viewer_web_control.py'
       - 'tests/test_viewer_catchup.py'
       - 'tests/test_viewer_history_replay.py'
+      - 'tests/test_viewer_prefix_storage.py'
       - '.gitattributes'
       - 'RELEASE_MANIFEST.json'
       - '.github/workflows/viewer-delta.yml'
@@ -76,6 +77,7 @@ jobs:
           tests.test_viewer_web_control
           tests.test_viewer_catchup
           tests.test_viewer_history_replay
+          tests.test_viewer_prefix_storage
           tests.test_viewer_direct_web
       - name: AD compatibility and unit regressions
         working-directory: AnomalyDetection

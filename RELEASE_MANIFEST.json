@@ -1,5 +1,5 @@
 {
-  "version": "P24-20261114-POINT-PROBES",
+  "version": "P24-20261115-PREFIX-INDEX",
   "baseline": "uploaded_M1",
   "baseline_sha256": "c339c4d467509d33219978f7f6f2316d28f10d7dd5d27474613683f62b0fddd3",
   "changed_files": [
@@ -106,7 +106,7 @@
     "p24_foundation/viewer_capture.py": "bc9ef6680d88c9398f8cb9f8677bc91ea626d6d1b9ec69c0076698d59907e1a9",
     "p24_foundation/viewer_contract.py": "8ce2771470c1a26cfbe24d602cbe4f55dd4e6998580bebfb67b4afa54ea03f11",
     "p24_foundation/viewer_correlation_sync.py": "5afa01cf8c6a087f675b309cd800ee6fc997dd79d98dc303b20f399ae518d293",
-    "p24_foundation/viewer_data.py": "13c641a6eeeec76bedec527721086322091905760dd599fe4dd2792e1d5fed9f",
+    "p24_foundation/viewer_data.py": "c72f6d3e2b68a1b7408d48d9dc483dc1c7e5b5e49c8ceee577b50e72dd9091bb",
     "p24_foundation/viewer_dispatch_sync.py": "84b9c965c8836e1377e210aa3b4bd9b501b97b32197679007ba656561f820849",
     "p24_foundation/viewer_display_time.py": "038d7fc4a678e676d6e5db920df3a0cc9c724733febd4a317d9c7dc777691bcf",
     "p24_foundation/viewer_elastic.py": "99c972387806f9358a84c993bf43c9936fbb46330e28c1cb16f3efeca103a31d",
@@ -116,14 +116,14 @@
     "p24_foundation/viewer_online.py": "677319084ecfa4b7371b2df59b474eb8ca9ab4caca0f2233b1cc9f6afe037104",
     "p24_foundation/viewer_payment_journey.py": "b3a4d8c72bd015fcb8ad57bac34695426f17f7711ffc02b067f47b1a06bc88cc",
     "p24_foundation/viewer_prefetch.py": "e9f9115198fff26bff75223328a94966ff1db663cb2e7f688a5eb319a9701379",
-    "p24_foundation/viewer_projection_writes.py": "1dbea3a91225a77e40d374c235a5dbff035d26046012bab074c949a361c1abb6",
+    "p24_foundation/viewer_projection_writes.py": "8572113d4d53b11060c7fa8c5ccbb80fb0fbd103625ab2bea975553adaa689ba",
     "p24_foundation/viewer_raw.py": "4b20a58051bb4d39e983ab48d6e9333f36c071c48753a22c1fc04d08aa871c75",
     "p24_foundation/viewer_runtime.py": "540d9455d8cf9d2c1f219c3dda0e55cecad8e60098717b82a969f4477f4ac889",
     "p24_foundation/viewer_semantic_index.py": "3cce97c357ea02a9867c34dfd8de251d5a6adb333de924ff31a5787f2a0191c0",
     "p24_foundation/viewer_service_catalog.py": "1449b59b94c63f82f6bdac9453710ad5ed21678e46c29022182c49ff5a8d34fe",
     "p24_foundation/viewer_service_context.py": "288970aa7c6dd4e57ea2c902298f30f4d022ece33ef31ed17777ec38a6525e4a",
     "p24_foundation/viewer_service_sync.py": "64ad20e9e9dcd4bd08bdf68ba4ce43ba8b6a1abb276a41e33da6d54c30e69a4c",
-    "p24_foundation/viewer_storage_keys.py": "f2ddcff2e30f1c230d7852078b39ac9e94d709857ca1709d1f9fef5ffcdd5e39",
+    "p24_foundation/viewer_storage_keys.py": "23839a95f0d009fa976330bba04a6b31aed073198dd2263cf6b48388362526ab",
     "p24_foundation/viewer_ui.py": "94984fca102a99f7b61ddbf88658749b46a99467b2e50435852aacd4492ead94",
     "p24_foundation/worker.py": "b53518d0bfdcb20bd8c030197512d906086dedbee3ac17b64e4319c7742435f1",
     "p24_foundation/workflow_demo.py": "c6f7f80829bfeec839c203860a068b5b33e4e1100f269c275bb9dda920a42346",
@@ -235,7 +235,7 @@
     "tests/test_viewer_install_check.py": "06b2dcd0775869f7ebe72a1ba269fece3e311fadba6c38dd04d80f5732e887af",
     "tests/test_viewer_install_regressions.py": "71f6475fa5bfdc767e12cb4f0e657f27c6da7291f8d3bd83459c7462bc69f6ca",
     "tests/test_viewer_lan_access.py": "6353dbbc3c6ee2502a36b1fade715642e67211bf938fed2c5241e42f7a6972fb",
-    "tests/test_viewer_launcher_bytes.py": "deb56604b9748944389f7b1b6af7326410fb6b1788bccae9715e33d6a1ee96d4",
+    "tests/test_viewer_launcher_bytes.py": "4e6d3759e006d8aa92aff4a38230f388b6e9c5088ba61e6a430b4e90fc02bc6d",
     "tests/test_viewer_lc1_anchor_resolver.py": "a08d3e2e981841536c1823442ee7941700aa3cc4907457c6a571e97a070e69e6",
     "tests/test_viewer_lc1b_gap_sampling.py": "0d845f08930523f4523aa91fb90aac2495ee9ca37214eb588b8b0ce2eaaa0c31",
     "tests/test_viewer_lc1c_correlation_preflight.py": "1788666fb02afcd32b75b8a578d01bb03a9f69fe8c9bddf7e3b4c30058b76ed2",
@@ -426,7 +426,7 @@
     "viewer_performance/Diagnose_Viewer_Web.py": "fe9c4d19fcff9cf368a8c5943c9f50d32eea5d5923f9959464ebbc642ab6dc5f",
     "viewer_performance/Repair_Viewer_Launchers.py": "91dddefe42597ab7f39489ffbda0d1325575439f3ff7dbaca36ccacc2f2eb37b",
     "viewer_performance/Restore_Viewer_Full_Keys.py": "1ae495a4c778d21c2eea6029fbd9f7f0b0fd03badaf23a6be64f9aa49ff3b54a",
-    "viewer_performance/Run_Viewer_Memory.py": "efcf08068e8ea634f6c64767e6cfb91c50bc3cdbcac77ea7ce0d4a714b1f401f",
+    "viewer_performance/Run_Viewer_Memory.py": "c07a81fa446d5863a9b6f39625b53488c7993b5fa0872a1e32bf67376b688106",
     "viewer_performance/Run_Viewer_Web.py": "d37ce47989dada7d693d7a39883004f07dffcae9f2aacbe206a4db397297b75d",
     "viewer_performance/Stop_Viewer_Worker.py": "f867e64966737fa06d137772d8bcfbb9c1360c4d0228f06cca9ac0a4b63c8540",
     "viewer_performance/viewer.ps1": "a0d3390f3a51007b9fdc92eb9262aee426b54b1a865dcc6197e6fc7da57c3a21",
@@ -439,7 +439,10 @@
     "viewer_performance/Run_Viewer_Catchup.py": "31175ee9457de6f4d7b9e31e7490b4a095d4c6c6ecb31016ca606466175a0238",
     "tests/test_viewer_catchup.py": "0f5dc467e6bad173d760768348c75ab5314f2151de31db660edbf1ef2ac17e3f",
     "viewer_performance/history_replay.py": "2f20bcd5e95816be4b64eb906fd855f8699d2d300634e6a894368af2b25ad2db",
-    "tests/test_viewer_history_replay.py": "b042bed936ad8207dc0af0fa60a2b387550b74a1bbbe4618bc81d90110350ccb"
+    "tests/test_viewer_history_replay.py": "b042bed936ad8207dc0af0fa60a2b387550b74a1bbbe4618bc81d90110350ccb",
+    "p24_foundation/viewer_prefix_storage.py": "f5052f7b6a09bd0dbc72cf7e2a3e72619b13c0a9f8518c6ae2238da1d84fe538",
+    "tests/test_viewer_prefix_storage.py": "51fad7966ad6a70e3d69e1bdc85a1792cbbcd76dae97305c35ec6fb310f1b2ad",
+    "viewer_performance/Restore_Viewer_Prefix_Keys.py": "e37eea4d240d2d683a0dafb885be9ac56b9434db7ba8bb3299baeb096d0bbdc4"
   },
   "pilot_diagnostics_fix": true,
   "owner_runtime_reports_excluded": [
@@ -464,11 +467,11 @@
   "bootstrap_and_copy_fix": true,
   "scoped_fetch_fix": true,
   "capture_wide_ingest_fix": true,
-  "release_id": "P24-20261114-POINT-PROBES",
+  "release_id": "P24-20261115-PREFIX-INDEX",
   "assembled_at_utc": "2026-11-02T06:02:33.586394+00:00",
   "delivery": "complete_viewer_source_with_native_qualified_memory_profile_worker",
   "operational_acceptance": "PENDING_NATIVE_AND_PRODUCTION_CAPACITY",
-  "runtime_source_sha256": "c536b19dd64f08b25b2cdab447f0def88969ea3629c015c326fb7cbaf386b26c",
+  "runtime_source_sha256": "b68ba48973867583a0bde1850cba282e9157eb38c457d460b66354b1d3cb512d",
   "source_catalog_sha256": "05ebff4db5829cc2f72a73e2813dce3002f7afd26793c9efd61947d246005d92",
   "windows_python_resolution_fix": true,
   "recent_start_with_explicit_history_gap": true,
@@ -515,7 +518,7 @@
     "validation/d2_ab_local_tests.json",
     "validation/d2_fast_smoke_owner_evidence.json"
   ],
-  "checked_file_count_expected": 322,
+  "checked_file_count_expected": 325,
   "d2_wal_status": {
     "D2_A": "OWNER_PROBE_CAPTURED",
     "D2_B": "WAL_OPT_IN_TRIAL_NOT_RUN",
@@ -1146,5 +1149,16 @@
     "current_control_tests": "GITHUB_PR_CHECKS",
     "native_windows_postgresql": "NOT_RUN",
     "production_capacity_or_accuracy_assigned": false
+  },
+  "prefix_evidence_index_candidate": {
+    "layout": "prefix_evidence_keys_v2",
+    "indexed_tables": 3,
+    "old_independent_indexes": 6,
+    "new_composite_indexes": 3,
+    "copy_transport_unchanged": true,
+    "full_columns_and_exact_origin_predicates_preserved": true,
+    "native_tests": "PR_CHECKS",
+    "owner_throughput": "NOT_MEASURED",
+    "source_report": "Viewer_Live_Performance_20261115_053301_1e9e0f5d.json"
   }
 }

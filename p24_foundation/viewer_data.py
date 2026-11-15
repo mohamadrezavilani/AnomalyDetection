@@ -526,8 +526,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 if method not in ('copy_binary','insert_select_ordered','insert_select_unordered'):
                     raise ValueError('invalid_qualification_final_write_method')
                 if method=='copy_binary':
-                    from .viewer_storage_keys import KEYS,detect,digest_sql
-                    order=digest_sql(KEYS[table]) if table in KEYS and detect(self) else self._INGEST_ORDER[table]
+                    from .viewer_storage_keys import KEYS,detect,ordered_key_sql
+                    order=ordered_key_sql(self,table) if table in KEYS and detect(self) else self._INGEST_ORDER[table]
                     self._copy_ingest_stage_into_table(stage,table,columns,order)
                 else:
                     self._insert_ingest_stage_into_table(stage,table,columns,
@@ -691,6 +691,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         if layout=='binary_origin_keys_v1':
             from .viewer_origin_storage import ensure as ensure_origins
             ensure_origins(self)
+            if not getattr(self,'_qualification_legacy_evidence_indexes',False):
+                from .viewer_prefix_storage import ensure as ensure_prefix
+                ensure_prefix(self)
 
     def ensure_service_roles(self, paths=None):
         # Discover real HTTP root paths without overwriting operator decisions.
