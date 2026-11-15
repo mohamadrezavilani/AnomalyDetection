@@ -6,6 +6,11 @@ rescan and rollback SQL runs against a disposable native PostgreSQL database.
 from contextlib import contextmanager
 import json
 import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -181,6 +186,109 @@ class NativeTrafficCensusTests(unittest.TestCase):
         self.assertEqual(apply(ProductStore(self.raw),self.packet([last])),'COMPLETE')
         self.assertEqual(self.count()['requests'],2)
         self.assertCountEqual(self.count()['request_keys'],[first['request_key'],last['request_key']])
+
+    def killed_final_page(self,phase):
+        old,first,last=(self.event(i) for i in (1,2,3))
+        apply(self.store,self.packet([old]))
+        apply(self.store,self.packet([first],more=True,generation=2))
+        tables=('adp_state','adp_traffic_counts','adp_traffic_members','adp_traffic_staging',
+                'adp_profile_scopes','adp_scenario_jobs','adp_profile_tasks')
+        def saved():
+            return {t:sorted(json.dumps(dict(r),sort_keys=True) for r in self.raw.execute(
+                self.sql.SQL('SELECT * FROM anomaly_detection.{}').format(self.sql.Identifier(t))).fetchall()) for t in tables}
+        before=saved()
+        code='''import json,re,sys
+from pathlib import Path
+import psycopg
+from psycopg.rows import dict_row
+from anomaly_detection.product_store import ProductStore
+from anomaly_detection.scenario_traffic import apply
+cfg=json.loads(sys.stdin.readline())
+assert re.fullmatch(r'p24_design_adperf_[0-9a-f]{32}',cfg['database'])
+with psycopg.connect(**cfg['params'],dbname=cfg['database'],autocommit=True,row_factory=dict_row) as raw:
+    assert raw.execute('SELECT current_database() AS db').fetchone()['db']==cfg['database']
+    store=ProductStore(raw);store._history_floor_ns=0
+    original=store.save_state
+    def pause():
+        Path(cfg['marker']).write_text(cfg['phase'],encoding='utf-8')
+        sys.stdin.readline()
+    def checkpoint(name,value):
+        if cfg['phase']=='before_commit' and name==cfg['lane'] and 'next_ns' in value:pause()
+        return original(name,value)
+    store.save_state=checkpoint
+    assert apply(store,cfg['packet'],cursor_name=cfg['lane'])=='COMPLETE'
+    if cfg['phase']=='after_commit':pause()
+'''
+        with tempfile.TemporaryDirectory() as folder:
+            marker=Path(folder)/'paused'
+            child=subprocess.Popen([sys.executable,'-B','-c',code],cwd=Path(__file__).resolve().parents[1],
+                stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            try:
+                child.stdin.write(json.dumps(dict(params=self.params,database=self.name,marker=str(marker),
+                    phase=phase,lane=LANE,packet=self.packet([last],generation=2)))+'\n');child.stdin.flush()
+                deadline=time.monotonic()+15
+                while not marker.exists() and child.poll() is None and time.monotonic()<deadline:time.sleep(.02)
+                if not marker.exists():
+                    child.kill();out,err=child.communicate(timeout=5)
+                    self.fail('Child did not reach transaction boundary: '+out+err)
+                self.assertEqual(self.count()['requests'],1 if phase=='before_commit' else 2)
+                child.kill();child.wait(timeout=5)
+                self.assertNotEqual(child.returncode,0)
+            finally:
+                if child.poll() is None:child.kill();child.wait(timeout=5)
+                for stream in (child.stdin,child.stdout,child.stderr):stream.close()
+        if phase=='before_commit':
+            self.assertEqual(saved(),before)
+            self.assertEqual(apply(ProductStore(self.raw),self.packet([last],generation=2)),'COMPLETE')
+        self.assertEqual(self.count()['request_keys'],sorted([first['request_key'],last['request_key']]))
+        self.assertEqual(self.store.state(LANE),{'next_ns':TARGET+FIVE_NS})
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_traffic_staging').fetchone()['n'],0)
+
+    def test_process_kill_before_final_commit_keeps_prior_output_and_recovers_partial_pass(self):
+        self.killed_final_page('before_commit')
+
+    def test_process_kill_after_final_commit_keeps_counts_and_cursor_together(self):
+        self.killed_final_page('after_commit')
+
+    def test_ready_recheck_ready_changes_counts_without_erasing_cases_or_human_feedback(self):
+        from anomaly_detection.cases import replace_scope,identity
+        from anomaly_detection.case_summary import statistics,case_status
+        actor='b'*64
+        self.raw.execute('INSERT INTO anomaly_detection.adp_jobs(session_key,target_ns,version,primary_version,dirty) VALUES(%s,%s,1,1,FALSE)',(actor,TARGET))
+        self.raw.execute("INSERT INTO anomaly_detection.adp_scenario_jobs(scope_key,kind,entity_key,service_path,target_ns,dirty,processed_version) VALUES('feature','traffic',%s,%s,%s,FALSE,1)",(SERVICE,SERVICE,TARGET))
+        items={kind:dict(signal_key='signal-'+kind,family=family,entity_type=kind,
+            entity_key=actor if kind=='actor' else SERVICE,service_path=SERVICE,target_ns=TARGET,
+            status='CANDIDATE',observed=10,upper=2,evidence_verified=True,single_signal_review_eligible=True)
+            for kind,family in (('actor','peer_service_rate_5m'),('service','service_volume'))}
+        def publish(version):
+            for kind in items:
+                job={'target_ns':TARGET,'version':version,'primary_version':version}
+                if kind=='actor':job['session_key']=actor
+                with self.store.transaction():
+                    replace_scope(self.store,kind,[items[kind]],TARGET+version,
+                        source_kind='actor' if kind=='actor' else 'feature',job=job)
+        # Feature input lookup uses its actual scope key.
+        publish(1)
+        self.raw.execute("UPDATE anomaly_detection.adp_case_signals SET scope_key='feature' WHERE source_kind='feature'")
+        keys={k:identity(k,actor if k=='actor' else SERVICE,'activity' if k=='actor' else 'service_volume',SERVICE) for k in items}
+        self.assertEqual(statistics(self.store)['READY'],{'bucket':'READY','cases':2,'services':1,'actors':1})
+        revision=self.raw.execute('SELECT revision FROM anomaly_detection.adp_cases WHERE case_key=%s',(keys['actor'],)).fetchone()['revision']
+        self.raw.execute('INSERT INTO anomaly_detection.adp_case_feedback(case_key,label,note,created_ns,case_revision) VALUES(%s,%s,%s,%s,%s)',
+            (keys['actor'],'confirmed_suspicious','retained operator review',TARGET,revision))
+        self.raw.execute('UPDATE anomaly_detection.adp_jobs SET version=2,primary_version=2,dirty=TRUE')
+        self.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET version=2,dirty=TRUE')
+        self.assertEqual(statistics(self.store)['RECHECK']['cases'],2)
+        self.assertEqual(statistics(self.store).get('READY',{}).get('services',0),0)
+        self.raw.execute('UPDATE anomaly_detection.adp_jobs SET dirty=FALSE')
+        self.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET dirty=FALSE,processed_version=version')
+        # Keep the same feature scope while publishing its new receipt.
+        with self.store.transaction():
+            replace_scope(self.store,'feature',[items['service']],TARGET+2,source_kind='feature',job={'target_ns':TARGET,'version':2})
+            replace_scope(self.store,'actor',[items['actor']],TARGET+2,job={'session_key':actor,'target_ns':TARGET,'version':2,'primary_version':2})
+        self.assertEqual(case_status(self.store,keys['service'])['bucket'],'READY')
+        self.assertEqual(case_status(self.store,keys['actor'])['bucket'],'REVIEWED')
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_cases').fetchone()['n'],2)
+        self.assertEqual(self.raw.execute('SELECT note FROM anomaly_detection.adp_case_feedback').fetchone()['note'],'retained operator review')
 
 
 if __name__=='__main__':unittest.main()
