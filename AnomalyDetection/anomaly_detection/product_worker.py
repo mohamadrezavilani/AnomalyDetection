@@ -142,7 +142,10 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                         state['statistics']=store.report();state['statistics_at_ns']=clock.time_ns()
                         state['statistics_status']=state['statistics']['statistics_collection']['status']
                         state['statistics_section_failures']={k:v for k,v in state['statistics']['statistics_collection']['sections'].items() if v['status']!='CURRENT'}
-                        next_report=clock.monotonic()+30
+                        # During catch-up, repeated whole-owned-schema counts
+                        # compete with both the publisher and actual analysis.
+                        # Runtime heartbeats/counters still refresh normally.
+                        next_report=clock.monotonic()+(300 if admission.get('writer_busy') else 30)
                     if source is not None and clock.monotonic()>=next_source:
                         continuation=continuations.take()
                         if continuation is None:turn+=1

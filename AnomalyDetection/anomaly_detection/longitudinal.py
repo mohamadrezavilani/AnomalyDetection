@@ -262,7 +262,8 @@ def seed(store,limit=8):
     if not cursor.get('through'):
         high=store.raw.execute('SELECT MAX(start_ns) AS at FROM anomaly_detection.adp_source_windows WHERE complete=TRUE').fetchone()['at']
         if high is None:return
-        low=max(0,high-2*DAY) if fresh else 0
+        floor=getattr(store,'history_floor_ns',0)
+        low=max(floor,high-2*DAY) if fresh else floor
         cursor={'through':high,'after':[low,'','']}
     after=cursor['after']
     # Fence the parent page BEFORE JSON expansion or qualification. A page

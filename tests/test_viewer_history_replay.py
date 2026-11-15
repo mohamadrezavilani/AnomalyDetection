@@ -87,6 +87,30 @@ class ControlWireTests(unittest.TestCase):
 
 
 class ReplayChecks:
+    def test_explicit_aban_scope_supersedes_only_scheduling_and_keeps_its_audit(self):
+        self.seed_gap();self.replay.step(self.capture)
+        old=dict(self.replay.state());before=snapshot(self.db)
+        future=boundary('2026-11-12')
+        resume_recent(self.db,lookback_windows=1,now=future+60*1_000_000_000)
+        main=self.db.one('SELECT next_ns FROM viewer_live_state')['next_ns'];self.db.conn.commit()
+        aban=HistoryReplay(self.db,'2026-10-23')
+        with self.assertRaisesRegex(ValueError,'different_history'):aban.initialize()
+        self.db.conn.rollback()
+        def fail(stage):raise RuntimeError('controlled_scope_crash')
+        with self.assertRaises(RuntimeError):aban.initialize(skip_earlier=True,fault=fail)
+        self.assertEqual(self.replay.state()['run_id'],old['run_id']);self.db.conn.rollback()
+        row=aban.initialize(skip_earlier=True)
+        self.assertEqual(iso(row['from_ns']),'2026-10-22T20:30:00+00:00')
+        self.assertEqual(row['next_ns'],row['from_ns']);self.assertNotEqual(row['run_id'],old['run_id'])
+        self.assertEqual(row['end_ns'],main)
+        self.assertEqual(row['ad_prepared'],0);self.assertEqual(row['ad_started'],0)
+        self.assertEqual(snapshot(self.db),before)
+        saved=self.db.one('SELECT body FROM '+aban.table+'_superseded WHERE run_id=?',(old['run_id'],))
+        self.assertEqual(json.loads(saved['body']),old)
+        identity=row['run_id'];self.db.conn.commit()
+        self.assertEqual(aban.initialize(skip_earlier=True)['run_id'],identity)
+        self.assertEqual(self.db.one('SELECT next_ns FROM viewer_live_state')['next_ns'],main)
+
     def capture(self,start,end):
         self.assertEqual(end,start+FIVE_NS)
         self.fetched.append(start)
@@ -418,6 +442,19 @@ class NativeHistoryReplayTests(ReplayChecks,unittest.TestCase):
             self.assertEqual(raised.exception.failure['code'],'VIEWER_WORKER_ALREADY_RUNNING')
             self.assertEqual(raised.exception.failure['postgres_backend_pid'],self.db.conn.info.backend_pid)
             self.assertIsNone(self.db.one("SELECT to_regclass('public.viewer_history_replay_state') AS present")['present'])
+
+    def test_active_ad_blocks_scope_change_before_the_old_replay_is_replaced(self):
+        options=self.runner_config();self.seed_gap()
+        old=self.replay.state()['run_id']
+        future=boundary('2026-11-12')
+        resume_recent(self.db,lookback_windows=1,now=future+60*1_000_000_000);self.db.conn.commit()
+        running={'process':{'locked':True},'web':{'locked':False}}
+        with options,patch('p24_foundation.viewer_runtime.ProgressConsole',side_effect=RecordingConsole), \
+             patch.object(replay_module,'invoke_ad',return_value=running):
+            with self.assertRaisesRegex(ValueError,'ad_must_be_stopped_before_history_scope_change'):
+                replay_module.run(self.root,'2026-10-23',skip_earlier=True,with_anomaly=True)
+        self.db.conn.rollback()
+        self.assertEqual(self.replay.state()['run_id'],old)
 
     def test_native_killed_process_commits_progress_exactly_with_its_capture(self):
         self.seed_gap();self.replay.step(self.capture);self.db.conn.commit()

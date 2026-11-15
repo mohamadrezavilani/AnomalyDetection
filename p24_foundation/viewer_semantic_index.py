@@ -202,6 +202,9 @@ class SemanticIndexMixin:
             previous=self.all('SELECT * FROM viewer_semantic_occurrences WHERE request_key IN ('
                               +','.join('?' for _ in keys)+')',keys)
         old_by_key={r['request_key']:r for r in previous}
+        from .viewer_window_epochs import anchors
+        anchors(self,(r.get('anchor_ns') for r in previous))
+        anchors(self,(r.get('anchor_ns') for r in rows))
         upserts=[];withdrawals=[];transitions=[]
         for row in rows:
             key=row['request_key']
@@ -264,6 +267,7 @@ class SemanticIndexMixin:
         """
         if not 50 <= int(batch_size) <= 2000:raise ValueError('invalid_batch_size')
         self.init_semantic_index(commit=commit)
+        self.write_lock()
         total=changes=0
         candidates=self.one('SELECT COUNT(*) AS n FROM viewer_requests')['n']
         self.progress('semantic_index',processed=0,total=candidates)
@@ -293,6 +297,7 @@ class SemanticIndexMixin:
         keys=sorted(set(request_keys))
         if any(not isinstance(k,str) or len(k)!=64 for k in keys):
             raise ValueError('invalid_request_keys')
+        self.write_lock()
         summary=dict(changed=0,added=0,withdrawn=0)
         sessions=set()
         reviewed_unknowns=self._reviewed_unknown_service_paths()

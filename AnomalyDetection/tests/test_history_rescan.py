@@ -91,5 +91,25 @@ class NativeHistoryRescanTests(unittest.TestCase):
         self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_models').fetchone()['n'],1)
         self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_case_feedback').fetchone()['n'],1)
 
+    def test_aban_floor_skips_old_profile_work_without_deleting_facts_or_tasks(self):
+        from anomaly_detection.scenario_store import next_profile
+        self.seed()
+        floor=tehran_boundary('2026-10-23')[1]
+        self.store.save_state('profile_floor_pass_v1',{'after':'f'*64,'pending':['a'*64]})
+        prepare(self.store,'2026-10-23','b'*32)
+        self.assertEqual(self.store.state('profile_floor_pass_v1'),{})
+        self.assertEqual(self.store.history_floor_ns,floor)
+        packet=self.window_packet(2,1)
+        packet['target_ns']=floor;packet['source']['captured_at_ns']=floor+FIVE_NS
+        packet['rows'][0].update(request_key='c'*64,anchor_key='ba1:'+'c'*64,anchor_ns=floor+1)
+        apply_window(self.store,packet)
+        self.raw.execute("INSERT INTO anomaly_detection.adp_profile_tasks VALUES(%s,0,0,0),(%s,0,0,0) ON CONFLICT(request_key) DO UPDATE SET due_ns=0",('a'*64,'c'*64))
+        self.assertEqual(next_profile(self.store,floor+FIVE_NS),'c'*64)
+        self.assertIsNotNone(self.raw.execute('SELECT 1 FROM anomaly_detection.adp_profile_tasks WHERE request_key=%s',('a'*64,)).fetchone())
+        self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_facts').fetchone()['n'],2)
+        advanced={'next_ns':floor+FIVE_NS};self.store.save_state('fresh_cursor',advanced)
+        self.assertEqual(prepare(self.store,'2026-10-23','b'*32)['status'],'HISTORY_RESCAN_ALREADY_PREPARED')
+        self.assertEqual(self.store.state('fresh_cursor'),advanced)
+
 
 if __name__=='__main__':unittest.main()

@@ -106,7 +106,9 @@ def main(argv=None):
     parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[1])
     parser.add_argument('--from-tehran-date',metavar='YYYY-MM-DD',help='Replay missing history from this date, then resume live publication')
     parser.add_argument('--with-anomaly',action='store_true',help='Run AD alongside replay, reading its committed historical prefix')
+    parser.add_argument('--skip-earlier-history',action='store_true',help='Explicitly supersede an older replay with the later --from-tehran-date, keeping evidence')
     args=parser.parse_args(argv);root=args.project_root.resolve();sys.path.insert(0,str(root));os.chdir(root)
+    if args.skip_earlier_history and not args.from_tehran_date:parser.error('--skip-earlier-history requires --from-tehran-date')
     try:
         from viewer_performance.Run_Viewer_Memory import memory_info,BASE_RUNTIME
         from viewer_performance.Run_Viewer_Web import existing_options
@@ -143,7 +145,7 @@ def main(argv=None):
             if args.from_tehran_date:day=args.from_tehran_date
             else:
                 with viewer_data.ViewerDB(**options) as probe:day=pending_day(probe)
-            if day:replay_history(root,day,with_anomaly=args.with_anomaly)
+            if day:replay_history(root,day,with_anomaly=args.with_anomaly,skip_earlier=args.skip_earlier_history)
             previous=sys.argv
             sys.argv=['run_behavior_viewer.py','live','--config',str(root/'viewer_config.local.py'),'--progress','--resume-checkpoint']
             try:runner()

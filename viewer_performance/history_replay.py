@@ -38,7 +38,7 @@ class HistoryReplay:
     def __init__(self,db,day):
         self.db=db;self.day=day;self.begin=boundary(day)
 
-    def initialize(self):
+    def initialize(self,*,skip_earlier=False,fault=None):
         db=self.db
         state=db.one('SELECT * FROM viewer_live_state WHERE id=1')
         if not state or not state['start_ns']<=self.begin<=state['next_ns']:
@@ -56,9 +56,30 @@ class HistoryReplay:
             ad_prepared INTEGER NOT NULL DEFAULT 0,ad_started INTEGER NOT NULL DEFAULT 0)''')
         old=self.state()
         if old:
-            if (old['from_ns']!=self.begin or old['stream_key']!=state['stream_key']
-                    or old['keys_fingerprint']!=state['keys_fingerprint']):
+            if old['stream_key']!=state['stream_key'] or old['keys_fingerprint']!=state['keys_fingerprint']:
                 raise ValueError('different_history_replay_already_recorded')
+            if old['from_ns']!=self.begin:
+                if not skip_earlier:raise ValueError('different_history_replay_already_recorded')
+                if self.begin<=old['from_ns'] or self.begin<old['next_ns']:
+                    raise ValueError('new_history_boundary_must_advance_cursor')
+                # This explicit owner action supersedes scheduling only. Keep
+                # the former plan as an immutable audit, and every witness.
+                import json
+                audit=self.table+'_superseded'
+                now=clock.time_ns()
+                try:
+                    db.sql('CREATE TABLE IF NOT EXISTS '+audit+'(run_id TEXT PRIMARY KEY,body TEXT NOT NULL,'
+                        'superseded_ns BIGINT NOT NULL,new_from_ns BIGINT NOT NULL)')
+                    db.sql('INSERT INTO '+audit+' VALUES(?,?,?,?) ON CONFLICT(run_id) DO NOTHING',
+                        (old['run_id'],json.dumps(old,sort_keys=True),now,self.begin))
+                    changed=db.sql('UPDATE '+self.table+' SET run_id=?,from_ns=?,next_ns=?,end_ns=?,skipped_windows=0,'
+                        'published_windows=0,status=?,started_ns=?,updated_ns=?,ad_prepared=0,ad_started=0 '
+                        'WHERE id=1 AND run_id=? AND next_ns=?',
+                        (uuid.uuid4().hex,self.begin,self.begin,state['next_ns'],'RUNNING',now,now,old['run_id'],old['next_ns']))
+                    if changed.rowcount!=1:raise ValueError('history_replay_checkpoint_changed')
+                    if fault:fault('before_scope_commit')
+                except BaseException:
+                    db.conn.rollback();raise
         else:
             now=clock.time_ns()
             db.sql('INSERT INTO '+self.table+'(id,run_id,from_ns,next_ns,end_ns,stream_key,keys_fingerprint,status,started_ns,updated_ns) '
@@ -187,7 +208,7 @@ def handoff(replay,root,*,invoke=invoke_ad):
     return {'status':'HISTORY_REPLAY_HANDOFF_COMPLETE','ad_status':result['status'],**replay.summary()}
 
 
-def run(root,day,*,with_anomaly=False):
+def run(root,day,*,with_anomaly=False,skip_earlier=False):
     import json,runpy
     from p24_foundation.viewer_data import ViewerDB,utc_ns
     from p24_foundation.viewer_online import initialize_live,bind_stream,single_worker
@@ -204,6 +225,8 @@ def run(root,day,*,with_anomaly=False):
         'different_history_replay_already_recorded','history_stream_or_high_watermark_changed',
         'ad_must_be_stopped_during_history_replay','history_replay_checkpoint_changed',
         'live_stream_or_keys_changed','live_keys_changed','viewer_worker_already_running'}
+    blocked.add('new_history_boundary_must_advance_cursor')
+    blocked.add('ad_must_be_stopped_before_history_scope_change')
     stage='connect_viewer'
     try:
         while True:
@@ -219,7 +242,16 @@ def run(root,day,*,with_anomaly=False):
                             bind_stream(db,start_ns=utc_ns(cfg['LIVE_START_UTC']),stream_key=stream_key(es),
                                 overlap_windows=settings.get('overlap_windows',2),lag_seconds=settings.get('lag_seconds',60))
                             stage='initialize_history_replay'
-                            replay=HistoryReplay(db,day);row=replay.initialize();db.conn.commit()
+                            replay=HistoryReplay(db,day)
+                            if skip_earlier:
+                                present=db.one("SELECT to_regclass('public.viewer_history_replay_state') AS present")
+                                old=replay.state() if present and present['present'] else None
+                                if old and old['from_ns']!=replay.begin:
+                                    db.conn.commit();stage='verify_ad_stopped_for_history_scope'
+                                    status=invoke_ad(root,['worker-status'])
+                                    if status['process']['locked'] or status['web']['locked']:
+                                        raise ValueError('ad_must_be_stopped_before_history_scope_change')
+                            row=replay.initialize(skip_earlier=skip_earlier);db.conn.commit()
                             if row['status']!='COMPLETE':
                                 if with_anomaly or row['ad_started']:
                                     stage='start_concurrent_anomaly'

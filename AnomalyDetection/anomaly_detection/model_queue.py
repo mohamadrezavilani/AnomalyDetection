@@ -19,7 +19,7 @@ def schedule(store,job,families,now):
 
 
 def next_job(store,now):
-    row=store.raw.execute('SELECT j.* FROM anomaly_detection.adp_model_queue r JOIN anomaly_detection.adp_jobs j USING(session_key,target_ns) WHERE r.due_ns<=%s AND r.expected_version=j.version AND j.dirty=FALSE AND j.processed_version=j.version ORDER BY r.due_ns,r.target_ns,r.session_key LIMIT 1',(now,)).fetchone()
+    row=store.raw.execute('SELECT j.* FROM anomaly_detection.adp_model_queue r JOIN anomaly_detection.adp_jobs j USING(session_key,target_ns) WHERE r.due_ns<=%s AND r.target_ns>=%s AND r.expected_version=j.version AND j.dirty=FALSE AND j.processed_version=j.version ORDER BY r.due_ns,r.target_ns,r.session_key LIMIT 1',(now,getattr(store,'history_floor_ns',0))).fetchone()
     return dict(row) if row else None
 
 

@@ -47,9 +47,8 @@ def read_window(source,cursor=None):
         window=found[0];target=window['start_ns']
         if target<meta['retention_cutoff_ns'] or window['end_ns']!=target+FIVE_NS:
             return {'source':meta,'target_ns':target,'available':False,'rows':[],'has_more':False}
-        # Global generation also fences catalog/reconciliation changes that do
-        # not change the per-window receipt. Never combine two RR snapshots.
-        stamp=digest([window,meta['generation'],meta['semantic_generation'],meta['catalog_fingerprint']])
+        from .window_stamp import stamp as window_stamp
+        stamp=window_stamp(q,meta,window)
         if cursor.get('stamp') and cursor['stamp']!=stamp:
             return {'source':meta,'target_ns':target,'restart':True,'stamp':stamp,'rows':[]}
         after=cursor.get('after');params=[target,target+FIVE_NS]
