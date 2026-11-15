@@ -9,6 +9,25 @@ from p24_foundation.viewer_online import FIVE_NS,publish_capture,iso
 TABLE='public.viewer_history_replay_state'
 
 
+class ReplayControlError(RuntimeError):
+    """Fixed control metadata; never expose captured status, stderr or arguments."""
+    def __init__(self,code,**details):
+        super().__init__(code)
+        self.failure={'code':code,**details}
+
+
+def child_failure(value):
+    import re
+    result={}
+    for key,pattern in (('code',r'[A-Z0-9_]{1,80}'),('error_type',r'[A-Za-z][A-Za-z0-9_]{0,79}'),
+                        ('sqlstate',r'[A-Z0-9]{5}')):
+        item=value.get(key)
+        if isinstance(item,str) and re.fullmatch(pattern,item):result[key]=item
+    for key in ('errno','winerror'):
+        if type(value.get(key)) is int:result[key]=value[key]
+    return result
+
+
 def boundary(day):
     value=date.fromisoformat(day)
     if value.isoformat()!=day:raise ValueError('invalid_history_date')
@@ -107,12 +126,35 @@ class HistoryReplay:
 
 
 def invoke_ad(root,arguments):
-    import json,subprocess,sys
-    result=subprocess.run([sys.executable,'-B',str(root/'AnomalyDetection/run_anomaly.py'),*arguments],
-        cwd=root,text=True,capture_output=True,timeout=40)
-    try:value=json.loads(result.stdout)
-    except (ValueError,TypeError):raise RuntimeError('ad_history_command_invalid_output') from None
-    if result.returncode:raise RuntimeError('ad_history_command_failed:'+str(value.get('status','ERROR')))
+    import json,os,subprocess,sys
+    if not arguments or arguments[0] not in ('worker-status','worker-start','history-rescan'):
+        raise ValueError('invalid_ad_history_command')
+    command=arguments[0]
+    # Windows uses a legacy encoding for redirected stdout even when its real
+    # console can print Persian. Specify both sides; inherited console settings
+    # must not make a successful status read fail while printing stale telemetry.
+    env=dict(os.environ,PYTHONIOENCODING='utf-8',PYTHONUTF8='1')
+    try:
+        result=subprocess.run([sys.executable,'-X','utf8','-B',str(root/'AnomalyDetection/run_anomaly.py'),*arguments],
+            cwd=root,capture_output=True,timeout=40,env=env)
+    except subprocess.TimeoutExpired:
+        raise ReplayControlError('AD_CONTROL_TIMEOUT',ad_command=command) from None
+    except OSError as exc:
+        raise ReplayControlError('AD_CONTROL_LAUNCH_FAILED',ad_command=command,
+            child_failure=child_failure({'error_type':type(exc).__name__,'errno':getattr(exc,'errno',None),
+                'winerror':getattr(exc,'winerror',None)})) from None
+    try:
+        value=json.loads(result.stdout.decode('utf-8-sig'))
+        if not isinstance(value,dict):raise ValueError('control_object_required')
+    except (UnicodeError,ValueError,TypeError):
+        raise ReplayControlError('AD_CONTROL_OUTPUT_INVALID',ad_command=command,child_exit_code=result.returncode) from None
+    if result.returncode:
+        raise ReplayControlError('AD_CONTROL_FAILED',ad_command=command,child_exit_code=result.returncode,
+            child_failure=child_failure(value.get('failure') if isinstance(value.get('failure'),dict) else {}),
+            build_verification_failed=value.get('status')=='BUILD_VERIFICATION_FAILED')
+    if command=='worker-status' and any(not isinstance(value.get(resource),dict)
+            or type(value[resource].get('locked')) is not bool for resource in ('process','web')):
+        raise ReplayControlError('AD_CONTROL_STATUS_UNVERIFIED',ad_command=command)
     return value
 
 
@@ -157,29 +199,51 @@ def run(root,day):
         'different_history_replay_already_recorded','history_stream_or_high_watermark_changed',
         'ad_must_be_stopped_during_history_replay','history_replay_checkpoint_changed',
         'live_stream_or_keys_changed','live_keys_changed','viewer_worker_already_running'}
+    stage='connect_viewer'
     try:
         while True:
             try:
+                stage='connect_viewer'
                 with ViewerDB(**existing_options(root)) as db:
                     db.progress_callback=console.progress
-                    with single_worker(db,directory/'viewer_worker.lock'):
-                        db.init();initialize_live(db)
-                        bind_stream(db,start_ns=utc_ns(cfg['LIVE_START_UTC']),stream_key=stream_key(es),
-                            overlap_windows=settings.get('overlap_windows',2),lag_seconds=settings.get('lag_seconds',60))
-                        replay=HistoryReplay(db,day);row=replay.initialize();db.conn.commit()
-                        if row['status']!='COMPLETE':
-                            state=invoke_ad(root,['worker-status'])
-                            if state.get('process',{}).get('locked') or state.get('web',{}).get('locked'):
-                                raise ValueError('ad_must_be_stopped_during_history_replay')
-                        console.emit({'status':'HISTORY_REPLAY_RESUMING',**replay.summary()});db.conn.commit()
-                        while True:
-                            result=replay.step(capture);console.emit(result)
-                            if result['status']=='HISTORY_REPLAY_COMPLETE':break
-                        console.emit(handoff(replay,root));return
+                    try:
+                        stage='acquire_viewer_lease'
+                        with single_worker(db,directory/'viewer_worker.lock'):
+                            stage='initialize_viewer';db.init();initialize_live(db)
+                            stage='bind_viewer_stream'
+                            bind_stream(db,start_ns=utc_ns(cfg['LIVE_START_UTC']),stream_key=stream_key(es),
+                                overlap_windows=settings.get('overlap_windows',2),lag_seconds=settings.get('lag_seconds',60))
+                            stage='initialize_history_replay'
+                            replay=HistoryReplay(db,day);row=replay.initialize();db.conn.commit()
+                            if row['status']!='COMPLETE':
+                                stage='verify_ad_stopped';state=invoke_ad(root,['worker-status'])
+                                if state.get('process',{}).get('locked') or state.get('web',{}).get('locked'):
+                                    raise ValueError('ad_must_be_stopped_during_history_replay')
+                            console.emit({'status':'HISTORY_REPLAY_RESUMING',**replay.summary()});db.conn.commit()
+                            while True:
+                                stage='publish_history_window'
+                                result=replay.step(capture);console.emit(result)
+                                if result['status']=='HISTORY_REPLAY_COMPLETE':break
+                            stage='handoff_to_ad';console.emit(handoff(replay,root));return
+                    except ValueError as exc:
+                        if str(exc)!='viewer_worker_already_running':raise
+                        from viewer_performance.Stop_Viewer_Worker import LEASE_SQL
+                        owner=db.one(LEASE_SQL)
+                        raise ReplayControlError('VIEWER_WORKER_ALREADY_RUNNING',stage=stage,
+                            postgres_backend_pid=owner['pid'] if owner else None) from None
             except KeyboardInterrupt:raise
+            except ReplayControlError as exc:
+                exc.failure.setdefault('stage',stage)
+                raise
             except Exception as exc:
                 if (isinstance(exc,ValueError) and str(exc) in blocked) or getattr(exc,'sqlstate',None)=='42501':raise
+                # Repeating init cannot fix a local program/contract failure.
+                # Keep the stage visible and leave the durable replay intact.
+                if isinstance(exc,RuntimeError) and stage not in ('publish_history_window','handoff_to_ad'):
+                    raise ReplayControlError('HISTORY_REPLAY_SETUP_FAILED',stage=stage,
+                        child_failure={'error_type':type(exc).__name__}) from None
                 console.emit({'status':'HISTORY_REPLAY_RETRY','error_type':type(exc).__name__,
-                    'sqlstate':getattr(exc,'sqlstate',None),'checkpoint_advanced_on_failure':False})
+                    'stage':stage,'sqlstate':getattr(exc,'sqlstate',None),
+                    'checkpoint_reconciliation':'RELOAD_DURABLE_REPLAY_CURSOR'})
                 clock.sleep(10)
     finally:console.close()

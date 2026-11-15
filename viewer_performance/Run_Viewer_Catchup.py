@@ -150,8 +150,10 @@ def main(argv=None):
         return 0
     except KeyboardInterrupt:return 130
     except Exception as exc:
-        print(json.dumps({'status':'VIEWER_CATCHUP_START_FAILED','error_type':type(exc).__name__,
-            'code':str(exc) if isinstance(exc,ValueError) else None,'sqlstate':getattr(exc,'sqlstate',None)}));return 2
+        value={'status':'VIEWER_CATCHUP_START_FAILED','error_type':type(exc).__name__,
+            'code':str(exc) if isinstance(exc,ValueError) else None,'sqlstate':getattr(exc,'sqlstate',None)}
+        if isinstance(getattr(exc,'failure',None),dict):value.update(exc.failure)
+        print(json.dumps(value));return 2
 
 
 if __name__=='__main__':raise SystemExit(main())

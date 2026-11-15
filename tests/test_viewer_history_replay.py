@@ -3,22 +3,87 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import tempfile
 import unittest
 import uuid
+from unittest.mock import patch
 
 from p24_foundation.privacy import generate_keys
 from p24_foundation.viewer_data import ViewerDB
 from p24_foundation.viewer_online import (FIVE_NS,SECOND_NS,bind_stream,initialize_live,
-    publish_capture,resume_recent,live_status,iso)
-from viewer_performance.history_replay import HistoryReplay,boundary,handoff,pending_day
+    publish_capture,resume_recent,live_status,iso,single_worker)
+from p24_foundation.viewer_elastic import stream_key
+from viewer_performance import history_replay as replay_module
+from viewer_performance.history_replay import HistoryReplay,boundary,handoff,pending_day,invoke_ad,ReplayControlError
 from tests import test_viewer_minimal_pg as native
 from tests.test_viewer_online import verified_file,snapshot
 from tests.test_viewer_r6_service_journey import log,sql
 
 DAY='2026-10-01'
 BEGIN=boundary(DAY)
+
+
+def verified_ad_fixture(root):
+    """Copy public verified code only; no installed credentials/status are read."""
+    source=Path(__file__).resolve().parents[1]/'AnomalyDetection'
+    manifest=json.loads((source/'RELEASE_MANIFEST.json').read_text(encoding='utf-8'))
+    ad=root/'AnomalyDetection'
+    for name in [*manifest['files_sha256'],'RELEASE_MANIFEST.json']:
+        target=ad/name;target.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(source/name,target)
+    (ad/'reports').mkdir(exist_ok=True)
+    (ad/'reports/product_status.json').write_text(
+        json.dumps({'state':'STOPPED','note':'وضعیت اجرای پروژه'},ensure_ascii=False),encoding='utf-8')
+    return ad
+
+
+class RecordingConsole:
+    def __init__(self):self.messages=[]
+    def emit(self,message):self.messages.append(message)
+    def progress(self,event):self.messages.append({'progress':event})
+    def close(self):pass
+
+
+class ControlWireTests(unittest.TestCase):
+    def test_real_verified_ad_status_with_persian_survives_a_legacy_windows_pipe_encoding(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)/'سرور';root.mkdir();ad=verified_ad_fixture(root)
+            with patch.dict(os.environ,{'PYTHONIOENCODING':'cp1252','PYTHONUTF8':'0'}):
+                # The old invocation reproduces the otherwise hidden RuntimeError.
+                old=subprocess.run([sys.executable,'-B',str(ad/'run_anomaly.py'),'worker-status'],
+                    cwd=root,capture_output=True,timeout=20)
+                self.assertNotEqual(old.returncode,0)
+                self.assertEqual(json.loads(old.stdout)['failure']['error_type'],'UnicodeEncodeError')
+                result=invoke_ad(root,['worker-status'])
+                self.assertFalse(result['process']['locked']);self.assertFalse(result['web']['locked'])
+                self.assertEqual(result['unverified_worker_status']['note'],'وضعیت اجرای پروژه')
+                self.assertEqual(os.environ['PYTHONIOENCODING'],'cp1252')
+
+    def test_control_failures_keep_structured_causes_without_exporting_child_payload_or_stderr(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);ad=root/'AnomalyDetection';ad.mkdir();launcher=ad/'run_anomaly.py'
+            error={'status':'ERROR','failure':{'code':'WORKER_OPERATION_ERROR','error_type':'PermissionError',
+                'errno':13,'sqlstate':None,'message':'private-control-payload'}}
+            launcher.write_text('import sys\nprint('+repr(json.dumps(error))+')\nprint("private-stderr",file=sys.stderr)\nraise SystemExit(1)\n',encoding='utf-8')
+            with self.assertRaises(ReplayControlError) as raised:invoke_ad(root,['worker-status'])
+            failure=raised.exception.failure
+            self.assertEqual(failure['code'],'AD_CONTROL_FAILED')
+            self.assertEqual(failure['child_failure'],{'code':'WORKER_OPERATION_ERROR','error_type':'PermissionError','errno':13})
+            self.assertNotIn('private-',json.dumps(failure))
+            launcher.write_text('print("private-invalid-output")\n',encoding='utf-8')
+            with self.assertRaises(ReplayControlError) as raised:invoke_ad(root,['worker-status'])
+            self.assertEqual(raised.exception.failure['code'],'AD_CONTROL_OUTPUT_INVALID')
+            self.assertNotIn('private-',json.dumps(raised.exception.failure))
+
+    def test_missing_or_ambiguous_lock_observation_cannot_be_accepted_as_ad_stopped(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);ad=root/'AnomalyDetection';ad.mkdir()
+            for result in ({'health':'STOPPED'}, {'process':{'locked':'False'},'web':{'locked':False}}):
+                (ad/'run_anomaly.py').write_text('print('+repr(json.dumps(result))+')\n',encoding='utf-8')
+                with self.assertRaises(ReplayControlError) as raised:invoke_ad(root,['worker-status'])
+                self.assertEqual(raised.exception.failure['code'],'AD_CONTROL_STATUS_UNVERIFIED')
 
 
 class ReplayChecks:
@@ -164,6 +229,60 @@ class NativeHistoryReplayTests(ReplayChecks,unittest.TestCase):
         native.NativeMinimalPublicationTests.setUp(self)
         # The disposable fixture has no captures yet; bind it to Oct 1.
         self.db.sql('UPDATE viewer_live_state SET start_ns=?,next_ns=?',(BEGIN,BEGIN));self.db.conn.commit()
+
+    def runner_config(self):
+        es={'host':'http://example.invalid','index_pattern':'logs-*'}
+        (self.root/'viewer_config.local.py').write_text('LIVE_START_UTC='+repr(iso(BEGIN))+
+            '\nELASTICSEARCH='+repr(es)+'\nLIVE='+repr({'capture_dir':str(self.root/'captures')})+'\n',encoding='utf-8')
+        self.db.sql('UPDATE viewer_live_state SET stream_key=?',(stream_key(es),));self.db.conn.commit()
+        # Only inject the disposable connection mapping. Production's exact
+        # database-name guard remains unchanged and no product DB is opened.
+        return patch('viewer_performance.Run_Viewer_Web.existing_options',
+            return_value={'config':self.config,'keys_path':self.keys})
+
+    def test_native_runner_reaches_real_ad_status_and_publishes_history_under_legacy_encoding(self):
+        options=self.runner_config();self.seed_gap();verified_ad_fixture(self.root)
+        console=RecordingConsole()
+        def completed(replay,root):
+            self.assertEqual(replay.state()['status'],'COMPLETE')
+            return {'status':'HISTORY_REPLAY_HANDOFF_COMPLETE'}
+        self.db.conn.rollback()
+        with options,patch.dict(os.environ,{'PYTHONIOENCODING':'cp1252','PYTHONUTF8':'0'}), \
+             patch('p24_foundation.viewer_elastic.ElasticCapture',return_value=self.capture), \
+             patch('p24_foundation.viewer_runtime.ProgressConsole',return_value=console), \
+             patch.object(replay_module,'handoff',side_effect=completed):
+            replay_module.run(self.root,DAY)
+        self.db.conn.rollback()
+        self.assertIn('HISTORY_REPLAY_RESUMING',[x.get('status') for x in console.messages])
+        self.assertEqual(self.replay.state()['published_windows'],4)
+        self.assertEqual(self.replay.state()['skipped_windows'],3)
+        self.assertEqual(self.db.one('SELECT next_ns FROM viewer_live_state')['next_ns'],BEGIN+7*FIVE_NS)
+        self.assertFalse(live_status(self.db)['history_has_gaps'])
+
+    def test_ad_probe_failure_is_reported_once_and_releases_the_viewer_lease(self):
+        options=self.runner_config();self.seed_gap();console=RecordingConsole();self.db.conn.rollback()
+        error=ReplayControlError('AD_CONTROL_FAILED',ad_command='worker-status',
+            child_failure={'error_type':'PermissionError','errno':13})
+        with options,patch('p24_foundation.viewer_elastic.ElasticCapture',return_value=self.capture), \
+             patch('p24_foundation.viewer_runtime.ProgressConsole',return_value=console), \
+             patch.object(replay_module,'invoke_ad',side_effect=error) as probe, \
+             patch.object(replay_module.clock,'sleep',side_effect=AssertionError('control errors must not retry init')):
+            with self.assertRaises(ReplayControlError) as raised:replay_module.run(self.root,DAY)
+        self.assertEqual(raised.exception.failure['stage'],'verify_ad_stopped');self.assertEqual(probe.call_count,1)
+        self.assertNotIn('HISTORY_REPLAY_RETRY',[x.get('status') for x in console.messages])
+        self.assertEqual(self.replay.state()['next_ns'],BEGIN)
+        self.assertTrue(self.db.one('SELECT pg_try_advisory_lock(240026,1) AS locked')['locked'])
+        self.db.sql('SELECT pg_advisory_unlock(240026,1)');self.db.conn.commit()
+
+    def test_existing_worker_is_not_replaced_and_its_database_backend_is_reported(self):
+        options=self.runner_config();console=RecordingConsole()
+        with single_worker(self.db,self.root/'worker.lock'):
+            with options,patch('p24_foundation.viewer_runtime.ProgressConsole',return_value=console), \
+                 patch.object(replay_module,'invoke_ad',side_effect=AssertionError('must not reach AD')):
+                with self.assertRaises(ReplayControlError) as raised:replay_module.run(self.root,DAY)
+            self.assertEqual(raised.exception.failure['code'],'VIEWER_WORKER_ALREADY_RUNNING')
+            self.assertEqual(raised.exception.failure['postgres_backend_pid'],self.db.conn.info.backend_pid)
+            self.assertIsNone(self.db.one("SELECT to_regclass('public.viewer_history_replay_state') AS present")['present'])
 
     def test_native_killed_process_commits_progress_exactly_with_its_capture(self):
         self.seed_gap();self.replay.step(self.capture);self.db.conn.commit()
