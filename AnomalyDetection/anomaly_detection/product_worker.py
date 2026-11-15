@@ -252,7 +252,8 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                                 store.save_state('root_reference_import',imported);state['root_reference']=imported
                                 store.save_state('root_reference_scan',{'at_ns':clock.time_ns()})
                             eligible=((clock.time_ns()-wait_seconds*1_000_000_000)//FIVE_NS)*FIVE_NS
-                            state['source_status']={key:source_state.get(key) for key in ('generation','next_ns','captured_at_ns','semantic_state','source_role','source_read_only')}
+                            state['source_status']={key:source_state.get(key) for key in ('generation','next_ns','captured_at_ns','semantic_state','source_role','source_read_only',
+                                'viewer_forward_next_ns','history_replay','analysis_frontier')}
                             state['source_status']['eligible_end_ns']=eligible
                             state['source_status']['backlog_seconds']=max(0,(eligible-source_state['next_ns'])/1e9)
                             state['source_status']['retention_cutoff_ns']=source_state.get('retention_cutoff_ns',0)

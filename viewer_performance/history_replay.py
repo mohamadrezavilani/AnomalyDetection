@@ -167,9 +167,8 @@ def pending_day(db):
     return None
 
 
-def handoff(replay,root,*,invoke=invoke_ad):
+def start_anomaly(replay,root,*,invoke=invoke_ad):
     row=replay.state();replay.db.conn.commit()
-    if row['status']!='COMPLETE':raise ValueError('history_not_complete_for_ad_handoff')
     if not row['ad_prepared']:
         result=invoke(root,['history-rescan','--from-tehran-date',replay.day,'--replay-id',row['run_id']])
         if result.get('status') not in ('HISTORY_RESCAN_PREPARED','HISTORY_RESCAN_ALREADY_PREPARED'):
@@ -179,10 +178,16 @@ def handoff(replay,root,*,invoke=invoke_ad):
     if result.get('status') not in ('STARTED','ALREADY_RUNNING'):
         raise RuntimeError('ad_history_restart_not_confirmed')
     replay.mark_ad('ad_started')
+    return result
+
+
+def handoff(replay,root,*,invoke=invoke_ad):
+    if replay.state()['status']!='COMPLETE':raise ValueError('history_not_complete_for_ad_handoff')
+    result=start_anomaly(replay,root,invoke=invoke)
     return {'status':'HISTORY_REPLAY_HANDOFF_COMPLETE','ad_status':result['status'],**replay.summary()}
 
 
-def run(root,day):
+def run(root,day,*,with_anomaly=False):
     import json,runpy
     from p24_foundation.viewer_data import ViewerDB,utc_ns
     from p24_foundation.viewer_online import initialize_live,bind_stream,single_worker
@@ -216,9 +221,15 @@ def run(root,day):
                             stage='initialize_history_replay'
                             replay=HistoryReplay(db,day);row=replay.initialize();db.conn.commit()
                             if row['status']!='COMPLETE':
-                                stage='verify_ad_stopped';state=invoke_ad(root,['worker-status'])
-                                if state.get('process',{}).get('locked') or state.get('web',{}).get('locked'):
-                                    raise ValueError('ad_must_be_stopped_during_history_replay')
+                                if with_anomaly or row['ad_started']:
+                                    stage='start_concurrent_anomaly'
+                                    result=start_anomaly(replay,root)
+                                    console.emit({'status':'HISTORY_ANOMALY_STARTED','ad_status':result['status'],
+                                        'analysis_scope':'COMMITTED_REPLAY_PREFIX','viewer_priority':True})
+                                else:
+                                    stage='verify_ad_stopped';state=invoke_ad(root,['worker-status'])
+                                    if state.get('process',{}).get('locked') or state.get('web',{}).get('locked'):
+                                        raise ValueError('ad_must_be_stopped_during_history_replay')
                             console.emit({'status':'HISTORY_REPLAY_RESUMING',**replay.summary()});db.conn.commit()
                             while True:
                                 stage='publish_history_window'

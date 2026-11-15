@@ -219,6 +219,54 @@ class HistoryReplayTests(ReplayChecks,unittest.TestCase):
         self.assertEqual([x[0] for x in calls],['history-rescan','worker-start','worker-start'])
         self.assertEqual(self.replay.state()['ad_started'],1)
 
+    def test_concurrent_ad_prepares_once_and_resumes_without_resetting_cursors(self):
+        self.seed_gap();calls=[]
+        def invoke(root,args):
+            calls.append(args)
+            return {'status':'HISTORY_RESCAN_PREPARED' if args[0]=='history-rescan' else 'ALREADY_RUNNING'}
+        replay_module.start_anomaly(self.replay,self.root,invoke=invoke)
+        self.assertEqual(self.replay.state()['status'],'RUNNING')
+        self.assertEqual(self.replay.state()['ad_prepared'],1)
+        self.assertEqual(self.replay.state()['ad_started'],1)
+        replay_module.start_anomaly(self.replay,self.root,invoke=invoke)
+        self.finish();handoff(self.replay,self.root,invoke=invoke)
+        self.assertEqual([x[0] for x in calls],['history-rescan','worker-start','worker-start','worker-start'])
+
+    def test_live_progress_uses_historical_cursor_and_preserves_the_forward_backlog(self):
+        self.seed_gap();self.replay.step(self.capture)
+        status=live_status(self.db,now=BEGIN+20*FIVE_NS)
+        replay=status['history_replay']
+        self.assertEqual(replay['current_window_start_utc'],iso(BEGIN+FIVE_NS))
+        self.assertEqual(replay['remaining_windows'],6)
+        self.assertEqual(replay['checked_windows'],1)
+        self.assertEqual(replay['skipped_complete_windows'],1)
+        self.assertEqual(replay['published_missing_windows'],0)
+        self.assertIsNone(replay['publisher_active'])
+        self.assertEqual(status['continuous_published_to_utc'],iso(BEGIN+7*FIVE_NS))
+        self.assertGreater(status['backlog_windows'],0)
+        self.finish()
+        replay=live_status(self.db)['history_replay']
+        self.assertEqual(replay['status'],'COMPLETE')
+        self.assertEqual(replay['progress_percent'],100)
+        self.assertIsNone(replay['current_window_start_utc'])
+
+    def test_progress_endpoint_does_not_query_the_behavior_list_and_renders_replay(self):
+        from p24_foundation.viewer_ui import create_viewer_app
+        self.seed_gap();self.replay.step(self.capture);self.db.conn.commit()
+        app=create_viewer_app({'sqlite_path':self.root/'viewer.db','keys_path':self.keys})
+        with patch.object(ViewerDB,'semantic_sessions',side_effect=AssertionError('progress must not reload sessions')):
+            with app.test_client() as client:
+                response=client.get('/live-progress')
+                self.assertEqual(response.status_code,200)
+                text=response.get_data(as_text=True)
+                self.assertIn('2026-10-01 00:05:00',text)
+                self.assertIn('پنجرهٔ بعدی بازپخش',text)
+                self.assertIn('6 پنجره تا پایان پیمایش',text)
+                self.assertIn('شامل پنجره‌های کامل قبلی',text)
+                self.assertEqual(response.headers['Cache-Control'],'no-store')
+                result=client.get('/live-status').get_json()
+                self.assertEqual(result['history_replay']['checked_windows'],1)
+
 
 @unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'native PG18 cluster not configured')
 class NativeHistoryReplayTests(ReplayChecks,unittest.TestCase):
@@ -240,6 +288,71 @@ class NativeHistoryReplayTests(ReplayChecks,unittest.TestCase):
         return patch('viewer_performance.Run_Viewer_Web.existing_options',
             return_value={'config':self.config,'keys_path':self.keys})
 
+    def test_readonly_ad_source_follows_committed_history_instead_of_jumping_to_newer_islands(self):
+        from contextlib import contextmanager
+        import sys
+        sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'AnomalyDetection'))
+        from anomaly_detection.product_source import ProductSource
+        from anomaly_detection.product_pipeline import read_window,apply_window
+        from anomaly_detection.product_store import ProductStore
+        import psycopg
+        from psycopg.rows import dict_row
+        self.seed_gap();self.db.conn.commit()
+        source=object.__new__(ProductSource)
+        source.identity={'runtime_sha256':'fixture'};source.config={'user':self.config['user']}
+        source.analysis_floor_ns=BEGIN;source.page_size=128;source.last_source=None
+        @contextmanager
+        def snapshot():
+            with psycopg.connect(**self.config,row_factory=dict_row) as raw:
+                raw.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+                def query(statement,parameters=(),*,cap):
+                    rows=raw.execute(statement,parameters).fetchall()
+                    # The exact product database guard stays in production;
+                    # this fixture only owns a disposable p24_design_delta DB.
+                    if statement.startswith('SELECT current_database()'):rows[0]['db']='p24_design_viewer'
+                    self.assertLessEqual(len(rows),cap)
+                    return rows
+                yield query
+        source.snapshot=snapshot
+        with psycopg.connect(**self.config,autocommit=True,row_factory=dict_row) as owned:
+            owned.execute('CREATE SCHEMA anomaly_detection')
+            store=ProductStore(owned);store.initialize()
+            self.assertIsNone(read_window(source,{'next_ns':BEGIN})['target_ns'])
+            self.replay.step(self.capture)  # confirmed window 0
+            packet=read_window(source,{'next_ns':BEGIN})
+            self.assertEqual(packet['target_ns'],BEGIN)
+            self.assertEqual(packet['source']['viewer_forward_next_ns'],BEGIN+7*FIVE_NS)
+            self.assertEqual(packet['source']['next_ns'],BEGIN+FIVE_NS)
+            self.assertEqual(apply_window(store,packet)['status'],'COMPLETE')
+            cursor=store.state('fresh_cursor')
+            self.assertIsNone(read_window(source,cursor)['target_ns'])
+            # Even explicit continuations cannot read a newer retained island.
+            self.assertIsNone(read_window(source,{'target_ns':BEGIN+5*FIVE_NS})['target_ns'])
+            self.assertEqual(source.cohort(target=BEGIN+5*FIVE_NS)['target_ns'],None)
+            def fail(stage):
+                if stage=='before_commit':
+                    self.assertIsNone(read_window(source,cursor)['target_ns'])
+                    raise RuntimeError('controlled_uncommitted_history')
+            with self.assertRaises(RuntimeError):self.replay.step(self.capture,fault=fail)
+            self.assertIsNone(read_window(source,cursor)['target_ns'])
+            self.replay.step(self.capture)
+            packet=read_window(source,cursor)
+            self.assertEqual(packet['target_ns'],BEGIN+FIVE_NS)
+            self.assertEqual(apply_window(store,packet)['status'],'COMPLETE')
+            self.assertEqual(owned.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_source_windows WHERE complete').fetchone()['n'],2)
+            self.assertEqual(store.state('fresh_cursor'),{'next_ns':BEGIN+2*FIVE_NS})
+            self.finish()
+            packet=read_window(source,store.state('fresh_cursor'))
+            self.assertEqual(packet['source']['next_ns'],BEGIN+7*FIVE_NS)
+            self.assertEqual(packet['source']['history_replay']['status'],'COMPLETE')
+
+    def test_active_replay_progress_is_based_on_the_live_singleton_lease(self):
+        self.seed_gap();self.db.conn.commit()
+        self.assertFalse(live_status(self.db)['history_replay']['publisher_active']);self.db.conn.rollback()
+        with single_worker(self.db,self.root/'progress.lock'):
+            self.assertTrue(live_status(self.db)['history_replay']['publisher_active']);self.db.conn.rollback()
+        self.assertFalse(live_status(self.db)['history_replay']['publisher_active'])
+
     def test_native_runner_reaches_real_ad_status_and_publishes_history_under_legacy_encoding(self):
         options=self.runner_config();self.seed_gap();verified_ad_fixture(self.root)
         console=RecordingConsole()
@@ -258,6 +371,28 @@ class NativeHistoryReplayTests(ReplayChecks,unittest.TestCase):
         self.assertEqual(self.replay.state()['skipped_windows'],3)
         self.assertEqual(self.db.one('SELECT next_ns FROM viewer_live_state')['next_ns'],BEGIN+7*FIVE_NS)
         self.assertFalse(live_status(self.db)['history_has_gaps'])
+
+    def test_concurrent_runner_restart_keeps_prepared_ad_and_replay_cursors(self):
+        options=self.runner_config();self.seed_gap();self.db.conn.commit()
+        calls=[];start=replay_module.start_anomaly
+        def invoke(root,args):
+            calls.append(args)
+            return {'status':'HISTORY_RESCAN_PREPARED' if args[0]=='history-rescan' else 'ALREADY_RUNNING'}
+        def start_with_fixture(replay,root):return start(replay,root,invoke=invoke)
+        def completed(replay,root):return {'status':'HISTORY_REPLAY_HANDOFF_COMPLETE'}
+        with options,patch('p24_foundation.viewer_runtime.ProgressConsole',side_effect=RecordingConsole), \
+             patch.object(replay_module,'start_anomaly',side_effect=start_with_fixture), \
+             patch.object(replay_module,'handoff',side_effect=completed):
+            with patch('p24_foundation.viewer_elastic.ElasticCapture',return_value=lambda *_:(_ for _ in ()).throw(KeyboardInterrupt())):
+                with self.assertRaises(KeyboardInterrupt):replay_module.run(self.root,DAY,with_anomaly=True)
+            self.db.conn.rollback()
+            self.assertEqual(self.replay.state()['next_ns'],BEGIN+FIVE_NS)
+            self.assertEqual(self.replay.state()['ad_started'],1);self.db.conn.commit()
+            with patch('p24_foundation.viewer_elastic.ElasticCapture',return_value=self.capture):
+                replay_module.run(self.root,DAY)
+        self.db.conn.rollback()
+        self.assertEqual(self.replay.state()['status'],'COMPLETE')
+        self.assertEqual([args[0] for args in calls],['history-rescan','worker-start','worker-start'])
 
     def test_ad_probe_failure_is_reported_once_and_releases_the_viewer_lease(self):
         options=self.runner_config();self.seed_gap();console=RecordingConsole();self.db.conn.rollback()

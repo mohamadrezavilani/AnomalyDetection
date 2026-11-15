@@ -16,6 +16,8 @@ def read_page(source,state,*,oldest=False):
         if target is not None and target<meta.get('analysis_floor_ns',0):
             state={'next_ns':meta['analysis_floor_ns'],'page_size':state.get('page_size',1024)}
             target=None
+        if target is not None and target+FIVE_NS>meta['next_ns']:
+            return {'source':meta,'status':'CAUGHT_UP'}
         if target is None:
             begin=max(effective_floor(meta),state.get('next_ns',meta.get('retention_cutoff_ns',0) if oldest else meta['next_ns']-FIVE_NS))
             windows=q('SELECT start_ns,end_ns,generation,last_publish_ns FROM (SELECT start_ns,end_ns,generation,last_publish_ns FROM public.viewer_live_windows WHERE start_ns>=%s AND end_ns<=%s ORDER BY start_ns LIMIT 1) x',(begin,meta['next_ns']),cap=1)

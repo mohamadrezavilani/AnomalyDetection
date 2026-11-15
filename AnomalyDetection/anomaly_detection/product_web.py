@@ -73,6 +73,9 @@ def render(store,status,path,args,csrf):
         body+='<section><details><summary>پوشش و سلامت پردازش</summary><p>'+badge(status.get('state','STARTING'))+' <span class="ltr">'+text(status.get('phase'))+'</span></p>'
         if (stats.get('statistics_collection') or {}).get('status')=='PARTIAL':body+='<div class="notice">بخشی از آمار هنوز کامل نیست؛ مقدار نامعلوم صفر محسوب نمی‌شود. وضعیت هر بخش و زمان مقدار قبلی در گزارش ثبت است؛ این گزارش‌گیری پردازش تشخیص را متوقف نمی‌کند.</div>'
         body+='<p>آخرین heartbeat: <span class="ltr">'+text(when(status.get('heartbeat_ns')))+'</span> · عقب‌ماندگی منبع: '+text(source.get('backlog_seconds'))+' ثانیه</p>'
+        replay=source.get('history_replay') or {}
+        if replay.get('status')=='RUNNING':
+            body+='<p>بازپخش تاریخچه در Viewer ادامه دارد؛ مرز خواندن پنجره‌های جدید برای تحلیل: <span class="ltr">'+text(when(replay.get('next_ns')))+'</span> تهران. بازه‌های هنوز واردنشده کامل فرض نمی‌شوند و نتایج با رسیدن شواهد تازه بازبینی می‌شوند.</p>'
         body+='<p>آخرین بازهٔ ارزیابی‌شده: '+text(when(stats.get('latest_evaluated_target_end_ns')))+' · پنجره‌های مشترک کامل: '+text(stats.get('complete_shared_windows',0))+'</p>'
         body+='<p>کارهای معلق: '+text(jobs.get('pending',0))+' · ارزیابی‌شده: '+text(jobs.get('evaluated',0))+' · بازبینی شاهد در این اجرا: '+text(status.get('audited_requests',0))+'</p>'
         body+='<p class="muted">بازه‌های صرفاً پوشش تاریخی: '+text(jobs.get('coverage_only',0))+' · در انتظار تفکیک صف قدیمی: '+text(jobs.get('scope_pending',0))+' · این شمارنده‌ها نتیجهٔ عادی‌بودن رفتار نیستند.</p>'

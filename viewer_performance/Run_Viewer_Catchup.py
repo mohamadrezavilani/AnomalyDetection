@@ -105,6 +105,7 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project-root',type=Path,default=Path(__file__).resolve().parents[1])
     parser.add_argument('--from-tehran-date',metavar='YYYY-MM-DD',help='Replay missing history from this date, then resume live publication')
+    parser.add_argument('--with-anomaly',action='store_true',help='Run AD alongside replay, reading its committed historical prefix')
     args=parser.parse_args(argv);root=args.project_root.resolve();sys.path.insert(0,str(root));os.chdir(root)
     try:
         from viewer_performance.Run_Viewer_Memory import memory_info,BASE_RUNTIME
@@ -142,7 +143,7 @@ def main(argv=None):
             if args.from_tehran_date:day=args.from_tehran_date
             else:
                 with viewer_data.ViewerDB(**options) as probe:day=pending_day(probe)
-            if day:replay_history(root,day)
+            if day:replay_history(root,day,with_anomaly=args.with_anomaly)
             previous=sys.argv
             sys.argv=['run_behavior_viewer.py','live','--config',str(root/'viewer_config.local.py'),'--progress','--resume-checkpoint']
             try:runner()
