@@ -155,7 +155,15 @@ def seed(store,now):
     Independently selected HMAC-key cohorts are reserved for service references.
     Expanding a chosen cohort never changes its count into manual user actions.
     """
-    rows=store.raw.execute("SELECT j.session_key,j.target_ns,w.body FROM anomaly_detection.adp_jobs j JOIN anomaly_detection.adp_windows w ON w.session_key=j.session_key AND w.start_ns=j.target_ns JOIN anomaly_detection.adp_source_windows sw ON sw.start_ns=j.target_ns WHERE sw.complete=TRUE AND j.observed_count>=2 AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_scopes p WHERE p.session_key=j.session_key AND p.start_ns=j.target_ns) ORDER BY j.target_ns DESC,j.observed_count DESC,j.session_key LIMIT 2").fetchall()
+    floor=getattr(store,'history_floor_ns',0)
+    scan=store.state('profile_actor_seed_pass_v1');after=scan.get('after')
+    clause=' AND (target_ns,session_key)<(%s,%s)' if after else ''
+    parents=store.raw.execute('SELECT session_key,target_ns,observed_count FROM anomaly_detection.adp_jobs '
+        'WHERE target_ns>=%s'+clause+' ORDER BY target_ns DESC,session_key DESC LIMIT 64',
+        (floor,*after) if after else (floor,)).fetchall()
+    store.save_state('profile_actor_seed_pass_v1',{'after':[parents[-1]['target_ns'],parents[-1]['session_key']]} if parents else {})
+    incoming=canonical([dict(r) for r in parents])
+    rows=store.raw.execute("WITH candidates AS MATERIALIZED (SELECT * FROM jsonb_to_recordset(%s::jsonb) AS x(session_key TEXT,target_ns BIGINT,observed_count BIGINT)) SELECT j.session_key,j.target_ns,w.body FROM candidates j JOIN anomaly_detection.adp_windows w ON w.session_key=j.session_key AND w.start_ns=j.target_ns JOIN anomaly_detection.adp_source_windows sw ON sw.start_ns=j.target_ns WHERE sw.complete=TRUE AND j.observed_count>=2 AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_scopes p WHERE p.session_key=j.session_key AND p.start_ns=j.target_ns) ORDER BY j.target_ns DESC,j.observed_count DESC,j.session_key LIMIT 2",(incoming,)).fetchall()
     with store.transaction():
         for row in rows:
             window=json.loads(row['body']);window_good=bool(window.get('coverage_complete') and window.get('population_complete'))
@@ -184,6 +192,9 @@ def seed(store,now):
 
 def next_profile(store,now,*,independent=False,historical=False):
     record_queue_write(store,'profile_ready_promotion',promote(store,'adp_profile_tasks',now))
+    if getattr(store,'history_floor_ns',0):
+        from .scoped_profile_queue import next_key
+        return next_key(store,now)
     if historical:
         # An ordered pass advances even as new live scopes arrive. Tasks not
         # due yet remain available on the next pass after their own backoff.
@@ -264,8 +275,13 @@ def process_one(store,now):
     # knows that a CAS-visible evaluation is now in flight.
     with store.transaction():
         record_queue_write(store,'scenario_ready_promotion',promote(store,'adp_scenario_jobs',now))
-        row=store.raw.execute(scenario_query(longitudinal,order)).fetchone()
-        if not row:row=store.raw.execute(scenario_query(not longitudinal,order)).fetchone()
+        floor=getattr(store,'history_floor_ns',0)
+        def select_lane(lane):
+            query=scenario_query(lane,order)
+            if floor:query=query.replace(' ORDER BY',' AND target_ns>=%s ORDER BY')
+            return store.raw.execute(query,(floor,) if floor else ()).fetchone()
+        row=select_lane(longitudinal)
+        if not row:row=select_lane(not longitudinal)
         if row:
             cursor=store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET claimed_version=version WHERE scope_key=%s',(row['scope_key'],))
             record_queue_write(store,'claim',cursor)
@@ -396,9 +412,9 @@ def upgrade_methods(store,limit=16):
     Viewer objects are deleted. Current-method pending jobs are not requeued.
     """
     rows=store.raw.execute("SELECT scope_key FROM anomaly_detection.adp_scenario_jobs "
-        "WHERE NOT dirty AND kind=ANY(%s) AND evaluation IS NOT NULL "
+        "WHERE NOT dirty AND target_ns>=%s AND kind=ANY(%s) AND evaluation IS NOT NULL "
         "AND evaluation::jsonb->'input_receipt'->>'method_version' IS DISTINCT FROM %s "
-        "ORDER BY target_ns DESC,scope_key LIMIT %s",(list(PROFILE_JOB_KINDS),METHOD_VERSION,limit)).fetchall()
+        "ORDER BY target_ns DESC,scope_key LIMIT %s",(getattr(store,'history_floor_ns',0),list(PROFILE_JOB_KINDS),METHOD_VERSION,limit)).fetchall()
     keys=[r['scope_key'] for r in rows]
     if keys:store.raw.execute('UPDATE anomaly_detection.adp_scenario_jobs SET version=version+1,dirty=TRUE,due_ns=0 WHERE scope_key=ANY(%s) AND NOT dirty',(keys,))
     return len(keys)

@@ -23,7 +23,9 @@ def read_page(source,state,*,oldest=False):
             windows=q('SELECT start_ns,end_ns,generation,last_publish_ns FROM (SELECT start_ns,end_ns,generation,last_publish_ns FROM public.viewer_live_windows WHERE start_ns>=%s AND end_ns<=%s ORDER BY start_ns LIMIT 1) x',(begin,meta['next_ns']),cap=1)
         else:windows=q('SELECT start_ns,end_ns,generation,last_publish_ns FROM public.viewer_live_windows WHERE start_ns=%s',(target,),cap=1)
         if not windows:return {'source':meta,'status':'CAUGHT_UP'}
-        window=windows[0];target=window['start_ns'];stamp=digest([window,meta['generation'],meta['semantic_generation']])
+        window=windows[0];target=window['start_ns']
+        from .window_stamp import stamp as window_stamp
+        stamp=window_stamp(q,meta,window)
         if window['end_ns']!=target+FIVE_NS or target<meta.get('retention_cutoff_ns',0):return {'source':meta,'target_ns':target,'status':'UNAVAILABLE'}
         if state.get('stamp') and state['stamp']!=stamp:return {'source':meta,'target_ns':target,'stamp':stamp,'status':'RESTART'}
         args=[target,target+FIVE_NS];after=''

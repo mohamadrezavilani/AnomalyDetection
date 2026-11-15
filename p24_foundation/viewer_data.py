@@ -676,6 +676,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         if self.sqlite:
             if not self.conn.in_transaction:self.sql('BEGIN IMMEDIATE')
         else:self.sql('SELECT pg_advisory_xact_lock(240026, 2)')
+        from .viewer_window_epochs import maintenance
+        maintenance(self)
     def init(self):
         for stmt in SCHEMA:self.sql(stmt)
         self.conn.commit()
@@ -979,6 +981,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                     WHERE source.request_key=s.request_key OFFSET 0) e''')
         self.sql('CREATE INDEX IF NOT EXISTS vpe_request ON viewer_projection_events(request_key,at_ns)')
         self.sql('CREATE INDEX IF NOT EXISTS vpe_origin ON viewer_projection_events(origin_key,version_key)')
+        from .viewer_window_epochs import projection_events
+        projection_events(self)
         if not self.sqlite:
             self.sql('ANALYZE viewer_projection_events')
             self._prepare_projection_inputs()

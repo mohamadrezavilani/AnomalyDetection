@@ -6,6 +6,7 @@ from .history_scope import WRITER_LOCK,STATE_KEY
 from .history_reset import tehran_boundary
 from .process_control import OwnedProcessLock
 from .snapshot import require
+from . import FIVE_NS
 
 REQUEST='history_rescan_request_v1'
 CURSORS=('fresh_cursor','learning_cursor','older_learning_cursor','service_sample_fresh_cursor',
@@ -30,9 +31,17 @@ def prepare(store,day,replay_id):
         semantic=store.state('semantic_cursor')
         store.save_state('semantic_cursor',{'after':None,'completed_passes':semantic.get('completed_passes',0)})
         store.save_state('overlap_cursor',{})
+        store.save_state('scope_repair_cursor',{})
+        store.save_state('candidate_audit_scope_v4',{})
+        store.save_state('assessed_recheck_pass_v1',{})
+        store.save_state('profile_independent_sample_v1',{'through_ns':start-FIVE_NS})
+        for name in ('profile_floor_pass_v1','profile_actor_seed_pass_v1','profile_active_scope_v1','profile_history_pass_v1','longitudinal_seed_v2'):
+            store.save_state(name,{})
         store.save_state(STATE_KEY,{'start_ns':start,'start_tehran':day,'rescan_id':replay_id})
         store.save_state(REQUEST,{'replay_id':replay_id,'start_ns':start,'day':day,'previous_floor':old_floor})
         store._history_floor_ns=None
+        store.ready_pass=store.recheck_pass=None
+        store.model_cache.clear();store.reference_inputs_cache.clear()
     return {'status':'HISTORY_RESCAN_PREPARED','replay_id':replay_id,'start_ns':start,'data_deleted':False,
         'models_preserved':True,'feedback_preserved':True}
 

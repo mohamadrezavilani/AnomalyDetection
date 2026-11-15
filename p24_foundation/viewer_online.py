@@ -138,6 +138,8 @@ def initialize_live(db):
     from .viewer_origin_storage import active as binary_origins
     if not binary_origins(db):
         db.sql('CREATE INDEX IF NOT EXISTS vei_origin_request ON viewer_events(origin_key,request_key)')
+    from .viewer_window_epochs import initialize as initialize_window_epochs
+    initialize_window_epochs(db)
     db.conn.commit()
 
 
@@ -330,6 +332,7 @@ def publish_capture(db,path,start,end,*,mode='forward',epoch_ns=None,fault=None,
         db.progress(name)
         if fault:fault(name)
     try:
+        db._publication_epoch_windows=set()
         db.write_lock()
         # An explicitly requested, transaction-local optimization. No durability
         # flags or global PostgreSQL settings change. A permission/feature error
@@ -377,6 +380,8 @@ def publish_capture(db,path,start,end,*,mode='forward',epoch_ns=None,fault=None,
                     stage('after_relations')
                     db.reconcile_semantic_requests(keys,commit=False)
         stage('after_semantics')
+        from .viewer_window_epochs import publish as publish_window_epochs
+        publish_window_epochs(db,start,bootstrap=bootstrap)
         # Any new evidence may affect the journey even when its semantic anchor
         # stayed unchanged. Fence every published generation, including rechecks.
         semantic=db.semantic_checkpoint()
@@ -419,6 +424,7 @@ def publish_capture(db,path,start,end,*,mode='forward',epoch_ns=None,fault=None,
     except BaseException:
         db.conn.rollback();db._active_projection_scope=False
         raise
+    finally:db._publication_epoch_windows=None
 
 
 def live_status(db,*,now=None):

@@ -27,7 +27,9 @@ R38_RUNTIME='31b008b82ac241bbc6f7e39ab6e1bda0f2b799fac5d398a62ea6528594ffffa3'
 R38_FILES=183
 R39_RUNTIME='3168b3a3750168ad5d27baeeef5533cc0da2bfaf102cf57ad8f21bedde569db6'
 R39_FILES=185
-SUPPORTED_RUNTIMES=frozenset((R3_RUNTIME,R31_RUNTIME,R32_RUNTIME,R33_RUNTIME,R34_RUNTIME,R35_RUNTIME,R36_RUNTIME,R37_RUNTIME,R38_RUNTIME,R39_RUNTIME))
+R310_RUNTIME='b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8'
+R310_FILES=186
+SUPPORTED_RUNTIMES=frozenset((R3_RUNTIME,R31_RUNTIME,R32_RUNTIME,R33_RUNTIME,R34_RUNTIME,R35_RUNTIME,R36_RUNTIME,R37_RUNTIME,R38_RUNTIME,R39_RUNTIME,R310_RUNTIME))
 
 
 def r31_overlay_allowed(manifest_runtime,actual_runtime,file_count,viewer_data_sha):
@@ -65,3 +67,7 @@ def r38_release_allowed(manifest_runtime,actual_runtime,file_count):
 
 def r39_release_allowed(manifest_runtime,actual_runtime,file_count):
     return bool(manifest_runtime==R39_RUNTIME and actual_runtime==R39_RUNTIME and file_count==R39_FILES)
+
+
+def r310_release_allowed(manifest_runtime,actual_runtime,file_count):
+    return bool(manifest_runtime==R310_RUNTIME and actual_runtime==R310_RUNTIME and file_count==R310_FILES)

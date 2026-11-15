@@ -21,6 +21,14 @@ def effective_floor(source):
     return max(source.get('analysis_floor_ns', 0), source.get('retention_cutoff_ns', 0))
 
 
+def target_scope(store,field='j.target_ns'):
+    """Scheduling predicate with validated internal identifiers and integer."""
+    require(field in ('j.target_ns','s.target_ns','target_ns','start_ns'),'INVALID_HISTORY_SCOPE_FIELD')
+    floor=getattr(store,'history_floor_ns',0)
+    require(type(floor) is int and floor>=0,'INVALID_AD_HISTORY_BOUNDARY')
+    return ' AND '+field+'>='+str(floor)+' ' if floor else ' '
+
+
 def replay_boundary(source,row):
     """Expose only the committed replay prefix as the AD scheduling frontier.
 

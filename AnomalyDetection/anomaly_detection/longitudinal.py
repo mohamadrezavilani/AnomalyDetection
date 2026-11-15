@@ -262,7 +262,8 @@ def seed(store,limit=8):
     if not cursor.get('through'):
         high=store.raw.execute('SELECT MAX(start_ns) AS at FROM anomaly_detection.adp_source_windows WHERE complete=TRUE').fetchone()['at']
         if high is None:return
-        low=max(0,high-2*DAY) if fresh else 0
+        floor=getattr(store,'history_floor_ns',0)
+        low=max(floor,high-2*DAY) if fresh else floor
         cursor={'through':high,'after':[low,'','']}
     after=cursor['after']
     # Fence the parent page BEFORE JSON expansion or qualification. A page
@@ -320,15 +321,16 @@ def upgrade_profiles(store):
     """Small automatic backfill, case evidence first, honoring retry backoff."""
     from .request_profiles import VERSION
     from .scenario_store import PROFILE_JOB_KINDS,queue_keys
-    rows=store.raw.execute("SELECT DISTINCT p.request_key FROM anomaly_detection.adp_profiles p JOIN anomaly_detection.adp_case_requests m USING(request_key) WHERE COALESCE(p.body::jsonb->>'version','')<>%s AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) ORDER BY p.request_key LIMIT 16",(VERSION,)).fetchall()
-    rows+=store.raw.execute("SELECT p.request_key FROM anomaly_detection.adp_profiles p WHERE COALESCE(p.body::jsonb->>'version','')<>%s AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) ORDER BY p.at_ns DESC,p.request_key LIMIT 16",(VERSION,)).fetchall()
+    floor=getattr(store,'history_floor_ns',0)
+    rows=store.raw.execute("SELECT DISTINCT p.request_key FROM anomaly_detection.adp_profiles p JOIN anomaly_detection.adp_case_requests m USING(request_key) WHERE p.at_ns>=%s AND COALESCE(p.body::jsonb->>'version','')<>%s AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) ORDER BY p.request_key LIMIT 16",(floor,VERSION)).fetchall()
+    rows+=store.raw.execute("SELECT p.request_key FROM anomaly_detection.adp_profiles p WHERE p.at_ns>=%s AND COALESCE(p.body::jsonb->>'version','')<>%s AND NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_profile_tasks t WHERE t.request_key=p.request_key) ORDER BY p.at_ns DESC,p.request_key LIMIT 16",(floor,VERSION)).fetchall()
     queue_keys(store,[r['request_key'] for r in rows],priority=1,force=True)
     # Existing case jobs can otherwise look current until their first member
     # happens to be refreshed. Work on a bounded set of materialized cases.
     store.raw.execute("WITH affected AS (SELECT DISTINCT j.scope_key FROM anomaly_detection.adp_case_signals s "
         "JOIN anomaly_detection.adp_scenario_jobs j USING(scope_key) WHERE s.source_kind='feature' "
-        "AND s.state<>'WITHDRAWN' AND NOT j.dirty AND j.kind=ANY(%s) "
+        "AND s.state<>'WITHDRAWN' AND NOT j.dirty AND j.target_ns>=%s AND j.kind=ANY(%s) "
         "AND j.evaluation::jsonb->'input_receipt'->>'profile_version' IS DISTINCT FROM %s "
         "ORDER BY j.scope_key LIMIT 8) UPDATE anomaly_detection.adp_scenario_jobs j "
         "SET dirty=TRUE,version=version+1,due_ns=0 FROM affected a WHERE j.scope_key=a.scope_key AND NOT j.dirty",
-        (list(PROFILE_JOB_KINDS),VERSION))
+        (floor,list(PROFILE_JOB_KINDS),VERSION))

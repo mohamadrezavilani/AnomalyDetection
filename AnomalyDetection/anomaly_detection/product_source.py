@@ -38,7 +38,10 @@ class ProductSource:
     def __init__(self,project):
         self.project=Path(project);self.identity=installed_source_identity(self.project)
         from .native_pg import source_parameters
-        self.config=source_parameters(self.project);self.page_size=128
+        # Window census reuses one source snapshot/metadata round trip per
+        # bounded page. Keep semantic keyset sampling separate and small.
+        # Existing timeout adaptation can reduce this back to 256/128/64.
+        self.config=source_parameters(self.project);self.page_size=512
         self.semantic_page_size=128
         self.analysis_floor_ns=0
         self.last_metrics=[];self.last_source=None
@@ -80,6 +83,11 @@ class ProductSource:
         audit=q("SELECT to_regclass('public.viewer_retention_audit') AS present",cap=1)
         retention=q('SELECT MAX(cutoff_ns) AS cutoff_ns FROM public.viewer_retention_audit',cap=1) if audit[0]['present'] else []
         source['retention_cutoff_ns']=(retention[0]['cutoff_ns'] or 0) if retention else 0
+        epochs=q("SELECT to_regclass('public.viewer_window_epoch_state') AS present",cap=1)
+        if epochs[0]['present']:
+            rows=q('SELECT contract,maintenance_epoch FROM public.viewer_window_epoch_state WHERE id=1',cap=1)
+            require(rows and rows[0]['contract']=='viewer-window-epochs-1','SOURCE_WINDOW_EPOCH_CONTRACT_NOT_READY')
+            source['window_epoch_contract']=dict(rows[0])
         if self.analysis_floor_ns:source['analysis_floor_ns']=self.analysis_floor_ns
         replay=q("SELECT to_regclass('public.viewer_history_replay_state') AS present",cap=1)
         if replay[0]['present']:

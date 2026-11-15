@@ -1,3 +1,9 @@
+# جاری: اول آبان و fence پنجرهٔ مرتبط — ۱۵ نوامبر ۲۰۲۶
+
+مرز اجرای مالک ۲۰۲۶-۱۰-۲۳ تهران است. history-rescan با شناسهٔ replay تازه فقط scheduling و cursorها را آماده می‌کند؛ canonical و human data پاک نمی‌شوند. صف profile گذر keyset محدود دارد و شواهد معلوم قبل از floor را برای پردازش انتخاب نمی‌کند؛ صف سناریو/مدل نیز target قبل از floor را کنار می‌گذارد. seed محدود ۶۴ والد ماندگار از صفحات خالی عبور می‌کند. آمار سنگین هنگام کار Viewer هر ۳۰۰ ثانیه و heartbeat مستقل تازه می‌شود.
+
+Root قرارداد viewer-window-epochs-1 را منتشر می‌کند. AD در snapshot کوتاه RR/RO نشانهٔ پنجره را با lookup کلید اصلی می‌خواند و stamp را از receipt، revision مرتبط، maintenance epoch و catalog می‌سازد. generation عمومی هنوز برای هویت و provenance کنترل می‌شود؛ افزایش نامرتبطش صفحهٔ ناقص را پاک نمی‌کند. منبع قدیمی همان fence عمومی را دارد. تغییر مرتبط/دیررس باید restart کند و تراکنش rollbackشده نباید مرز یا token را جلو ببرد. صفحهٔ اول و روش‌های مدل ثابت‌اند؛ تست چندصفحه‌ای با publication بین هر صفحه معیار این اصلاح است. pin دقیق R3.10 و build AD-20261115-ABAN-EPOCHS در manifest هستند. دقت عمومی و ظرفیت پایدار هنوز نیازمند شاهد واقعی‌اند.
+
 # جاری: اجرای هم‌زمان با بازپخش Viewer — ۱۵ نوامبر ۲۰۲۶
 
 به درخواست مالک، لانچر Catchup با --with-anomaly می‌تواند AD را پیش از پایان replay روشن کند. rescan داده‌نگهدار با replay_id فقط یک‌بار cursorها را از شروع تاریخچه آماده می‌کند؛ restart و handoff پایان آن‌ها را دوباره عقب نمی‌برد. ProductSource در snapshot RR/RO، مرز خواندن را از public.viewer_history_replay_state می‌گیرد: next_ns تحلیل تا prefix committed، viewer_forward_next_ns برای checkpoint واقعی، و history_replay برای وضعیت جدا. هیچ DML روی منبع انجام نمی‌شود. خواندن semantic/window/traffic/cohort تا مرز تاریخی محدود و ادامهٔ مستقیمِ پنجرهٔ جدیدتر منتظر commit است. پس از COMPLETE مرز forward عادی آزاد می‌شود.

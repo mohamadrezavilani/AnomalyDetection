@@ -6,7 +6,7 @@ from contextlib import contextmanager
 
 from . import FIVE_NS,KINDS,EVALUATOR_VERSION
 from .snapshot import canonical,digest,require,api_path,KEY
-from .history_scope import INPUT_LOCK,load_floor
+from .history_scope import INPUT_LOCK,load_floor,target_scope
 
 PREFIX='anomaly_detection.'
 HISTORY_NS=56*288*FIVE_NS
@@ -323,7 +323,7 @@ class ProductStore:
     def next_job(self,now, *, recheck=False,recent=False,cached=False):
         # Source audits, semantic revisions, references and feedback already
         # invalidate consumers. A clock alone is not a changed model input.
-        row=self.raw.execute('SELECT * FROM anomaly_detection.adp_jobs j WHERE target_scope=\'BEHAVIOR_TARGET\' AND dirty=TRUE AND due_ns<=%s '+
+        row=self.raw.execute('SELECT * FROM anomaly_detection.adp_jobs j WHERE target_scope=\'BEHAVIOR_TARGET\' AND dirty=TRUE AND due_ns<=%s '+target_scope(self)+
             ('AND last_evaluated_ns IS NOT NULL ' if recheck else '')+
             ('AND EXISTS(SELECT 1 FROM anomaly_detection.adp_contexts c WHERE c.session_key=j.session_key AND c.target_ns=j.target_ns AND c.job_version=j.version) ' if cached else '')+
             'ORDER BY due_ns,target_ns '+('DESC' if recent else 'ASC')+',session_key LIMIT 1',(now,)).fetchone()
@@ -338,8 +338,8 @@ class ProductStore:
         for _ in range(3):
             if self.ready_pass is None:
                 latest=self.raw.execute('SELECT MAX(start_ns) AS at FROM anomaly_detection.adp_source_windows WHERE complete=TRUE').fetchone()['at']
-                if latest is None:return None
-                self.ready_pass={'begin':max(FIVE_NS,latest-11*FIVE_NS),'end':latest+FIVE_NS,'after':None,'first_visit':True}
+                if latest is None or latest<self.history_floor_ns:return None
+                self.ready_pass={'begin':max(self.history_floor_ns,FIVE_NS,latest-11*FIVE_NS),'end':latest+FIVE_NS,'after':None,'first_visit':True}
             cursor=self.ready_pass;params=[now,cursor['begin'],cursor['end']]
             after=''
             if cursor['after'] is not None:
@@ -365,14 +365,14 @@ class ProductStore:
         state=self.state('assessed_recheck_pass_v1')
         if not state.get('upper'):
             last=self.raw.execute("SELECT target_ns,session_key FROM anomaly_detection.adp_jobs WHERE target_scope='BEHAVIOR_TARGET' "
-                'AND dirty=TRUE AND last_evaluated_ns IS NOT NULL ORDER BY target_ns DESC,session_key DESC LIMIT 1').fetchone()
+                'AND dirty=TRUE AND last_evaluated_ns IS NOT NULL '+target_scope(self,'target_ns')+' ORDER BY target_ns DESC,session_key DESC LIMIT 1').fetchone()
             if not last:return None
             state={'upper':[last['target_ns'],last['session_key']]}
         after='';params=[now,*state['upper']]
         if state.get('after'):
             after='AND (j.target_ns,j.session_key)<(%s,%s) ';params.extend(state['after'])
         row=self.raw.execute("SELECT j.* FROM anomaly_detection.adp_jobs j WHERE j.target_scope='BEHAVIOR_TARGET' "
-            'AND j.dirty=TRUE AND j.last_evaluated_ns IS NOT NULL AND j.due_ns<=%s '
+            'AND j.dirty=TRUE AND j.last_evaluated_ns IS NOT NULL AND j.due_ns<=%s '+target_scope(self)+
             'AND (j.target_ns,j.session_key)<=(%s,%s) '+after+
             'AND EXISTS(SELECT 1 FROM anomaly_detection.adp_source_windows sw WHERE sw.start_ns=j.target_ns AND sw.complete=TRUE) '
             'ORDER BY j.target_ns DESC,j.session_key DESC LIMIT 1',params).fetchone()
@@ -385,7 +385,7 @@ class ProductStore:
         """Bounded upgrade of scheduling metadata, with no model/input changes."""
         self.raw.execute('WITH candidates AS (SELECT j.session_key,j.target_ns,w.body FROM anomaly_detection.adp_jobs j '
             'JOIN anomaly_detection.adp_windows w ON w.session_key=j.session_key AND w.start_ns=j.target_ns '
-            'WHERE j.target_scope=\'BEHAVIOR_TARGET\' AND j.dirty=TRUE AND j.last_evaluated_ns IS NULL AND j.observed_count IS NULL '
+            'WHERE j.target_scope=\'BEHAVIOR_TARGET\' AND j.dirty=TRUE AND j.last_evaluated_ns IS NULL AND j.observed_count IS NULL '+target_scope(self)+
             'ORDER BY j.target_ns DESC,j.session_key LIMIT %s) '
             'UPDATE anomaly_detection.adp_jobs j SET observed_count=COALESCE((SELECT SUM(value::bigint) '
             "FROM jsonb_each_text(NULLIF(c.body::jsonb->'counts','null'::jsonb))),0) FROM candidates c "
@@ -399,17 +399,17 @@ class ProductStore:
             'AND j.last_evaluated_ns IS NULL AND j.due_ns<=%s AND j.target_ns>=%s AND j.target_ns<=%s '
             'AND EXISTS(SELECT 1 FROM anomaly_detection.adp_source_windows sw WHERE sw.start_ns=j.target_ns AND sw.complete=TRUE) '
             'ORDER BY j.target_ns DESC,j.observed_count DESC NULLS LAST,j.session_key LIMIT 1',
-            (now,max(FIVE_NS,latest['start_ns']-2*FIVE_NS),latest['start_ns'])).fetchone()
+            (now,max(self.history_floor_ns,FIVE_NS,latest['start_ns']-2*FIVE_NS),latest['start_ns'])).fetchone()
         return dict(row) if row else None
     def next_backlog_job(self,now):
         """Busy dirty assessments remain reachable after leaving the live band."""
         row=self.raw.execute('SELECT j.* FROM anomaly_detection.adp_jobs j WHERE j.target_scope=\'BEHAVIOR_TARGET\' AND j.dirty=TRUE '
-            'AND j.due_ns<=%s '
+            'AND j.due_ns<=%s '+target_scope(self)+
             'AND EXISTS(SELECT 1 FROM anomaly_detection.adp_source_windows sw WHERE sw.start_ns=j.target_ns AND sw.complete=TRUE) '
             'ORDER BY j.observed_count DESC NULLS LAST,j.target_ns,j.session_key LIMIT 1',(now,)).fetchone()
         return dict(row) if row else None
     def next_candidate_job(self,now):
-        row=self.raw.execute("SELECT j.* FROM anomaly_detection.adp_jobs j WHERE j.target_scope='BEHAVIOR_TARGET' AND j.dirty=TRUE AND j.due_ns<=%s AND EXISTS(SELECT 1 FROM anomaly_detection.adp_case_signals s WHERE s.job_session=j.session_key AND s.target_ns=j.target_ns AND s.state='ACTIVE' AND s.review_eligible=TRUE) ORDER BY j.target_ns DESC,j.session_key LIMIT 1",(now,)).fetchone()
+        row=self.raw.execute("SELECT j.* FROM anomaly_detection.adp_jobs j WHERE j.target_scope='BEHAVIOR_TARGET' AND j.dirty=TRUE AND j.due_ns<=%s "+target_scope(self)+" AND EXISTS(SELECT 1 FROM anomaly_detection.adp_case_signals s WHERE s.job_session=j.session_key AND s.target_ns=j.target_ns AND s.state='ACTIVE' AND s.review_eligible=TRUE) ORDER BY j.target_ns DESC,j.session_key LIMIT 1",(now,)).fetchone()
         return dict(row) if row else None
 
     def defer_job(self,job,now,reason):

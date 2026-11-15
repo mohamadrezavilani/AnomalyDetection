@@ -150,8 +150,9 @@ def assess(service,target,current,history):
 
 
 def process_one(store,now,*,recent=False):
+    from .history_scope import target_scope
     store.active_population_target=None
-    job=store.raw.execute('SELECT * FROM anomaly_detection.adp_population_jobs WHERE dirty=TRUE AND due_ns<=%s '
+    job=store.raw.execute('SELECT * FROM anomaly_detection.adp_population_jobs WHERE dirty=TRUE AND due_ns<=%s '+target_scope(store,'start_ns')+
         'ORDER BY start_ns '+('DESC' if recent else 'ASC')+' LIMIT 1',(now,)).fetchone()
     if not job:return None
     target=job['start_ns']
