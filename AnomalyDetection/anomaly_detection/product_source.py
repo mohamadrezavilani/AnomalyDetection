@@ -46,14 +46,14 @@ class ProductSource:
         self.analysis_floor_ns=0
         self.last_metrics=[];self.last_source=None
     @contextmanager
-    def snapshot(self):
+    def snapshot(self,*,single_request=False):
         # A long-lived Source must not keep labelling reads with an old pin
         # after a Viewer hot deployment. Check both sides of packet capture.
         require(installed_source_identity(self.project)==self.identity,'SOURCE_RUNTIME_CHANGED')
         import psycopg
         from psycopg.rows import dict_row
         self.last_metrics=[]
-        with product_read_budget():
+        with product_read_budget(single_request=single_request):
             params=connection_parameters(self.config);params['application_name']='AnomalyDetection.Product.readonly'
             raw=psycopg.connect(**params,autocommit=False,row_factory=dict_row)
             query=None
@@ -197,7 +197,7 @@ class ProductSource:
             'evidence_verified':False,'coverage_is_source_finality':False}
     def audit(self,keys):
         keys=sorted(set(keys))
-        with self.snapshot() as q:
+        with self.snapshot(single_request=len(keys)==1) as q:
             snapshot,report=collect_sample(q,runtime_sha256=self.identity['runtime_sha256'],sample_limit=len(keys),request_keys=keys)
             from .input_subjects import CONTRACTS,collect,load_key
             if any(api_path(r.get('root_call')) in CONTRACTS and r.get('kind')=='service_execution'

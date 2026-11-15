@@ -282,5 +282,50 @@ class RuntimeBoundsTests(unittest.TestCase):
         self.assertTrue(any(n.get('Index Name')=='vci_req' for n in nodes(plan)))
         self.assertFalse(any(n['Node Type']=='Seq Scan' for n in nodes(plan)))
 
+    def test_one_request_can_finish_after_one_second_while_page_budget_stays_one_second(self):
+        from anomaly_detection.pg_source import product_read_budget,BudgetQuery
+        with self.assertRaises(self.psycopg.errors.QueryCanceled):
+            with self.raw.transaction(),product_read_budget():
+                self.raw.execute('SET TRANSACTION READ ONLY')
+                BudgetQuery(self.raw)('SELECT pg_sleep(1.1) AS pause',cap=1)
+        with self.raw.transaction(),product_read_budget(single_request=True):
+            self.raw.execute('SET TRANSACTION READ ONLY')
+            query=BudgetQuery(self.raw)
+            self.assertEqual(len(query('SELECT pg_sleep(1.1) AS pause',cap=1)),1)
+            self.assertEqual(query.statement_ms,2000)
+            self.assertEqual(self.raw.execute("SELECT current_setting('transaction_read_only') AS value").fetchone()['value'],'on')
+        with product_read_budget():self.assertEqual(BudgetQuery(self.raw).statement_ms,1000)
+
+    def test_origin_probe_keeps_cross_request_versions_and_missing_raw_with_both_key_layouts(self):
+        from anomaly_detection.pg_source import origin_events
+        import sys
+        from pathlib import Path
+        sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
+        from p24_foundation import viewer_origin_storage as origin
+        self.raw.execute('CREATE TABLE public.viewer_events(origin_key TEXT,version_key TEXT,request_key TEXT,at_ns BIGINT,callpath TEXT,PRIMARY KEY(origin_key,version_key))')
+        self.raw.execute("INSERT INTO public.viewer_events SELECT lpad((i/3)::text,64,'0'),lpad((i%3)::text,64,'0'),'request-'||i,i,'Services.v1/Fixture' FROM generate_series(1,500000) i")
+        self.raw.execute('CREATE TABLE public.viewer_raw_events(origin_key TEXT,version_key TEXT,PRIMARY KEY(origin_key,version_key))')
+        self.raw.execute("INSERT INTO public.viewer_raw_events SELECT origin_key,version_key FROM public.viewer_events WHERE at_ns%5<>0")
+        self.raw.execute('CREATE FUNCTION '+origin.FUNCTION+'(key_text text) RETURNS bytea LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE SET search_path=pg_catalog AS $origin$'+origin.BODY+'$origin$')
+        for table in ('viewer_events','viewer_raw_events'):
+            self.raw.execute('CREATE INDEX '+table+'_binary ON public.'+table+'('+origin.key_sql('origin_key')+','+origin.key_sql('version_key')+')')
+            self.raw.execute('ANALYZE public.'+table)
+        wanted=[str(i).zfill(64) for i in (1,2,3,20,1000,140000)]
+        expected=self.raw.execute('SELECT e.*,EXISTS(SELECT 1 FROM public.viewer_raw_events r WHERE r.origin_key=e.origin_key AND r.version_key=e.version_key) AS raw_available FROM public.viewer_events e WHERE e.origin_key=ANY(%s)',(wanted,)).fetchall()
+        raw=self.raw
+        for binary in (False,True):
+            plans=[]
+            def q(sql,params):
+                if binary:sql=origin.qualify(sql)
+                plans.append(raw.execute('EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON) '+sql,params).fetchone()['QUERY PLAN'][0]['Plan'])
+                return raw.execute(sql,params).fetchall()
+            q.origin_keys_active=lambda:binary;q._origin_module=origin
+            found=origin_events(q,wanted)
+            self.assertEqual(sorted(map(canonical,found)),sorted(map(canonical,expected)))
+            self.assertEqual(len(found),18)
+            self.assertTrue(any(not r['raw_available'] for r in found))
+            self.assertGreater(len({r['request_key'] for r in found}),len(wanted))
+            self.assertFalse(any(n['Node Type']=='Seq Scan' for n in nodes(plans[0])))
+
 
 if __name__=='__main__':unittest.main()

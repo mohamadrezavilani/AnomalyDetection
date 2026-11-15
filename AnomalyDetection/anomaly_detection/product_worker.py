@@ -386,9 +386,9 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                         if keys:store.defer_audits(keys,clock.time_ns())
                         if keys and state['phase']=='read_request_evidence' and len(keys)>1:
                             store.save_state(audit_size_key,{'n':max(1,len(keys)//2)})
-                        if source and getattr(exc,'sqlstate',None)=='57014' and (state.get('active_source_lane','').endswith('_cursor') or state.get('active_source_lane')=='semantic_keyset'):
-                            if callable(getattr(source,'reduce_page_size',None)):source.reduce_page_size(state['active_source_lane'])
-                            else:source.page_size=max(64,source.page_size//2)
+                        if source and getattr(exc,'sqlstate',None)=='57014':
+                            from .source_scheduling import reduce_failed_page
+                            reduce_failed_page(source,state['phase'],state.get('active_source_lane'))
                         if callable(getattr(source,'page_sizes',None)):state['source_page_sizes']=source.page_sizes()
                         next_source=clock.monotonic()+10
                     else:

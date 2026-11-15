@@ -1,9 +1,30 @@
 """An unfinished dense historical window must finish without losing fairness."""
 import unittest
-from anomaly_detection.source_scheduling import WindowContinuations
+from anomaly_detection.source_scheduling import WindowContinuations,reduce_failed_page
+from anomaly_detection.product_source import ProductSource
 
 
 class SourceSchedulingTests(unittest.TestCase):
+    def test_twenty_single_request_failures_do_not_shrink_window_or_semantic_pages(self):
+        source=ProductSource.__new__(ProductSource);source.page_size=512;source.semantic_page_size=128
+        for lane in ('fresh_cursor','learning_cursor','older_learning_cursor','overlap_cursor','semantic_keyset'):
+            for _ in range(20):
+                self.assertFalse(reduce_failed_page(source,'read_request_evidence',lane))
+                self.assertFalse(reduce_failed_page(source,'read_historical_session',lane))
+        self.assertEqual(source.page_sizes(),{'window':512,'semantic_keyset':128})
+        self.assertTrue(reduce_failed_page(source,'read_overlap_cursor','overlap_cursor'))
+        self.assertEqual(source.page_sizes(),{'window':256,'semantic_keyset':128})
+        self.assertTrue(reduce_failed_page(source,'read_semantic_keyset','semantic_keyset'))
+        self.assertEqual(source.page_sizes(),{'window':256,'semantic_keyset':64})
+
+    def test_only_the_failed_page_lane_adapts(self):
+        for phase,lane in (('read_fresh_window','fresh_cursor'),('read_learning_window','learning_cursor'),
+                           ('read_older_learning_cursor','older_learning_cursor'),('read_fresh_cursor','fresh_cursor')):
+            source=ProductSource.__new__(ProductSource);source.page_size=512;source.semantic_page_size=128
+            self.assertTrue(reduce_failed_page(source,phase,lane))
+            self.assertEqual(source.page_sizes(),{'window':256,'semantic_keyset':128})
+        self.assertFalse(reduce_failed_page(source,'read_request_evidence',None))
+
     def test_dense_window_gets_continuations_before_unrelated_publication(self):
         work=WindowContinuations();work.notice('learning_cursor',{'status':'READING'})
         self.assertEqual([work.take() for _ in range(3)],['learning_cursor']*3)
