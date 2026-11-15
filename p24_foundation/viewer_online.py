@@ -439,6 +439,8 @@ def live_status(db,*,now=None):
     activity=state['last_success_ns']
     stale=activity is None or now-activity>max(600,state['lag_seconds']+300)*SECOND_NS
     coverage=live_history_coverage(db)
+    from .viewer_replay_progress import replay_progress
+    replay=replay_progress(db)
     return dict(status='ERROR' if state['last_error'] else 'STALE' if stale else 'CATCHING_UP' if backlog else 'CURRENT',
         worker_status=state['worker_status'],generation=state['generation'],
         started_from_utc=iso(state['start_ns']),continuous_published_to_utc=iso(state['next_ns']),
@@ -448,7 +450,7 @@ def live_status(db,*,now=None):
         last_success_utc=iso(activity) if activity else None,
         last_observed_event_utc=iso(state['last_event_ns']) if state['last_event_ns'] else None,
         backlog_windows=int(backlog),lag_seconds=state['lag_seconds'],overlap_windows=state['overlap_windows'],
-        last_error=state['last_error'],source_finality='not_established',
+        last_error=state['last_error'],source_finality='not_established',history_replay=replay,
         earlier_history='not_claimed_complete',late_evidence_beyond_overlap='manual_recheck_required',**coverage)
 
 

@@ -1,0 +1,20 @@
+{% set replay=live.get('history_replay') %}
+<div id="live-banner" class="panel live-banner" role="status">
+{% if replay and replay.status=='RUNNING' %}
+<strong>{% if replay.publisher_active %}در حال بازپخش تاریخچه{% elif replay.publisher_active==false %}بازپخش تاریخچه متوقف است؛ منتظر ادامهٔ دریافت{% else %}بازپخش تاریخچه{% endif %}</strong>
+<span>{% if replay.publisher_active %}پنجرهٔ در حال پردازش{% else %}پنجرهٔ بعدی بازپخش{% endif %}: <b dir="ltr">{{replay.current_window_start_utc|tehran_time}}</b> تا <b dir="ltr">{{replay.current_window_end_utc|tehran_time}}</b> تهران</span>
+<span>پیشرفت پیمایش: {{replay.checked_windows}} از {{replay.total_windows}} پنجره ({{replay.progress_percent}}٪) · {{replay.remaining_windows}} پنجره تا پایان پیمایش</span>
+<progress value="{{replay.checked_windows}}" max="{{replay.total_windows or 1}}" aria-label="پیشرفت پیمایش تاریخچه"></progress>
+<span>{{replay.published_missing_windows}} پنجرهٔ مفقود ثبت شد · {{replay.skipped_complete_windows}} پنجرهٔ کامل قبلی رد شد</span>
+<details><summary>بازهٔ بازپخش و عقب‌ماندگی اخیر</summary>
+<p>بازپخش از <span dir="ltr">{{replay.from_utc|tehran_time}}</span> تا <span dir="ltr">{{replay.target_utc|tehran_time}}</span> تهران است. شمار باقی‌مانده شامل پنجره‌های کامل قبلی هم هست؛ آن‌ها پس از تأیید، دوباره درج نمی‌شوند.</p>
+<p>نقطهٔ ادامهٔ مسیر اخیر: <span dir="ltr">{{live.continuous_published_to_utc|tehran_time}}</span> تهران · {{live.backlog_windows}} پنجرهٔ اخیر در انتظار. دریافت مسیر اخیر پس از تکمیل بازپخش ادامه می‌یابد.</p>
+<p>آخرین پیشرفت ثبت‌شدهٔ بازپخش: <span dir="ltr">{{replay.last_progress_utc|tehran_time}}</span> تهران. وضعیت بازپخش مستقل از آخرین پنجرهٔ جدیدترِ موجود است.</p>
+</details>
+{% elif live.status=='NOT_STARTED' %}<strong>دریافت آنلاین شروع نشده</strong><span>داده‌های واردشدهٔ موجود نمایش داده می‌شوند.</span>
+{% else %}<strong>{{ {'CURRENT':'دریافت فعال','CATCHING_UP':'در حال دریافت پنجره‌های عقب‌مانده','STALE':'وضعیت دریافت قدیمی است','ERROR':'خطا در دریافت؛ آخرین انتشار سالم نمایش داده می‌شود'}.get(live.status,live.status) }}</strong>
+<span>آخرین پنجرهٔ کامل تا <b dir="ltr">{{live.last_complete_window_utc|tehran_time if live.last_complete_window_utc else 'هنوز منتشر نشده'}}</b> تهران · {{live.backlog_windows}} پنجره در انتظار</span>
+<details><summary>جزئیات پوشش</summary><p>شروع تنظیم‌شده: <span dir="ltr">{{live.started_from_utc|tehran_time}}</span> · شروع بازهٔ پیوستهٔ جاری: <span dir="ltr">{{live.get('continuous_published_from_utc',live.started_from_utc)|tehran_time}}</span> · آخرین انتشار: <span dir="ltr">{{live.last_publish_utc|tehran_time}}</span> · پوشش پیش از شروع کامل فرض نمی‌شود. لاگ‌های جدیدتر ممکن است در بازبینی بعدی به پنجره‌های قبلی اضافه شوند.</p></details>
+{% endif %}
+<small id="progress-refresh-note">پیشرفت هر ۵ ثانیه و فهرست هر ۳۰ ثانیه تازه می‌شود؛ زمان‌ها به تهران‌اند.</small>
+<small id="refresh-note"></small></div>

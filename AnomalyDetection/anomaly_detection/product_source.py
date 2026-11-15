@@ -80,8 +80,14 @@ class ProductSource:
         audit=q("SELECT to_regclass('public.viewer_retention_audit') AS present",cap=1)
         retention=q('SELECT MAX(cutoff_ns) AS cutoff_ns FROM public.viewer_retention_audit',cap=1) if audit[0]['present'] else []
         source['retention_cutoff_ns']=(retention[0]['cutoff_ns'] or 0) if retention else 0
-        if self.analysis_floor_ns:
-            source['analysis_floor_ns']=self.analysis_floor_ns
+        if self.analysis_floor_ns:source['analysis_floor_ns']=self.analysis_floor_ns
+        replay=q("SELECT to_regclass('public.viewer_history_replay_state') AS present",cap=1)
+        if replay[0]['present']:
+            rows=q('SELECT run_id,status,from_ns,next_ns,end_ns,stream_key,keys_fingerprint '
+                'FROM public.viewer_history_replay_state WHERE id=1',cap=1)
+            from .history_scope import replay_boundary
+            replay_boundary(source,rows[0] if rows else None)
+        if source.get('analysis_floor_ns'):
             # A seek can advance next_ns without publishing a single window.
             # The receipt, rather than the seek cursor, proves source coverage.
             latest=q('SELECT * FROM (SELECT start_ns,end_ns FROM public.viewer_live_windows '
@@ -95,7 +101,7 @@ class ProductSource:
         size=self.semantic_page_size or self.page_size
         with self.snapshot() as q:
             source=self.metadata(q)
-            if self.analysis_floor_ns:
+            if source.get('analysis_floor_ns'):
                 rows=self.scoped_page(q,source,after,size)
             else:
                 rows=q('SELECT * FROM ('+bounded_semantic_select('WHERE s.request_key>%s ' if after else '', 's.request_key')+') AS source_page',
@@ -104,7 +110,7 @@ class ProductSource:
         next_key=None
         if more:
             last=rows[-1]
-            next_key=[last['anchor_ns'],last['request_key']] if self.analysis_floor_ns else last['request_key']
+            next_key=[last['anchor_ns'],last['request_key']] if source.get('analysis_floor_ns') else last['request_key']
         return {'rows':rows,'source':source,'after':next_key,'has_more':more}
 
     def scoped_page(self,q,source,after,size):
@@ -198,7 +204,7 @@ class ProductSource:
     def cohort(self,after=None,target=None):
         with self.snapshot() as q:
             source=self.metadata(q)
-            if target is not None and target<source.get('analysis_floor_ns',0):
+            if target is not None and (target<source.get('analysis_floor_ns',0) or target+FIVE_NS>source['next_ns']):
                 return {'source':source,'target_ns':None,'rows':[]}
             if target is None:
                 desired=max(effective_floor(source),after if after is not None else max(FIVE_NS,source['next_ns']-56*288*FIVE_NS))

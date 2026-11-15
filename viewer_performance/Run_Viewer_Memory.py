@@ -23,7 +23,7 @@ import sys
 import uuid
 import zipfile
 
-BASE_RUNTIME='31b008b82ac241bbc6f7e39ab6e1bda0f2b799fac5d398a62ea6528594ffffa3'
+BASE_RUNTIME='3168b3a3750168ad5d27baeeef5533cc0da2bfaf102cf57ad8f21bedde569db6'
 PROFILE_ID='viewer-memory-candidate-20261102-1'
 MIB=1024**2
 GIB=1024**3

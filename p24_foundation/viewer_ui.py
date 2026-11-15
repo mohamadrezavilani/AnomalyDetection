@@ -109,6 +109,11 @@ def create_viewer_app(db_opts,*,lan_host=None):
         from .viewer_online import live_status
         with db() as d:result=live_status(d)
         return jsonify(result)
+    @app.get('/live-progress')
+    def live_progress_view():
+        from .viewer_online import live_status
+        with db() as d:result=live_status(d)
+        return render_template('viewer_live_banner.html',live=result)
     @app.get('/requests')
     def requests_view():
         page,limit,offset=pagination()

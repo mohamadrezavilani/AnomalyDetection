@@ -12,8 +12,6 @@ async function refreshHome() {
     const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
     const replacement = doc.getElementById('behavior-list');
     if (!replacement) throw new Error('missing list');
-    const banner = doc.getElementById('live-banner');
-    if (banner) document.getElementById('live-banner').replaceWith(banner);
     const coverage = doc.getElementById('history-gap-notice');
     const oldCoverage = document.getElementById('history-gap-notice');
     if (coverage && oldCoverage) oldCoverage.replaceWith(coverage);
@@ -27,4 +25,25 @@ async function refreshHome() {
     if (note) note.textContent = 'ارتباط تازه‌سازی برقرار نیست؛ داده‌های آخرین نمایش حفظ شده‌اند.';
   } finally { refreshing = false; }
 }
+let progressRefreshing = false;
+async function refreshProgress() {
+  if (progressRefreshing || document.hidden) return;
+  const banner = document.getElementById('live-banner');
+  if (!banner) return;
+  progressRefreshing = true;
+  try {
+    const response = await fetch('/live-progress', {cache: 'no-store', credentials: 'same-origin'});
+    if (!response.ok) throw new Error('progress unavailable');
+    const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const replacement = doc.getElementById('live-banner');
+    if (!replacement) throw new Error('missing progress');
+    // An older full-page response must not overwrite a fresher progress read.
+    const current = document.getElementById('live-banner');
+    if (current) current.replaceWith(replacement);
+  } catch (_) {
+    const note = document.getElementById('progress-refresh-note');
+    if (note) note.textContent = 'ارتباط تازه‌سازی پیشرفت برقرار نیست؛ آخرین وضعیت نمایش داده می‌شود.';
+  } finally { progressRefreshing = false; }
+}
 window.setInterval(refreshHome, 30000);
+window.setInterval(refreshProgress, 5000);
