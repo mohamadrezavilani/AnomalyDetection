@@ -5,7 +5,8 @@ from pathlib import Path
 import sys
 import unittest
 from tests import test_viewer_minimal_pg as native
-from tests.test_viewer_online import OnlinePublisherTests,START,FIVE_NS,iso,snapshot,verified_file
+from tests import test_viewer_online as online
+from tests.test_viewer_online import START,FIVE_NS,iso,snapshot,verified_file
 from tests.test_viewer_r6_service_journey import log
 from p24_foundation.viewer_online import publish_capture
 
@@ -13,7 +14,7 @@ from p24_foundation.viewer_online import publish_capture
 class EpochChecks:
     def publish_rows(self,rows,number=0,*,fault=None):
         start=START+number*FIVE_NS
-        for i,row in enumerate(rows):row['@timestamp']=iso(start+(i+1)*1_000_000_000)
+        for i,row in enumerate(rows):row['@timestamp']=iso(start+(i+1)*1_000_000)
         path=verified_file(self.root/('epoch-'+str(number)+'-'+str(len(list(self.root.glob('epoch*'))))+'.gz'),rows,start)
         return publish_capture(self.db,path,start,start+FIVE_NS,fault=fault)
 
@@ -49,7 +50,7 @@ class EpochChecks:
 
 
 class WindowEpochTests(EpochChecks,unittest.TestCase):
-    setUp=OnlinePublisherTests.setUp
+    setUp=online.OnlinePublisherTests.setUp
 
 
 @unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'native PG18 cluster not configured')
@@ -110,3 +111,18 @@ class NativeWindowEpochTests(EpochChecks,unittest.TestCase):
         self.publish_rows([log(20,'late','Services.v1/WaterBills Line:1','POST (G00000 | successful)',session='b'*32)],1)
         self.assertTrue(read_window(source,cursor)['restart'])
         self.assertEqual(read_page(source,{'target_ns':START,'stamp':traffic['stamp'],'page_size':64})['status'],'RESTART')
+
+    def test_512_row_pages_preserve_every_census_row_with_fewer_source_snapshots(self):
+        source=self.source()
+        from anomaly_detection.product_pipeline import read_window
+        self.publish_rows([log(i,'batch'+str(i),'Services.v1/WaterBills Line:1','POST (G00000 | successful)') for i in range(1,901)])
+        evidence=[]
+        for size in (128,512):
+            source.page_size=size;cursor={'next_ns':START};rows=[];pages=0
+            while True:
+                packet=read_window(source,cursor);rows.extend(packet['rows']);pages+=1
+                if not packet['has_more']:break
+                cursor={'target_ns':START,'stamp':packet['stamp'],'after':packet['after']}
+            evidence.append((rows,pages))
+        self.assertEqual(evidence[0][0],evidence[1][0]);self.assertEqual(len(evidence[1][0]),900)
+        self.assertEqual([item[1] for item in evidence],[8,2])

@@ -196,8 +196,9 @@ def apply_window(store,packet,*,cursor_name='fresh_cursor'):
 def read_window_burst(source,store,*,clock,cursor_name='fresh_cursor',initial_cursor=None,max_pages=4,max_seconds=1.5,progress=None):
     """Finish bounded adjacent pages promptly; every read keeps the full fence.
 
-    There is no transaction spanning pages. Partial rows stay in lane staging,
-    and a generation change still restarts the entire unpublished population.
+    There is no transaction spanning pages. Partial rows stay in lane staging.
+    Relevant window changes restart the unpublished population; legacy sources
+    retain their conservative global generation fence.
     """
     deadline=clock.monotonic()+max_seconds
     results=[]

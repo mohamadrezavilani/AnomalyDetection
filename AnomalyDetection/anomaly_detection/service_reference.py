@@ -349,9 +349,10 @@ def decisions(store,job,context,details,services):
 
 
 def next_case(store,now):
+    from .history_scope import target_scope
     row=store.raw.execute('SELECT j.* FROM anomaly_detection.adp_reference_cases c JOIN anomaly_detection.adp_jobs j '
         'ON j.session_key=c.session_key AND j.target_ns=c.target_ns JOIN anomaly_detection.adp_source_windows sw ON sw.start_ns=j.target_ns '
-        'WHERE j.target_scope=\'BEHAVIOR_TARGET\' AND j.dirty=TRUE AND j.due_ns<=%s AND sw.complete=TRUE ORDER BY j.target_ns,c.session_key LIMIT 1',(now,)).fetchone()
+        'WHERE j.target_scope=\'BEHAVIOR_TARGET\' AND j.dirty=TRUE AND j.due_ns<=%s AND sw.complete=TRUE '+target_scope(store)+' ORDER BY j.target_ns,c.session_key LIMIT 1',(now,)).fetchone()
     return dict(row) if row else None
 
 

@@ -80,8 +80,9 @@ def warm(store,now,limit=256):
 
 
 def next_evidence_job(store,now):
+    from .history_scope import target_scope
     row=store.raw.execute('SELECT j.* FROM anomaly_detection.adp_jobs j '
-        'WHERE j.target_scope=\'BEHAVIOR_TARGET\' AND j.dirty=TRUE AND j.target_evidence_ready=TRUE AND j.due_ns<=%s '
+        'WHERE j.target_scope=\'BEHAVIOR_TARGET\' AND j.dirty=TRUE AND j.target_evidence_ready=TRUE AND j.due_ns<=%s '+target_scope(store)+
         'AND EXISTS(SELECT 1 FROM anomaly_detection.adp_source_windows w '
         'WHERE w.start_ns=j.target_ns AND w.complete=TRUE) '
         'ORDER BY j.last_evaluated_ns NULLS FIRST,j.target_ns,j.session_key LIMIT 1',(now,)).fetchone()

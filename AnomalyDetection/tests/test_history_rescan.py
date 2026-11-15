@@ -3,6 +3,7 @@ import json
 import os
 import unittest
 from unittest.mock import patch
+from anomaly_detection import FIVE_NS
 
 from anomaly_detection.history_rescan import prepare,CURSORS,REQUEST
 from anomaly_detection.history_scope import STATE_KEY,WRITER_LOCK
@@ -99,10 +100,16 @@ class NativeHistoryRescanTests(unittest.TestCase):
         prepare(self.store,'2026-10-23','b'*32)
         self.assertEqual(self.store.state('profile_floor_pass_v1'),{})
         self.assertEqual(self.store.history_floor_ns,floor)
+        self.raw.execute('UPDATE anomaly_detection.adp_jobs SET last_evaluated_ns=1 WHERE target_ns<%s',(floor,))
+        for name in ('next_job','next_ready_job','next_recheck_job','next_live_job','next_backlog_job','next_candidate_job'):
+            with self.subTest(selector=name):self.assertIsNone(getattr(self.store,name)(floor+FIVE_NS))
+        from anomaly_detection.population import process_one
+        self.assertIsNone(process_one(self.store,floor+FIVE_NS))
         packet=self.window_packet(2,1)
         packet['target_ns']=floor;packet['source']['captured_at_ns']=floor+FIVE_NS
         packet['rows'][0].update(request_key='c'*64,anchor_key='ba1:'+'c'*64,anchor_ns=floor+1)
         apply_window(self.store,packet)
+        self.assertEqual(self.store.next_job(floor+FIVE_NS)['target_ns'],floor)
         self.raw.execute("INSERT INTO anomaly_detection.adp_profile_tasks VALUES(%s,0,0,0),(%s,0,0,0) ON CONFLICT(request_key) DO UPDATE SET due_ns=0",('a'*64,'c'*64))
         self.assertEqual(next_profile(self.store,floor+FIVE_NS),'c'*64)
         self.assertIsNotNone(self.raw.execute('SELECT 1 FROM anomaly_detection.adp_profile_tasks WHERE request_key=%s',('a'*64,)).fetchone())

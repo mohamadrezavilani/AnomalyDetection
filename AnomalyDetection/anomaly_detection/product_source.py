@@ -38,7 +38,10 @@ class ProductSource:
     def __init__(self,project):
         self.project=Path(project);self.identity=installed_source_identity(self.project)
         from .native_pg import source_parameters
-        self.config=source_parameters(self.project);self.page_size=128
+        # Window census reuses one source snapshot/metadata round trip per
+        # bounded page. Keep semantic keyset sampling separate and small.
+        # Existing timeout adaptation can reduce this back to 256/128/64.
+        self.config=source_parameters(self.project);self.page_size=512
         self.semantic_page_size=128
         self.analysis_floor_ns=0
         self.last_metrics=[];self.last_source=None

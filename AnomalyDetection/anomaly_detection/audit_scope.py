@@ -29,7 +29,9 @@ def due_requests(store,state,now,limit):
 
 
 def keys(store,now,limit=1):
+    from .history_scope import target_scope
     state=store.state(STATE)
+    if state and state.get('target_ns',0)<getattr(store,'history_floor_ns',0):state={}
     if state and now<state['visit_until_ns']:
         current=due_requests(store,state,now,limit)
         if current:return current
@@ -41,7 +43,7 @@ def keys(store,now,limit=1):
         # invalidates the rate version. Publication still requires a fresh job.
         row=store.raw.execute(
             "SELECT s.job_session,s.target_ns FROM anomaly_detection.adp_case_signals s "
-            "WHERE s.source_kind='actor' AND s.state='ACTIVE' AND "
+            "WHERE s.source_kind='actor' AND s.state='ACTIVE' "+target_scope(store,'s.target_ns')+" AND "
             "(s.review_eligible=TRUE OR (s.family='peer_service_rate_5m' AND (("
             "s.body::jsonb->>'baseline_unit'='canonical_service_executions' "
             "AND s.body::jsonb->>'service_path' IN "+INPUT_SERVICES+") OR EXISTS("
