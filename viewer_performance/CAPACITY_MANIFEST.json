@@ -1,0 +1,33 @@
+{
+  "build_id": "CAPACITY-BASELINE-20261116",
+  "scope": "measurement_only_not_speed_release",
+  "base_git_sha": "1dffd3ddbd58b11bfc5501d0e87b65d98c22344f",
+  "root_runtime_source_sha256": "b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8",
+  "runtime_changed": false,
+  "production_modified": false,
+  "files_sha256": {
+    "viewer_performance/Collect_Capacity_Inputs.py": "4510dfd4b9a4be8cca0e46f3911489a03fffc06f1325ebd75037a806aced5a80",
+    "viewer_performance/capacity/__init__.py": "71e32c16dd38aef69b8a32fa7aa530e6f1ef9f540ec52922e37da791d977cdf4",
+    "viewer_performance/capacity/baseline.py": "cf3ce3a6bbcee036db3462fe3e4271132d35c990b80412ab5a620f71716546f5",
+    "viewer_performance/capacity/counters.py": "2395f5fdc88ba3b85052c7ccce556c96ed39c3ef02813bb4fa22de578fbe9c06",
+    "viewer_performance/capacity/fixtures.py": "17bb68773eadeebef7a45c72e5791fc85e715d7e5b140076640c76240d5aa707",
+    "viewer_performance/capacity/oracle.py": "acf8d464eaf20bc0e100e6cf5a1bca43d5c8339760475aee59d58bae70e571da",
+    "viewer_performance/capacity/trace.py": "0c878650a6bc9e0d3297123e77c4e5aa24c085e227142a7397b8715ca0cdfad5",
+    "tests/test_viewer_capacity.py": "22dfd230c7ab6ad87901061b1d69c38cfa80207616a7da83d5ce996ffe5eb15e",
+    ".github/workflows/viewer-capacity.yml": "fba54141ebd7365763e6a61ecd0b72b4a309f0b0e6e54d6b94cda5eb5faf2120"
+  },
+  "evidence_sha256": {
+    "validation/viewer_capacity_native.json.gz": "87e7c4a6b5ad6d0b403ab741a62f46c3942f1e8a45391cc65d416a5e4368a39c",
+    "validation/viewer_capacity_baseline.json.gz": "6ccc50eb05cfd7ccc16bcf8a9bd862da2cc6f6fc2cafdf04b216fbc61fe2d5b0"
+  },
+  "native_receipt": {
+    "tested_head": "bb81ca652b2ef7442d324edcb4d07f8d94ca3a83",
+    "run_id": 43821930036,
+    "decoded_json_sha256": "6d48582ca95ff3ac4bebdd8fc344708872a8b9422be6f4e2961e5065ea32c821",
+    "qualification": "MEASUREMENT_EQUIVALENCE_ONLY"
+  },
+  "capacity_60_to_120_windows_per_hour": "NOT_RUN",
+  "eight_hour_sustained": "NOT_RUN",
+  "effective_cache_pressure": "NOT_RUN",
+  "candidate_c1": "SELECTED_FOR_EXPERIMENT_NOT_IMPLEMENTED"
+}

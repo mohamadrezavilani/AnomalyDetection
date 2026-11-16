@@ -18,7 +18,7 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "624ba17b16d153938ca3a0c61151af3c14ccedaef0923583869749d9fe040cbd",
+    "Pishkhan24_Project_Roadmap.md": "1de04f5f9288119a8a3a48daf2e54ea1b823bb41cb3d12db6760fdc606143581",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
@@ -1191,5 +1191,14 @@
     "maintenance_global_fence": true,
     "permanent_history_scans_added": false,
     "owner_new_capacity": "NOT_EVALUATED"
+  },
+  "capacity_baseline_measurement": {
+    "build": "CAPACITY-BASELINE-20261116",
+    "branch": "perf/viewer-capacity-20261116",
+    "runtime_changed": false,
+    "production_installation_approved": false,
+    "report": "viewer_performance/CAPACITY_BASELINE_FA.md",
+    "native_workflow_run": 43821930036,
+    "owner_capacity": "NOT_RUN"
   }
 }
