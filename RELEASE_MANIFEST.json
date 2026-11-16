@@ -18,11 +18,11 @@
   "files_sha256": {
     ".gitattributes": "8df4392afb81329403de7aef7b531874c94649a3de59e1cab080ac1ad43c3714",
     "AGENTS.md": "dd5673851930dcd6a2736f45d7195db2a0dfcdc8ec675ba7f567e3308c6319c4",
-    "Pishkhan24_Project_Roadmap.md": "c46c1354c027cd3348bd8c12d103a33c69d440706ba2d003b06ea72941475b20",
+    "Pishkhan24_Project_Roadmap.md": "ea9f8bba3319b732fe6e9bf21eba630ad9dbdd640a4c21af681df056295a19bb",
     "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
-    "VIEWER_README_FA.md": "a0e0df8f7a74f480efdc3ac802403d9643c6bbcee4d0d0c387699ea795ab9c2a",
+    "VIEWER_README_FA.md": "95316d3ff2d8d4179ef6f5e5e16bdae6a3ef05af9de6c964fa7bc6c802f3a4c7",
     "catalogs/action_api_reconciliation_candidates.json": "4441c191e90c9d2d131af64dfa5457772e503888d7cc3552194fa0e5fa294bfb",
     "catalogs/action_crosswalk_candidates.json": "28a68aead5b4a10a4f7ee15e5bbbf732a9ff6e1769b560a7f588c13dfcc97c94",
     "catalogs/collector_target_sha256.json": "a0b92e9a81976f05ec412a90de77bbae6cecb8b3c51cdf4f0a08dfb24ec9d4b9",
@@ -1202,17 +1202,18 @@
     "owner_capacity": "NOT_RUN"
   },
   "capacity_candidates_qualification": {
-    "build": "CAPACITY-C3-20261116",
-    "branch": "perf/viewer-local-keys-20261116",
+    "build": "CAPACITY-C4-20261116",
+    "branch": "perf/viewer-index-prefetch-20261116",
     "manifest": "viewer_performance/CAPACITY_MANIFEST.json",
-    "manifest_sha256": "71e428425161394f33c6c61d4c174a8151a03410b898dad64f518c9b3148357e",
+    "manifest_sha256": "8abbdc17d427e9d2c2472d8a9efd50dabce2fa5de6dd8a93e12aabc29bdea6ff",
     "runtime_changed": false,
     "production_installation_approved": false,
     "owner_capacity": "NOT_RUN",
     "C1": "DO_NOT_PROMOTE_ON_THIS_WORKLOAD",
     "C2": "KEEP_FOR_OWNER_QUALIFICATION_NOT_PRODUCTION_APPROVAL",
     "C3": "QUALIFICATION_ONLY",
-    "private_measurements_published": false
+    "private_measurements_published": false,
+    "C4": "DO_NOT_PROMOTE_ON_SMALL_WARM_CORPUS"
   },
   "ad_reference_contract_review": {
     "pr": 31,

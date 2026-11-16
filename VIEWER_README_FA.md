@@ -1,14 +1,52 @@
-# جاری: ابزار C3 و مشاهدهٔ خواندنی ایندکس — ۱۶ نوامبر ۲۰۲۶
+# جاری: C4 ایزوله و مشاهدهٔ خواندنیِ ۱، ۲ و ۴ اتصال — ۱۶ نوامبر ۲۰۲۶
+
+در این بسته، Runtime نصب‌شدهٔ Viewer و AD عوض نمی‌شود. C4 فقط در دیتابیس تازهٔ qualification فعال است؛ قبل از همان COPY/INSERT اصلی، حداکثر چهار اتصال READ ONLY صفحات ایندکس شاهد را پیش‌خوانی می‌کنند. نتیجهٔ این خواندن‌ها هیچ نقشی در هویت، حذف، تکراری‌بودن یا مرز تحلیل ندارد. سرعت محصول از این ابزار نتیجه نمی‌شود. پیش‌خوانی، تمام اتصال‌ها، retry/timeout و انتظارشان در زمان تا انتشار محاسبه می‌شوند.
+
+پس از ادغام PR31، نسخهٔ AD باید `AD-20261116-REFERENCE-CONTRACT` باشد. ابزار مشاهده Worker را متوقف نمی‌کند؛ ولی `git pull` می‌تواند فایل‌های عرضهٔ AD را عوض کند و Worker قدیمی با علت RELEASE_CHANGED پایان یابد. برای ابزار فعلی که فایل AD را عوض نمی‌کند، همان `worker-start` کافی است. برای دریافت نسخهٔ تازه، بلوک زیر ابتدا SHA مقصد را ثابت می‌کند، فقط در صورت تغییر فایل‌های AD آن را متوقف می‌کند، سپس نسخهٔ AD را بررسی و شروع می‌کند. Viewer متوقف نمی‌شود و cursor جابه‌جا نمی‌شود.
+
+```powershell
+cd E:\P24\pishkhan24
+$adPython = (Resolve-Path .\.venv\Scripts\python.exe).Path
+git fetch origin main
+if ($LASTEXITCODE -ne 0) { throw 'Git fetch failed.' }
+$target = (git rev-parse FETCH_HEAD).Trim()
+$adChanges = @(git diff --name-only HEAD $target -- AnomalyDetection)
+if ($LASTEXITCODE -ne 0) { throw 'Cannot compare AD releases.' }
+if ($adChanges.Count -gt 0) {
+    foreach ($attempt in 1..3) {
+        $text = (& $adPython -B AnomalyDetection/run_anomaly.py worker-stop | Out-String)
+        $text
+        $state = ($text | ConvertFrom-Json).status
+        if ($state -in @('STOPPED','ALREADY_STOPPED')) { break }
+        if ($state -ne 'STOP_REQUESTED') { throw 'AD stop blocked.' }
+    }
+    if ($state -notin @('STOPPED','ALREADY_STOPPED')) { throw 'AD has not stopped yet.' }
+}
+git merge --ff-only $target
+if ($LASTEXITCODE -ne 0) { throw 'Git update failed; run worker-start to restore AD on the existing release.' }
+& $adPython -B AnomalyDetection/run_anomaly.py version
+if ($LASTEXITCODE -ne 0) { throw 'AD build verification failed.' }
+& $adPython -B AnomalyDetection/run_anomaly.py worker-start
+if ($LASTEXITCODE -ne 0) { throw 'AD start failed.' }
+Start-Sleep -Seconds 15
+& $adPython -B AnomalyDetection/run_anomaly.py worker-status
+```
+
+مشاهدهٔ بعدی فقط پس از فعال‌بودن AD انجام شود:
+
+```powershell
+& $adPython -B viewer_performance/Observe_Viewer_Index_Parallel.py --project . --seconds 30
+```
+
+ابزار ابتدا/انتها هویت همان AD جاری، heartbeat تازه و lease Writer را بررسی می‌کند. هر تغییر یا توقف باعث PARTIAL یا BLOCKED می‌شود؛ زنده‌بودن دو پردازه، به‌معنی ظرفیت پایدار یا تکمیل تحلیل نیست. حداکثر پنج اتصال probe (کنترل + چهار reader)، ۵۱۲ جفت کلید مصنوعی هم‌زمان و queryهای سه‌ثانیه‌ای دارد. اتصال‌ها فقط SELECT می‌کنند؛ شمارندهٔ probe مصرف اختصاصی Writer نامیده نمی‌شود. خروجی `Viewer_Index_Parallel_*.json` خصوصی برگردد. دادهٔ منبع، SQL متن یا کلیدها صادر نمی‌شوند. هیچ Capture یا آمار مالک به Git اضافه نمی‌شود.
+
+# سابقه: ابزار C3 و مشاهدهٔ خواندنی ایندکس — ۱۶ نوامبر ۲۰۲۶
 
 Runtime محصول، AD، UI و cursor در این بسته تغییر نمی‌کنند. نامزد C3 فقط در دیتابیس‌های qualification فعال می‌شود و مقایسهٔ آن صریحاً با C2 است. default آزمون قبلی C2 حفظ شده؛ `--experiment local_projection_keys` نامزد تازه را انتخاب می‌کند. کد، آزمون‌های مصنوعی و Manifest منتشر می‌شوند؛ رسیدهای خصوصی اجرا به این بسته اضافه نشده‌اند.
 
 گام مشاهدهٔ ایندکس دیتابیس واقعی، اتصال READ ONLY با سقف زمان و تعداد query دارد. هیچ کلید کاربر، Capture یا کلید منبع خوانده/صادر نمی‌شود؛ داده، schema، Worker، checkpoint و تنظیم عمومی تغییر نمی‌کنند. خواندن اول «کش سرد» نامیده نمی‌شود و PostgreSQL read به خواندن فیزیکی دیسک تعبیر نمی‌شود.
 
-```powershell
-git pull --ff-only origin main
-if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
-.\.venv\Scripts\python.exe -B viewer_performance/Observe_Viewer_Index_Cost.py --project . --seconds 20
-```
+دستور دریافت امن و راه‌اندازی AD در ابتدای این سند است. پس از آن، ابزار تک‌اتصالی قبلی نیز با `python -B viewer_performance/Observe_Viewer_Index_Cost.py --project . --seconds 20` قابل اجرا است.
 
 فایل `Viewer_Index_Cost_*.json` معرفی‌شده در `output` برای بازبینی خصوصی برگردد. اگر خطا رخ داد، خروجی JSON ترمینال کافی است. این ابزار نیاز به restart ندارد. جزئیات قرارداد و دستور بازتولید در `viewer_performance/CAPACITY_BASELINE_FA.md` است.
 

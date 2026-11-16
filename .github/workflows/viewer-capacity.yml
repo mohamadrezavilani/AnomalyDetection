@@ -5,11 +5,14 @@ on:
       - 'viewer_performance/capacity/**'
       - 'viewer_performance/Qualify_Capacity_Candidate.py'
       - 'viewer_performance/Observe_Viewer_Index_Cost.py'
+      - 'viewer_performance/Observe_Viewer_Index_Parallel.py'
       - 'tests/test_viewer_capacity.py'
       - 'tests/test_viewer_origin_filter.py'
       - 'tests/test_viewer_contract_fetch_once.py'
       - 'tests/test_viewer_local_projection_keys.py'
       - 'tests/test_viewer_index_cost_probe.py'
+      - 'tests/test_viewer_index_prefetch.py'
+      - 'tests/test_viewer_index_parallel_probe.py'
       - '.github/workflows/viewer-capacity.yml'
   workflow_dispatch:
 
@@ -27,7 +30,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
       - name: Collector byte preservation and measurement guards on Windows
-        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys tests.test_viewer_index_cost_probe
+        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys tests.test_viewer_index_cost_probe tests.test_viewer_index_prefetch tests.test_viewer_index_parallel_probe
   measurement:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -54,7 +57,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
       - name: Measurement guards, native COPY and per-boundary equivalence
-        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys tests.test_viewer_index_cost_probe
+        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys tests.test_viewer_index_cost_probe tests.test_viewer_index_prefetch tests.test_viewer_index_parallel_probe
       - name: Current runtime baseline with balanced instrumentation order
         run: >-
           python -B -m viewer_performance.capacity.baseline --backend postgresql
@@ -86,3 +89,14 @@ jobs:
         with:
           name: viewer-capacity-local-keys
           path: qualification/capacity-local-keys.json
+      - name: C4 bounded read-ahead with one, two and four readers
+        run: |
+          for workers in 1 2 4; do
+            python -B -m viewer_performance.capacity.baseline --backend postgresql --counts 32 256 2048 --pairs 2 --experiment index_prefetch_$workers --wal-compression zstd --out qualification/capacity-index-prefetch-$workers.json || exit $?
+          done
+      - name: Retain synthetic C4 read-ahead receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-capacity-index-prefetch
+          path: qualification/capacity-index-prefetch-*.json
