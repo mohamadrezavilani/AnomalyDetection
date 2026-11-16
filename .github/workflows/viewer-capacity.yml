@@ -1,0 +1,88 @@
+name: Viewer capacity measurement qualification
+on:
+  pull_request:
+    paths:
+      - 'viewer_performance/capacity/**'
+      - 'viewer_performance/Qualify_Capacity_Candidate.py'
+      - 'viewer_performance/Observe_Viewer_Index_Cost.py'
+      - 'tests/test_viewer_capacity.py'
+      - 'tests/test_viewer_origin_filter.py'
+      - 'tests/test_viewer_contract_fetch_once.py'
+      - 'tests/test_viewer_local_projection_keys.py'
+      - 'tests/test_viewer_index_cost_probe.py'
+      - '.github/workflows/viewer-capacity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-measurement-helper:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Collector byte preservation and measurement guards on Windows
+        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys tests.test_viewer_index_cost_probe
+  measurement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ephemeral-capacity-only
+        ports:
+          - 5432:5432
+        options: >-
+          --memory 1g --memory-swap 1g --cpus 2
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      P24_DELTA_PG_HOST: 127.0.0.1
+      P24_DELTA_PG_PORT: '5432'
+      P24_DELTA_PG_USER: postgres
+      PGPASSWORD: ephemeral-capacity-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Measurement guards, native COPY and per-boundary equivalence
+        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys tests.test_viewer_index_cost_probe
+      - name: Current runtime baseline with balanced instrumentation order
+        run: >-
+          python -B -m viewer_performance.capacity.baseline --backend postgresql
+          --counts 32 256 2048 --pairs 2 --out qualification/capacity-baseline.json
+      - name: C1 synthetic risk corpus with charged build and balanced order
+        run: >-
+          python -B -m viewer_performance.capacity.baseline --backend postgresql
+          --counts 32 256 2048 --pairs 2 --experiment origin_filter
+          --out qualification/capacity-origin-filter.json
+      - name: C2 synthetic risk corpus with one raw-body read
+        run: >-
+          python -B -m viewer_performance.capacity.baseline --backend postgresql
+          --counts 32 256 2048 --pairs 2 --experiment contract_fetch_once --wal-compression zstd
+          --out qualification/capacity-contract-once.json
+      - name: Retain diagnostic receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-capacity-baseline
+          path: qualification/*.json
+      - name: C3 exact local projection keys against C2 baseline
+        run: >-
+          python -B -m viewer_performance.capacity.baseline --backend postgresql
+          --counts 32 256 2048 --pairs 2 --experiment local_projection_keys --wal-compression zstd
+          --out qualification/capacity-local-keys.json
+      - name: Retain C3 qualification receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-capacity-local-keys
+          path: qualification/capacity-local-keys.json

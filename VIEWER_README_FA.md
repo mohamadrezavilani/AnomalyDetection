@@ -1,4 +1,33 @@
-# ارتقای جاری: AD-20261115-CENSUS-INTEGRITY — ۱۵ نوامبر ۲۰۲۶
+# جاری: ابزار C3 و مشاهدهٔ خواندنی ایندکس — ۱۶ نوامبر ۲۰۲۶
+
+Runtime محصول، AD، UI و cursor در این بسته تغییر نمی‌کنند. نامزد C3 فقط در دیتابیس‌های qualification فعال می‌شود و مقایسهٔ آن صریحاً با C2 است. default آزمون قبلی C2 حفظ شده؛ `--experiment local_projection_keys` نامزد تازه را انتخاب می‌کند. کد، آزمون‌های مصنوعی و Manifest منتشر می‌شوند؛ رسیدهای خصوصی اجرا به این بسته اضافه نشده‌اند.
+
+گام مشاهدهٔ ایندکس دیتابیس واقعی، اتصال READ ONLY با سقف زمان و تعداد query دارد. هیچ کلید کاربر، Capture یا کلید منبع خوانده/صادر نمی‌شود؛ داده، schema، Worker، checkpoint و تنظیم عمومی تغییر نمی‌کنند. خواندن اول «کش سرد» نامیده نمی‌شود و PostgreSQL read به خواندن فیزیکی دیسک تعبیر نمی‌شود.
+
+```powershell
+git pull --ff-only origin main
+if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
+.\.venv\Scripts\python.exe -B viewer_performance/Observe_Viewer_Index_Cost.py --project . --seconds 20
+```
+
+فایل `Viewer_Index_Cost_*.json` معرفی‌شده در `output` برای بازبینی خصوصی برگردد. اگر خطا رخ داد، خروجی JSON ترمینال کافی است. این ابزار نیاز به restart ندارد. جزئیات قرارداد و دستور بازتولید در `viewer_performance/CAPACITY_BASELINE_FA.md` است.
+
+# سابقه: آزمون ایزولهٔ ظرفیت C2 — ۱۶ نوامبر ۲۰۲۶
+
+این بسته Runtime برنامه را عوض نمی‌کند؛ Worker و وب Viewer/AD فعلی روشن می‌مانند. شروع از اول آبان و cursor حفظ می‌شوند. C2 در آزمون چهارفایلی PostgreSQL محلی با خروجی برابر حدود ۳۶٫۵٪ زمان کمتری داشت؛ سرعت پایدار سرور هنوز تأیید نشده است. فیلتر C1 به دلیل نداشتن سود کل وارد محصول نمی‌شود. گزارش: `viewer_performance/CAPACITY_BASELINE_FA.md`.
+
+برای آزمون مستقل روی همان سرور، با ZIP موجود اجرا کنید؛ نیازی به restart یا history-rescan نیست:
+
+```powershell
+cd E:\P24\pishkhan24
+git pull --ff-only origin main
+if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
+.\.venv\Scripts\python.exe -B viewer_performance/Qualify_Capacity_Candidate.py --project . --captures-zip 'AnomalyDetection/reports/Viewer_Capacity_Inputs_20261116_075802_e754a667.zip' --pairs 2
+```
+
+این ابزار به دیتابیس محصول وصل نمی‌شود؛ فقط دیتابیس‌های qualification خودش را ایجاد و در پایان حذف می‌کند. حساب اتصال محلی باید مجوز ساخت دیتابیس داشته باشد. هر ۱۵ثانیه heartbeat و پس از هر انتشار، پیشرفت می‌دهد. در پایان فایل `Viewer_Capacity_Candidate_*.json` معرفی‌شده را بفرستید. این calibration کوچک، جای فشار کش تاریخچهٔ کامل یا آزمون هشت‌ساعته نیست. دستورهای زیر سوابق ارتقای Runtime هستند و برای همین بسته تکرار نمی‌شوند.
+
+# سابقهٔ ارتقا: AD-20261115-CENSUS-INTEGRITY — ۱۵ نوامبر ۲۰۲۶
 
 این نسخه، نتیجهٔ بازبینی PR28 و دو اصلاح کامل‌خواندن census است. فقط AD را با worker-stop متوقف کنید؛ بعد از STOPPED یا ALREADY_STOPPED، git pull --ff-only origin main و worker-start. Viewer/Catchup و وب آن روشن می‌مانند؛ مرز اول آبان و cursor منبع ادامه پیدا می‌کند. history-rescan دوباره اجرا نشود. cursor ناقص قدیمی census همان پنجره را از نو می‌خواند و خروجی کامل قبلی تا commit جایگزین باقی می‌ماند. اصلاح فوری همهٔ شمارش‌های تاریخی پس از نصب ادعا نمی‌شود؛ گذر تاریخی موجود آن‌ها را بازخوانی می‌کند.
 

@@ -1,0 +1,59 @@
+{
+  "build_id": "CAPACITY-C3-20261116",
+  "scope": "isolated_candidate_qualification_not_runtime_release",
+  "base_git_sha": "93da6a7243666140afb7ae61406221cfbbc2d6ea",
+  "root_runtime_source_sha256": "b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8",
+  "runtime_changed": false,
+  "production_modified": false,
+  "files_sha256": {
+    ".github/workflows/viewer-capacity.yml": "4230c550ae6f05ef2909e43e8acc37cea26acbe4b83dd7f1ecee51b20bc391fd",
+    ".github/workflows/viewer-private-native.yml": "70784c16f2570f9c01057e9aeed3230caefb90fc91c619e47cd1e80a9694d84e",
+    "tests/test_viewer_capacity.py": "11215e593df0bf9cf0c1f4fdc2c945f13410f888ae320d45859854417633f045",
+    "tests/test_viewer_contract_fetch_once.py": "b702116efc95495f2489c57172a4a32c961c1916092103795e04a77f8f64e5d8",
+    "tests/test_viewer_origin_filter.py": "c2cdb4ee36651b778e9fe4c4c4a69c1f2fd6d2dc8965b80705570bffba4b0914",
+    "viewer_performance/CAPACITY_BASELINE_FA.md": "0add32f77745ba810d2e1c1e185e3acb8578bc42079ffe41740e9ab5b46a6b90",
+    "viewer_performance/Collect_Capacity_Inputs.py": "4510dfd4b9a4be8cca0e46f3911489a03fffc06f1325ebd75037a806aced5a80",
+    "viewer_performance/Qualify_Capacity_Candidate.py": "c9c9e0bd8e7d078a2e6af5cf4932a5a9298ac96e40ac354616d75b7c7aabb0e8",
+    "viewer_performance/capacity/__init__.py": "71e32c16dd38aef69b8a32fa7aa530e6f1ef9f540ec52922e37da791d977cdf4",
+    "viewer_performance/capacity/baseline.py": "d0fc27eae49467eb9091fda7378943c0e75d8cf796c9fa4d572e3e905b321231",
+    "viewer_performance/capacity/contract_fetch_once.py": "0f5f1fed8504b106381219d2b2fedb9b5bec632ab2e25236c8ed8bbac0ef54fb",
+    "viewer_performance/capacity/counters.py": "2395f5fdc88ba3b85052c7ccce556c96ed39c3ef02813bb4fa22de578fbe9c06",
+    "viewer_performance/capacity/fixtures.py": "17bb68773eadeebef7a45c72e5791fc85e715d7e5b140076640c76240d5aa707",
+    "viewer_performance/capacity/oracle.py": "acf8d464eaf20bc0e100e6cf5a1bca43d5c8339760475aee59d58bae70e571da",
+    "viewer_performance/capacity/origin_filter.py": "3af6259af5182bda8b5120d077040b27886301aa9c114869005835494f03c29d",
+    "viewer_performance/capacity/trace.py": "0c878650a6bc9e0d3297123e77c4e5aa24c085e227142a7397b8715ca0cdfad5",
+    "viewer_performance/capacity/local_projection_keys.py": "0bf8667fee2c88468153a4c8fed5e5e30a37a37fd7011c370ebe15e6bed66c2a",
+    "viewer_performance/Observe_Viewer_Index_Cost.py": "a8e7e6b3dfa852cc542119a25f7efab0d13a86846b7bd1fae612d6cbc3d4b33e",
+    "tests/test_viewer_local_projection_keys.py": "9518d60597e10d6de1d485b18bba68233b65726cad18d539d94c8985c681ece5",
+    "tests/test_viewer_index_cost_probe.py": "d59f47654063bc944d15ec8d09fe528870fa9b4c425686189b526ff23cbb91d5"
+  },
+  "evidence_sha256": {
+    "validation/viewer_capacity_native.json.gz": "87e7c4a6b5ad6d0b403ab741a62f46c3942f1e8a45391cc65d416a5e4368a39c",
+    "validation/viewer_capacity_baseline.json.gz": "6ccc50eb05cfd7ccc16bcf8a9bd862da2cc6f6fc2cafdf04b216fbc61fe2d5b0",
+    "validation/viewer_capacity_candidates.json.gz": "c096b7a4abec3e192b8d6d0b92c90ed7e9e4dc203cf76f9c8034222429a0837e"
+  },
+  "native_receipt": {
+    "tested_head": "bb81ca652b2ef7442d324edcb4d07f8d94ca3a83",
+    "run_id": 43821930036,
+    "decoded_json_sha256": "6d48582ca95ff3ac4bebdd8fc344708872a8b9422be6f4e2961e5065ea32c821",
+    "qualification": "MEASUREMENT_EQUIVALENCE_ONLY"
+  },
+  "capacity_60_to_120_windows_per_hour": "NOT_RUN",
+  "eight_hour_sustained": "NOT_RUN",
+  "effective_cache_pressure": "NOT_RUN",
+  "candidate_c1": "DO_NOT_PROMOTE_ON_THIS_WORKLOAD",
+  "candidate_c2": "KEEP_FOR_OWNER_QUALIFICATION_NOT_PRODUCTION_APPROVAL",
+  "candidates_evidence": "validation/viewer_capacity_candidates.json.gz",
+  "native_candidate_tests": {
+    "tests": 49,
+    "skips": 0,
+    "postgresql": "18.7",
+    "os": "Linux",
+    "production": false
+  },
+  "measured_c2_algorithm_sha256": "0f5f1fed8504b106381219d2b2fedb9b5bec632ab2e25236c8ed8bbac0ef54fb",
+  "profile_and_helper_added_after_measurement": "Effective zstd profile is identical; C2 algorithm unchanged and helper tested natively.",
+  "base_tree_sha": "f0e7c11c52ad9d02ae779df01395dedd6b6c7cef",
+  "candidate_c3": "QUALIFICATION_ONLY",
+  "private_measurements_published": false
+}
