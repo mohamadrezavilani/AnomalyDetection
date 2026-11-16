@@ -21,7 +21,7 @@ import uuid
 
 from p24_foundation.privacy import generate_keys
 from p24_foundation.viewer_data import ViewerDB
-from p24_foundation.viewer_online import bind_stream, initialize_live, publish_capture
+from p24_foundation.viewer_online import bind_stream, initialize_live, publish_capture, resume_recent, single_worker
 from p24_foundation.viewer_runtime import atomic_json, runtime_source_digest
 from .oracle import evidence_digest, projection_digest
 from .fixtures import corpus, START, FIVE
@@ -54,8 +54,8 @@ def semantic_snapshot(db):
     return result
 
 
-def run_lane(options, jobs, *, profiled):
-    windows=[]
+def run_lane(options, jobs, *, profiled, history=True):
+    windows=[];schedule_seconds=0;lane_began=time.perf_counter()
     with ViewerDB(**options) as db:
         db.init();initialize_live(db)
         bind_stream(db,start_ns=START,stream_key='capacity-fixed-corpus')
@@ -66,6 +66,16 @@ def run_lane(options, jobs, *, profiled):
         else:
             settings=[];layout=[]
         for ordinal,job in enumerate(jobs):
+            job=dict(job)
+            if history and ordinal==1:
+                # Exercise the actual manual_recheck path used by history,
+                # with a retained high-watermark, only in this owned test DB.
+                setup=time.perf_counter();db.conn.rollback()
+                with single_worker(db,Path(options['keys_path']).parent/'capacity.lock'):
+                    resume_recent(db,lookback_windows=1,now=START+5*FIVE+60_000_000_000)
+                schedule_seconds=time.perf_counter()-setup
+            if history and ordinal>0 and job['mode']=='forward':
+                job['mode']='manual_recheck'
             trace=Trace();transaction_counts=[]
             if profiled:
                 trace.attach(db)
@@ -87,6 +97,8 @@ def run_lane(options, jobs, *, profiled):
                 raise AssertionError('publication_not_committed_readable')
             after=counters.snapshot(db.conn) if not db.sqlite else None
             oracle_began=time.perf_counter();oracle=semantic_snapshot(db)
+            states={r['state']:r['n'] for r in db.all(
+                'SELECT state,COUNT(*) AS n FROM viewer_semantic_occurrences GROUP BY state')}
             oracle_seconds=time.perf_counter()-oracle_began
             window=dict(ordinal=ordinal,kind=job['kind'],mode=job['mode'],records=job['records'],
                 capture_sha256=job['sha256'],elapsed_publication_seconds=elapsed,
@@ -97,22 +109,29 @@ def run_lane(options, jobs, *, profiled):
                 trace=trace.report() if profiled else None,transaction_counters=transaction_counts,
                 backend_counters=counters.delta(before,after) if before else dict(status='NOT_NATIVE'),
                 oracle=oracle,oracle_seconds=oracle_seconds,
+                semantic_states=states,
                 cycle_including_diagnostics_and_oracle_seconds=time.perf_counter()-began)
             db.conn.rollback()
             windows.append(window)
         return dict(profiled=profiled,windows=windows,writer_settings=settings,index_inventory=layout,
+            publication_mode='history' if history else 'forward',
+            qualification_schedule_setup_seconds=schedule_seconds,
+            total_lane_seconds_including_setup_diagnostics_and_oracle=time.perf_counter()-lane_began,
             publication_seconds=distribution([w['elapsed_publication_seconds'] for w in windows]),
             bootstrap_reported_separately=True,
-            steady_publication_seconds=distribution([w['elapsed_publication_seconds'] for w in windows[1:]]))
+            steady_publication_seconds=distribution([w['elapsed_publication_seconds'] for w in windows[1:]
+                if w['mode'] in ('forward','manual_recheck')]),
+            recheck_seconds=distribution([w['elapsed_publication_seconds'] for w in windows if w['mode']=='recheck']))
 
 
-def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None):
+def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True):
     root=Path(__file__).resolve().parents[2]
     report=dict(status='RUNNING',baseline_git_sha=subprocess.check_output(
         ['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
         runtime_source_sha256=runtime_source_digest(),backend=backend,
         environment=dict(os=platform.platform(),python=platform.python_version(),client_cpu_count=os.cpu_count()),
-        production_modified=False,source_checkpoint_modified=False,lanes=[],checks=[],
+        production_modified=False,production_checkpoint_modified=False,lanes=[],checks=[],
+        publication_mode='history' if history else 'forward',
         cache_pressure_qualification='NOT_RUN',cold_os_cache='NOT_CONTROLLED',
         live_elasticsearch_acquisition='NOT_RUN',actual_ad_evaluation='NOT_RUN',
         owner_host_capacity='NOT_RUN',eight_hour_sustained_capacity='NOT_RUN',
@@ -153,7 +172,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None):
                             'options':'-c jit=off -c work_mem=64MB -c temp_buffers=128MB'},keys_path=keys)
                     else:
                         opts=dict(sqlite_path=temp/f'{pair}-{profiled}.db',keys_path=keys)
-                    lane=run_lane(opts,jobs,profiled=profiled);lane['pair']=pair;lanes.append(lane)
+                    lane=run_lane(opts,jobs,profiled=profiled,history=history);lane['pair']=pair;lanes.append(lane)
                 equal=[a['oracle']==b['oracle'] for a,b in zip(lanes[0]['windows'],lanes[1]['windows'])]
                 report['checks'].append(dict(pair=pair,order=['profiled' if v else 'plain' for v in order],
                     every_publication_equal=equal,all_equal=all(equal)))
@@ -179,11 +198,12 @@ def main(argv=None):
     parser.add_argument('--backend',choices=('sqlite','postgresql'),required=True)
     parser.add_argument('--counts',type=int,nargs=3,default=(16,64,256))
     parser.add_argument('--pairs',type=int,default=2)
+    parser.add_argument('--mode',choices=('history','forward'),default='history')
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args(argv)
     if not 1<=args.pairs<=4 or any(not 1<=n<=20000 for n in args.counts):
         parser.error('pairs must be 1..4 and each request count 1..20000')
-    report=run(backend=args.backend,counts=tuple(args.counts),pairs=args.pairs,out=args.out)
+    report=run(backend=args.backend,counts=tuple(args.counts),pairs=args.pairs,out=args.out,history=args.mode=='history')
     print(json.dumps({k:report.get(k) for k in ['status','backend','failure','owner_host_capacity']}))
     return 0 if report['status']=='PASS_MEASUREMENT_EQUIVALENCE' else 2
 

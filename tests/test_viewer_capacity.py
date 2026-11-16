@@ -73,6 +73,11 @@ class CapacityMeasurementTests(unittest.TestCase):
         for lane in lanes:
             self.assertEqual(lane['windows'][0]['trace']['spans']['driver:commit']['calls'],1)
             self.assertGreater(lane['windows'][1]['impacted_requests'],3)
+            self.assertEqual(lane['windows'][1]['mode'],'manual_recheck')
+            self.assertEqual(lane['windows'][2]['mode'],'manual_recheck')
+            self.assertEqual(lane['windows'][1]['oracle']['checkpoint']['next_ns'],
+                lane['windows'][2]['oracle']['checkpoint']['next_ns'])
+            self.assertEqual(lane['windows'][-1]['kind'],'late_arrival_original_event_time')
             self.assertGreater(lane['windows'][-1]['oracle']['viewer_semantic_transitions']['rows'],0)
         self.assertEqual(report['owner_host_capacity'],'NOT_RUN')
         self.assertEqual(report['cache_pressure_qualification'],'NOT_RUN')

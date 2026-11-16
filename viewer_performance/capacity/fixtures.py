@@ -66,4 +66,9 @@ def corpus(root,counts=(16,64,256)):
     path=write(root/'conflict.gz',changed,START)
     jobs.append(dict(path=path,start=START,mode='recheck',kind='cross_request_conflict',
         records=len(changed),sha256=hashlib.sha256(path.read_bytes()).hexdigest()))
+    late=[*changed,row(9_000_006,'late','Services.v1/TopUpProductPurchase Line:1',
+        'POST (G00000 | successful)',START)]
+    path=write(root/'late-arrival.gz',late,START)
+    jobs.append(dict(path=path,start=START,mode='recheck',kind='late_arrival_original_event_time',
+        records=len(late),sha256=hashlib.sha256(path.read_bytes()).hexdigest()))
     return jobs
