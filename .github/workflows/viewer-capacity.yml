@@ -5,6 +5,7 @@ on:
       - 'viewer_performance/capacity/**'
       - 'tests/test_viewer_capacity.py'
       - 'tests/test_viewer_origin_filter.py'
+      - 'tests/test_viewer_contract_fetch_once.py'
       - '.github/workflows/viewer-capacity.yml'
   workflow_dispatch:
 
@@ -22,7 +23,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
       - name: Collector byte preservation and measurement guards on Windows
-        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter
+        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once
   measurement:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -49,7 +50,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
       - name: Measurement guards, native COPY and per-boundary equivalence
-        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter
+        run: python -B -m unittest -v tests.test_viewer_capacity tests.test_viewer_origin_filter tests.test_viewer_contract_fetch_once
       - name: Current runtime baseline with balanced instrumentation order
         run: >-
           python -B -m viewer_performance.capacity.baseline --backend postgresql
@@ -59,6 +60,11 @@ jobs:
           python -B -m viewer_performance.capacity.baseline --backend postgresql
           --counts 32 256 2048 --pairs 2 --experiment origin_filter
           --out qualification/capacity-origin-filter.json
+      - name: C2 synthetic risk corpus with one raw-body read
+        run: >-
+          python -B -m viewer_performance.capacity.baseline --backend postgresql
+          --counts 32 256 2048 --pairs 2 --experiment contract_fetch_once
+          --out qualification/capacity-contract-once.json
       - name: Retain diagnostic receipt even on failure
         if: always()
         uses: actions/upload-artifact@v4

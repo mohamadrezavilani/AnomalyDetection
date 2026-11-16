@@ -151,7 +151,7 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB):
 
 def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True,captures=None,experiment='instrumentation'):
     overall_began=time.perf_counter()
-    if experiment not in ('instrumentation','origin_filter'):
+    if experiment not in ('instrumentation','origin_filter','contract_fetch_once'):
         raise ValueError('unknown_capacity_experiment')
     if not 1<=pairs<=4:
         raise ValueError('capacity_pairs_must_be_1_to_4')
@@ -202,6 +202,9 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                     if experiment=='origin_filter' and selected:
                         from .origin_filter import OriginFilteredDB
                         db_type=OriginFilteredDB
+                    elif experiment=='contract_fetch_once' and selected:
+                        from .contract_fetch_once import ContractFetchOnceDB
+                        db_type=ContractFetchOnceDB
                     if backend=='postgresql':
                         name='p24_design_capacity_'+uuid.uuid4().hex[:16]+'_qualification'
                         admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)));created.append(name)
@@ -210,9 +213,9 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                     else:
                         opts=dict(sqlite_path=temp/f'{pair}-{selected}.db',keys_path=keys)
                     lane=run_lane(opts,jobs,profiled=profiled,history=history,db_type=db_type)
-                    lane['pair']=pair;lane['variant']=('origin_filter' if selected else 'baseline') if experiment!='instrumentation' else ('profiled' if selected else 'plain');lanes.append(lane)
+                    lane['pair']=pair;lane['variant']=(experiment if selected else 'baseline') if experiment!='instrumentation' else ('profiled' if selected else 'plain');lanes.append(lane)
                 equal=[a['oracle']==b['oracle'] for a,b in zip(lanes[0]['windows'],lanes[1]['windows'])]
-                labels=['profiled' if v else 'plain' for v in order] if experiment=='instrumentation' else ['origin_filter' if v else 'baseline' for v in order]
+                labels=['profiled' if v else 'plain' for v in order] if experiment=='instrumentation' else [experiment if v else 'baseline' for v in order]
                 report['checks'].append(dict(pair=pair,order=labels,
                     every_publication_equal=equal,all_equal=all(equal)))
                 report['lanes'].extend(lanes)
@@ -230,10 +233,12 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
     report['total_run_seconds_including_preflight_setup_oracles_and_cleanup']=time.perf_counter()-overall_began
     if captures:
         report['limitations'][0]='Contiguous verified private Captures; broad traffic/risk representativeness is not established.'
-    if experiment=='origin_filter':
-        report['limitations'][1]='Only a disposable, source-pinned subclass enables C1; production runtime is unchanged.'
-        exercised=[l['candidate_report']['lookup']['skipped_negatives']>0 for l in report['lanes']
-            if l['variant']=='origin_filter']
+    if experiment!='instrumentation':
+        report['limitations'][1]='Only a disposable, source-pinned subclass enables the candidate; production runtime is unchanged.'
+        def used(lane):
+            if experiment=='origin_filter':return lane['candidate_report']['lookup']['skipped_negatives']>0
+            return lane['candidate_report']['fetch_once']['scoped_calls']>0
+        exercised=[used(l) for l in report['lanes'] if l['variant']==experiment]
         report['candidate_exercised']=bool(exercised) and all(exercised)
         if report['status']=='PASS_CANDIDATE_EQUIVALENCE' and not report['candidate_exercised']:
             report['status']='NOT_QUALIFIED_CANDIDATE_UNUSED'
@@ -249,7 +254,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                     publication_to_contract_seconds=seconds,
                     candidate_build_seconds=lane['candidate_prepare_seconds'],
                     total_charged_seconds=seconds+lane['candidate_prepare_seconds'])
-            base=charged(lanes['baseline']);candidate=charged(lanes['origin_filter'])
+            base=charged(lanes['baseline']);candidate=charged(lanes[experiment])
             comparisons.append(dict(pair=pair,baseline=base,candidate=candidate,
                 reduction_fraction=1-candidate['total_charged_seconds']/base['total_charged_seconds']
                     if base['total_charged_seconds'] else None))
@@ -268,7 +273,7 @@ def main(argv=None):
     parser.add_argument('--pairs',type=int,default=2)
     parser.add_argument('--mode',choices=('history','forward'),default='history')
     parser.add_argument('--captures',type=Path,nargs='+',help='Existing contiguous verified captures; private data is never exported')
-    parser.add_argument('--experiment',choices=('instrumentation','origin_filter'),default='instrumentation')
+    parser.add_argument('--experiment',choices=('instrumentation','origin_filter','contract_fetch_once'),default='instrumentation')
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args(argv)
     if not 1<=args.pairs<=4 or any(not 1<=n<=20000 for n in args.counts):
