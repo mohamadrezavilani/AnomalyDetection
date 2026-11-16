@@ -16,10 +16,57 @@ from viewer_performance.capacity.baseline import run
 from viewer_performance.capacity.oracle import digest_table
 from viewer_performance.capacity.trace import Trace, signature
 from viewer_performance import Collect_Capacity_Inputs as inputs
-from viewer_performance.capacity.fixtures import write,START,FIVE,iso
+from viewer_performance import Qualify_Capacity_Candidate as owner_qualification
+from viewer_performance.capacity.fixtures import write,row,sql,START,FIVE,iso
 
 
 class CapacityMeasurementTests(unittest.TestCase):
+    def test_owner_connection_config_is_literal_and_never_executed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project=Path(folder)
+            config=project/'viewer_config.local.py'
+            config.write_text("raise RuntimeError('do not execute')\nDATABASE={'host':'127.0.0.1','port':5432,'dbname':'p24_design_viewer','user':'qualified','password':'private-test-password'}")
+            result=owner_qualification.literal_database(project)
+            self.assertEqual(result['user'],'qualified')
+            with patch.dict(os.environ,{'PGPASSWORD':'prior-password'}):
+                with owner_qualification.connection_environment(result):
+                    self.assertEqual(os.environ['PGPASSWORD'],'private-test-password')
+                self.assertEqual(os.environ['PGPASSWORD'],'prior-password')
+            config.write_text("DATABASE=dict(host='127.0.0.1')")
+            with self.assertRaisesRegex(ValueError,'literal_database_config'):
+                owner_qualification.literal_database(project)
+
+    def test_owner_bundle_checks_hashes_and_rejects_path_or_member_changes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project=Path(folder);capture_dir=project/'captures';capture_dir.mkdir()
+            for i in range(4):write(capture_dir/f'window-{i}.gz',[],START+i*FIVE)
+            with patch('p24_foundation.viewer_runtime.runtime_source_digest',return_value=inputs.EXPECTED_RUNTIME):
+                bundle=Path(inputs.collect(project,capture_dir=capture_dir)['output'])
+            target=project/'extracted';target.mkdir()
+            paths=owner_qualification.extract_captures(bundle,target)
+            self.assertEqual(len(paths),4)
+            for path in paths:self.assertEqual(path.read_bytes(),(capture_dir/path.name).read_bytes())
+            altered=project/'altered.zip'
+            with zipfile.ZipFile(bundle) as source,zipfile.ZipFile(altered,'w') as output:
+                for name in source.namelist():
+                    output.writestr('../bad.gz' if name=='window-0.gz' else name,source.read(name))
+            with self.assertRaisesRegex(ValueError,'bundle_path'):
+                owner_qualification.extract_captures(altered,target)
+
+    def test_owner_helper_never_opens_product_database_and_keeps_credentials_out_of_receipt(self):
+        with tempfile.TemporaryDirectory() as folder:
+            project=Path(folder);capture_dir=project/'captures';capture_dir.mkdir()
+            for i in range(4):write(capture_dir/f'window-{i}.gz',[],START+i*FIVE)
+            (project/'viewer_config.local.py').write_text("DATABASE={'host':'127.0.0.1','dbname':'p24_design_viewer','user':'qualified','password':'private-test-secret'}")
+            with patch('p24_foundation.viewer_runtime.runtime_source_digest',return_value=inputs.EXPECTED_RUNTIME):
+                bundle=Path(inputs.collect(project,capture_dir=capture_dir)['output'])
+                with patch('viewer_performance.capacity.baseline.run',return_value=dict(status='PASS_CANDIDATE_EQUIVALENCE')) as run_mock,patch(
+                        'p24_foundation.viewer_data.ViewerDB.__init__',side_effect=AssertionError('product opened')):
+                    result=owner_qualification.qualify(project,bundle,pairs=1)
+            self.assertFalse(result['product_database_opened'])
+            self.assertEqual(run_mock.call_args.kwargs['wal_compression'],'zstd')
+            self.assertNotIn('private-test-secret',Path(result['output']).read_text())
+
     def test_capture_selection_requires_four_contiguous_windows_and_keeps_newest_duplicate(self):
         rows=[dict(start_ns=i*inputs.FIVE,marker=str(i)) for i in (6,5,4,2,1,0)]
         self.assertEqual(inputs.select_run(rows),[])
@@ -144,6 +191,31 @@ class CapacityMeasurementTests(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'isolated PG18 not configured')
 class NativeCapacityTests(unittest.TestCase):
+    def test_owner_helper_compares_private_bundle_without_opening_product_database(self):
+        import psycopg
+        with tempfile.TemporaryDirectory() as folder:
+            project=Path(folder);captures=project/'captures';captures.mkdir()
+            config=dict(host=os.environ['P24_DELTA_PG_HOST'],
+                port=int(os.environ.get('P24_DELTA_PG_PORT','5432')),
+                user=os.environ.get('P24_DELTA_PG_USER','postgres'),
+                password=os.environ.get('PGPASSWORD'),dbname='p24_design_viewer')
+            (project/'viewer_config.local.py').write_text('DATABASE='+repr(config))
+            for i in range(4):
+                event=row(i,'r'+str(i),'DBPath.x.ud_prc_paymentExists',sql('K'+str(i)),START+i*FIVE)
+                write(captures/f'window-{i}.gz',[event],START+i*FIVE)
+            opened=[];connect=psycopg.connect
+            def recorded(*args,**kwargs):
+                opened.append(kwargs.get('dbname'));return connect(*args,**kwargs)
+            with patch('p24_foundation.viewer_runtime.runtime_source_digest',return_value=inputs.EXPECTED_RUNTIME):
+                bundle=Path(inputs.collect(project,capture_dir=captures)['output'])
+                with patch('psycopg.connect',side_effect=recorded):
+                    result=owner_qualification.qualify(project,bundle,pairs=1)
+            self.assertEqual(result['status'],'PASS_CANDIDATE_EQUIVALENCE',result.get('failure'))
+            self.assertTrue(opened)
+            self.assertTrue(all(name=='postgres' or
+                name.startswith('p24_design_capacity_') and name.endswith('_qualification') for name in opened))
+            self.assertFalse(result['product_database_opened'])
+
     def test_native_copy_fetch_commit_counters_and_per_boundary_equivalence(self):
         with tempfile.TemporaryDirectory() as folder:
             output=Path(folder)/'native.json'
