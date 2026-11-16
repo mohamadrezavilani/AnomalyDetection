@@ -1,0 +1,50 @@
+name: Viewer capacity measurement qualification
+on:
+  pull_request:
+    paths:
+      - 'viewer_performance/capacity/**'
+      - 'tests/test_viewer_capacity.py'
+      - '.github/workflows/viewer-capacity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  measurement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ephemeral-capacity-only
+        ports:
+          - 5432:5432
+        options: >-
+          --memory 1g --memory-swap 1g --cpus 2
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      P24_DELTA_PG_HOST: 127.0.0.1
+      P24_DELTA_PG_PORT: '5432'
+      P24_DELTA_PG_USER: postgres
+      PGPASSWORD: ephemeral-capacity-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Measurement guards, native COPY and per-boundary equivalence
+        run: python -B -m unittest -v tests.test_viewer_capacity
+      - name: Current runtime baseline with balanced instrumentation order
+        run: >-
+          python -B -m viewer_performance.capacity.baseline --backend postgresql
+          --counts 32 256 2048 --pairs 2 --out qualification/capacity-baseline.json
+      - name: Retain diagnostic receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-capacity-baseline
+          path: qualification/capacity-baseline.json
