@@ -95,6 +95,11 @@ def qualify(project,bundle,*,pairs=2,experiment='contract_fetch_once',notice=Non
     if runtime_source_digest(project)!=EXPECTED_RUNTIME:
         raise ValueError('installed_viewer_is_not_the_recorded_baseline')
     config=literal_database(project)
+    code_root=Path(__file__).resolve().parent
+    def qualification_hashes():
+        files=[Path(__file__).resolve(),*sorted((code_root/'capacity').glob('*.py'))]
+        return {path.relative_to(code_root).as_posix():hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
+    code_before=qualification_hashes()
     if not 1<=pairs<=2:raise ValueError('owner_qualification_pairs_must_be_1_to_2')
     output=project/'AnomalyDetection/reports'/('Viewer_Capacity_Candidate_'+
         datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_')+uuid.uuid4().hex[:8]+'.json')
@@ -107,7 +112,13 @@ def qualify(project,bundle,*,pairs=2,experiment='contract_fetch_once',notice=Non
         workers_restarted=False,source_config_executed=False,
         shared_host_load_is_not_controlled=True,
         owner_host_capacity='NOT_ACCEPTED_FOUR_CAPTURE_CALIBRATION',
+        qualification_files_sha256=code_before,
+        qualification_files_unchanged_during_run=qualification_hashes()==code_before,
+        runtime_still_matches=runtime_source_digest(project)==EXPECTED_RUNTIME,
         input_bundle_sha256=hashlib.sha256(bundle.read_bytes()).hexdigest())
+    if not result['qualification_files_unchanged_during_run']:
+        result['status']='FAILED_QUALIFICATION_FILES_CHANGED'
+    if not result['runtime_still_matches']:result['status']='FAILED_RUNTIME_CHANGED_DURING_QUALIFICATION'
     atomic_json(output,result)
     return dict(status=result['status'],output=str(output),failure=result.get('failure'),
         product_database_opened=False,product_database_modified=False,workers_restarted=False,
@@ -120,7 +131,7 @@ def main(argv=None):
     parser.add_argument('--project',type=Path,required=True)
     parser.add_argument('--captures-zip',type=Path,required=True)
     parser.add_argument('--pairs',type=int,choices=(1,2),default=2)
-    parser.add_argument('--experiment',choices=('origin_filter','contract_fetch_once'),default='contract_fetch_once')
+    parser.add_argument('--experiment',choices=('origin_filter','contract_fetch_once','local_projection_keys'),default='contract_fetch_once')
     args=parser.parse_args(argv)
     done=threading.Event();began=time.monotonic()
     def notice(value):print(json.dumps(value),flush=True)

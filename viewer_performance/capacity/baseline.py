@@ -155,12 +155,13 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB,notice=N
 
 def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True,captures=None,experiment='instrumentation',wal_compression=None,notice=None):
     overall_began=time.perf_counter()
-    if experiment not in ('instrumentation','origin_filter','contract_fetch_once'):
+    if experiment not in ('instrumentation','origin_filter','contract_fetch_once','local_projection_keys'):
         raise ValueError('unknown_capacity_experiment')
     if not 1<=pairs<=4:
         raise ValueError('capacity_pairs_must_be_1_to_4')
     if wal_compression not in (None,'pglz','lz4','zstd'):
         raise ValueError('unsupported_capacity_wal_compression')
+    baseline_variant='contract_fetch_once' if experiment=='local_projection_keys' else 'baseline'
     root=Path(__file__).resolve().parents[2]
     report=dict(status='RUNNING',baseline_git_sha=subprocess.check_output(
         ['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
@@ -173,6 +174,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
         owner_host_capacity='NOT_RUN',eight_hour_sustained_capacity='NOT_RUN',
         candidate_implemented=experiment!='instrumentation',experiment=experiment,
         requested_writer_wal_compression=wal_compression,
+        comparison_baseline_variant=baseline_variant,
         limitations=['Synthetic risk corpus; volume labels are relative within this corpus.',
             'Existing runtime is measured; no cache, batching or storage candidate is enabled.',
             'A database larger than shared_buffers is not evidence of an out-of-cache active working set.',
@@ -212,6 +214,10 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                     elif experiment=='contract_fetch_once' and selected:
                         from .contract_fetch_once import ContractFetchOnceDB
                         db_type=ContractFetchOnceDB
+                    elif experiment=='local_projection_keys':
+                        from .contract_fetch_once import ContractFetchOnceDB
+                        from .local_projection_keys import LocalProjectionKeysDB
+                        db_type=LocalProjectionKeysDB if selected else ContractFetchOnceDB
                     if backend=='postgresql':
                         name='p24_design_capacity_'+uuid.uuid4().hex[:16]+'_qualification'
                         admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)));created.append(name)
@@ -220,12 +226,12 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                         opts=dict(config={**settings,'dbname':name,'options':profile},keys_path=keys)
                     else:
                         opts=dict(sqlite_path=temp/f'{pair}-{selected}.db',keys_path=keys)
-                    variant=(experiment if selected else 'baseline') if experiment!='instrumentation' else ('profiled' if selected else 'plain')
+                    variant=(experiment if selected else baseline_variant) if experiment!='instrumentation' else ('profiled' if selected else 'plain')
                     if notice:notice(dict(status='CAPACITY_LANE_STARTED',pair=pair,variant=variant))
                     lane=run_lane(opts,jobs,profiled=profiled,history=history,db_type=db_type,notice=notice)
-                    lane['pair']=pair;lane['variant']=(experiment if selected else 'baseline') if experiment!='instrumentation' else ('profiled' if selected else 'plain');lanes.append(lane)
+                    lane['pair']=pair;lane['variant']=variant;lanes.append(lane)
                 equal=[a['oracle']==b['oracle'] for a,b in zip(lanes[0]['windows'],lanes[1]['windows'])]
-                labels=['profiled' if v else 'plain' for v in order] if experiment=='instrumentation' else [experiment if v else 'baseline' for v in order]
+                labels=['profiled' if v else 'plain' for v in order] if experiment=='instrumentation' else [experiment if v else baseline_variant for v in order]
                 report['checks'].append(dict(pair=pair,order=labels,
                     every_publication_equal=equal,all_equal=all(equal)))
                 report['lanes'].extend(lanes)
@@ -254,6 +260,9 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
         report['limitations'][1]='Only a disposable, source-pinned subclass enables the candidate; production runtime is unchanged.'
         def used(lane):
             if experiment=='origin_filter':return lane['candidate_report']['lookup']['skipped_negatives']>0
+            if experiment=='local_projection_keys':
+                return (lane['candidate_report']['local_projection_keys']['queries']>0
+                    and lane['candidate_report']['fetch_once']['body_pair_lookups']>0)
             return lane['candidate_report']['fetch_once']['body_pair_lookups']>0
         exercised=[used(l) for l in report['lanes'] if l['variant']==experiment]
         report['candidate_exercised']=bool(exercised) and all(exercised)
@@ -271,7 +280,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                     publication_to_contract_seconds=seconds,
                     candidate_build_seconds=lane['candidate_prepare_seconds'],
                     total_charged_seconds=seconds+lane['candidate_prepare_seconds'])
-            base=charged(lanes['baseline']);candidate=charged(lanes[experiment])
+            base=charged(lanes[baseline_variant]);candidate=charged(lanes[experiment])
             comparisons.append(dict(pair=pair,baseline=base,candidate=candidate,
                 reduction_fraction=1-candidate['total_charged_seconds']/base['total_charged_seconds']
                     if base['total_charged_seconds'] else None))
@@ -290,7 +299,7 @@ def main(argv=None):
     parser.add_argument('--pairs',type=int,default=2)
     parser.add_argument('--mode',choices=('history','forward'),default='history')
     parser.add_argument('--captures',type=Path,nargs='+',help='Existing contiguous verified captures; private data is never exported')
-    parser.add_argument('--experiment',choices=('instrumentation','origin_filter','contract_fetch_once'),default='instrumentation')
+    parser.add_argument('--experiment',choices=('instrumentation','origin_filter','contract_fetch_once','local_projection_keys'),default='instrumentation')
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--wal-compression',choices=('pglz','lz4','zstd'))
     args=parser.parse_args(argv)
