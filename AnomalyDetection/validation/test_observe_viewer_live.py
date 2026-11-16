@@ -60,6 +60,35 @@ class FakeReader:
 
 
 class ViewerObservationTests(unittest.TestCase):
+    def test_owned_progress_keeps_scenario_errors_separate_from_primary_errors(self):
+        event={'phase':'read_technical_request_census','at_ns':123,
+            'failure':{'code':'WORKER_OPERATION_ERROR','error_type':'QueryCanceled','sqlstate':'57014',
+                       'sql':'private-query','request_key':'private-request'},
+            'request_key':'private-request'}
+        value={'source_failures_total':0,'scenario_failures_total':9,
+            'last_scenario_failure':event,'scenario_lane_failures':{'read_technical_request_census':event,
+                'private-request':event},'last_technical_census':'PAGE','last_service_sample':'CAUGHT_UP',
+            'statistics_status':'PARTIAL','statistics_at_ns':100}
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'status.json';path.write_text(json.dumps(value),encoding='utf-8')
+            result=probe.owned_progress(path)
+        self.assertEqual(result['status'],'READ');out=result['value']
+        self.assertEqual(out['source_failures_total'],0)
+        self.assertEqual(out['scenario_failures_total'],9)
+        self.assertEqual(out['last_scenario_failure']['failure']['sqlstate'],'57014')
+        self.assertEqual(list(out['scenario_lane_failures']),['read_technical_request_census'])
+        self.assertEqual(out['last_technical_census'],'PAGE')
+        self.assertEqual(out['statistics_status'],'PARTIAL');self.assertEqual(out['statistics_at_ns'],100)
+        self.assertNotIn('private-request',json.dumps(out));self.assertNotIn('private-query',json.dumps(out))
+
+    def test_owned_progress_missing_scenario_counters_remain_unknown(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'status.json';path.write_text('{}',encoding='utf-8')
+            result=probe.owned_progress(path)['value']
+        for key in ('scenario_failures_total','last_scenario_failure','scenario_lane_failures',
+                    'statistics_status','statistics_at_ns'):
+            self.assertIn(key,result);self.assertIsNone(result[key])
+
     def test_owned_progress_keeps_failure_and_window_counters_without_cursor_identifiers(self):
         value={'pid':3,'instance_token':'worker','cohort_windows':7,'owned_apply_failures_total':2,
             'last_source_failure_event':{'phase':'read_request_evidence','failure':{'sqlstate':'57014'}},
