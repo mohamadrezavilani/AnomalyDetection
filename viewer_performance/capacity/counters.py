@@ -27,6 +27,8 @@ def delta(before, after):
             and isinstance(b.get(k), (int,float,Decimal))}
         if any(v < 0 for v in values.values()):
             return dict(status='COUNTERS_REGRESSED')
+        values={k:(int(v) if v==v.to_integral_value() else float(v))
+            if isinstance(v,Decimal) else v for k,v in values.items()}
         return dict(status='DELTA',values=values)
     old={(r['object'],r['context']):r for r in before['io']}
     io=[]

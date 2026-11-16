@@ -1,6 +1,7 @@
 """Measurement attribution and unchanged per-boundary publisher results."""
 from contextlib import contextmanager
 from decimal import Decimal
+import json
 import os
 from pathlib import Path
 import sqlite3
@@ -44,6 +45,7 @@ class CapacityMeasurementTests(unittest.TestCase):
         b['wal']['wal_bytes']=Decimal(15)
         out=counters.delta(a,b)
         self.assertEqual(out['wal']['values']['wal_bytes'],5)
+        json.dumps(out)  # PG exposes WAL bytes as NUMERIC/Decimal.
         self.assertFalse(out['includes_background_writer_or_other_sessions'])
         self.assertFalse(out['exact_window_attribution'])
 
@@ -88,7 +90,10 @@ class CapacityMeasurementTests(unittest.TestCase):
 @unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'isolated PG18 not configured')
 class NativeCapacityTests(unittest.TestCase):
     def test_native_copy_fetch_commit_counters_and_per_boundary_equivalence(self):
-        report=run(backend='postgresql',counts=(4,8,16),pairs=2)
+        with tempfile.TemporaryDirectory() as folder:
+            output=Path(folder)/'native.json'
+            report=run(backend='postgresql',counts=(4,8,16),pairs=2,out=output)
+            self.assertEqual(json.loads(output.read_text())['status'],report['status'])
         self.assertEqual(report['status'],'PASS_MEASUREMENT_EQUIVALENCE',report.get('failure'))
         self.assertTrue(all(check['all_equal'] for check in report['checks']))
         for lane in report['lanes']:
