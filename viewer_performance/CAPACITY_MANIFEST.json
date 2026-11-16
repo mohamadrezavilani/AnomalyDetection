@@ -13,7 +13,7 @@
     "viewer_performance/capacity/fixtures.py": "17bb68773eadeebef7a45c72e5791fc85e715d7e5b140076640c76240d5aa707",
     "viewer_performance/capacity/oracle.py": "acf8d464eaf20bc0e100e6cf5a1bca43d5c8339760475aee59d58bae70e571da",
     "viewer_performance/capacity/trace.py": "0c878650a6bc9e0d3297123e77c4e5aa24c085e227142a7397b8715ca0cdfad5",
-    "tests/test_viewer_capacity.py": "bcf26c82ac99cd9b8337bf021a755e41da0b46ae8359192a4fde6bb93a246fc6",
+    "tests/test_viewer_capacity.py": "22dfd230c7ab6ad87901061b1d69c38cfa80207616a7da83d5ce996ffe5eb15e",
     ".github/workflows/viewer-capacity.yml": "fba54141ebd7365763e6a61ecd0b72b4a309f0b0e6e54d6b94cda5eb5faf2120"
   },
   "evidence_sha256": {

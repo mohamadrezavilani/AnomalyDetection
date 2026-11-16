@@ -30,7 +30,7 @@ class CapacityMeasurementTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)
             (root/'viewer_config.local.py').write_text("raise RuntimeError('must not run')\nLIVE={'capture_dir':'captures'}\n")
-            self.assertEqual(inputs.capture_directory(root),root/'captures')
+            self.assertEqual(inputs.capture_directory(root),(root/'captures').resolve())
             (root/'viewer_config.local.py').write_text("LIVE=dict(capture_dir='other')")
             with self.assertRaisesRegex(ValueError,'explicit_argument'):
                 inputs.capture_directory(root)
