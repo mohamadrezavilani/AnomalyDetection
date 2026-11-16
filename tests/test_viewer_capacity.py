@@ -1,20 +1,70 @@
 """Measurement attribution and unchanged per-boundary publisher results."""
 from contextlib import contextmanager
 from decimal import Decimal
+import gzip
 import json
 import os
 from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
+import zipfile
 
 from viewer_performance.capacity import counters
 from viewer_performance.capacity.baseline import run
 from viewer_performance.capacity.oracle import digest_table
 from viewer_performance.capacity.trace import Trace, signature
+from viewer_performance import Collect_Capacity_Inputs as inputs
+from viewer_performance.capacity.fixtures import write,START,FIVE,iso
 
 
 class CapacityMeasurementTests(unittest.TestCase):
+    def test_capture_selection_requires_four_contiguous_windows_and_keeps_newest_duplicate(self):
+        rows=[dict(start_ns=i*inputs.FIVE,marker=str(i)) for i in (6,5,4,2,1,0)]
+        self.assertEqual(inputs.select_run(rows),[])
+        rows.append(dict(start_ns=3*inputs.FIVE,marker='3'))
+        self.assertEqual([r['marker'] for r in inputs.select_run(rows)],['3','4','5','6'])
+
+    def test_private_config_is_parsed_without_executing_code(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            (root/'viewer_config.local.py').write_text("raise RuntimeError('must not run')\nLIVE={'capture_dir':'captures'}\n")
+            self.assertEqual(inputs.capture_directory(root),root/'captures')
+            (root/'viewer_config.local.py').write_text("LIVE=dict(capture_dir='other')")
+            with self.assertRaisesRegex(ValueError,'explicit_argument'):
+                inputs.capture_directory(root)
+
+    def test_collector_preserves_original_capture_bytes_and_names_without_opening_a_database(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);captures=root/'captures';captures.mkdir()
+            originals={}
+            for i in range(4):
+                path=write(captures/f'original-{i}.json.gz',[],START+i*FIVE)
+                originals[path.name]=path.read_bytes()
+            with patch('p24_foundation.viewer_runtime.runtime_source_digest',return_value=inputs.EXPECTED_RUNTIME),patch(
+                    'p24_foundation.viewer_data.ViewerDB.__init__',side_effect=AssertionError('DB access forbidden')):
+                result=inputs.collect(root,capture_dir=captures)
+            self.assertEqual(result['status'],'VERIFIED_CAPACITY_INPUTS_EXPORTED')
+            with zipfile.ZipFile(result['output']) as archive:
+                for name,content in originals.items():self.assertEqual(archive.read(name),content)
+                manifest=json.loads(archive.read('manifest.json'))
+                self.assertFalse(manifest['database_modified'])
+                self.assertEqual(len(manifest['captures']),4)
+
+    def test_collector_rejects_complete_flag_without_capture_proof(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            for i in range(4):
+                path=write(root/f'raw-{i}.gz',[],START+i*FIVE)
+                with gzip.open(path,'wt') as stream:
+                    json.dump({'complete':True,'count':0,'logs':[],
+                        'window_start':iso(START+i*FIVE),
+                        'window_end':iso(START+(i+1)*FIVE)},stream)
+            with patch('p24_foundation.viewer_runtime.runtime_source_digest',return_value=inputs.EXPECTED_RUNTIME):
+                with self.assertRaisesRegex(ValueError,'four_contiguous_verified'):
+                    inputs.collect(root,capture_dir=root)
+
     def test_nested_times_are_exclusive_and_restore_stack_after_failure(self):
         ticks=iter([0,10,40,100])
         trace=Trace(clock=lambda:next(ticks),cpu=lambda:0)
