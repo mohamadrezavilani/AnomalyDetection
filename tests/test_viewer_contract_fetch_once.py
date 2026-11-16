@@ -1,6 +1,7 @@
 """C2 scoped body eligibility equals the original COUNT plus body read."""
 from contextlib import contextmanager
 import os
+import multiprocessing
 from pathlib import Path
 import tempfile
 import unittest
@@ -12,6 +13,14 @@ from p24_foundation.viewer_online import bind_stream,initialize_live,publish_cap
 from viewer_performance.capacity.baseline import run,semantic_snapshot
 from viewer_performance.capacity.fixtures import corpus,write,row,sql,START,FIVE
 from viewer_performance.capacity.contract_fetch_once import ContractFetchOnceDB
+
+
+def crash_candidate(options,path,start,point):
+    with ContractFetchOnceDB(**options) as db:
+        db.prepare_candidate()
+        publish_capture(db,path,start,start+FIVE,
+            fault=lambda stage:os._exit(73) if stage==point else None)
+    os._exit(74)
 
 
 class ContractChecks:
@@ -104,6 +113,48 @@ class NativeContractFetchTests(ContractChecks,unittest.TestCase):
 
     def test_unsupported_duplicate_bodies_remain_ineligible_as_in_original_count(self):
         self.compare_missing(nonunique=True)
+
+    def test_snapshot_reader_sees_only_committed_contract_and_window(self):
+        import psycopg
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);keys=root/'keys';generate_keys(keys);jobs=corpus(root,(1,1,1))
+            with self.database(ContractFetchOnceDB,root,keys) as db:
+                first=jobs[0];publish_capture(db,first['path'],START,START+FIVE)
+                db.prepare_candidate();name=db.conn.info.dbname
+                with psycopg.connect(**self.parameters,dbname=name,autocommit=True) as reader:
+                    reader.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
+                    def state():
+                        return reader.execute('''SELECT
+                            (SELECT COUNT(*) FROM viewer_events),
+                            (SELECT COUNT(*) FROM viewer_contract_identifiers),
+                            (SELECT generation FROM viewer_live_state WHERE id=1)''').fetchone()
+                    before=state();observed=[]
+                    def inspect(stage):
+                        if stage in ('after_requests','after_relations','before_commit','after_commit'):
+                            observed.append(state())
+                    job=jobs[1]
+                    publish_capture(db,job['path'],job['start'],job['start']+FIVE,fault=inspect)
+                    self.assertEqual(observed,[before]*4)
+                    reader.execute('ROLLBACK');self.assertNotEqual(state(),before)
+
+    def test_killed_candidate_before_and_after_commit_reconciles_without_new_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);keys=root/'keys';generate_keys(keys);jobs=corpus(root,(1,1,1))
+            with self.database(ContractFetchOnceDB,root,keys) as db:
+                publish_capture(db,jobs[0]['path'],START,START+FIVE)
+                options=dict(config={**self.parameters,'dbname':db.conn.info.dbname,'options':'-c jit=off'},keys_path=keys)
+                for point,job,committed in (('before_commit',jobs[1],False),('after_commit',jobs[2],True)):
+                    before=semantic_snapshot(db);db.conn.rollback()
+                    child=multiprocessing.get_context('spawn').Process(target=crash_candidate,
+                        args=(options,job['path'],job['start'],point))
+                    child.start();child.join(30)
+                    if child.is_alive():child.kill();child.join();self.fail('candidate child timed out')
+                    self.assertEqual(child.exitcode,73)
+                    after=semantic_snapshot(db);db.conn.rollback()
+                    self.assertEqual(before==after,not committed)
+                    result=publish_capture(db,job['path'],job['start'],job['start']+FIVE,
+                        mode='recheck' if committed else 'forward')
+                    self.assertEqual(result['new_events']==0,committed)
 
 
 if __name__=='__main__':unittest.main()

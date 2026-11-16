@@ -70,7 +70,7 @@ def capture_jobs(paths):
     return jobs
 
 
-def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB):
+def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB,notice=None):
     windows=[];schedule_seconds=0;candidate_setup=0;candidate_prepare=None;lane_began=time.perf_counter()
     beginning=jobs[0]['start']
     with db_type(**options) as db:
@@ -84,6 +84,7 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB):
             settings=[];layout=[]
         for ordinal,job in enumerate(jobs):
             job=dict(job)
+            if notice:notice(dict(status='CAPACITY_WINDOW_STARTED',ordinal=ordinal,records=job['records']))
             if history and ordinal==1:
                 # Exercise the actual manual_recheck path used by history,
                 # with a retained high-watermark, only in this owned test DB.
@@ -136,6 +137,9 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB):
                 cycle_including_diagnostics_and_oracle_seconds=time.perf_counter()-began)
             db.conn.rollback()
             windows.append(window)
+            if notice:notice(dict(status='CAPACITY_WINDOW_COMMITTED',ordinal=ordinal,
+                bootstrap=bool(result['bootstrap']),new_events=result['new_events'],
+                seconds=elapsed,semantic_oracle_complete=True))
         return dict(profiled=profiled,windows=windows,writer_settings=settings,index_inventory=layout,
             publication_mode='history' if history else 'forward',
             candidate_prepare_seconds=candidate_setup,candidate_prepare=candidate_prepare,
@@ -149,12 +153,14 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB):
             recheck_seconds=distribution([w['elapsed_publication_seconds'] for w in windows if w['mode']=='recheck']))
 
 
-def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True,captures=None,experiment='instrumentation'):
+def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True,captures=None,experiment='instrumentation',wal_compression=None,notice=None):
     overall_began=time.perf_counter()
     if experiment not in ('instrumentation','origin_filter','contract_fetch_once'):
         raise ValueError('unknown_capacity_experiment')
     if not 1<=pairs<=4:
         raise ValueError('capacity_pairs_must_be_1_to_4')
+    if wal_compression not in (None,'pglz','lz4','zstd'):
+        raise ValueError('unsupported_capacity_wal_compression')
     root=Path(__file__).resolve().parents[2]
     report=dict(status='RUNNING',baseline_git_sha=subprocess.check_output(
         ['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
@@ -166,6 +172,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
         live_elasticsearch_acquisition='NOT_RUN',actual_ad_evaluation='NOT_RUN',
         owner_host_capacity='NOT_RUN',eight_hour_sustained_capacity='NOT_RUN',
         candidate_implemented=experiment!='instrumentation',experiment=experiment,
+        requested_writer_wal_compression=wal_compression,
         limitations=['Synthetic risk corpus; volume labels are relative within this corpus.',
             'Existing runtime is measured; no cache, batching or storage candidate is enabled.',
             'A database larger than shared_buffers is not evidence of an out-of-cache active working set.',
@@ -208,11 +215,14 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                     if backend=='postgresql':
                         name='p24_design_capacity_'+uuid.uuid4().hex[:16]+'_qualification'
                         admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)));created.append(name)
-                        opts=dict(config={**settings,'dbname':name,
-                            'options':'-c jit=off -c work_mem=64MB -c temp_buffers=128MB'},keys_path=keys)
+                        profile='-c jit=off -c work_mem=64MB -c temp_buffers=128MB'
+                        if wal_compression:profile+=' -c wal_compression='+wal_compression
+                        opts=dict(config={**settings,'dbname':name,'options':profile},keys_path=keys)
                     else:
                         opts=dict(sqlite_path=temp/f'{pair}-{selected}.db',keys_path=keys)
-                    lane=run_lane(opts,jobs,profiled=profiled,history=history,db_type=db_type)
+                    variant=(experiment if selected else 'baseline') if experiment!='instrumentation' else ('profiled' if selected else 'plain')
+                    if notice:notice(dict(status='CAPACITY_LANE_STARTED',pair=pair,variant=variant))
+                    lane=run_lane(opts,jobs,profiled=profiled,history=history,db_type=db_type,notice=notice)
                     lane['pair']=pair;lane['variant']=(experiment if selected else 'baseline') if experiment!='instrumentation' else ('profiled' if selected else 'plain');lanes.append(lane)
                 equal=[a['oracle']==b['oracle'] for a,b in zip(lanes[0]['windows'],lanes[1]['windows'])]
                 labels=['profiled' if v else 'plain' for v in order] if experiment=='instrumentation' else [experiment if v else 'baseline' for v in order]
@@ -225,10 +235,17 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
             failure=dict(error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None,
                 sqlstate=getattr(exc,'sqlstate',None)))
     finally:
+        report['qualification_cleanup']=dict(allocated_databases=len(created),dropped_databases=0,failures=[])
         if admin is not None:
             for name in created:
                 # Only names allocated by this invocation; never existing DBs.
-                admin.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(name)))
+                try:
+                    admin.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(name)))
+                    report['qualification_cleanup']['dropped_databases']+=1
+                except Exception as exc:
+                    report['qualification_cleanup']['failures'].append(dict(database=name,
+                        error_type=type(exc).__name__,sqlstate=getattr(exc,'sqlstate',None)))
+                    report['status']='FAILED_QUALIFICATION_CLEANUP'
             admin.close()
     report['total_run_seconds_including_preflight_setup_oracles_and_cleanup']=time.perf_counter()-overall_began
     if captures:
@@ -237,7 +254,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
         report['limitations'][1]='Only a disposable, source-pinned subclass enables the candidate; production runtime is unchanged.'
         def used(lane):
             if experiment=='origin_filter':return lane['candidate_report']['lookup']['skipped_negatives']>0
-            return lane['candidate_report']['fetch_once']['scoped_calls']>0
+            return lane['candidate_report']['fetch_once']['body_pair_lookups']>0
         exercised=[used(l) for l in report['lanes'] if l['variant']==experiment]
         report['candidate_exercised']=bool(exercised) and all(exercised)
         if report['status']=='PASS_CANDIDATE_EQUIVALENCE' and not report['candidate_exercised']:
@@ -275,10 +292,11 @@ def main(argv=None):
     parser.add_argument('--captures',type=Path,nargs='+',help='Existing contiguous verified captures; private data is never exported')
     parser.add_argument('--experiment',choices=('instrumentation','origin_filter','contract_fetch_once'),default='instrumentation')
     parser.add_argument('--out',type=Path,required=True)
+    parser.add_argument('--wal-compression',choices=('pglz','lz4','zstd'))
     args=parser.parse_args(argv)
     if not 1<=args.pairs<=4 or any(not 1<=n<=20000 for n in args.counts):
         parser.error('pairs must be 1..4 and each request count 1..20000')
-    report=run(backend=args.backend,counts=tuple(args.counts),pairs=args.pairs,out=args.out,history=args.mode=='history',captures=args.captures,experiment=args.experiment)
+    report=run(backend=args.backend,counts=tuple(args.counts),pairs=args.pairs,out=args.out,history=args.mode=='history',captures=args.captures,experiment=args.experiment,wal_compression=args.wal_compression)
     print(json.dumps({k:report.get(k) for k in ['status','backend','failure','owner_host_capacity']}))
     return 0 if report['status'] in ('PASS_MEASUREMENT_EQUIVALENCE','PASS_CANDIDATE_EQUIVALENCE') else 2
 

@@ -1,4 +1,19 @@
-# ارتقای جاری: AD-20261115-CENSUS-INTEGRITY — ۱۵ نوامبر ۲۰۲۶
+# تحویل جاری: آزمون ایزولهٔ ظرفیت C2 — ۱۶ نوامبر ۲۰۲۶
+
+این بسته Runtime برنامه را عوض نمی‌کند؛ Worker و وب Viewer/AD فعلی روشن می‌مانند. شروع از اول آبان و cursor حفظ می‌شوند. C2 در آزمون چهارفایلی PostgreSQL محلی با خروجی برابر حدود ۳۶٫۵٪ زمان کمتری داشت؛ سرعت پایدار سرور هنوز تأیید نشده است. فیلتر C1 به دلیل نداشتن سود کل وارد محصول نمی‌شود. گزارش: `viewer_performance/CAPACITY_BASELINE_FA.md`.
+
+برای آزمون مستقل روی همان سرور، با ZIP موجود اجرا کنید؛ نیازی به restart یا history-rescan نیست:
+
+```powershell
+cd E:\P24\pishkhan24
+git pull --ff-only origin main
+if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
+.\.venv\Scripts\python.exe -B viewer_performance/Qualify_Capacity_Candidate.py --project . --captures-zip 'AnomalyDetection/reports/Viewer_Capacity_Inputs_20261116_075802_e754a667.zip' --pairs 2
+```
+
+این ابزار به دیتابیس محصول وصل نمی‌شود؛ فقط دیتابیس‌های qualification خودش را ایجاد و در پایان حذف می‌کند. حساب اتصال محلی باید مجوز ساخت دیتابیس داشته باشد. هر ۱۵ثانیه heartbeat و پس از هر انتشار، پیشرفت می‌دهد. در پایان فایل `Viewer_Capacity_Candidate_*.json` معرفی‌شده را بفرستید. این calibration کوچک، جای فشار کش تاریخچهٔ کامل یا آزمون هشت‌ساعته نیست. دستورهای زیر سوابق ارتقای Runtime هستند و برای همین بسته تکرار نمی‌شوند.
+
+# سابقهٔ ارتقا: AD-20261115-CENSUS-INTEGRITY — ۱۵ نوامبر ۲۰۲۶
 
 این نسخه، نتیجهٔ بازبینی PR28 و دو اصلاح کامل‌خواندن census است. فقط AD را با worker-stop متوقف کنید؛ بعد از STOPPED یا ALREADY_STOPPED، git pull --ff-only origin main و worker-start. Viewer/Catchup و وب آن روشن می‌مانند؛ مرز اول آبان و cursor منبع ادامه پیدا می‌کند. history-rescan دوباره اجرا نشود. cursor ناقص قدیمی census همان پنجره را از نو می‌خواند و خروجی کامل قبلی تا commit جایگزین باقی می‌ماند. اصلاح فوری همهٔ شمارش‌های تاریخی پس از نصب ادعا نمی‌شود؛ گذر تاریخی موجود آن‌ها را بازخوانی می‌کند.
 

@@ -1,8 +1,5 @@
 name: Private Viewer native test runtime
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/viewer-private-native.yml'
   workflow_dispatch:
 
 permissions:

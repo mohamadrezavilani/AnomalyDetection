@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'viewer_performance/capacity/**'
+      - 'viewer_performance/Qualify_Capacity_Candidate.py'
       - 'tests/test_viewer_capacity.py'
       - 'tests/test_viewer_origin_filter.py'
       - 'tests/test_viewer_contract_fetch_once.py'
@@ -63,7 +64,7 @@ jobs:
       - name: C2 synthetic risk corpus with one raw-body read
         run: >-
           python -B -m viewer_performance.capacity.baseline --backend postgresql
-          --counts 32 256 2048 --pairs 2 --experiment contract_fetch_once
+          --counts 32 256 2048 --pairs 2 --experiment contract_fetch_once --wal-compression zstd
           --out qualification/capacity-contract-once.json
       - name: Retain diagnostic receipt even on failure
         if: always()
