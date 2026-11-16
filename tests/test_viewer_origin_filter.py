@@ -27,6 +27,12 @@ def interrupted_publication(options,capture,start,point):
     os._exit(74)
 
 
+def interrupted_build(options):
+    with OriginFilteredDB(**options) as db:
+        db.prepare_candidate(fault=lambda count:os._exit(73))
+    os._exit(74)
+
+
 class MembershipTests(unittest.TestCase):
     def test_incomplete_filter_never_returns_a_negative_and_complete_filter_has_no_false_negatives(self):
         membership=Membership(1024)
@@ -137,6 +143,28 @@ class FilterChecks:
         self.assertFalse(self.db.membership.ready)
         self.assertEqual(self.db.membership.disabled_reason,'source_fence_changed')
         self.assertEqual(self.db.lookup_stats['skipped_negatives'],0)
+
+    def test_stream_and_connection_identity_cannot_reuse_a_previous_seal(self):
+        self.db.sql("UPDATE viewer_live_state SET stream_key='different-source' WHERE id=1");self.db.conn.commit()
+        self.publish(self.jobs[1])
+        self.assertFalse(self.db.membership.ready)
+        self.db.conn.rollback();self.db.prepare_candidate()
+        membership=self.db.membership
+        old_connection=self.db.conn  # Keep its identity allocated for SQLite.
+        self.db.close();self.db=OriginFilteredDB(**self.options);self.addCleanup(self.db.close)
+        self.db.membership=membership
+        self.publish(self.jobs[2])
+        self.assertFalse(self.db.membership.ready)
+        self.assertEqual(self.db.lookup_stats['skipped_negatives'],0)
+
+    def test_real_process_death_during_build_changes_no_durable_state(self):
+        before=semantic_snapshot(self.db);self.db.conn.rollback()
+        child=multiprocessing.get_context('spawn').Process(target=interrupted_build,args=(self.options,))
+        child.start();child.join(30)
+        if child.is_alive():child.kill();child.join();self.fail('build child timed out')
+        self.assertEqual(child.exitcode,73)
+        self.assertEqual(before,semantic_snapshot(self.db));self.db.conn.rollback()
+        self.db.prepare_candidate();self.assertTrue(self.db.membership.ready)
 
     def test_unacknowledged_commit_and_runtime_change_fall_back(self):
         self.publish(self.jobs[1],acknowledge=False)

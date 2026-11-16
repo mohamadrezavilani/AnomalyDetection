@@ -58,7 +58,7 @@ class ContractChecks:
                     if kind is ContractFetchOnceDB:db.prepare_candidate()
                     def remove(stage):
                         if stage!='after_requests':return
-                        rows=db.all("SELECT origin_key,version_key FROM viewer_projection_events WHERE callpath LIKE '%ud_prc_paymentExists%' ORDER BY origin_key,version_key")
+                        rows=db.all('SELECT origin_key,version_key FROM viewer_projection_events WHERE callpath LIKE ? ORDER BY origin_key,version_key',('%ud_prc_paymentExists%',))
                         selected=rows[:400] if empty_first_batch else rows[:1]
                         if nonunique:
                             db.sql('DROP INDEX public.vre_binary_origin_v1')
