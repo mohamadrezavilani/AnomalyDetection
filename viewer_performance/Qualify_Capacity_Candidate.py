@@ -131,7 +131,7 @@ def main(argv=None):
     parser.add_argument('--project',type=Path,required=True)
     parser.add_argument('--captures-zip',type=Path,required=True)
     parser.add_argument('--pairs',type=int,choices=(1,2),default=2)
-    parser.add_argument('--experiment',choices=('origin_filter','contract_fetch_once','local_projection_keys'),default='contract_fetch_once')
+    parser.add_argument('--experiment',choices=('origin_filter','contract_fetch_once','local_projection_keys','index_prefetch_1','index_prefetch_2','index_prefetch_4'),default='contract_fetch_once')
     args=parser.parse_args(argv)
     done=threading.Event();began=time.monotonic()
     def notice(value):print(json.dumps(value),flush=True)

@@ -155,13 +155,15 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB,notice=N
 
 def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True,captures=None,experiment='instrumentation',wal_compression=None,notice=None):
     overall_began=time.perf_counter()
-    if experiment not in ('instrumentation','origin_filter','contract_fetch_once','local_projection_keys'):
+    prefetch=experiment in ('index_prefetch_1','index_prefetch_2','index_prefetch_4')
+    if experiment not in ('instrumentation','origin_filter','contract_fetch_once','local_projection_keys') and not prefetch:
         raise ValueError('unknown_capacity_experiment')
     if not 1<=pairs<=4:
         raise ValueError('capacity_pairs_must_be_1_to_4')
     if wal_compression not in (None,'pglz','lz4','zstd'):
         raise ValueError('unsupported_capacity_wal_compression')
-    baseline_variant='contract_fetch_once' if experiment=='local_projection_keys' else 'baseline'
+    baseline_variant=('local_projection_keys' if prefetch else
+        'contract_fetch_once' if experiment=='local_projection_keys' else 'baseline')
     root=Path(__file__).resolve().parents[2]
     report=dict(status='RUNNING',baseline_git_sha=subprocess.check_output(
         ['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
@@ -218,6 +220,11 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                         from .contract_fetch_once import ContractFetchOnceDB
                         from .local_projection_keys import LocalProjectionKeysDB
                         db_type=LocalProjectionKeysDB if selected else ContractFetchOnceDB
+                    elif prefetch:
+                        from functools import partial
+                        from .local_projection_keys import LocalProjectionKeysDB
+                        from .index_prefetch import IndexPrefetchDB
+                        db_type=partial(IndexPrefetchDB,prefetch_workers=int(experiment[-1])) if selected else LocalProjectionKeysDB
                     if backend=='postgresql':
                         name='p24_design_capacity_'+uuid.uuid4().hex[:16]+'_qualification'
                         admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)));created.append(name)
@@ -263,6 +270,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
             if experiment=='local_projection_keys':
                 return (lane['candidate_report']['local_projection_keys']['queries']>0
                     and lane['candidate_report']['fetch_once']['body_pair_lookups']>0)
+            if prefetch:return lane['candidate_report']['index_prefetch']['successful_batches']>0
             return lane['candidate_report']['fetch_once']['body_pair_lookups']>0
         exercised=[used(l) for l in report['lanes'] if l['variant']==experiment]
         report['candidate_exercised']=bool(exercised) and all(exercised)
@@ -299,7 +307,7 @@ def main(argv=None):
     parser.add_argument('--pairs',type=int,default=2)
     parser.add_argument('--mode',choices=('history','forward'),default='history')
     parser.add_argument('--captures',type=Path,nargs='+',help='Existing contiguous verified captures; private data is never exported')
-    parser.add_argument('--experiment',choices=('instrumentation','origin_filter','contract_fetch_once','local_projection_keys'),default='instrumentation')
+    parser.add_argument('--experiment',choices=('instrumentation','origin_filter','contract_fetch_once','local_projection_keys','index_prefetch_1','index_prefetch_2','index_prefetch_4'),default='instrumentation')
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--wal-compression',choices=('pglz','lz4','zstd'))
     args=parser.parse_args(argv)
