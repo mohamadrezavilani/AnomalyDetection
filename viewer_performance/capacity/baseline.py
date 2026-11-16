@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import gzip
 import json
 import math
 import os
@@ -20,8 +21,8 @@ import time
 import uuid
 
 from p24_foundation.privacy import generate_keys
-from p24_foundation.viewer_data import ViewerDB
-from p24_foundation.viewer_online import bind_stream, initialize_live, publish_capture, resume_recent, single_worker
+from p24_foundation.viewer_data import ViewerDB,utc_ns
+from p24_foundation.viewer_online import bind_stream, initialize_live, publish_capture, resume_recent, single_worker, _read_verified_capture
 from p24_foundation.viewer_runtime import atomic_json, runtime_source_digest
 from .oracle import evidence_digest, projection_digest
 from .fixtures import corpus, START, FIVE
@@ -54,11 +55,27 @@ def semantic_snapshot(db):
     return result
 
 
-def run_lane(options, jobs, *, profiled, history=True):
-    windows=[];schedule_seconds=0;lane_began=time.perf_counter()
-    with ViewerDB(**options) as db:
+def capture_jobs(paths):
+    jobs=[]
+    for path in paths:
+        path=Path(path).resolve()
+        with gzip.open(path,'rt',encoding='utf-8') as stream:header=json.load(stream)
+        start=utc_ns(header.get('window_start'));end=utc_ns(header.get('window_end'));del header
+        proof,payload=_read_verified_capture(path,start,end);del payload
+        jobs.append(dict(path=path,start=start,mode='forward',kind='verified_private_capture',
+            records=proof['records'],sha256=proof['sha256']))
+    jobs.sort(key=lambda j:j['start'])
+    if not 2<=len(jobs)<=8 or any(b['start']!=a['start']+FIVE for a,b in zip(jobs,jobs[1:])):
+        raise ValueError('two_to_eight_consecutive_verified_captures_required')
+    return jobs
+
+
+def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB):
+    windows=[];schedule_seconds=0;candidate_setup=0;candidate_prepare=None;lane_began=time.perf_counter()
+    beginning=jobs[0]['start']
+    with db_type(**options) as db:
         db.init();initialize_live(db)
-        bind_stream(db,start_ns=START,stream_key='capacity-fixed-corpus')
+        bind_stream(db,start_ns=beginning,stream_key='capacity-fixed-corpus')
         if not db.sqlite:
             settings=db.all('SELECT name,setting,unit FROM pg_settings WHERE name=ANY(?)',(list(SETTINGS),))
             layout=db.all("SELECT indexrelname,indisvalid FROM pg_index i JOIN pg_stat_user_indexes s ON s.indexrelid=i.indexrelid WHERE schemaname='public' ORDER BY indexrelname")
@@ -72,8 +89,12 @@ def run_lane(options, jobs, *, profiled, history=True):
                 # with a retained high-watermark, only in this owned test DB.
                 setup=time.perf_counter();db.conn.rollback()
                 with single_worker(db,Path(options['keys_path']).parent/'capacity.lock'):
-                    resume_recent(db,lookback_windows=1,now=START+5*FIVE+60_000_000_000)
+                    extent=sum(j['mode']=='forward' for j in jobs)+2
+                    resume_recent(db,lookback_windows=1,now=beginning+extent*FIVE+60_000_000_000)
                 schedule_seconds=time.perf_counter()-setup
+            if ordinal==1 and callable(getattr(db,'prepare_candidate',None)):
+                setup=time.perf_counter();candidate_prepare=db.prepare_candidate()
+                candidate_setup=time.perf_counter()-setup
             if history and ordinal>0 and job['mode']=='forward':
                 job['mode']='manual_recheck'
             trace=Trace();transaction_counts=[]
@@ -87,6 +108,8 @@ def run_lane(options, jobs, *, profiled, history=True):
             try:
                 with trace.span('publication'):
                     result=publish_capture(db,job['path'],job['start'],job['start']+FIVE,mode=job['mode'])
+                    if callable(getattr(db,'candidate_after_publication',None)):
+                        db.candidate_after_publication(result)
                 elapsed=time.perf_counter()-began
             finally:
                 trace.detach()
@@ -115,6 +138,8 @@ def run_lane(options, jobs, *, profiled, history=True):
             windows.append(window)
         return dict(profiled=profiled,windows=windows,writer_settings=settings,index_inventory=layout,
             publication_mode='history' if history else 'forward',
+            candidate_prepare_seconds=candidate_setup,candidate_prepare=candidate_prepare,
+            candidate_report=db.candidate_report() if callable(getattr(db,'candidate_report',None)) else None,
             qualification_schedule_setup_seconds=schedule_seconds,
             total_lane_seconds_including_setup_diagnostics_and_oracle=time.perf_counter()-lane_began,
             publication_seconds=distribution([w['elapsed_publication_seconds'] for w in windows]),
@@ -124,7 +149,12 @@ def run_lane(options, jobs, *, profiled, history=True):
             recheck_seconds=distribution([w['elapsed_publication_seconds'] for w in windows if w['mode']=='recheck']))
 
 
-def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True):
+def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True,captures=None,experiment='instrumentation'):
+    overall_began=time.perf_counter()
+    if experiment not in ('instrumentation','origin_filter'):
+        raise ValueError('unknown_capacity_experiment')
+    if not 1<=pairs<=4:
+        raise ValueError('capacity_pairs_must_be_1_to_4')
     root=Path(__file__).resolve().parents[2]
     report=dict(status='RUNNING',baseline_git_sha=subprocess.check_output(
         ['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
@@ -135,7 +165,7 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
         cache_pressure_qualification='NOT_RUN',cold_os_cache='NOT_CONTROLLED',
         live_elasticsearch_acquisition='NOT_RUN',actual_ad_evaluation='NOT_RUN',
         owner_host_capacity='NOT_RUN',eight_hour_sustained_capacity='NOT_RUN',
-        candidate_implemented=False,
+        candidate_implemented=experiment!='instrumentation',experiment=experiment,
         limitations=['Synthetic risk corpus; volume labels are relative within this corpus.',
             'Existing runtime is measured; no cache, batching or storage candidate is enabled.',
             'A database larger than shared_buffers is not evidence of an out-of-cache active working set.',
@@ -159,25 +189,34 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                 raise ValueError('postgresql_18_required_for_backend_attribution')
             report['server_version_num']=version
         with tempfile.TemporaryDirectory(prefix='viewer-capacity-') as folder:
-            temp=Path(folder);keys=temp/'keys.json';generate_keys(keys);jobs=corpus(temp,counts)
+            temp=Path(folder);keys=temp/'keys.json';generate_keys(keys)
+            jobs=capture_jobs(captures) if captures else corpus(temp,counts)
+            report['input_kind']='verified_private_captures' if captures else 'synthetic_risk_corpus'
             report['corpus']=[{k:v for k,v in j.items() if k!='path'} for j in jobs]
             for pair in range(pairs):
                 order=(False,True) if pair%2==0 else (True,False)
                 lanes=[]
-                for profiled in order:
+                for selected in order:
+                    profiled=selected if experiment=='instrumentation' else True
+                    db_type=ViewerDB
+                    if experiment=='origin_filter' and selected:
+                        from .origin_filter import OriginFilteredDB
+                        db_type=OriginFilteredDB
                     if backend=='postgresql':
                         name='p24_design_capacity_'+uuid.uuid4().hex[:16]+'_qualification'
                         admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)));created.append(name)
                         opts=dict(config={**settings,'dbname':name,
                             'options':'-c jit=off -c work_mem=64MB -c temp_buffers=128MB'},keys_path=keys)
                     else:
-                        opts=dict(sqlite_path=temp/f'{pair}-{profiled}.db',keys_path=keys)
-                    lane=run_lane(opts,jobs,profiled=profiled,history=history);lane['pair']=pair;lanes.append(lane)
+                        opts=dict(sqlite_path=temp/f'{pair}-{selected}.db',keys_path=keys)
+                    lane=run_lane(opts,jobs,profiled=profiled,history=history,db_type=db_type)
+                    lane['pair']=pair;lane['variant']=('origin_filter' if selected else 'baseline') if experiment!='instrumentation' else ('profiled' if selected else 'plain');lanes.append(lane)
                 equal=[a['oracle']==b['oracle'] for a,b in zip(lanes[0]['windows'],lanes[1]['windows'])]
-                report['checks'].append(dict(pair=pair,order=['profiled' if v else 'plain' for v in order],
+                labels=['profiled' if v else 'plain' for v in order] if experiment=='instrumentation' else ['origin_filter' if v else 'baseline' for v in order]
+                report['checks'].append(dict(pair=pair,order=labels,
                     every_publication_equal=equal,all_equal=all(equal)))
                 report['lanes'].extend(lanes)
-        report['status']='PASS_MEASUREMENT_EQUIVALENCE' if all(c['all_equal'] for c in report['checks']) else 'FAIL_MEASUREMENT_CHANGED_OUTPUT'
+        report['status']=('PASS_MEASUREMENT_EQUIVALENCE' if experiment=='instrumentation' else 'PASS_CANDIDATE_EQUIVALENCE') if all(c['all_equal'] for c in report['checks']) else 'FAIL_MEASUREMENT_CHANGED_OUTPUT'
     except Exception as exc:
         report.update(status='NOT_RUN' if isinstance(exc,ValueError) else 'FAILED',
             failure=dict(error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None,
@@ -188,6 +227,35 @@ def run(*, backend='sqlite', counts=(16,64,256), pairs=1, out=None, history=True
                 # Only names allocated by this invocation; never existing DBs.
                 admin.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(name)))
             admin.close()
+    report['total_run_seconds_including_preflight_setup_oracles_and_cleanup']=time.perf_counter()-overall_began
+    if captures:
+        report['limitations'][0]='Contiguous verified private Captures; broad traffic/risk representativeness is not established.'
+    if experiment=='origin_filter':
+        report['limitations'][1]='Only a disposable, source-pinned subclass enables C1; production runtime is unchanged.'
+        exercised=[l['candidate_report']['lookup']['skipped_negatives']>0 for l in report['lanes']
+            if l['variant']=='origin_filter']
+        report['candidate_exercised']=bool(exercised) and all(exercised)
+        if report['status']=='PASS_CANDIDATE_EQUIVALENCE' and not report['candidate_exercised']:
+            report['status']='NOT_QUALIFIED_CANDIDATE_UNUSED'
+        comparisons=[]
+        for pair in range(pairs):
+            lanes={l['variant']:l for l in report['lanes'] if l['pair']==pair}
+            if len(lanes)!=2:continue
+            def charged(lane):
+                targets=[w for w in lane['windows'][1:] if w['kind'] not in
+                    ('cross_request_conflict','late_arrival_original_event_time')]
+                seconds=sum(w['elapsed_to_contract_check_seconds'] for w in targets)
+                return dict(windows=len(targets),new_events=sum(w['new_events'] for w in targets),
+                    publication_to_contract_seconds=seconds,
+                    candidate_build_seconds=lane['candidate_prepare_seconds'],
+                    total_charged_seconds=seconds+lane['candidate_prepare_seconds'])
+            base=charged(lanes['baseline']);candidate=charged(lanes['origin_filter'])
+            comparisons.append(dict(pair=pair,baseline=base,candidate=candidate,
+                reduction_fraction=1-candidate['total_charged_seconds']/base['total_charged_seconds']
+                    if base['total_charged_seconds'] else None))
+        report['candidate_comparisons_including_build']=comparisons
+        report['comparison_excludes_diagnostics_oracles_and_bootstrap']=True
+        report['local_comparison_is_not_owner_capacity_acceptance']=True
     if out:
         atomic_json(out,report)
     return report
@@ -199,13 +267,15 @@ def main(argv=None):
     parser.add_argument('--counts',type=int,nargs=3,default=(16,64,256))
     parser.add_argument('--pairs',type=int,default=2)
     parser.add_argument('--mode',choices=('history','forward'),default='history')
+    parser.add_argument('--captures',type=Path,nargs='+',help='Existing contiguous verified captures; private data is never exported')
+    parser.add_argument('--experiment',choices=('instrumentation','origin_filter'),default='instrumentation')
     parser.add_argument('--out',type=Path,required=True)
     args=parser.parse_args(argv)
     if not 1<=args.pairs<=4 or any(not 1<=n<=20000 for n in args.counts):
         parser.error('pairs must be 1..4 and each request count 1..20000')
-    report=run(backend=args.backend,counts=tuple(args.counts),pairs=args.pairs,out=args.out,history=args.mode=='history')
+    report=run(backend=args.backend,counts=tuple(args.counts),pairs=args.pairs,out=args.out,history=args.mode=='history',captures=args.captures,experiment=args.experiment)
     print(json.dumps({k:report.get(k) for k in ['status','backend','failure','owner_host_capacity']}))
-    return 0 if report['status']=='PASS_MEASUREMENT_EQUIVALENCE' else 2
+    return 0 if report['status'] in ('PASS_MEASUREMENT_EQUIVALENCE','PASS_CANDIDATE_EQUIVALENCE') else 2
 
 
 if __name__=='__main__':
