@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261115-CENSUS-INTEGRITY",
-  "source_sha256": "3e3748d196b482fe978674ff367d9dfa650e93b3bf1d1651aa72601c07938b02",
+  "source_sha256": "4f93840367325467cb786cab27273c93dda75b9bd1f72485c55d40156c54658e",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -13,7 +13,7 @@
     "MEETING_REQUIREMENTS_25_FA.md": "54ef408ba1af82cf13fe06f74cc75e99617bc1bb424bbf15a3278841d18746af",
     "METHODS_AND_LATE_DATA_FA.md": "ecc521f538f384b5cacb559bf05416cc67705b3f5de545108a08e1d7ae85bfbb",
     "PRESENTATION_GUIDE_FA.md": "53954989b5a1cf636e98f0a894d07179651e77e44ded72a6051f713f692dd456",
-    "PROJECT_MAP_FA.md": "57e26957529818363130c7c3f22bb2053a9234dc1f73a4baaa02f1a5a0954c7f",
+    "PROJECT_MAP_FA.md": "3c986e032eb094c94fa3e76914eb4a10ef4627e24b2f23efcbdf25c27996530f",
     "README_FA.md": "29b86b40eb42df27ba9185eb2e3daa27246be454293798c368557f99d640e966",
     "RELEASE_NOTES_06_FA.md": "30ee9d107f2d6e4593314c4000d40595a044421dfdb70f62961f14a46d086aa7",
     "RELEASE_NOTES_07_FA.md": "d693652cfea8136acaabe44a86a3fb3dd249e74f861390c52ee7bc0d1f481b8b",
@@ -95,7 +95,7 @@
     "anomaly_detection/scenario_worker.py": "0adf46a097a29f7b256c0afbec5cccda0c78239c8fc2cd556bce4da35110c8ff",
     "anomaly_detection/schema_setup.py": "141325ce3a46f63e41059346b1fd0f38e361ae38929f247f783bb4d224b2d56e",
     "anomaly_detection/scoped_profile_queue.py": "a03918cec8c1866c03be64905f13473e7d9741ffbd183926a25d8b5206a8f366",
-    "anomaly_detection/service_reference.py": "7689a576b9313d7ebb145e4adab709c73fd393c962dad06d0d41adb9f9a393cb",
+    "anomaly_detection/service_reference.py": "30e9729242595a0aa4b0358465660fc18808f9da0b02df6815e1e5b5afc73d60",
     "anomaly_detection/service_sampling.py": "816d7a599b8bc4f5ad516904edf2b54fae05e4a7a0131c166f23e91edb06e515",
     "anomaly_detection/snapshot.py": "b43d97f0bb21585e6b0a64289adef6764471081dae1efe065c0fc162c65b6a20",
     "anomaly_detection/source_profiles.py": "226dcdee67ae6848890f28d6795b7ed74d85fec32825153e6b2799a99af0423c",
@@ -150,6 +150,7 @@
     "tests/test_product_scheduling.py": "61955b67cd7e23b81585e7f4f90faa841d7566c920f55fc207b776b5c303be27",
     "tests/test_queue_observation.py": "d70a867d317af2b64639831a8abf924cbd458c5ae656e1f46be331aa878a734e",
     "tests/test_rank_screen.py": "50d62d865aa81a4916a3aa8d45fe483909093379908f2c3ba8d1c1df49bbf446",
+    "tests/test_reference_contract_pg.py": "266175550bb4ccf06db222a3d1255e02470d50cefc15a5be4b8863a6432fe35c",
     "tests/test_replay_boundary.py": "700b5f0d5f1ba44a712896cc0dae5d08f4cff0cd1f6880923113d54236914cce",
     "tests/test_review_policy.py": "18c103108c6af9abd745050bef4e9b7f39a0ce3724bc8a4fc38f1ec74daaba5f",
     "tests/test_runtime_bounds_pg.py": "5fbec1738c8ba259dd2ee4ef158397a380de5ebeeaf1b97feaa7460569f3aee0",
@@ -200,6 +201,7 @@
     "validation/PRODUCT_stop28.json": "14e2bdef91972f73bbdc318deb235dd2df0ff4bb33a41e1b51dd9470c3666116",
     "validation/PRODUCT_unit_tests.json": "d63d69f994729cf81fe39a4d06cf8c5451f4c1cab94cbc34d70da3e2ebd1e748",
     "validation/PRODUCT_winstart.json": "0ed01482d536eecd737d42f8cb3450a233ab6c395e8590c9d373c62042f34dbf",
+    "validation/REFERENCE_CONTRACT_REVIEW.json": "652415d5f3bdf0579f22e1d427a5cec721a23bf3fff03f886e912972cb881716",
     "validation/build_product.py": "0b322a52aeab78d47fe9c249347eaf6e295b71b47d62ffc264beda75d573d8ee",
     "validation/check_history26.py": "2f1c0a97b3c977a236ab4161f9135590648336c2acd22288d6d1080f7d30d0ae",
     "validation/check_install_release.py": "d68963f54a195c7e4532733c2484f794ec78dc8896e1df31554875e2a4c492e5",
@@ -371,5 +373,17 @@
     "detector_rules_changed": false,
     "manager_review_parent": "df9b0ebaa2c84fceefcb981ff46f85a4eb03ba3d",
     "review_note": "Final checks and process-kill results are recorded on the exact PR release head; the bundled candidate receipt is a frozen earlier record."
+  },
+  "session_reference_review_candidate": {
+    "candidate_id": "AD-20261116-REFERENCE-CONTRACT",
+    "base_commit": "1dffd3ddbd58b11bfc5501d0e87b65d98c22344f",
+    "model_version": "pooled-service-reference-4",
+    "release_label": "BASE_LABEL_PENDING_MANAGER_VERSIONING",
+    "max_canonical_session_aggregates": 20000,
+    "raw_point_count_is_not_the_memory_limit": true,
+    "model_pin_includes_point_count_and_span": true,
+    "historical_model_rows_preserved": true,
+    "old_results_automatically_replayed_on_install": false,
+    "owner_capacity_or_accuracy": "NOT_EVALUATED"
   }
 }

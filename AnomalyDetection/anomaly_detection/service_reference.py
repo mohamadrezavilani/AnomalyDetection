@@ -16,7 +16,8 @@ from . import FIVE_NS
 from .source_profiles import SUPPORTED_RUNTIMES
 from .snapshot import api_path,canonical,digest,require
 
-MODEL_VERSION='pooled-service-reference-3'
+MODEL_VERSION='pooled-service-reference-4'
+MAX_CANONICAL_SESSIONS=20000
 MIN_SESSIONS=100
 HORIZON=56*288*FIVE_NS
 SEED_LIFETIME=7*288*FIVE_NS
@@ -112,7 +113,9 @@ def reference(points,session,target,service,*,unit,reference_id):
     values=sorted(maxima.values());span=max(times)-min(times) if times else 0
     ready=len(values)>=MIN_SESSIONS and span>=24*12*FIVE_NS
     body={'status':'READY_BASELINE' if ready else 'INSUFFICIENT_DATA','version':MODEL_VERSION,
-          'model_id':'pr1:'+digest([MODEL_VERSION,service,target,session,unit,reference_id,sorted(maxima.items())]),
+          # Coverage can mature after late evidence without changing any
+          # session maximum. Its readiness/count proof needs a distinct pin.
+          'model_id':'pr1:'+digest([MODEL_VERSION,service,target,session,unit,reference_id,sorted(maxima.items()),n,span]),
           'family':'pooled_session_maximum','cutoff_ns':target,'reference_id':reference_id,'unit':unit,
           'other_session_epochs':len(values),'active_session_windows':n,'observed_span_ns':span,
           'zero_filled':False,'subject_independence':'session_epochs_not_proven_distinct_people',
@@ -270,14 +273,19 @@ def model(store,service,session,target,kind):
             # with one indexed range read instead of two heap passes plus
             # transmitting every historical point to Python. Any invalid
             # point still disqualifies the entire session in this interval.
-            rows=store.raw.execute("SELECT session_key,MAX(value) AS value,COUNT(*) AS raw_count,COUNT(*) FILTER(WHERE value>0) AS point_count,MIN(start_ns) FILTER(WHERE value>0) AS first_ns,MAX(start_ns) FILTER(WHERE value>0) AS last_ns,COALESCE(MAX(start_ns) FILTER(WHERE value>0),MIN(start_ns)) AS start_ns FROM anomaly_detection.adp_service_reference_points WHERE service_path=%s AND kind=%s AND start_ns<%s AND start_ns>=%s GROUP BY session_key HAVING BOOL_AND(qualified) LIMIT 20001",
+            rows=store.raw.execute("SELECT session_key,MAX(value) AS value,COUNT(*) AS raw_count,COUNT(*) FILTER(WHERE value>0) AS point_count,MIN(start_ns) FILTER(WHERE value>0) AS first_ns,MAX(start_ns) FILTER(WHERE value>0) AS last_ns,COALESCE(MAX(start_ns) FILTER(WHERE value>0),MIN(start_ns)) AS start_ns FROM anomaly_detection.adp_service_reference_points WHERE service_path=%s AND kind=%s AND start_ns<%s AND start_ns>=%s GROUP BY session_key HAVING BOOL_AND(qualified) LIMIT "+str(MAX_CANONICAL_SESSIONS+1),
                 (service,kind,target,target-HORIZON)).fetchall()
-            canonical_points=[dict(row) for row in rows] if sum(r['raw_count'] for r in rows)<=20000 else []
+            # PostgreSQL already aggregates the complete interval per session.
+            # Bound returned aggregates, not the number of points they cover.
+            # The extra row detects overflow; a truncated tail is never valid.
+            limit_exceeded=len(rows)>MAX_CANONICAL_SESSIONS
+            canonical_points=[dict(row) for row in rows] if not limit_exceeded else []
             excluded={r['session_key'] for r in store.raw.execute('SELECT DISTINCT i.session_key FROM anomaly_detection.adp_incidents i '
                 'JOIN anomaly_detection.adp_feedback f ON f.incident_key=i.incident_key WHERE i.target_ns<%s '
                 "AND f.label='confirmed_suspicious' AND f.id=(SELECT MAX(v.id) FROM anomaly_detection.adp_feedback v WHERE v.incident_key=i.incident_key)",(target,)).fetchall()}
             shared={'canonical':[p for p in canonical_points if p['session_key'] not in excluded],
-                'excluded':excluded,'http_loaded':False,'http':[],'http_id':None}
+                'excluded':excluded,'http_loaded':False,'http':[],'http_id':None,
+                'canonical_limit_exceeded':limit_exceeded}
             if len(store.reference_inputs_cache)>=16:
                 store.reference_inputs_cache.pop(next(iter(store.reference_inputs_cache)))
             store.reference_inputs_cache[shared_key]=shared
@@ -297,6 +305,12 @@ def model(store,service,session,target,kind):
                 shared['http_loaded']=True
             if shared['http_id']:
                 result=reference(shared['http'],session,target,service,unit='observed_direct_client_request_roots',reference_id=shared['http_id'])
+        if shared.get('canonical_limit_exceeded'):
+            result['canonical_session_limit_exceeded']=True
+            result['canonical_session_limit']=MAX_CANONICAL_SESSIONS
+            if result['reference_id']=='owned-complete-windows':
+                result['reason']='CANONICAL_SESSION_REFERENCE_BUDGET_EXCEEDED'
+            result['model_id']='pr1:'+digest([result['model_id'],'canonical-session-budget',MAX_CANONICAL_SESSIONS])
         result['selection_policy']='canonical_first_qualified_http_bootstrap_fallback'
         if len(store.model_cache)>=256:store.model_cache.clear()
         store.model_cache[key]=result

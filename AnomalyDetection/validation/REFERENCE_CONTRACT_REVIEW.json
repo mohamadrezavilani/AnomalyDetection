@@ -1,0 +1,97 @@
+{
+  "candidate_id": "AD-20261116-REFERENCE-CONTRACT",
+  "base_commit": "1dffd3ddbd58b11bfc5501d0e87b65d98c22344f",
+  "branch": "audit/ad-method-review-20261116",
+  "review_date_tehran": "2026-11-16",
+  "model_version": "pooled-service-reference-4",
+  "release_label": "BASE_LABEL_PENDING_MANAGER_COORDINATION",
+  "environment": {
+    "postgresql": "18.6 native Linux",
+    "owner_database_accessed": false,
+    "fsync": true,
+    "full_page_writes": true,
+    "synchronous_commit": true,
+    "native_windows_postgresql": "NOT_RUN"
+  },
+  "findings": [
+    {
+      "id": "REF-POINT-BUDGET",
+      "proven": "NATIVE_SYNTHETIC",
+      "before": {
+        "qualified_session_aggregates": 201,
+        "historical_points": 20100,
+        "status": "INSUFFICIENT_DATA",
+        "reference_values": 0
+      },
+      "after": {
+        "qualified_session_aggregates": 201,
+        "historical_points": 20100,
+        "status": "READY_BASELINE",
+        "reference_values": 201,
+        "rank_screen_for_observed_10": "HIGH"
+      },
+      "change": "Bound returned session aggregates, preserving the full interval and every valid session maximum; overflow is never sampled."
+    },
+    {
+      "id": "REF-MODEL-PIN",
+      "proven": "NATIVE_PRODUCTSTORE_COMPLETE",
+      "before": "A late span change made the reference ready under the same model_id; INSERT ON CONFLICT retained one stale model body.",
+      "after": "Point count and observed span participate in version-4 identity; old and new immutable model rows both survive."
+    }
+  ],
+  "tests": {
+    "new_module": "tests.test_reference_contract_pg",
+    "new_tests": 7,
+    "base_failures": 6,
+    "base_passes": 1,
+    "candidate_new_failures": 0,
+    "targeted_reference_tests": 19,
+    "full_native_ad": {
+      "total": 344,
+      "failures": 0,
+      "skips": 0
+    },
+    "independent_oracle": {
+      "PASS": 178,
+      "FAIL": 1,
+      "open_failure": "isolation_forest positive fixture",
+      "scope": "REAL_EVALUATORS_SYNTHETIC_INPUT_SOME_SCRIPTED_SQL",
+      "git_reference_field_labels_parent_not_dirty_candidate": true
+    },
+    "continuation": {
+      "PASS": 52
+    },
+    "exact_session_budget_boundary_tested": true
+  },
+  "preservation": {
+    "session_epoch_unit_unchanged": true,
+    "self_and_future_excluded": true,
+    "invalid_point_disqualifies_whole_session_in_sql": true,
+    "min_sessions_and_screening_level_unchanged": true,
+    "horizon_unchanged": true,
+    "raw_query_text_and_plan_inputs_unchanged": true,
+    "models_preserved": true,
+    "viewer_changed": false,
+    "checkpoint_changed": false,
+    "schema_migration_added": false,
+    "detector_thresholds_changed": false
+  },
+  "remaining_limits": {
+    "canonical_session_aggregate_limit": 20000,
+    "over_limit": "EXPLICIT_INSUFFICIENT_NOT_TRUNCATED_REFERENCE",
+    "historical_results_automatically_corrected_by_install": false,
+    "owner_query_timeout_fixed": false,
+    "owner_capacity_or_precision": "NOT_EVALUATED",
+    "all_30_methods_accepted": false
+  },
+  "rollback": "Stop AD; restore matching candidate/base code and manifest together; retain model rows and all canonical, human and checkpoint state. No cursor format or schema change is involved. The base defects return. Owner rollback NOT_RUN.",
+  "native_log_sha256": {
+    "reference_before.log": "389545b7ca942a1f80235b47e7aae021ec38659f6f8977724038711d43f8cb1d",
+    "reference_after.log": "cd19cf5e544ff9a3326bb6925940c11ef518b986705526a4e51b3ac0c14c4d9d",
+    "native_ad.log": "4518af55f30dd86e6f2f22efa24bc99054ca93f63bec2f869dd7da0b666b5efe",
+    "oracle.json": "0e43c385a2e5292c13864951a26944a78229e25eda60672c5f1d858374ab85d2",
+    "continuation.json": "32908698c800c1c9d27d2a3f10610eeb4a003fe79da4b18cee67637e6cff4a90"
+  },
+  "runtime_module_sha256": "30e9729242595a0aa4b0358465660fc18808f9da0b02df6815e1e5b5afc73d60",
+  "reproduce": "Configure a disposable P24_DELTA_PG_HOST/PORT/USER cluster; run python -B -m unittest tests.test_reference_contract_pg -v from AnomalyDetection/. Never point native qualification at an owner production cluster."
+}
