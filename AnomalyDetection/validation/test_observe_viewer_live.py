@@ -1,10 +1,13 @@
 """Read-only isolation, privacy and honest capacity calculations for live probe."""
 import importlib.util
 import copy
+from contextlib import redirect_stderr, redirect_stdout
+import io
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location('viewer_observer', Path(__file__).with_name('observe_viewer_live.py'))
 probe = importlib.util.module_from_spec(spec); spec.loader.exec_module(probe)
@@ -60,6 +63,68 @@ class FakeReader:
 
 
 class ViewerObservationTests(unittest.TestCase):
+    def test_cli_accepts_fixed_duration_without_a_window_target(self):
+        for seconds in (1800, 3600):
+            with self.subTest(seconds=seconds), redirect_stdout(io.StringIO()), mock.patch.object(
+                    probe.runpy, 'run_path', side_effect=OSError('fixture: stop before configuration')) as load:
+                self.assertEqual(probe.main(['--project', '.', '--seconds', str(seconds)]), 1)
+                load.assert_called_once()
+
+    def test_cli_rejects_unbounded_duration_before_reading_configuration(self):
+        for seconds in (2, 3601):
+            with self.subTest(seconds=seconds), redirect_stderr(io.StringIO()), mock.patch.object(
+                    probe.runpy, 'run_path') as load:
+                with self.assertRaises(SystemExit) as error:
+                    probe.main(['--project', '.', '--seconds', str(seconds)])
+                self.assertEqual(error.exception.code, 2)
+                load.assert_not_called()
+
+    def test_fixed_duration_observes_the_full_interval_after_fresh_commits(self):
+        class PublishingReader(FakeReader):
+            calls = 0
+            def rows(self, sql, parameters=()):
+                if sql == probe.FRESH_SQL:
+                    self.calls += 1
+                    return fresh_snapshot(min(self.calls - 1, 10))['value']
+                return super().rows(sql, parameters)
+        clock = Clock()
+        value = probe.collect(PublishingReader(), seconds=1800, allowed_names=set(),
+            clock=clock.read, wall=lambda: 1, wait=clock.wait)
+        self.assertEqual(clock.now, 1800)
+        self.assertEqual(value['measurement_stop_reason'], 'OBSERVATION_DEADLINE')
+        self.assertEqual(value['throughput']['sample_windows'], 10)
+        self.assertFalse(value['database_modified'])
+        self.assertFalse(value['workers_restarted'])
+
+    def test_owned_progress_keeps_scenario_errors_separate_from_primary_errors(self):
+        event={'phase':'read_technical_request_census','at_ns':123,
+            'failure':{'code':'WORKER_OPERATION_ERROR','error_type':'QueryCanceled','sqlstate':'57014',
+                       'sql':'private-query','request_key':'private-request'},
+            'request_key':'private-request'}
+        value={'source_failures_total':0,'scenario_failures_total':9,
+            'last_scenario_failure':event,'scenario_lane_failures':{'read_technical_request_census':event,
+                'private-request':event},'last_technical_census':'PAGE','last_service_sample':'CAUGHT_UP',
+            'statistics_status':'PARTIAL','statistics_at_ns':100}
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'status.json';path.write_text(json.dumps(value),encoding='utf-8')
+            result=probe.owned_progress(path)
+        self.assertEqual(result['status'],'READ');out=result['value']
+        self.assertEqual(out['source_failures_total'],0)
+        self.assertEqual(out['scenario_failures_total'],9)
+        self.assertEqual(out['last_scenario_failure']['failure']['sqlstate'],'57014')
+        self.assertEqual(list(out['scenario_lane_failures']),['read_technical_request_census'])
+        self.assertEqual(out['last_technical_census'],'PAGE')
+        self.assertEqual(out['statistics_status'],'PARTIAL');self.assertEqual(out['statistics_at_ns'],100)
+        self.assertNotIn('private-request',json.dumps(out));self.assertNotIn('private-query',json.dumps(out))
+
+    def test_owned_progress_missing_scenario_counters_remain_unknown(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'status.json';path.write_text('{}',encoding='utf-8')
+            result=probe.owned_progress(path)['value']
+        for key in ('scenario_failures_total','last_scenario_failure','scenario_lane_failures',
+                    'statistics_status','statistics_at_ns'):
+            self.assertIn(key,result);self.assertIsNone(result[key])
+
     def test_owned_progress_keeps_failure_and_window_counters_without_cursor_identifiers(self):
         value={'pid':3,'instance_token':'worker','cohort_windows':7,'owned_apply_failures_total':2,
             'last_source_failure_event':{'phase':'read_request_evidence','failure':{'sqlstate':'57014'}},

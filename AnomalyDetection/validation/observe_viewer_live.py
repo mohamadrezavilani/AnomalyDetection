@@ -462,9 +462,22 @@ def owned_progress(path):
         result={key:value.get(key) for key in ('build_id','source_sha256','pid','instance_token','state','phase','heartbeat_ns',
             'evaluated_jobs','audited_requests','cohort_windows','fresh_windows','fresh_page_reads','fresh_snapshot_restarts',
             'source_pages','source_attempts','source_page_sizes','scenario_evaluations','scenario_results',
+            'scenario_failures_total','last_technical_census','last_service_sample','statistics_status','statistics_at_ns',
             'scenario_queue_activity','viewer_admission','source_failures_total','owned_apply_failures_total',
             'evaluation_timeouts_total','last_source_failure','last_storage_failure','last_evidence_queue_failure',
             'last_source_failure_event','last_owned_apply_failure_event','last_evaluation_failure_event','last_owned_query_metrics')}
+        def scenario_failure(event):
+            if not isinstance(event,dict):return None
+            failure=event.get('failure')
+            return {'phase':event.get('phase'),'at_ns':event.get('at_ns'),
+                'failure':{k:failure.get(k) for k in ('code','error_type','sqlstate')}
+                    if isinstance(failure,dict) else None}
+        result['last_scenario_failure']=scenario_failure(value.get('last_scenario_failure'))
+        failures=value.get('scenario_lane_failures')
+        lanes={'seed_profile_work','upgrade_scenario_methods','upgrade_case_content','seed_longitudinal_content',
+               'sample_service_requests','read_request_content','evaluate_content_network','read_technical_request_census'}
+        result['scenario_lane_failures']=({lane:scenario_failure(event) for lane,event in failures.items() if lane in lanes}
+            if isinstance(failures,dict) else None)
         result['window_lanes']={lane:{**{k:progress.get(k) for k in ('page_reads','completed','snapshot_restarts','last_status')},
             'cursor':{k:progress.get('cursor',{}).get(k) for k in ('target_ns','next_ns')}}
             for lane,progress in value.get('window_lanes',{}).items()
@@ -574,7 +587,8 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,history_windows
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True, type=Path)
-    parser.add_argument('--seconds', type=int, default=60)
+    parser.add_argument('--seconds', type=int, default=60,
+        help='Observation duration, 3..3600 seconds; optional window targets may stop earlier')
     parser.add_argument('--forward-windows', type=int, default=0,
         help='Stop after 2..32 new committed forward windows; --seconds is the observation time limit')
     parser.add_argument('--history-windows',type=int,default=0,
@@ -586,9 +600,8 @@ def main(argv=None):
     if args.history_windows != 0 and not 2 <= args.history_windows <= 32:
         parser.error('--history-windows must be 2..32')
     if args.history_windows and args.forward_windows:parser.error('choose history or forward observation')
-    max_seconds = 3600 if args.forward_windows or args.history_windows else 300
-    if not 3 <= args.seconds <= max_seconds:
-        parser.error(f'--seconds must be 3..{max_seconds}')
+    if not 3 <= args.seconds <= 3600:
+        parser.error('--seconds must be 3..3600')
     project = args.project.resolve(); root = project / 'AnomalyDetection'
     try:
         launcher = runpy.run_path(str(root / 'run_anomaly.py'))
