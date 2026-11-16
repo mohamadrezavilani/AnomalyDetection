@@ -209,8 +209,10 @@ class NativeCapacityTests(unittest.TestCase):
             with patch('p24_foundation.viewer_runtime.runtime_source_digest',return_value=inputs.EXPECTED_RUNTIME):
                 bundle=Path(inputs.collect(project,capture_dir=captures)['output'])
                 with patch('psycopg.connect',side_effect=recorded):
-                    result=owner_qualification.qualify(project,bundle,pairs=1)
-            self.assertEqual(result['status'],'PASS_CANDIDATE_EQUIVALENCE',result.get('failure'))
+                    results=[owner_qualification.qualify(project,bundle,pairs=1,experiment=experiment)
+                        for experiment in ('contract_fetch_once','local_projection_keys')]
+            for result in results:
+                self.assertEqual(result['status'],'PASS_CANDIDATE_EQUIVALENCE',result.get('failure'))
             self.assertTrue(opened)
             self.assertTrue(all(name=='postgres' or
                 name.startswith('p24_design_capacity_') and name.endswith('_qualification') for name in opened))
