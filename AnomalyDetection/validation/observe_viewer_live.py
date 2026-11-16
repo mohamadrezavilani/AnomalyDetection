@@ -587,7 +587,8 @@ def collect(reader, *, seconds, allowed_names, forward_windows=0,history_windows
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True, type=Path)
-    parser.add_argument('--seconds', type=int, default=60)
+    parser.add_argument('--seconds', type=int, default=60,
+        help='Observation duration, 3..3600 seconds; optional window targets may stop earlier')
     parser.add_argument('--forward-windows', type=int, default=0,
         help='Stop after 2..32 new committed forward windows; --seconds is the observation time limit')
     parser.add_argument('--history-windows',type=int,default=0,
@@ -599,9 +600,8 @@ def main(argv=None):
     if args.history_windows != 0 and not 2 <= args.history_windows <= 32:
         parser.error('--history-windows must be 2..32')
     if args.history_windows and args.forward_windows:parser.error('choose history or forward observation')
-    max_seconds = 3600 if args.forward_windows or args.history_windows else 300
-    if not 3 <= args.seconds <= max_seconds:
-        parser.error(f'--seconds must be 3..{max_seconds}')
+    if not 3 <= args.seconds <= 3600:
+        parser.error('--seconds must be 3..3600')
     project = args.project.resolve(); root = project / 'AnomalyDetection'
     try:
         launcher = runpy.run_path(str(root / 'run_anomaly.py'))
