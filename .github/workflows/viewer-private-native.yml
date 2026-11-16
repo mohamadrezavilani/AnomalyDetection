@@ -1,0 +1,75 @@
+name: Private Viewer native test runtime
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/viewer-private-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Export trusted native PG18 binaries for private local measurements
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull postgres:18
+          p24_runtime_container=$(docker create postgres:18)
+          trap 'docker rm -f "$p24_runtime_container" >/dev/null' EXIT
+          p24_runtime_root="$PWD/native-runtime"
+          mkdir -p "$p24_runtime_root/usr/lib/postgresql/18" "$p24_runtime_root/usr/share/postgresql" "$p24_runtime_root/deps"
+          docker cp "$p24_runtime_container:/usr/lib/postgresql/18/bin" "$p24_runtime_root/usr/lib/postgresql/18/"
+          docker cp "$p24_runtime_container:/usr/lib/postgresql/18/lib" "$p24_runtime_root/usr/lib/postgresql/18/"
+          docker cp "$p24_runtime_container:/usr/share/postgresql/18" "$p24_runtime_root/usr/share/postgresql/"
+          docker run --rm --entrypoint sh postgres:18 -c 'ldd /usr/lib/postgresql/18/bin/postgres /usr/lib/postgresql/18/bin/initdb /usr/lib/postgresql/18/bin/pg_ctl /usr/lib/postgresql/18/bin/psql /usr/lib/postgresql/18/bin/pg_dump /usr/lib/postgresql/18/bin/pg_restore /usr/lib/postgresql/18/lib/plpgsql.so' > native-library-map.txt
+          awk '/=> \// {print $3}' native-library-map.txt | sort -u > native-library-paths.txt
+          while IFS= read -r p24_library; do
+            case "$(basename "$p24_library")" in
+              libc.so.*|libm.so.*|libpthread.so.*|libdl.so.*|librt.so.*|ld-linux*) continue ;;
+            esac
+            docker cp -L "$p24_runtime_container:$p24_library" "$p24_runtime_root/deps/$(basename "$p24_library")"
+          done < native-library-paths.txt
+          docker image inspect postgres:18 --format '{{json .RepoDigests}}' > "$p24_runtime_root/source-image.json"
+          python -m pip download --only-binary=:all: --dest "$p24_runtime_root/wheels" -r requirements.txt
+          cp native-library-map.txt "$p24_runtime_root/"
+      - name: Prove relocation without the container's installed PG directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --user postgres --entrypoint sh \
+            -v "$PWD/native-runtime:/bundle:ro" \
+            --tmpfs /usr/lib/postgresql/18 --tmpfs /usr/share/postgresql/18 \
+            postgres:18 -eu -c '
+              export LD_LIBRARY_PATH=/bundle/deps
+              /bundle/usr/lib/postgresql/18/bin/initdb -D /tmp/portable-pg -L /bundle/usr/share/postgresql/18 --no-locale --encoding=UTF8 --auth=trust
+              /bundle/usr/lib/postgresql/18/bin/pg_ctl -D /tmp/portable-pg -l /tmp/portable.log -w -o "-k /tmp -p 55442 -h 127.0.0.1 -c jit=off -c shared_buffers=32MB" start
+              /bundle/usr/lib/postgresql/18/bin/psql -h /tmp -p 55442 -U postgres -d postgres -Atc "SELECT version(), (pg_stat_get_backend_wal(pg_backend_pid())).wal_bytes"
+              /bundle/usr/lib/postgresql/18/bin/pg_ctl -D /tmp/portable-pg -w -m fast stop
+            '
+      - name: Pin runtime file hashes and retain the native-only bundle
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          root=Path('native-runtime')
+          files={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest()
+                 for p in sorted(root.rglob('*')) if p.is_file()}
+          (root/'RUNTIME_MANIFEST.json').write_text(json.dumps({'origin':'official postgres:18 container',
+              'private_inputs_included':False,'application_sources_included':False,
+              'jit_required':False,'files_sha256':files},indent=2)+'\n')
+          PY
+          tar -czf postgres18-native-runtime.tar.gz native-runtime
+          sha256sum postgres18-native-runtime.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: postgres18-private-native-runtime
+          path: postgres18-native-runtime.tar.gz
