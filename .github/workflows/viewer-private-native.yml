@@ -28,7 +28,7 @@ jobs:
           mkdir -p "$p24_runtime_root/usr/lib/postgresql/18" "$p24_runtime_root/usr/share/postgresql" "$p24_runtime_root/deps"
           docker cp "$p24_runtime_container:/usr/lib/postgresql/18/bin" "$p24_runtime_root/usr/lib/postgresql/18/"
           docker cp "$p24_runtime_container:/usr/lib/postgresql/18/lib" "$p24_runtime_root/usr/lib/postgresql/18/"
-          docker cp "$p24_runtime_container:/usr/share/postgresql/18" "$p24_runtime_root/usr/share/postgresql/"
+          docker run --rm --entrypoint tar postgres:18 -chf - -C / usr/share/postgresql | tar -xf - -C "$p24_runtime_root"
           docker run --rm --entrypoint sh postgres:18 -c 'ldd /usr/lib/postgresql/18/bin/postgres /usr/lib/postgresql/18/bin/initdb /usr/lib/postgresql/18/bin/pg_ctl /usr/lib/postgresql/18/bin/psql /usr/lib/postgresql/18/bin/pg_dump /usr/lib/postgresql/18/bin/pg_restore /usr/lib/postgresql/18/lib/plpgsql.so' > native-library-map.txt
           awk '/=> \// {print $3}' native-library-map.txt | sort -u > native-library-paths.txt
           while IFS= read -r p24_library; do
@@ -46,7 +46,7 @@ jobs:
           set -euo pipefail
           docker run --rm --user postgres --entrypoint sh \
             -v "$PWD/native-runtime:/bundle:ro" \
-            --tmpfs /usr/lib/postgresql/18 --tmpfs /usr/share/postgresql/18 \
+            --tmpfs /usr/lib/postgresql/18 --tmpfs /usr/share/postgresql \
             postgres:18 -eu -c '
               export LD_LIBRARY_PATH=/bundle/deps
               /bundle/usr/lib/postgresql/18/bin/initdb -D /tmp/portable-pg -L /bundle/usr/share/postgresql/18 --no-locale --encoding=UTF8 --auth=trust
