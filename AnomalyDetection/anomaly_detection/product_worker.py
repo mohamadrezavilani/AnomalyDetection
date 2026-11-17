@@ -121,6 +121,8 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                         with store.transaction():store.bind(scope_source)
                         state['input_contract']=store.state('input_contract')
                         next_scope_check=clock.monotonic()+30
+                    from .behavior_scope import advance_requalification
+                    with store.transaction():advance_requalification(store)
                     # Serving existing owned results is independent of the
                     # disk admission decision for background analysis.
                     if web and clock.monotonic()>=next_web:

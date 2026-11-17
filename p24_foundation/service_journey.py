@@ -190,6 +190,8 @@ class ServiceJourneyMixin:
             "SELECT service_path FROM viewer_service_roles WHERE role='unknown' AND (reviewed=1 OR source='operator')"))
 
     def service_journey(self, request_key, *, max_requests=MAX_REQUESTS):
+        from .viewer_product_scope import financial_enabled
+        if not financial_enabled(self):return None
         """One anchored occurrence plus *bounded* evidence-linked peer steps.
 
         The current request is an entry into an evidence component; canonical

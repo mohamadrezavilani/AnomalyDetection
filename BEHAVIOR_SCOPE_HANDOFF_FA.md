@@ -1,104 +1,88 @@
-# تحویل توسعهٔ نسخهٔ رفتاری — ۱۷ نوامبر ۲۰۲۶
+# تحویل نسخهٔ تحلیل رفتار بدون روابط مالی
 
-**وضعیت: WIP؛ برای نصب، مرج به main یا ادعای سرعت آماده نیست.** مالک خواسته توسعه در این نقطه روی شاخه ثبت شود تا ایجنت مدیر ادامه دهد. هیچ تغییری روی اجرای زنده اعمال نشده است. تمام اطلاعات سرور و رسیدهای واقعی خصوصی مانده‌اند؛ داخل مخزن نیستند.
+این سند با تصمیم جاری مالک به‌روز شده است. مبنا، تحویل WIP روی `wip/behavior-scope-handoff-20261117` در `9fc0da43`، بر پایهٔ main برابر `008008aa4fa86951af6d888fd625d67c19364e31` بود. ادامه روی `finish/behavior-scope-20261117` انجام شده است. این کار، PR37 یا ادعای رفع همهٔ مشکلات AD نیست. روی سرور مالک فرمانی اجرا نشده است.
 
-## مبنا و تصمیم جدید مالک
+**وضعیت: کاندید بازبینی؛ ظرفیت تاریخچهٔ بزرگ و اجرای عملیاتی هنوز پذیرش ندارند.** buildها `VIEWER-20261117-BEHAVIOR-SCOPE` و `AD-20261117-BEHAVIOR-SCOPE` هستند؛ نام یکسان، جای commit و SHA دقیق manifest را نمی‌گیرد. نصب اولیهٔ WIP مجاز نشده است. راهنمای ادامه/بازگشت [VIEWER_README_FA.md](VIEWER_README_FA.md) و نقشهٔ جاری [Pishkhan24_Project_Roadmap.md](Pishkhan24_Project_Roadmap.md) است.
 
-- مبنای remote main: `008008aa4fa86951af6d888fd625d67c19364e31`، tree برابر `85de0c6909eb1728ccc044ad111fae217ea810b9`.
-- شاخهٔ تحویل: `wip/behavior-scope-handoff-20261117`؛ main برای این تحویل تغییر نمی‌کند.
-- Git محلی محیط قبلی commitهای متفاوت از API داشت، ولی tree مبنا دقیقاً برابر بود. برای بررسی تغییرات، با main فوق مقایسه کنید.
-- نیاز نسخهٔ جدید: آنومالی بر اساس رفتار مشاهده‌شده کافی است. بازسازی روابط استعلام/فاکتور/پرداخت/خدمت و تحلیل وابسته حذف شود؛ خود لاگ پرداخت مثل سایر لاگ‌ها بماند.
-- حفظ RequestID، Session معتبر، خدمت/عمل/زمان/نتیجهٔ مشاهده‌شده، شواهد خام، تکرار/نسخه/تعارض، دیررس، اصلاح سابقه و بازخورد انسانی الزامی است. TTL حدسی، حذف شواهد، reset کل AD و seek تاریخ جدید مجاز نیست.
-- رفرش خودکار سایت باید خاموش باشد. قالب اصلی داشبورد آنومالی حفظ شود.
-- غربال قبلی روی Capture واقعی در دیتابیس تازه کامل شده بود؛ برای پذیرش سرعت روی تاریخچهٔ بزرگ کافی نیست. نتایج خام نزد مالک است. هیچ سرعتی از آن به محصول تعمیم داده نشود.
+## قرارداد محصول
 
-## تغییرات موجود در این snapshot
+- `viewer-full-relations-1` برای دیتابیس قدیمی، تا انتخاب صریح باقی می‌ماند.
+- `viewer-behavior-1` روابط مالی تازه نمی‌سازد و closure گروه پرداخت را گسترش نمی‌دهد. خود لاگ پرداخت و مراحل همان RequestID باقی می‌مانند.
+- هویت RequestID، پیوستگی معتبر Session، زمان، خدمت، عمل، نتیجهٔ مستقیم API/خدمت، تمام نسخه‌ها و تعارض، شاهد دیررس، Capture قابل‌بازپخش و نظر انسانی حفظ می‌شوند. reset، seek تاریخ جدید، TTL یا حذف raw انجام نمی‌شود.
+- `access_session` و `query_parameters_hash` و محورهای همان‌درخواستی `service_dispatch.*` حفظ می‌شوند. service dispatch و OTP، وابستگی رفتاری‌اند؛ نام مالی جدول تاریخی دلیل حذفشان نیست.
+- صفحه‌های Request/Action/Session به materialization مالی قدیمی متکی نمی‌مانند. OUT_OF_SCOPE با «پرداخت نشده»، نبود شاهد، رفتار سالم یا نتیجهٔ ناموفق یکسان نیست. نتیجه‌های مستقیم کسب‌وکار و OTP با پاسخ عمومی HTTP جایگزین نمی‌شوند.
+- هر دو polling خودکار Viewer حذف شده‌اند. قالب اصلی داشبورد AD بازطراحی نشده است.
 
-### Viewer
+## فهرست دقیق ۳۰ خانواده
 
-`p24_foundation/viewer_product_scope.py` قرارداد پایدار `viewer-full-relations-1` و `viewer-behavior-1` را اضافه می‌کند. دیتابیس قدیمی به‌صورت پیش‌فرض full باقی می‌ماند. انتخاب رفتار باید صریح، زیر lease و با Workerهای متوقف انجام شود. جدول‌های scope، تاریخچهٔ تغییر scope و قرارداد هر generation افزوده شده‌اند؛ cursor یا شواهد پاک نمی‌شوند.
+این فهرست از familyهای Worker و UI استخراج شده است؛ «حفظ» یعنی در دامنه باقی‌مانده، نه اینکه accuracy تولیدی آن پذیرفته شده باشد.
 
-در حالت رفتاری:
+| خانواده | وضعیت | دادهٔ لازم |
+|---|---|---|
+| `rate_5m` | حفظ | اجرای معنادار و پوشش زمانی |
+| `rate_60m` | حفظ | شمارش و پوشش پیوستهٔ یک ساعت |
+| `peer_service_rate_5m` | حفظ | اجرای یکتای همان خدمت و مرجع نشست‌های دیگر |
+| `continuous_rate` | حفظ | زمان رخداد و عضویت دقیق درخواست |
+| `service_mix` | حفظ | ترکیب خدمات مشاهده‌شده |
+| `isolation_forest` | حفظ | ویژگی‌های رفتاری؛ محدودیت حساسیت قبلی جداست |
+| `service_sequence` | حفظ | ترتیب معتبر خدمات همان Session |
+| `timing_regularization` | حفظ | فاصلهٔ زمان رخدادها |
+| `business_result_change` | حفظ | نتیجهٔ صریح همان خدمت/درخواست |
+| `request_latency` | حفظ | فاصلهٔ اولین تا آخرین شاهد؛ زمان قطعی HTTP نیست |
+| `otp_result_change` | حفظ | کد صریح OTP همان RequestID |
+| `input_subject_burst` | حفظ | موضوع مستقیم ورودی با شاهد معتبر |
+| `repeated_target` | حفظ | تکرار موضوع مستقیم یا اثر ورودی |
+| `subject_enumeration` | حفظ | تنوع موضوع مستقیم ورودی |
+| `client_ip_rotation` | حفظ | IP سمت مشتری زیر همان Session |
+| `service_traversal` | حفظ | خدمات مشاهده‌شدهٔ همان نشست |
+| `workflow_change` | حفظ | مراحل واقعی همان RequestID، بدون اتصال مالی |
+| `service_workflow_change` | حفظ | مراحل همان درخواست در نمونهٔ مستقل خدمت |
+| `response_schema_change` | حفظ | ساختار پاسخ مشاهده‌شده |
+| `response_content_change` | حفظ | محتوای پاسخ مشاهده‌شده |
+| `service_volume` | حفظ | census حجم خدمت و پوشش منبع |
+| `multi_session_service` | حفظ | حجم و نشست‌های همان خدمت |
+| `multi_session_target` | حفظ | موضوع مستقیم مشترک؛ هویت اشخاص استنتاج نمی‌شود |
+| `service_population` | حفظ | الگوی جمعی حجم/نشست در خدمت و سامانه |
+| `service_health` | حفظ | نتیجهٔ ناموفق صریح و هم‌دامنه |
+| `long_subject_enumeration` | حفظ | تجمیع موضوع مستقیم در ساعت‌ها و روزها |
+| `long_client_ip_rotation` | حفظ | IPهای مشتری در بازهٔ بلند همان نشست |
+| `payment_result_change` | OUT_OF_SCOPE | نتیجهٔ پرداختِ متصل به زنجیره |
+| `typed_target_diversity` | OUT_OF_SCOPE | تنوع مراجع وابسته مثل فاکتور/آیتم؛ موضوع مستقیم نیست |
+| `journey_profile_change` | OUT_OF_SCOPE | شکل سفر مرتبط و بازسازی‌شده |
 
-- `affected_closure` فقط درخواست‌های مستقیم واقعاً متأثر را برمی‌گرداند؛ شامل صاحبان قبلی origin متعارض که خود ingest ثبت می‌کند. گسترش گروه پرداخت حذف می‌شود.
-- SQL linkهای مالی تازه نوشته نمی‌شوند؛ `access_session` برای صحت هویت و `query_parameters_hash` برای موضوع مستقیم ورودی حفظ می‌شوند. این دو وابستگی رفتاری‌اند و نباید همراه روابط مالی حذف شوند.
-- raw/event/capture و بررسی تمام نسخه‌های origin همان مسیر قبلی را دارند.
-- `_rebuild_requests` هویت، root، تعارض، نقش، action و نتیجهٔ مشاهده‌شده را حفظ می‌کند؛ payment index، workflow و نتیجهٔ حاصل از اتصال پرداخت ساخته نمی‌شوند. تاریخچهٔ قدیمی actionهای مالی در این حالت بازنویسی نمی‌شود.
-- `rebuild_payment_contract` در حالت رفتار از استخراج و ساخت روابط مالی عبور می‌کند، ولی `reconcile_service_dispatches` را نگه می‌دارد.
-- نکتهٔ مهم کشف‌شده: **service dispatch و OTP به محورهای `service_dispatch.*` در جدول تاریخی `viewer_contract_observations` وابسته‌اند**. اسم جدول مالی است، اما این بخش برای تشخیص خدمت واقعی InvoiceRegister لازم است. این facts از همان نسخهٔ raw تازه، هنگام ingest و فقط برای callpathهای مشخص استخراج می‌شوند. از invoice برای اتصال درخواست‌ها استفاده نمی‌شود.
-- جزئیات Viewer از خواندن materialization مالی قدیمی عبور می‌کنند و «خارج از دامنه» نشان می‌دهند. بخش ثبت مراحل همان درخواست باقی می‌ماند.
-- هر دو polling خودکار ۵ و ۳۰ ثانیه از `review_ui/static/viewer_live.js` حذف شده‌اند. متن banner دستی شده است.
+روش، baseline و آستانهٔ ۲۷ خانواده برای سبزشدن آزمون تغییر نکرده‌اند. باقی‌ماندن در دامنه، کامل‌بودن داده/آموزش، نتیجهٔ مثبت یا پذیرش precision/recall را ثابت نمی‌کند.
 
-### AD
+## اصلاحات پس از تحویل اولیه
 
-`AnomalyDetection/anomaly_detection/behavior_scope.py` قرارداد ورودی، سازگاری سابقه، projection روی facts قدیمی و انتقال scope را تعریف می‌کند.
+1. مسیر import کنترلر، `sys.path` را دائمی تغییر نمی‌دهد؛ دو شکست واقعی multiprocessing ناشی از تداخل `tests` ریشه و AD رفع شدند. دسترسی موقت تعمیر نیز در finally برمی‌گردد.
+2. هویت و **تمام ارجاع‌های والد/فرزند** مدل رفتاری به namespace پایدار `bm1:` می‌روند. مدل موضوع ورودی دیگر به شناسهٔ fullِ حذف‌نشده اما نامتناسب یا به receipt ناموجود اشاره نمی‌کند. مدل اصلی از تاریخچه حذف نمی‌شود.
+3. تغییر قرارداد در epoch یکسان و عقب‌رفتن epoch رد می‌شوند. هنگام بازگشت به full، ارزیابی مالی قبلی خودکار current نمی‌شود. requalification با cursor پایدار و صفحهٔ محدود انجام می‌شود؛ facts و journeys مالی قدیمی تا ممیزی epoch تازه، مرجع جاری نیستند. مدل، بازخورد و cursor منبع محفوظ‌اند.
+4. drilldown، خروجی ممیزی و پوشش، قرارداد جاری/تاریخی و OUT_OF_SCOPE را تفکیک می‌کنند. export رفتاری، روابط/journey مالی را به‌عنوان خروجی جاری صادر نمی‌کند؛ receiptهای تاریخی با توضیح قرارداد محفوظ‌اند.
+5. آماده‌سازی نصب، gateهای فرایند/Task پس از disable، پایان commit، sessionهای PG و Action/source بازگشت را اجرا می‌کند. prepare پیش از تغییر tracked source و با helper نصب‌شدهٔ قدیمی است. فقط commit کاملِ تأییدشده و موجود در origin/main قابل انتخاب است.
+6. کنترلر طولانی از timeout ثابت ۹۰ثانیه استفاده نمی‌کند. فایل پیشرفت و لغو پایدار دارد؛ لغو SQL روی اتصال خود و هویت handle فرزند واقعی Windows بررسی می‌شود. بازگشت مالی، rawها و closureهای درخواست را در batchهای قابل‌ادامه بازسازی می‌کند. قطع واقعی وسط repair، READY منتشر نمی‌کند. در RESTORING_FULL، Worker/Taskها شروع نمی‌شوند.
+7. نام کپی پیش از CREATE در رسید ثبت می‌شود؛ OID و tag مالکیت پس از موفقیت پین می‌شوند. بازیابی فقط همان کپی را حذف می‌کند. قطع در فاصلهٔ نامعلوم CREATE/ثبت مالکیت، عمداً نیازمند بررسی می‌ماند؛ کپی احتمالی با حدس DROP نمی‌شود. نبود session، مهلت CREATE/cleanup، حافظه و فضای capture/copy/oracle نیز کنترل می‌شوند.
+8. benchmark جدید تمام ردیف‌های رفتار، actions با نتیجهٔ مستقیم، session heads، provenance و تمام جدول‌های AD را برای correctness reconcile می‌کند؛ صرفاً scope متأثر را نمونه‌برداری نمی‌کند. archives مالی/انسانیِ رفتار باید بدون تغییر بمانند. زمان درج نقش خودکار و import از زمان رخداد تفکیک می‌شود؛ زمان و سابقهٔ بازبینی انسانی حذف نمی‌شوند.
+9. ظرفیت، چهار کپی جدا با ترتیب full/behavior/behavior/full دارد؛ oracle داخل آن نیست. ورودی قبلاً منتشرشده یا Capture واردشده و انتشار بدون شاهد تازه رد می‌شوند. codec WAL از قابلیت واقعی همان PostgreSQL انتخاب و در هر دو مسیر یکسان ثبت می‌شود؛ تنظیم عمومی/دوام تغییر نمی‌کند.
+10. helper manifest فقط ورودی‌های عمومیِ صریحاً tracked/staged را می‌پذیرد؛ فایل محلیِ untracked، گزارش و دادهٔ خصوصی خودکار وارد inventory نمی‌شوند.
 
-سه خانوادهٔ حذف‌شده:
+## آزمون و مرز ادعا
 
-| family | علت |
-|---|---|
-| `payment_result_change` | بر نتیجهٔ پرداخت‌های متصل به زنجیره متکی است |
-| `typed_target_diversity` | از typed identifierهای روابط، مانند فاکتور و آیتم، استفاده می‌کند |
-| `journey_profile_change` | شکل سفر بازسازی‌شدهٔ مرتبط را مصرف می‌کند |
+پیش از اصلاح، مجموعهٔ پایهٔ AD: ۳۵۸ تست موفق. مجموعهٔ پایهٔ Viewer/maintenance: ۸۶ تست، سه شکست و شش مورد Windows اجرا‌نشده. دو شکست مربوط به import و دیگری codec ناموجود zstd در PostgreSQL آزمایشی بود؛ هیچ آستانه یا oracle برای عبور تغییر نکرد.
 
-این موارد `OUT_OF_SCOPE` هستند؛ نه `NO_DEVIATION_OBSERVED`، شکست پرداخت یا کمبود تصادفی داده. خواندن journey/مالی در lane مربوط AD خاموش شده است. Snapshot مالی/identifier/edge دریافت نمی‌کند؛ فقط observations مشترک service dispatch باقی می‌مانند. facts قدیمی هنگام مصرف projection می‌شوند، نه اینکه از تاریخچه حذف شوند.
+دورهای توسعه: تست قطع واقعی دو سوی commit، دیررس/تعارض، service dispatch و بازگشت، کنترلر و کپی فیزیکی موفق اجرا شده‌اند. یک مجموعهٔ ۴۸تایی موفق، دو تست Windows اجرا‌نشده داشت. مجموعهٔ رگرسیون بدون PG نیز ۱۶۱ تست با ۴۵ skipِ محیطی موفق داشت؛ skip به معنی native PASS نیست. این‌ها رسید مرحله‌ای‌اند؛ نتیجهٔ snapshot نهایی باید از CI همان commit و اجرای نهایی خوانده شود.
 
-خانواده‌های مستقل حفظ شده‌اند: نرخ ۵ دقیقه/یک ساعت، نرخ مرجع خدمت و نرخ پیوسته، ترکیب خدمات، Isolation Forest، توالی و ریتم زمانی، نتیجهٔ تجاری گزارش‌شده، فاصلهٔ شواهد درخواست، نتیجهٔ OTP؛ سناریوهای تکرار موضوع/تنوع موضوع ورودی، تغییر IP، تغییر مسیر مشاهده‌شدهٔ همان درخواست، ساختار/محتوای پاسخ، سلامت خدمت، حجم/جمعیت خدمت و سناریوهای بلندمدت مبتنی بر پروفایل مستقیم. این فهرست باید در بازبینی نهایی dependencyها دوباره تأیید شود؛ کیفیت و آستانه‌های روش‌ها تغییر نکرده‌اند و دقت کامل محصول ادعا نشده است.
+آزمون کپیِ واقعیِ دیتابیس **مصنوعی** شامل برابری کل تاریخچهٔ حفظ‌شده، چهار lane ظرفیت، نبود تغییر دیتابیس template، قطع فرایند پس از tag و recovery، session فعال و cancellation واقعی SQL موفق بوده است. این qualification ابزار است؛ زمان آن به دیتابیس بزرگ مالک تعمیم داده نمی‌شود.
 
-- namespace و کلید پرونده/RequestID عوض نمی‌شوند. state مربوط به input contract و epoch افزوده شده است.
-- مدل‌های رفتاری قرارداد feature مشترک دارند؛ receipt جدید مدل با پیشوند `bm1:` از مدل قبلی جدا می‌شود و سازگاری سابقهٔ full/behavior صریح است.
-- یافته‌های مالی فعال به خارج از دامنه می‌روند؛ نسخهٔ قبلی، مدل و نظر انسانی نگه داشته می‌شوند. `case_summary` برای جلوگیری از نمایش آنها به‌عنوان عادی یا بازبینی ناقص bucket جدا دارد.
-- قرارداد جدید Viewer در `source_profiles.py` با `R311_RUNTIME` و شمار فایل دقیق پین می‌شود؛ pin قبلی R310 نیز حفظ شده است.
-- buildهای درحال‌توسعه: `AD-20261117-BEHAVIOR-SCOPE` و `VIEWER-20261117-BEHAVIOR-SCOPE`. صرف وجود این نام‌ها، پذیرش نسخه نیست.
+Windows CI شامل parser واقعی PowerShell، process handle واقعی و ارتقا/شکست/بازیابی با Git و PowerShell واقعی و کنترلر مصنوعی است. این مورد، PostgreSQL بومی Windows یا توقف/بازیابی سرویس‌های واقعی مالک نیست. نتیجهٔ CI اجرا‌نشده NOT_RUN می‌ماند.
 
-### ابزار ارتقا و benchmark — هنوز نمونهٔ اولیه
+**باز هستند:** برابری روی کپی تاریخچهٔ بزرگ مالک و ورودی تازهٔ واقعی، پذیرش سرعت و سهم ذخیره‌سازی آن، PostgreSQL بومی Windows، آزمون هم‌زمان با AD/وب و تازگی/رشد backlog، و دقت مستقل تمام خانواده‌ها. دادهٔ کافی، نبود آنومالی و علت خطاهای قبلی از تست مصنوعی نتیجه نمی‌شوند. برای این gateها ابتدا باید نسخه و برنامهٔ دقیق زمان توقف بازبینی و تأیید شوند؛ اکنون دستور زنده‌ای لازم نیست.
 
-- `Behavior_Control.py`: enable صریح و بازسازی data-preserving برای restore-full. rollback مالی از rawهای نگه‌داشته‌شده links و projections را دوباره می‌سازد؛ ارزان و صرفاً git checkout نیست. شکست repair باید `RESTORING_FULL` باقی بگذارد. ادامهٔ behavior پس از repair ناقص نیز نیازمند بازبینی است.
-- `Behavior_Release.py` و `Install_Behavior.ps1`: طرح توقف با ابزار قدیمی **پیش از pull**، دریافت main، انتخاب scope و بازگرداندن نقش‌ها/Taskهای قبلاً فعال. controller مرحلهٔ prepare می‌تواند از stdin با `--project` صریح اجرا شود. این مسیر هنوز native Windows اجرا نشده است.
-- `behavior_benchmark.py`: طرح مقایسه روی `CREATE DATABASE ... TEMPLATE ... STRATEGY FILE_COPY` از دیتابیس واقعیِ متوقف. cloneها UUIDدار و تنها ساخته‌های همین اجرا قابل DROP هستند؛ محصول هدف انتشار یا DDL نیست. PG روشن و durability حفظ می‌شود.
-- ورودی آزمون از پنجره‌های مفقود بعدی، یک بار از ES گرفته می‌شود. پنجرهٔ قبلاً منتشرشده، Capture قبلاً imported و انتشار بدون شاهد جدید برای ورودی غیرخالی رد می‌شوند.
-- correctness و capacity cloneهای جدا دارند؛ دو ترتیب full/behavior و behavior/full در ظرفیت. oracle روی همهٔ ردیف‌های scope متأثر و نسخه‌های origin در هر مرز است؛ پیمایش oracle داخل capacity نیست. این oracle فعلاً دامنهٔ متأثر را می‌سنجد، نه preservation کامل کل کپی را.
-- هزینهٔ capture، کپی، setup/run/drop، commit، final COPY/INSERT، شمارنده‌های همان backend، انتظارها و منابع جدا گزارش می‌شوند. cache سرد و کارکرد همزمان وب/AD با این آزمون تأیید نمی‌شود.
-- `financial_screen.experiment.run_lane` برای clone موجود و oracle مرزی اختیاری توسعه یافته است؛ `Sampler` سقف اندازهٔ configurable برای دیتابیس بزرگ دارد.
-
-## آزمون‌های واقعاً اجراشده
-
-این نتایج مربوط به revisionهای میانی این WIP هستند، **نه تأیید نهایی تمام bytes این snapshot**:
-
-1. سه آزمون SQLite رفتار/دیررس/تعارض، rollback قبل از commit و رفرش دستی: PASS.
-2. مجموعهٔ native Viewer/dispatch/financial-screen/maintenance: ۶۸ آزمون، PASS، شش مورد اختصاصی Windows skipped.
-3. آزمون native رفتار، استخراج service dispatch، kill واقعی قبل از commit و retry و بازگشت مالی: PASS. بعداً حالت kill بعد از commit به همان تست افزوده شد و این افزوده هنوز اجرا نشده است.
-4. مجموعهٔ AD: ۳۵۷ آزمون اجرا شد، یک خطا در adapter قدیمیِ تست که `Store.state` نداشت. compatibility در cases اصلاح شد؛ suite کامل پس از آن دوباره اجرا نشده است.
-5. اجرای هدفمند AD پس از اصلاح: شش آزمون PASS؛ شامل انتقال scope روی PostgreSQL، وضعیت OUT_OF_SCOPE پرونده/یافته، حفظ مدل/بازخورد/cursor و oracle روش‌های باقی‌مانده.
-6. چند تغییر آخر (کاهش SQL داخل حلقهٔ details، محدودکردن extraction به callpathهای لازم، publication-contract ledger و افزودهٔ crash پس از commit) فقط compile شده‌اند؛ native regression نهایی لازم است.
-7. Windows controller/PowerShell installer، benchmark واقعی دیتابیس بزرگ، آزمون وب/AD همزمان و پذیرش ظرفیت: **NOT_RUN**.
-
-## موانع و قدم بعدی؛ پیش از هر نصب رفع شوند
-
-1. ابتدا کل diff را به‌عنوان WIP بازبینی کنید، سپس suiteهای بالا را روی bytes ثابت اجرا کنید. تنها یک benchmark/cluster آزمایشی همزمان فعال باشد. هیچ oracle ضعیف یا detector threshold برای سبزشدن تست تغییر نکند.
-2. مسیر upgrade هنوز lifecycle کامل و آزمودهٔ `financial_screen.host.maintenance` را به‌طور کامل reuse نکرده است. بررسی برگشت process/Task پس از disable، باقی‌ماندن sessionهای PostgreSQL و صحت همان Action/sourceهای supervisor باید با gateهای همان کد یکسان و تست شود؛ خاموش‌کردن کنترل‌ها راه‌حل نیست.
-3. **rollback طولانی نباید از `host.command` با timeout ثابت ۹۰ ثانیه اجرا شود.** `Behavior_Release` فعلی این مشکل را دارد؛ کنترلر باید فرمان طولانی را با log/progress پایدار و کنترل cancellation اجرا کند. بعد از شکست، فعال‌سازی Worker روی RESTORING_FULL نباید ظاهراً موفق اعلام شود.
-4. مسیر نصب از FETCH_HEAD به main نوشته شده بود. اکنون این کد فقط روی WIP است؛ تا تأیید و merge مدیر، فرمان نصب فعلی را به مالک ندهید. منطق upgrade از نسخهٔ قدیمی و بازیابی شکست وسط pull باید روی Windows واقعاً آزموده شود.
-5. benchmark بزرگ هنوز اجرا نشده و خودش تست یکپارچه ندارد. ابتدا clone/setup/cleanup، نبود session روی template، ثبت مالکیت allocation، خرابی یا قطع هنگام COPY/CREATE و cleanup بعد از آن را روی DBهای کاملاً ایزوله qualify کنید.
-6. بودجهٔ زمانی CREATE DATABASE/cleanup و capture/key-extraction پیش از Sampler هنوز به اندازهٔ laneها پوشش ندارد. SQL copy و آماده‌سازی کلاینت ممکن است از بودجه بگذرند؛ حدود حافظه، فضا، timeout و رسید allocation ناقص باید تکمیل شوند. cache پس از کپی کنترل‌شده فرض نشود.
-7. oracle بزرگ و مجموعهٔ scope RequestIDهای قبلی/تازه را بازبینی کنید؛ actions و session heads/بازخورد انسانیِ حفظ‌شده و تغییرهای خارج scope باید reconciliation روشن داشته باشند. حتماً پنجره‌های تازه را با همان ورودی و initial state مقایسه کنید، نه replay تکراری را با fresh publication.
-8. در AD، نمایش نسخهٔ قرارداد برای evaluation/model/case قدیمی و جدید، غیرفعال‌بودن تمام مصرف‌های مالی (از جمله drilldown و export) و مسیر full-after-behavior را کامل بررسی کنید. مدل‌های مالی و jobs آنها در بازگشت نباید به‌اشتباه current اعلام شوند؛ مدل/feedback قدیمی پاک نشود.
-9. صفحات درخواست/نشست قدیمی را از نظر outcome/target مالی cacheشده بازبینی کنید. پوشش OUT_OF_SCOPE نباید به «پرداخت نشده» یا «داده ناقص» تبدیل شود. UI اصلی آنومالی را بازطراحی نکنید.
-10. پس از عبور از qualification، آزمون بزرگ در بازهٔ اختصاصی مالک، با توقف و بازیابی supervisorهای قبلاً بازبینی‌شده اجرا شود. سپس آزمون جدا همراه Viewer، AD و وب، اندازه‌گیری تازگی AD و رشد/کاهش صف لازم است. اگر ذخیره‌سازی همچنان غالب بود، تغییر بعدی از همان سهم هزینه انتخاب شود.
-
-## ادامهٔ کار و manifestها
-
-راهنماهای جاری `VIEWER_README_FA.md`، `AnomalyDetection/PROJECT_MAP_FA.md` و `FINANCIAL_SCOPE_FA.md` هنوز به‌طور کامل برای محصول جدید بازنویسی نشده‌اند؛ بعد از تثبیت کد هماهنگ شوند. بخش مالی قدیمی Roadmap سند تاریخی است، نه نیاز جدید مالک.
-
-`viewer_performance/Refresh_Behavior_Manifests.py` نسخهٔ قابل‌دسترسی helper این WIP است؛ از مسیر خودش root را پیدا می‌کند و دیتابیس باز نمی‌کند. بعد از پایان تغییر source و پیش از تست نسخه اجرا شود. digest canonical runtime، R311/count دقیق، pin ابزارهای capacity، inventory/digest دقیق AD، سپس Fast/Capacity و root manifest را تازه می‌کند. آن را بازبینی کنید؛ helper اثبات صحت یا مجوز انتشار نیست و root release_status را WIP می‌گذارد. هنگام آزمون source را دوباره تغییر ندهید.
-
-فرمان‌های پایه برای محیط دارای PostgreSQL 18 آزمایشی (متغیرهای `P24_DELTA_PG_HOST/PORT/USER` فقط به همان cluster ایزوله اشاره کنند):
+فرمان بازتولید در PostgreSQL 18 کاملاً آزمایشی:
 
 ```bash
-python -B viewer_performance/Refresh_Behavior_Manifests.py
-python -B -m unittest -v tests.test_viewer_behavior_scope tests.test_viewer_behavior_pg tests.test_viewer_service_dispatch tests.test_viewer_financial_screen tests.test_financial_maintenance
+python -B -m unittest -v tests.test_viewer_behavior_scope tests.test_viewer_behavior_pg tests.test_viewer_service_dispatch tests.test_viewer_financial_screen tests.test_financial_maintenance tests.test_behavior_release tests.test_behavior_benchmark_pg
 cd AnomalyDetection
 python -B -m unittest discover -s tests -q
 ```
 
-برای سرور مالک اکنون دستور تازه‌ای لازم نیست. سرویس‌های او طبق آخرین رسید خصوصی بازیابی شده بودند. این شاخه را روی سرور نصب نکنید؛ مدیر باید پس از رفع موانع، نسخه و دستور دقیق نصب/بازیابی و نتایج واقعی را تحویل بدهد.
+`P24_DELTA_PG_HOST/PORT/USER` فقط باید به cluster آزمایشی اشاره کنند. source حین آزمون تغییر نکند. بعد از تثبیت source، `Refresh_Behavior_Manifests.py` پین‌ها را تازه می‌کند؛ این helper پذیرش محصول نیست. گزارش‌های خصوصی مالک و رمز/Session خام داخل مخزن قرار نگرفته‌اند.

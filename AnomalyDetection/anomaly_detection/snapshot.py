@@ -247,6 +247,7 @@ class Snapshot:
                                identifiers=identifiers, evidence=locators,
                                input_contract=self.source.get('input_contract','viewer-full-relations-1'),
                                versions={"input_contract":self.source.get('input_contract','viewer-full-relations-1'),
+                                         "scope_epoch":self.source.get('scope_epoch',0),
                                          "runtime_sha256": self.source["runtime_sha256"],
                                          "catalog_fingerprint": self.source["catalog_fingerprint"],
                                          "semantic_schema": self.source["semantic_schema"], "adapter": CONTRACT}))

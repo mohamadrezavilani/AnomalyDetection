@@ -68,6 +68,8 @@ def read(store,key):
 
 def reason(value,*,fresh=True):
     from .product_web import text,when,FAMILIES
+    if value.get('status')=='OUT_OF_SCOPE':
+        return '<section><h3>خارج از دامنهٔ نسخهٔ رفتاری</h3><p>این روش به روابط مالی وابسته است و اکنون اجرا نمی‌شود. نتیجهٔ تاریخی آن، نتیجهٔ جاری یا تأیید عادی‌بودن نیست. شواهد، مدل‌های قبلی و بازخورد محفوظ‌اند.</p></section>'
     family=value.get('family');direction=value.get('direction')
     title='کاهش فعالیت خدمت' if family=='service_volume' and direction=='decrease' else 'افزایش فعالیت خدمت' if family=='service_volume' and direction=='increase' else FAMILIES.get(family,family)
     entries=[('روش',title),('چرا این مورد ثبت شده',value.get('explanation_fa') or value.get('reason')),

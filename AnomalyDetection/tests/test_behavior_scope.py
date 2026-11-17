@@ -29,6 +29,28 @@ class BehaviorAdapterTests(unittest.TestCase):
             self.assertEqual(a,b)
         self.assertTrue(all(r['status']=='OUT_OF_SCOPE' for r in changed if r['family'] in DISABLED))
 
+    def test_parent_child_receipt_references_share_the_same_namespace(self):
+        source={'input_contract':BEHAVIOR}
+        parent=dict(family='peer_service_rate_5m',model={'model_id':'am2:parent'},model_id='am2:parent')
+        child=dict(family='input_subject_burst',model={'model_id':'am2:child','reference_model_id':'am2:parent'},
+                   model_id='am2:child',reference_model_id='am2:parent')
+        a,b=decisions([parent,child],source)
+        self.assertEqual(a['model_id'],b['reference_model_id'])
+        self.assertEqual(a['model_id'],b['model']['reference_model_id'])
+        self.assertEqual(decisions([a,b],source),[a,b])
+        self.assertEqual(child['reference_model_id'],'am2:parent')
+
+    def test_export_projects_finance_without_destroying_the_original_receipt(self):
+        from anomaly_detection.case_export import compact
+        value={'relations':[{'kind':'finance'}],'identifiers':[{'kind':'invoice'}],
+               'observations':[{'axis':'finance'},{'axis':'service_dispatch.access'}],
+               'versions':{'input_contract':FULL},'input_subject':{'field':'WaterBillID'}}
+        row=compact('case_facts',{'details':json.dumps(value)},{'input_contract':BEHAVIOR})
+        shown=json.loads(row['details'])
+        self.assertEqual(shown['financial_relations'],'OUT_OF_SCOPE')
+        self.assertEqual(shown['relations'],[]);self.assertEqual(shown['identifiers'],[])
+        self.assertEqual(shown['input_subject'],value['input_subject']);self.assertEqual(len(value['relations']),1)
+
     def test_model_receipts_have_distinct_stable_contract_identity(self):
         value={'family':'rate_5m','model':{'model_id':'am2:old'},'model_id':'am2:old'}
         converted=decisions([value],{'input_contract':BEHAVIOR})[0]
@@ -46,6 +68,27 @@ class NativeBehaviorScopeTests(unittest.TestCase):
     setUpClass=classmethod(Fixture.setUpClass.__func__)
     tearDownClass=classmethod(Fixture.tearDownClass.__func__)
     setUp=Fixture.setUp
+
+    def test_persisted_parent_child_models_resolve_to_the_actual_behavior_receipts(self):
+        from anomaly_detection.snapshot import canonical,digest
+        actor='a'*64;target=300_000_000_000
+        source=dict(namespace='viewer:test',stream_key='test',keys_fingerprint='same',generation=1,semantic_generation=1,
+                    input_contract=BEHAVIOR,scope_epoch=1,behavioral_features='observed-behavior-features-1',financial_relations='OUT_OF_SCOPE',captured_at_ns=target)
+        with self.store.transaction():
+            self.store.bind(source)
+            self.raw.execute('INSERT INTO anomaly_detection.adp_jobs(session_key,target_ns) VALUES(%s,%s)',(actor,target))
+        job=dict(self.raw.execute('SELECT * FROM anomaly_detection.adp_jobs').fetchone())
+        context=dict(source=source,windows=[],target_complete=False)
+        values=[]
+        for family,name in (('peer_service_rate_5m','parent'),('input_subject_burst','child')):
+            model=dict(model_id='am2:'+name)
+            if name=='child':model['reference_model_id']='am2:parent'
+            values.append(dict(family=family,dimension='activity',finding_key='pf1:'+digest(name),status='NO_DEVIATION_OBSERVED',model=model))
+        self.store.complete(job,context,values,target)
+        models=[json.loads(r['body']) for r in self.raw.execute('SELECT body FROM anomaly_detection.adp_models').fetchall()]
+        child=next(v for v in models if v.get('reference_model_id'))
+        self.assertIn(child['reference_model_id'],{v['model_id'] for v in models})
+        self.assertTrue(all(v['input_contract']==BEHAVIOR for v in models))
 
     def test_scope_migration_archives_finance_and_keeps_feedback_models_and_cursor(self):
         from anomaly_detection.cases import replace_scope
@@ -77,3 +120,19 @@ class NativeBehaviorScopeTests(unittest.TestCase):
         self.assertEqual(self.raw.execute('SELECT model_id FROM anomaly_detection.adp_models').fetchone()['model_id'],'finance-model')
         self.assertTrue(self.raw.execute('SELECT 1 FROM anomaly_detection.adp_finding_versions').fetchone())
         self.assertTrue(self.raw.execute('SELECT 1 FROM anomaly_detection.adp_case_versions WHERE revision>1').fetchone())
+        from anomaly_detection.behavior_scope import advance_requalification
+        with self.store.transaction():
+            self.raw.execute("INSERT INTO anomaly_detection.adp_jobs(session_key,target_ns,dirty,version,processed_version,evaluation) VALUES(%s,%s,FALSE,1,1,%s)",
+                             (actor,target,canonical({'input_contract':BEHAVIOR,'scope_epoch':1})))
+            self.store.bind(dict(source,scope_epoch=3))
+            advance_requalification(self.store,limit=1)
+        job=self.raw.execute('SELECT * FROM anomaly_detection.adp_jobs').fetchone()
+        self.assertTrue(job['dirty']);self.assertEqual(job['version'],2)
+        self.assertNotEqual(case_status(self.store,case)['bucket'],'READY')
+        self.assertEqual(self.raw.execute('SELECT note FROM anomaly_detection.adp_case_feedback').fetchone()['note'],'keep this review')
+        self.assertEqual(self.store.state('fresh_cursor'),{'next_ns':target})
+        with self.store.transaction():advance_requalification(self.store,limit=1)
+        self.assertEqual(self.raw.execute('SELECT version FROM anomaly_detection.adp_jobs').fetchone()['version'],2)
+        self.assertTrue(self.store.state('finance_requalification')['jobs_done'])
+        with self.assertRaisesRegex(Exception,'WITHOUT_NEW_EPOCH'):
+            with self.store.transaction():self.store.bind(dict(source,input_contract=BEHAVIOR,scope_epoch=3))

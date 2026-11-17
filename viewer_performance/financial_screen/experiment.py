@@ -67,8 +67,10 @@ def allocated(admin,parameters,keys,mode,created,stats):
     name='p24_design_capacity_fs_'+uuid.uuid4().hex[:16]+'_qualification'
     # CREATE succeeds only for a nonexistent name. No existing database is adopted.
     admin.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(name)));created.append(name);stats['allocated']+=1
+    from viewer_performance.behavior_resources import wal_codec
+    codec=wal_codec(admin)
     config={**parameters,'dbname':name,'connect_timeout':5,
-        'options':'-c jit=off -c work_mem=64MB -c temp_buffers=128MB -c wal_compression=zstd -c lock_timeout=10000'}
+        'options':'-c jit=off -c work_mem=64MB -c temp_buffers=128MB -c wal_compression='+codec+' -c lock_timeout=10000'}
     db=None
     try:
         db=ScreenDB(config=config,keys_path=keys,mode=mode)

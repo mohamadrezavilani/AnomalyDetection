@@ -73,14 +73,14 @@ class MethodControls(unittest.TestCase):
         self.assertEqual(upgrade_methods(self.store),0)
     def test_operator_currentness_rejects_old_method_before_backfill(self):
         from anomaly_detection.case_summary import CURRENT_SIGNAL_SQL
-        sql='SELECT '+CURRENT_SIGNAL_SQL+" AS current FROM (SELECT 'feature' AS source_kind,1 AS job_version,NULL AS primary_version) s CROSS JOIN (SELECT 1 AS scope_key,0 AS dirty,1 AS version,'request_response' AS kind,%s AS evaluation) fj CROSS JOIN (SELECT NULL AS session_key,0 AS dirty,1 AS version,NULL AS primary_version,'{}' AS evaluation) j CROSS JOIN (SELECT NULL AS start_ns,0 AS dirty,1 AS version) p"
+        sql='SELECT '+CURRENT_SIGNAL_SQL+" AS current FROM (SELECT 'feature' AS source_kind,'response_content_change' AS family,1 AS job_version,NULL AS primary_version) s CROSS JOIN (SELECT 1 AS scope_key,0 AS dirty,1 AS version,'request_response' AS kind,%s AS evaluation) fj CROSS JOIN (SELECT NULL AS session_key,0 AS dirty,1 AS version,NULL AS primary_version,'{}' AS evaluation) j CROSS JOIN (SELECT NULL AS start_ns,0 AS dirty,1 AS version) p"
         for method,expected in ((None,False),(METHOD_VERSION,True)):
             body=canonical({'input_receipt':{'profile_version':PROFILE_VERSION,'method_version':method}})
             self.assertEqual(bool(self.store.execute(sql,(body,)).fetchone()['current']),expected)
     def test_actor_currentness_checks_evaluator_without_revoking_primary_version(self):
         from anomaly_detection.case_summary import CURRENT_SIGNAL_SQL
         from anomaly_detection import EVALUATOR_VERSION
-        sql='SELECT '+CURRENT_SIGNAL_SQL+" AS current FROM (SELECT 'actor' AS source_kind,1 AS job_version,%s AS primary_version) s CROSS JOIN (SELECT NULL AS scope_key,0 AS dirty,1 AS version,'actor' AS kind,'{}' AS evaluation) fj CROSS JOIN (SELECT 'actor' AS session_key,0 AS dirty,1 AS version,7 AS primary_version,%s AS evaluation) j CROSS JOIN (SELECT NULL AS start_ns,0 AS dirty,1 AS version) p"
+        sql='SELECT '+CURRENT_SIGNAL_SQL+" AS current FROM (SELECT 'actor' AS source_kind,'rate_5m' AS family,1 AS job_version,%s AS primary_version) s CROSS JOIN (SELECT NULL AS scope_key,0 AS dirty,1 AS version,'actor' AS kind,'{}' AS evaluation) fj CROSS JOIN (SELECT 'actor' AS session_key,0 AS dirty,1 AS version,7 AS primary_version,%s AS evaluation) j CROSS JOIN (SELECT NULL AS start_ns,0 AS dirty,1 AS version) p"
         for primary,version,expected in ((None,None,False),(None,EVALUATOR_VERSION,True),(7,None,True)):
             self.assertEqual(bool(self.store.execute(sql,(primary,canonical({'evaluator_version':version}))).fetchone()['current']),expected)
     def test_model_receipts_change_when_implementation_changes_with_identical_inputs(self):

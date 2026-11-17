@@ -13,11 +13,33 @@ from p24_foundation.viewer_online import initialize_live,bind_stream,publish_cap
 from p24_foundation.viewer_product_scope import set_scope,BEHAVIOR,read,FULL
 
 
+def crash_financial_restore(config,keys):
+    from viewer_performance.Behavior_Control import change
+    with ViewerDB(config=config,keys_path=keys) as db:
+        change(db,'restore-full',progress=lambda value:os._exit(73) if value['stage']=='REBUILDING_FINANCIAL_CONTRACT' else None)
+    os._exit(74)
+
+
 @unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'native PG18 required')
 class NativeBehaviorTests(unittest.TestCase):
     setUpClass=classmethod(NativeMinimalPublicationTests.setUpClass.__func__)
     tearDownClass=classmethod(NativeMinimalPublicationTests.tearDownClass.__func__)
     setUp=NativeMinimalPublicationTests.setUp
+
+    def test_real_repair_crash_stays_fenced_and_resumes_without_cursor_reset(self):
+        from viewer_performance.Behavior_Control import change
+        change(self.db,'enable')
+        path=verified_file(self.root/'repair.gz',[dict(_source_id='behavior:repair',**{'@timestamp':iso(START+1_000_000_000)},RequestID='repair',Session='a'*32,IP='192.0.2.1',CallPath='Services.v1/WaterBills',message='POST (G00000 | successful)')],START)
+        publish_capture(self.db,path,START,START+FIVE_NS)
+        before=self.db.one('SELECT start_ns,next_ns,stream_key,keys_fingerprint FROM viewer_live_state');self.db.close()
+        process=multiprocessing.get_context('spawn').Process(target=crash_financial_restore,args=(self.config,str(self.keys)))
+        process.start();process.join(30);self.assertEqual(process.exitcode,73)
+        with ViewerDB(config=self.config,keys_path=self.keys) as db:
+            self.assertEqual(read(db,refresh=True)['state'],'RESTORING_FULL')
+            with self.assertRaisesRegex(ValueError,'financial_restore_in_progress'):db.write_lock()
+            db.conn.rollback();change(db,'restore-full')
+            self.assertEqual(read(db,refresh=True)['contract'],FULL)
+            self.assertEqual(db.one('SELECT start_ns,next_ns,stream_key,keys_fingerprint FROM viewer_live_state'),before)
 
     def test_native_dispatch_publication_crash_retry_and_financial_rollback(self):
         from p24_foundation.viewer_data import token

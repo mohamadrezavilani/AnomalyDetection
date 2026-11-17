@@ -55,7 +55,7 @@ def datasets():
       ('population_service_coverage',"SELECT service_path,COUNT(*) AS windows,COUNT(*) FILTER(WHERE body::jsonb->>'covered'='true') AS covered_windows,MIN(start_ns) AS first_ns,MAX(start_ns) AS last_ns FROM anomaly_detection.adp_population GROUP BY service_path",()),
       ('family_readiness',"SELECT d->>'family' AS family,d->>'status' AS status,d->>'reason' AS reason,(NOT j.dirty AND j.version=j.processed_version) AS current_evaluation,COUNT(*) AS decisions FROM (SELECT dirty,version,processed_version,evaluation FROM anomaly_detection.adp_jobs WHERE last_evaluated_ns IS NOT NULL ORDER BY last_evaluated_ns DESC LIMIT 512) j CROSS JOIN LATERAL jsonb_array_elements(COALESCE(j.evaluation::jsonb->'decisions','[]'::jsonb)) d GROUP BY 1,2,3,4 ORDER BY 1,2,3,4",()),
       ('queue_summary','SELECT target_scope,dirty,COUNT(*) AS jobs,COUNT(*) FILTER(WHERE last_evaluated_ns IS NOT NULL) AS ever_evaluated,MIN(target_ns) AS first_ns,MAX(target_ns) AS last_ns FROM anomaly_detection.adp_jobs GROUP BY target_scope,dirty',()),
-      ('migration_and_source_state',"SELECT name,body FROM anomaly_detection.adp_state WHERE name IN ('counters','source_binding','fresh_cursor','overlap_cursor','learning_cursor','older_learning_cursor','scope_repair_cursor','root_reference_import','job_scope_backfill_v1','job_scope_fast_promote_v1','stable_cases_backfill_v1','stable_cases_review_policy_v2','rate_history_requalification_v2','rate_history_requalification_v3','population_backfill_v1','assessed_recheck_pass_v1','priority_audit_size','regular_audit_size','candidate_audit_scope_v3','profile_active_scope_v1','profile_independent_sample_v1','scenario_traffic_cursor','scenario_old_traffic_cursor','scenario_schedule_v1','longitudinal_seed_v1') ORDER BY name",()),
+      ('migration_and_source_state',"SELECT name,body FROM anomaly_detection.adp_state WHERE name IN ('input_contract','finance_requalification','counters','source_binding','fresh_cursor','overlap_cursor','learning_cursor','older_learning_cursor','scope_repair_cursor','root_reference_import','job_scope_backfill_v1','job_scope_fast_promote_v1','stable_cases_backfill_v1','stable_cases_review_policy_v2','rate_history_requalification_v2','rate_history_requalification_v3','population_backfill_v1','assessed_recheck_pass_v1','priority_audit_size','regular_audit_size','candidate_audit_scope_v3','profile_active_scope_v1','profile_independent_sample_v1','scenario_traffic_cursor','scenario_old_traffic_cursor','scenario_schedule_v1','longitudinal_seed_v1') ORDER BY name",()),
       ('reference_sets','SELECT * FROM anomaly_detection.adp_http_reference_sets WHERE service_path IN (SELECT DISTINCT service_path FROM anomaly_detection.adp_cases) ORDER BY dataset_id',()),
       ('service_reference_points','SELECT * FROM anomaly_detection.adp_service_reference_points WHERE service_path IN (SELECT DISTINCT service_path FROM anomaly_detection.adp_cases) AND start_ns>=(SELECT COALESCE(MIN(target_ns),0) FROM anomaly_detection.adp_case_signals)-%s ORDER BY service_path,kind,start_ns,session_key',(56*288*FIVE_NS,)),
       ('http_reference_calls','SELECT c.* FROM anomaly_detection.adp_http_reference_calls c JOIN anomaly_detection.adp_http_reference_sets d USING(dataset_id) WHERE d.service_path IN (SELECT DISTINCT service_path FROM anomaly_detection.adp_cases) ORDER BY c.dataset_id,c.request_key',()),
@@ -81,10 +81,11 @@ def datasets():
 class ExportLimit(Exception):pass
 
 
-def compact(name,row):
+def compact(name,row,scope=None):
     if name=='case_facts':
-        fact=json.loads(row.get('details') or '{}')
-        keep=('semantic','quality','transport','service_path','source_present','versions','input_subject')
+        from .behavior_scope import fact as scope_fact
+        fact=scope_fact(json.loads(row.get('details') or '{}'),scope)
+        keep=('semantic','quality','transport','service_path','source_present','versions','input_subject','financial_relations','input_contract')
         result={k:fact[k] for k in keep if k in fact}
         fields={'observations':('axis','value','qualified','at_ns','origin_key','version_key','callpath','raw_available','authority','stage','scope'),
           'evidence':('origin_key','version_key','at_ns','callpath','qualified','raw_available','origin_version_count'),
@@ -137,10 +138,19 @@ def collect(raw,archive,metadata,*,seconds=60,max_bytes=256*1024*1024):
         identity=dict(raw.execute("SELECT current_database() AS database,current_user AS role,current_setting('transaction_read_only') AS read_only,current_setting('transaction_isolation') AS isolation").fetchone())
         if identity['read_only']!='on':raise RuntimeError('READ_ONLY_SNAPSHOT_REQUIRED')
         result['snapshot']=identity
+        exists=raw.execute("SELECT to_regclass('anomaly_detection.adp_state') AS present").fetchone()['present']
+        saved=raw.execute("SELECT body FROM anomaly_detection.adp_state WHERE name='input_contract'").fetchone() if exists else None
+        scope=json.loads(saved['body']) if saved else {}
+        from .behavior_scope import behavioral,FULL
+        result['active_input_contract']=scope or {'input_contract':FULL}
+        result['historical_receipts']='ARCHIVED_ORIGINAL_CONTRACT_LEGACY_UNLABELLED_IS_FULL_NOT_CURRENT_RECOMPUTATION'
+        result['financial_exports']='OUT_OF_SCOPE' if behavioral(scope) else 'ENABLED'
         for number,(name,sql,args) in enumerate(datasets()):
             record={'name':name+'.jsonl','rows':0,'bytes':0,'complete':False};result['datasets'].append(record)
             if time.monotonic()-started>seconds:
                 record['error']='EXPORT_TIME_LIMIT';break
+            if behavioral(scope) and name in ('case_journeys','viewer_relations'):
+                archive.writestr(record['name'],b'');record.update(complete=True,scope_status='OUT_OF_SCOPE');continue
             try:
                 with raw.transaction():
                     with raw.cursor(name='ad_case_review_'+str(number)) as cursor,archive.open(record['name'],'w') as output:
@@ -150,7 +160,7 @@ def collect(raw,archive,metadata,*,seconds=60,max_bytes=256*1024*1024):
                             rows=cursor.fetchmany(256)
                             if not rows:break
                             for row in rows:
-                                encoded=(json.dumps(compact(name,dict(row)),ensure_ascii=False,default=str,separators=(',',':'))+'\n').encode()
+                                encoded=(json.dumps(compact(name,dict(row),scope),ensure_ascii=False,default=str,separators=(',',':'))+'\n').encode()
                                 if used+len(encoded)>max_bytes:raise ExportLimit('EXPORT_SIZE_LIMIT')
                                 output.write(encoded);used+=len(encoded);record['rows']+=1;record['bytes']+=len(encoded)
                         record['complete']=True

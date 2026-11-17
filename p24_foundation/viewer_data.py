@@ -1519,6 +1519,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         via the explicit include_internal flag. The service classification is
         operator-controlled and always separate from initiation provenance.
         """
+        from .viewer_product_scope import financial_enabled,observed_outcome
+        financial=financial_enabled(self)
         where=[];args=[]
         if not include_internal:where.append('(r.root_call IS NOT NULL OR r.conflicted=1)')
         if session:
@@ -1554,7 +1556,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             if outcome=='success':where.append("r.root_code='G00000'")
             elif outcome=='failure':where.append("r.root_code IS NOT NULL AND r.root_code<>'G00000'")
             elif outcome=='unknown':where.append('r.root_code IS NULL')
-            elif outcome=='confirmed':where.append("a.current_outcome='confirmed_per_approved_contract'")
+            elif outcome=='confirmed':
+                if not financial:raise ValueError('financial_filter_out_of_scope')
+                where.append("a.current_outcome='confirmed_per_approved_contract'")
         if from_ns is not None:where.append('r.ended_ns>=?');args.append(from_ns)
         if to_ns is not None:where.append('r.started_ns<?');args.append(to_ns)
         scope=' WHERE '+' AND '.join(where) if where else ''
@@ -1571,22 +1575,27 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             item['raw_request_id']=self.raw_request_id(item['request_key'])
             item['when_fa']=tehran(item['root_ns'] or item['started_ns'])
             item['service_name']=item['name'] or (core_name(item['root_call']) if item['root_call'] else 'بدون API اصلی')
-            item['raw_target']=self.raw_target_value(item['request_key'],item['target_key']) if item.get('target_key') else None
-            item['inquiry_journey']=self.inquiry_payment_journey(item['request_key']) if item.get('name') in INQUIRIES and (target or role=='business' or session or session_key or service) else None
+            item['raw_target']=self.raw_target_value(item['request_key'],item['target_key']) if financial and item.get('target_key') else None
+            item['inquiry_journey']=self.inquiry_payment_journey(item['request_key']) if financial and item.get('name') in INQUIRIES and (target or role=='business' or session or session_key or service) else None
             from .viewer_product_scope import financial_enabled
             item['service_journey']=self.service_journey(item['request_key']) if financial_enabled(self) and (session or session_key or request_id) else None
             if not financial_enabled(self):
                 item.update(workflow_key=None,target_key=None,target_type=None,financial_relations='OUT_OF_SCOPE')
-                code=item.get('service_result_code',item.get('root_code'))
-                item['current_outcome']='unknown' if not code else 'success' if code=='G00000' else 'failure'
+                item['current_outcome']=observed_outcome(item)
         return dict(items=rows,total=count,limit=limit,offset=offset)
 
     def actions(self,session_key,limit=25,offset=0,category=None,service=None,result=None):
+        from .viewer_product_scope import financial_enabled,observed_outcome
+        financial=financial_enabled(self)
         where=['a.session_key=?'];args=[session_key]
         if category=='main':where.append("a.category='business'")
         elif category:where.append('a.category=?');args.append(category)
         if service:where.append('a.name=?');args.append(service)
-        if result:where.append('a.current_outcome=?');args.append(result)
+        if result:
+            if financial:where.append('a.current_outcome=?');args.append(result)
+            else:
+                where.append("(SELECT CASE WHEN a.current_outcome IN ('unknown','success','failure','no_payable_bill','not_found','provider_unavailable') THEN a.current_outcome WHEN r.root_code IS NULL THEN 'unknown' WHEN r.root_code='G00000' THEN 'success' ELSE 'failure' END FROM viewer_requests r WHERE r.request_key=a.root_request_key)=?")
+                args.append(result)
         constraint=' WHERE '+' AND '.join(where)
         count=self.one('SELECT COUNT(*) AS n FROM viewer_actions a'+constraint,args)['n']
         rows=self.all('''SELECT a.*,r.event_count,r.sql_count,r.provider_count,r.root_code,
@@ -1594,6 +1603,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                   LEFT JOIN viewer_requests r ON r.request_key=a.root_request_key'''+constraint+
                   ' ORDER BY a.at_ns DESC,a.action_key LIMIT ? OFFSET ?',args+[limit,offset])
         for r in rows:
+            if not financial:
+                r.update(workflow_key=None,target_key=None,target_type=None,financial_relations='OUT_OF_SCOPE',
+                    current_outcome=observed_outcome(r))
             r['raw_request_id']=self.raw_request_id(r['root_request_key'])
             r['when_fa']=tehran(r['at_ns']);r['target_alias']=r['target_key'][:9] if r['target_key'] else 'نامشخص'
         return dict(items=rows,total=count,limit=limit,offset=offset)
@@ -1696,8 +1708,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                 inquiry_journey=None,bill_item_journey=None,payment_contract=None,service_payments=None,service_journey=None,
                 outcome_history=[],financial_scope=out_of_scope())
             # Old materialized payment outcomes are not direct observations.
-            observed=self.one('SELECT root_code FROM viewer_requests WHERE request_key=?',(key,))
-            row['current_outcome']='unknown' if not observed or not observed['root_code'] else ('success' if observed['root_code']=='G00000' else 'failure')
+            from .viewer_product_scope import observed_outcome
+            observed=self.one('SELECT root_code FROM viewer_requests WHERE request_key=?',(row['root_request_key'],)) or {}
+            row['current_outcome']=observed_outcome(dict(observed,current_outcome=row.get('current_outcome')))
             return row
         row['link_basis']='platform_payment' if (row['workflow_key'] or '').startswith('platform_payment:') else (
               'invoice_or_query' if row['workflow_key'] else 'none')

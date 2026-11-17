@@ -7,7 +7,9 @@ import hashlib,json,re,sys
 r=Path(__file__).resolve().parents[1];sys.path.insert(0,str(r))
 from p24_foundation.viewer_runtime import runtime_source_digest
 runtime=runtime_source_digest(r)
-old='b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8'
+# Only explicitly staged/tracked public inputs may join the inventory.
+import subprocess
+tracked=set(subprocess.check_output(['git','ls-files'],cwd=r,text=True).splitlines())
 # Runtime boundaries outside the AD source digest use exactly the current pin.
 for name in ('viewer_performance/fast_writer.py','viewer_performance/Run_Viewer_Memory.py','viewer_performance/Collect_Capacity_Inputs.py','viewer_performance/Qualify_Capacity_Candidate.py','viewer_performance/Run_Viewer_Index_Probe_UTF8.py','viewer_performance/capacity/origin_filter.py'):
  p=r/name;s=p.read_text();s=re.sub(r"(BASE_RUNTIME\s*=\s*)['\"][a-f0-9]{64}['\"]",lambda m:m[1]+repr(runtime),s)
@@ -32,7 +34,7 @@ def save(p,d):p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
 p=r/'AnomalyDetection/RELEASE_MANIFEST.json';d=json.loads(p.read_text());entries=d['files_sha256']
 for folder,suffix in(('anomaly_detection','.py'),('tests','.py'),('fixtures','.json')):
  for q in(p.parent/folder).rglob('*'+suffix):
-  if '__pycache__' not in q.parts:entries[q.relative_to(p.parent).as_posix()]=sha(q)
+  if '__pycache__' not in q.parts and q.relative_to(r).as_posix() in tracked:entries[q.relative_to(p.parent).as_posix()]=sha(q)
 for name in list(entries):entries[name]=sha(p.parent/name)
 d['source_sha256']=hashlib.sha256(json.dumps(entries,sort_keys=True,separators=(',',':')).encode()).hexdigest();d['build_id']='AD-20261117-BEHAVIOR-SCOPE';d['viewer_runtime_sha256']=runtime
 save(p,d)
@@ -46,11 +48,14 @@ for manifest in ('viewer_performance/CAPACITY_MANIFEST.json','viewer_performance
   d.update(build_id='VIEWER-20261117-BEHAVIOR-SCOPE',canonical_runtime_files_changed=True,canonical_data_contract_changed=True,schema_migration='additive_explicit_product_scope',activation='explicit_product_scope_under_stopped_writers')
  save(p,d)
 p=r/'RELEASE_MANIFEST.json';d=json.loads(p.read_text());entries=d['files_sha256']
-# Add only public source/tests/docs from the working tree, never private reports.
-import subprocess
-changed=subprocess.check_output(['git','ls-files','--modified','--others','--exclude-standard'],cwd=r,text=True).splitlines()
-for name in changed:
- if name!='RELEASE_MANIFEST.json' and not name.startswith('AnomalyDetection/reports/') and (r/name).is_file():entries[name]=sha(r/name)
+# Staging is the deliberate public inventory boundary. Never include arbitrary
+# untracked configs, exports, logs, temporary scripts or customer captures.
+public_folders=('p24_foundation/','tools/','review_ui/','catalogs/','viewer_performance/','tests/','AnomalyDetection/anomaly_detection/','AnomalyDetection/tests/','.github/workflows/')
+public_root={'AGENTS.md','VIEWER_README_FA.md','Pishkhan24_Project_Roadmap.md','BEHAVIOR_SCOPE_HANDOFF_FA.md','FINANCIAL_SCOPE_FA.md'}
+for name in tracked:
+ if name=='RELEASE_MANIFEST.json' or '.local.' in name or any(p in name.split('/') for p in ('reports','data','private','__pycache__')):continue
+ if name in public_root or name.startswith(public_folders) and (r/name).suffix in ('.py','.ps1','.cmd','.md','.json','.yml','.html','.css','.js','.csv'):
+  entries[name]=sha(r/name)
 for name in list(entries):entries[name]=sha(r/name)
-d['release_status']='WIP_NOT_FOR_DEPLOYMENT';d['runtime_source_sha256']=runtime;d['release_id']='VIEWER-20261117-BEHAVIOR-SCOPE';d['anomaly_build_id']='AD-20261117-BEHAVIOR-SCOPE';save(p,d)
+d['release_status']='REVIEW_CANDIDATE_OWNER_CAPACITY_NOT_ACCEPTED';d['runtime_source_sha256']=runtime;d['release_id']='VIEWER-20261117-BEHAVIOR-SCOPE';d['anomaly_build_id']='AD-20261117-BEHAVIOR-SCOPE';save(p,d)
 print(json.dumps(dict(runtime=runtime,files=count,ad=d.get('anomaly_build_id'),root_members=len(entries))))

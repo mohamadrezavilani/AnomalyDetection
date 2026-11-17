@@ -57,7 +57,9 @@ class EvaluationTests(unittest.TestCase):
                 if 'adp_source_windows' in sql:return Rows({'complete':True})
                 if 'adp_incidents' in sql:return Rows(None)
                 raise AssertionError(sql)
-        class Store:raw=Raw()
+        class Store:
+            raw=Raw()
+            def state(self,name):return {}
         return Store(),calls
     def test_cold_real_count_and_reason_are_visible_without_incident(self):
         store,calls=self.store(self.job())

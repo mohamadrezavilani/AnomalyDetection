@@ -90,6 +90,17 @@ def observed_dispatch(db, raw, origin, version, request):
              str(raw.get('CallPath') or 'Unknown')[:240], axis, value, path, 'reported'))
 
 
+# These values describe the same request/service, not an attached payment.
+OBSERVED_OUTCOMES=frozenset(('unknown','success','failure','no_payable_bill','not_found','provider_unavailable'))
+
+
+def observed_outcome(row):
+    current=row.get('current_outcome')
+    if current in OBSERVED_OUTCOMES:return current
+    code=row.get('service_result_code',row.get('root_code'))
+    return 'unknown' if not code else 'success' if code=='G00000' else 'failure'
+
+
 def out_of_scope():
     return dict(status='OUT_OF_SCOPE', input_contract=BEHAVIOR,
                 reason='FINANCIAL_RELATIONS_DISABLED_BY_PRODUCT_SCOPE')

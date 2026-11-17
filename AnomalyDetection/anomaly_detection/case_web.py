@@ -15,6 +15,9 @@ def render(store,path,args,csrf):
         state=case_status(store,row['case_key'])
         shown={'OUT_OF_SCOPE':'OUT_OF_SCOPE','EVIDENCE_PENDING':'EVIDENCE_PENDING','READY':'NEEDS_REVIEW','RECHECK':'RECHECK_REQUIRED','WATCH':'WATCH','HISTORY':'HISTORY','EVIDENCE':'needs_evidence','REVIEWED':state['review_label']}[state['bucket']]
         body=json.loads(state['body']);body['_historical_signals_pending']=state['stale_signals']
+        if state['bucket']=='OUT_OF_SCOPE':
+            from .behavior_scope import decisions
+            body['strongest']=decisions([body['strongest']],store.state('input_contract'))[0]
         return body,shown,state['fresh']
     def metric(body):
         strongest=body['strongest'];observed=strongest.get('observed');expected=strongest.get('expected')
@@ -55,7 +58,7 @@ def render(store,path,args,csrf):
     if data.get('evidence_last_change_ns'):body+='<p>آخرین تکمیل یا اصلاح شاهد: '+text(when(data['evidence_last_change_ns']))+'</p>'
     if status=='WATCH':
         body+='<div class="notice">این یافته هنوز پشتوانهٔ لازم برای اولویت مستقل بررسی را ندارد. نادر بودن آماری به‌تنهایی رفتار مشکوک را تأیید نمی‌کند؛ شواهد و نسخه‌های قبلی محفوظ‌اند.</div>'
-    body+='<p>ارزیابی ورودی جاری: '+('بله' if fresh else 'در صف بازبینی؛ نتیجهٔ قبلی عادی فرض نمی‌شود')+'</p>'
+    body+='<p>ارزیابی ورودی جاری: '+('این روش خارج از دامنه است؛ سابقه و بازخورد محفوظ‌اند' if status=='OUT_OF_SCOPE' else 'بله' if fresh else 'در صف بازبینی؛ نتیجهٔ قبلی عادی فرض نمی‌شود')+'</p>'
     if data.get('_historical_signals_pending'):
         body+='<p>تعداد معیارهای تاریخیِ منتظر بازبینی: '+text(data['_historical_signals_pending'])+'؛ وضعیت آماده بر پایهٔ یافتهٔ جاریِ دارای شاهد است و به معنی پایان بازبینی تمام سابقه نیست.</p>'
     if data['entity_type']=='actor':body+='<a href="http://127.0.0.1:5021/session/'+text(data['entity_key'])+'/behavior">رفتار پیوستهٔ نشست در Viewer ↗</a>'

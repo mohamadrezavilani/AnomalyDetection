@@ -12,7 +12,11 @@ BUCKETS={'OUT_OF_SCOPE':'خارج از دامنهٔ نسخهٔ رفتاری','RE
 
 
 _PROFILE_KINDS_SQL="("+",".join("'"+kind+"'" for kind in PROFILE_JOB_KINDS)+")"
-CURRENT_SIGNAL_SQL=(
+_FINANCE_CURRENT=("(s.family NOT IN ('payment_result_change','typed_target_diversity','journey_profile_change') OR "
+    "(COALESCE((SELECT body::jsonb->>'input_contract' FROM anomaly_detection.adp_state WHERE name='input_contract'),'viewer-full-relations-1')='viewer-full-relations-1' "
+    "AND COALESCE((SELECT body::jsonb->>'scope_epoch' FROM anomaly_detection.adp_state WHERE name='finance_requalification'),'0') "
+    "=COALESCE(j.evaluation::jsonb->>'scope_epoch','0')))")
+CURRENT_SIGNAL_SQL=_FINANCE_CURRENT+" AND ("+(
     "CASE WHEN s.source_kind='feature' THEN fj.scope_key IS NOT NULL AND NOT fj.dirty AND fj.version=s.job_version "
     "AND (fj.kind NOT IN "+_PROFILE_KINDS_SQL+" OR (COALESCE(fj.evaluation::jsonb->'input_receipt'->>'profile_version','')='"+PROFILE_VERSION+"' "
     "AND COALESCE(fj.evaluation::jsonb->'input_receipt'->>'method_version','')='"+METHOD_VERSION+"')) "
@@ -20,7 +24,7 @@ CURRENT_SIGNAL_SQL=(
     "THEN j.primary_version=s.primary_version ELSE NOT j.dirty AND j.version=s.job_version "
     "AND COALESCE(j.evaluation::jsonb->>'evaluator_version','')='"+EVALUATOR_VERSION+"' END) "
     "ELSE p.start_ns IS NOT NULL AND NOT p.dirty AND p.version=s.job_version END"
-)
+)+")"
 
 
 def signals(where='TRUE'):

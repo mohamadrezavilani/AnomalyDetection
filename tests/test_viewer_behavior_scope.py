@@ -57,6 +57,53 @@ class BehaviorScopeTests(unittest.TestCase):
                     self.assertEqual(db.one('SELECT COUNT(*) AS n FROM viewer_events')['n'],0)
                     publish_capture(db,jobs[0]['path'],jobs[0]['start'],jobs[0]['start']+FIVE)
 
+    def test_failed_restore_can_resume_without_leaking_repair_privilege(self):
+        from viewer_performance.Behavior_Control import change
+        from p24_foundation.viewer_product_scope import financial_enabled,FULL
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);keys=root/'keys';generate_keys(keys);jobs=corpus(root,(1,1,1))
+            with ViewerDB(sqlite_path=root/'db',keys_path=keys) as db:
+                db.init();initialize_live(db);bind_stream(db,start_ns=jobs[0]['start'],stream_key='scope')
+                change(db,'enable')
+                self.assertFalse(financial_enabled(db));self.assertFalse(db._financial_repair)
+                publish_capture(db,jobs[0]['path'],jobs[0]['start'],jobs[0]['start']+FIVE)
+                before=db.one('SELECT start_ns,next_ns,stream_key,keys_fingerprint FROM viewer_live_state')
+                with patch.object(db,'rebuild_payment_contract',side_effect=RuntimeError('injected repair failure')):
+                    with self.assertRaises(RuntimeError):change(db,'restore-full')
+                self.assertFalse(db._financial_repair);self.assertFalse(financial_enabled(db))
+                self.assertEqual(read(db,refresh=True)['state'],'RESTORING_FULL')
+                with self.assertRaisesRegex(ValueError,'financial_restore_in_progress'):db.write_lock()
+                db.conn.rollback()
+                change(db,'restore-full')
+                self.assertEqual(read(db,refresh=True)['contract'],FULL)
+                self.assertTrue(financial_enabled(db));self.assertFalse(db._financial_repair)
+                self.assertEqual(db.one('SELECT start_ns,next_ns,stream_key,keys_fingerprint FROM viewer_live_state'),before)
+
+    def test_old_financial_cards_hidden_but_observed_business_outcome_survives(self):
+        from viewer_performance.Behavior_Control import change
+        from p24_foundation.viewer_data import token
+        from p24_foundation.viewer_ui import create_viewer_app
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);keys=root/'keys';generate_keys(keys);jobs=corpus(root,(1,1,1))
+            opts=dict(sqlite_path=root/'db',keys_path=keys)
+            with ViewerDB(**opts) as db:
+                db.init();initialize_live(db);bind_stream(db,start_ns=jobs[0]['start'],stream_key='scope')
+                publish_capture(db,jobs[0]['path'],jobs[0]['start'],jobs[0]['start']+FIVE)
+                key=token(db.keys,'request','w0-r0')
+                db.sql("UPDATE viewer_actions SET current_outcome='no_payable_bill' WHERE action_key=?",(key,));db.conn.commit()
+                change(db,'enable')
+                self.assertEqual(db.action(key)['current_outcome'],'no_payable_bill')
+                self.assertEqual(db.requests_page(request_id='w0-r0')['items'][0]['current_outcome'],'no_payable_bill')
+                self.assertEqual(db.actions(token(db.keys,'session','a'*32),result='no_payable_bill')['total'],1)
+                for call in (db.inquiry_payment_journey,db.bill_item_journey,db.service_payment_journey,db.service_journey,db.payment_contract_card):
+                    self.assertIsNone(call(key))
+            client=create_viewer_app(opts).test_client()
+            result=client.get('/action/'+key)
+            self.assertEqual(result.status_code,200)
+            page=result.get_data(as_text=True)
+            self.assertIn('خارج از دامنه',page)
+            self.assertNotIn('مشاهدهٔ مستقل از Paid یا وب‌هوک ثبت نشده',page)
+
     def test_manual_refresh_has_no_timer_or_fetch(self):
         source=(Path(__file__).resolve().parents[1]/'review_ui/static/viewer_live.js').read_text()
         self.assertNotIn('setInterval(',source);self.assertNotIn('fetch(',source)

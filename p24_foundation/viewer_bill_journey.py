@@ -147,6 +147,8 @@ class BillItemJourneyMixin:
 
     @read_scope
     def inquiry_payment_journey(self, request_key):
+        from .viewer_product_scope import financial_enabled
+        if not financial_enabled(self):return None
         from .viewer_data import INQUIRIES, core_name
         inquiry = self.one('SELECT * FROM viewer_requests WHERE request_key=?', (request_key,))
         base = dict(status='unresolved',basket_additions=[],payment_attempts=[],bill_item_count=0,
@@ -181,6 +183,8 @@ class BillItemJourneyMixin:
 
     @read_scope
     def bill_item_journey(self, request_key, *, request=None, inquiry_journey=None):
+        from .viewer_product_scope import financial_enabled
+        if not financial_enabled(self):return None
         from .viewer_data import INQUIRIES, core_name, service_path, tehran
         request = request or self.one('SELECT * FROM viewer_requests WHERE request_key=?', (request_key,))
         if not request:

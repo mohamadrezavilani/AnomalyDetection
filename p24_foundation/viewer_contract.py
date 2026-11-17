@@ -453,6 +453,8 @@ class PaymentContractMixin:
              e['request_key'],eligibility,RULE_VERSION,confidence,e['at_ns']))
 
     def payment_contract_card(self,request_key):
+        from .viewer_product_scope import financial_enabled
+        if not financial_enabled(self):return None
         """Card for a single RequestID; does not merge unrelated attempts."""
         items=self.all('''SELECT issuer,kind,scope,field_path,raw_value,identity_key,origin_key,version_key
           FROM viewer_contract_identifiers WHERE request_key=? ORDER BY kind,field_path LIMIT 200''',(request_key,))

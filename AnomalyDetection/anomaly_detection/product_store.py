@@ -478,7 +478,7 @@ class ProductStore:
             'AND f.id=(SELECT MAX(latest.id) FROM anomaly_detection.adp_feedback latest WHERE latest.incident_key=i.incident_key)',
             (job['session_key'],job['target_ns']-HISTORY_NS,job['target_ns'])).fetchall()}
     def details(self,job):
-        rows=self.raw.execute('SELECT f.request_key,f.at_ns,f.service_path,f.details,f.revision,f.anchor_key,f.state,f.source_present,j.body AS journey,j.semantic_revision FROM anomaly_detection.adp_facts f '
+        rows=self.raw.execute('SELECT f.request_key,f.at_ns,f.service_path,f.details,f.revision,f.anchor_key,f.state,f.source_present,j.body AS journey,j.semantic_revision,j.observed_ns AS journey_observed_ns FROM anomaly_detection.adp_facts f '
             'LEFT JOIN anomaly_detection.adp_journeys j ON j.request_key=f.request_key WHERE f.session_key=%s '
             'AND f.at_ns>=%s AND f.at_ns<%s AND f.eligible=TRUE '
             'AND (NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_source_windows sw WHERE sw.start_ns=(f.at_ns/%s)*%s) '
@@ -488,11 +488,17 @@ class ProductStore:
             (job['session_key'],job['target_ns']-HISTORY_NS,job['target_ns']+FIVE_NS,FIVE_NS,FIVE_NS,FIVE_NS,FIVE_NS)).fetchall()
         values=[]
         active_scope=self.state('input_contract')
+        requalification=self.state('finance_requalification')
         for row in reversed(rows[:4096]):
             fact=json.loads(row['details']) if row['details'] else None
             if fact and (not row['source_present'] or row['state']!='active' or fact.get('semantic',{}).get('revision')!=row['revision'] or
                          fact.get('semantic',{}).get('anchor_key')!=row['anchor_key']):fact=None
-            if fact and row['journey'] and row['semantic_revision']==fact.get('semantic',{}).get('revision'):
+            if fact and requalification and fact.get('versions',{}).get('scope_epoch',0)<requalification['scope_epoch']:
+                # Keep direct behavior usable while financial caches await a
+                # fresh audit at the restored epoch. No negative result inferred.
+                fact=dict(fact,identifiers=[],relations=[],viewer_journey={},financial_relations='REQUALIFICATION_REQUIRED')
+            if fact and fact.get('financial_relations')!='REQUALIFICATION_REQUIRED' and row['journey'] and row['semantic_revision']==fact.get('semantic',{}).get('revision') and (not requalification or
+                    (row['journey_observed_ns'] or 0)>=requalification['required_since_ns']):
                 fact['viewer_journey']=json.loads(row['journey'])
             from .behavior_scope import fact as scope_fact
             fact=scope_fact(fact,active_scope)
@@ -636,6 +642,7 @@ class ProductStore:
             evaluation={'decisions':[{k:decision[k] for k in fields if k in decision} for decision in decisions],
                 'changed_findings':changed,'operator_alert':False,'rate_history_policy_version':review_version,'pending_families':pending,
                 'input_contract':scope.get('input_contract','viewer-full-relations-1'),'behavioral_features':'observed-behavior-features-1',
+                'scope_epoch':scope.get('scope_epoch',0),
                 'out_of_scope_families':sorted(DISABLED) if behavioral(scope) else [],
                 'evaluator_version':EVALUATOR_VERSION,
                 'primary_version':row['primary_version'],'primary_qualified_requests':context.get('primary_qualified_requests'),
