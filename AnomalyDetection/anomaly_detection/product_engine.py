@@ -8,6 +8,9 @@ from .snapshot import api_path
 
 
 def evaluate_job(store,job,context,now, *, progress=None,mode='full'):
+    from .behavior_scope import fact as scope_fact
+    active_scope=store.state('input_contract') if callable(getattr(store,'state',None)) else {}
+    if active_scope:context=dict(context,source=dict(context['source'],**active_scope))
     if mode=='primary':
         from .primary_pipeline import evaluate as evaluate_primary
         return evaluate_primary(store,job,context,now,progress)

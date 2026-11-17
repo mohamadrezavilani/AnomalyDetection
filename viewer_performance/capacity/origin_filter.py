@@ -18,7 +18,7 @@ from p24_foundation.viewer_data import ViewerDB,source_identity,token
 from p24_foundation.viewer_origin_storage import lookup_origins
 from p24_foundation.viewer_runtime import runtime_source_digest
 
-EXPECTED_RUNTIME='b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8'
+EXPECTED_RUNTIME='1d74f48374eca46bb4d71592ced7461231d3b42d9d5446c0eb3bf96adac5df3f'
 EPOCH_CONTRACT='viewer-window-epochs-1'
 
 

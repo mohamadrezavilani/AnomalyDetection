@@ -10,6 +10,9 @@ FACT_LIMIT=128
 
 class ServiceContextMixin:
     def dispatched_request_keys(self,service):
+        from .viewer_product_scope import financial_enabled
+        if not financial_enabled(self):
+            return [r['request_key'] for r in self.all("SELECT DISTINCT o.request_key FROM viewer_contract_observations o WHERE o.axis='service_dispatch.access' AND o.value=? AND (SELECT COUNT(*) FROM viewer_events e WHERE e.origin_key=o.origin_key)=1",(service,))]
         from .viewer_contract import typed_id
         identity=typed_id('pishkhan24','dispatcher_service',service.rsplit('/',1)[-1],scope=service)
         return [r['request_key'] for r in self.all('''SELECT DISTINCT c.request_key FROM viewer_contract_identifiers c

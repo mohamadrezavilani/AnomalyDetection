@@ -1,5 +1,6 @@
 {% extends 'viewer_base.html' %}{% set execution=execution|default({}) %}
 {% block body %}
+{% if card.financial_scope %}<p class="inline-notice">روابط استعلام، فاکتور و پرداخت در نسخهٔ رفتاری خارج از دامنه‌اند؛ این وضعیت به معنی شکست پرداخت یا نقص داده نیست.</p>{% endif %}
 <nav class="breadcrumb"><a href="{{url_for('home')}}">نشست‌ها</a>{% if card.session_key %} ← <a href="{{url_for('session_behavior_view',key=card.session_key)}}">رفتارهای نشست</a> · <a href="{{url_for('requests_view',session_key=card.session_key,role='business')}}">درخواست‌های نشست</a>{% endif %}</nav>
 <div class="execution-page">
 {% if execution %}
@@ -19,11 +20,11 @@
   {% if execution.conflicted %}<p class="inline-notice">شواهد این درخواست متعارض‌اند؛ نتیجهٔ قطعی به آن نسبت داده نمی‌شود.</p>{% endif %}
   {% if execution.incomplete %}<p class="inline-notice">نمای مراحل یا ارتباط‌ها به سقف خواندن رسیده است. فهرست کاملِ لاگ‌های همین درخواست از بخش فنی پایین صفحه قابل ورق‌زدن است؛ نبود یک مرحله یا ارتباط در این نما قطعی نیست.</p>{% endif %}
 </section>
-<section class="panel compact flow-payment-summary" id="payment-progress"><h2>وضعیت پرداخت‌های مرتبط</h2>
+{% if not card.financial_scope %}<section class="panel compact flow-payment-summary" id="payment-progress"><h2>وضعیت پرداخت‌های مرتبط</h2>
 {% for payment in execution.payment_cards %}<article class="flow-payment-card {{payment.status}}"><div><strong>{{payment.title}}</strong><span>{{payment.label}}</span></div><div>{% if payment.payment_key %}<small>PaymentKey</small><bdi>{{payment.payment_key}}</bdi>{% endif %}{% if payment.status_values %}<small>گزارش Backend: <bdi>{{payment.status_values|join(' · ')}}</bdi></small>{% endif %}{% if payment.targets %}<small>{{payment.targets|length}} شناسهٔ قبض در ارتباط این پرداخت ثبت شده است.</small>{% endif %}</div></article>
 {% else %}<p><strong>نتیجهٔ پرداخت در شواهد فعلی مشاهده نشده است.</strong></p><p class="scope-note">استعلام و ثبت Invoice در مراحل پایین جدا دیده می‌شوند. نبود گزارش پرداخت، به معنی پرداخت‌نشدن یا رایگان‌بودن خدمت نیست.</p>{% endfor %}
 </section>
-<section class="panel execution-steps" id="execution-steps">
+{% endif %}<section class="panel execution-steps" id="execution-steps">
   <div class="section-heading"><div><h2>مراحل ثبت‌شدهٔ روال</h2><p>درخواست اصلی و مراحل مرتبطِ مستند؛ هر ردیف برای دیدن نتیجه و شاهد اصلی باز می‌شود.</p></div><span>{{execution.steps|length}} ردیف · {{execution.linked_request_count}} درخواست مرتبط<br><a href="{{url_for('request_view',key=card.request_key)}}">تازه‌سازی مراحل ↻</a></span></div>
   <div class="execution-step-list">
   {% for step in execution.steps %}

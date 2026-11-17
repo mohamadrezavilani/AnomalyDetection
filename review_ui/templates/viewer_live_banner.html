@@ -17,5 +17,5 @@
 <span>آخرین پنجرهٔ کامل تا <b dir="ltr">{{live.last_complete_window_utc|tehran_time if live.last_complete_window_utc else 'هنوز منتشر نشده'}}</b> تهران · {{live.backlog_windows}} پنجره در انتظار</span>
 <details><summary>جزئیات پوشش</summary><p>شروع تنظیم‌شده: <span dir="ltr">{{live.started_from_utc|tehran_time}}</span> · شروع بازهٔ پیوستهٔ جاری: <span dir="ltr">{{live.get('continuous_published_from_utc',live.started_from_utc)|tehran_time}}</span> · آخرین انتشار: <span dir="ltr">{{live.last_publish_utc|tehran_time}}</span> · پوشش پیش از شروع کامل فرض نمی‌شود. لاگ‌های جدیدتر ممکن است در بازبینی بعدی به پنجره‌های قبلی اضافه شوند.</p></details>
 {% endif %}
-<small id="progress-refresh-note">پیشرفت هر ۵ ثانیه و فهرست هر ۳۰ ثانیه تازه می‌شود؛ زمان‌ها به تهران‌اند.</small>
+<small id="progress-refresh-note">تازه‌سازی خودکار غیرفعال است؛ برای دیدن پیشرفت، صفحه را دستی تازه کنید. زمان‌ها به تهران‌اند.</small>
 <small id="refresh-note"></small></div>

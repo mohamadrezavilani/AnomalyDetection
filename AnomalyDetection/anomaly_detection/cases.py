@@ -83,12 +83,15 @@ def replace_scope(store,scope,items,now, *, source_kind='actor',job=None):
     old={r['signal_key']:dict(r) for r in store.raw.execute(
         'SELECT * FROM anomaly_detection.adp_case_signals WHERE scope_key=%s',(scope,)).fetchall()}
     incoming={item['signal_key']:item for item in items};affected=set()
+    active_scope=store.state('input_contract') if callable(getattr(store,'state',None)) else {}
     for key in sorted(old.keys()|incoming.keys()):
         item=incoming.get(key);before=old.get(key)
         if item is None:
             if not before:continue
             item=json.loads(before['body'])|{'status':'NO_DEVIATION_OBSERVED','reason':'NOT_PRESENT_IN_COMPLETE_REEVALUATION'}
-        status=item.get('status');state=('ACTIVE' if status=='CANDIDATE' else 'DEFERRED' if status=='INSUFFICIENT_DATA' else 'WITHDRAWN')
+        from .behavior_scope import decisions as scope_decisions
+        item=scope_decisions([item],active_scope)[0]
+        status=item.get('status');state=('OUT_OF_SCOPE' if status=='OUT_OF_SCOPE' else 'ACTIVE' if status=='CANDIDATE' else 'DEFERRED' if status=='INSUFFICIENT_DATA' else 'WITHDRAWN')
         if before is None and state!='ACTIVE':continue
         entity_type=item.get('entity_type','actor');entity=item.get('entity_key') or (job or {}).get('session_key')
         service=item.get('service_path','*');kind=KINDS.get(item.get('family'),item.get('family','unknown'))
@@ -151,7 +154,9 @@ def refresh(store,key,now):
     counts=store.raw.execute('SELECT COUNT(DISTINCT r.request_key) AS executions,COUNT(DISTINCT r.session_key) AS actors,MIN(r.at_ns) AS first_event_ns,MAX(r.at_ns)+1 AS last_event_ns '
         'FROM anomaly_detection.adp_case_requests r JOIN anomaly_detection.adp_case_signals s ON s.signal_key=r.signal_key '
         "WHERE r.case_key=%s AND s.state<>'WITHDRAWN'",(key,)).fetchone()
-    state='NEEDS_REVIEW' if aggregate['review'] else 'HOLD' if aggregate['active'] or aggregate['deferred'] else 'WITHDRAWN'
+    from .behavior_scope import behavioral,DISABLED
+    outside=behavioral(store.state('input_contract') if callable(getattr(store,'state',None)) else {}) and strongest.get('family') in DISABLED
+    state='NEEDS_REVIEW' if aggregate['review'] else 'HOLD' if aggregate['active'] or aggregate['deferred'] else 'OUT_OF_SCOPE' if outside else 'WITHDRAWN'
     kind=strongest['issue_kind'];body={'case_key':key,'entity_type':strongest['entity_type'],'entity_key':strongest['entity_key'],
         'issue_kind':kind,'service_path':strongest['service_path'],'title_fa':LABELS.get(kind,kind),'state':state,
         'first_ns':counts['first_event_ns'] if counts['first_event_ns'] is not None else aggregate['first_ns'],

@@ -20,6 +20,7 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
             storage_backend='postgresql',architecture='PG_PRODUCT_V1',source_modified=False,source_checkpoint_modified=False,
             source_pages=0,evaluated_jobs=0,audited_requests=0,cohort_windows=0,source_attempts=0,
             historical_recheck_age_limit=None,operator_parameters_required=False,operator_alerts=0,precision_recall='NOT_EVALUATED',sqlite_loaded='sqlite3' in sys.modules)
+        next_scope_check=0.
         raw=store=source=None;next_connect=next_source=next_report=next_heartbeat=next_web=0.;turn=cycles=iterations=0
         from .viewer_priority import ViewerPriority
         viewer_priority=ViewerPriority()
@@ -115,6 +116,11 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                     'DEGRADED_OWNED_APPLY' if any(state.get(k) for k in ('semantic_apply_blocked','audit_apply_blocked','window_apply_blocked')) else 'RUNNING',phase='owned_historical_import')
                 try:
                     keys=[];job=None
+                    if source is not None and callable(getattr(source,'metadata',None)) and clock.monotonic()>=next_scope_check:
+                        with source.snapshot() as query:scope_source=source.metadata(query)
+                        with store.transaction():store.bind(scope_source)
+                        state['input_contract']=store.state('input_contract')
+                        next_scope_check=clock.monotonic()+30
                     # Serving existing owned results is independent of the
                     # disk admission decision for background analysis.
                     if web and clock.monotonic()>=next_web:
@@ -229,7 +235,8 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                         else:
                             from .product_enrichment import next_key,save,defer
                             from .viewer_bridge import read_journey
-                            enrichment_key=next_key(store,clock.time_ns(),oldest=turn%32==6)
+                            from .behavior_scope import behavioral
+                            enrichment_key=None if behavioral(store.state('input_contract')) else next_key(store,clock.time_ns(),oldest=turn%32==6)
                             if enrichment_key and (source.project/'p24_foundation').is_dir():
                                 state['phase']='read_viewer_journey';publish(True)
                                 try:

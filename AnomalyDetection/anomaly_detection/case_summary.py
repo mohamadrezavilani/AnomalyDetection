@@ -7,7 +7,7 @@ from .cases import LABELS
 from .scenario_store import PROFILE_JOB_KINDS,PROFILE_VERSION,METHOD_VERSION
 from . import EVALUATOR_VERSION
 
-BUCKETS={'READY':'آمادهٔ بررسی','PENDING':'تمام مواردِ در انتظار بازبینی یا شاهد','EVIDENCE_PENDING':'نامزد تازه؛ تکمیل شاهد در جریان است','RECHECK':'در صف بازبینی','WATCH':'مشاهدهٔ آماری؛ پشتوانهٔ بیشتر لازم است',
+BUCKETS={'OUT_OF_SCOPE':'خارج از دامنهٔ نسخهٔ رفتاری','READY':'آمادهٔ بررسی','PENDING':'تمام مواردِ در انتظار بازبینی یا شاهد','EVIDENCE_PENDING':'نامزد تازه؛ تکمیل شاهد در جریان است','RECHECK':'در صف بازبینی','WATCH':'مشاهدهٔ آماری؛ پشتوانهٔ بیشتر لازم است',
  'HISTORY':'سابقه؛ الگو در ارزیابی بعدی دیده نشده','REVIEWED':'بررسی‌شده توسط اپراتور','EVIDENCE':'منتظر شاهد طبق نظر اپراتور'}
 
 
@@ -33,7 +33,7 @@ def cte():
     grouped="signal_state AS (SELECT s.case_key,BOOL_OR(s.current_input) AS fresh,BOOL_OR(s.state<>'WITHDRAWN' AND (NOT s.current_input OR s.method_pending)) AS needs_recheck,COUNT(*) FILTER(WHERE s.state<>'WITHDRAWN' AND NOT s.current_input) AS stale_signals,BOOL_OR(s.current_input AND ("+review_sql()+")) AS can_review,BOOL_OR(s.current_input AND NOT s.qualified AND ("+review_sql(qualified=False)+")) AS evidence_pending FROM signal_inputs s GROUP BY s.case_key), "
     chosen="current_signals AS (SELECT DISTINCT ON (case_key) case_key,body::jsonb AS current_signal FROM signal_inputs WHERE current_input AND state='ACTIVE' ORDER BY case_key,review_eligible DESC,end_ns DESC,score DESC,signal_key), latest_feedback AS (SELECT DISTINCT ON (case_key,case_revision) case_key,case_revision,label FROM anomaly_detection.adp_case_feedback ORDER BY case_key,case_revision,id DESC), "
     assessed="assessed AS (SELECT c.case_key,c.entity_type,c.entity_key,c.issue_kind,c.service_path,c.state,c.revision,c.content_digest,c.first_ns,c.last_ns,c.updated_ns,c.body AS stored_body,COALESCE(s.fresh,FALSE) AS fresh,COALESCE(s.needs_recheck,FALSE) AS needs_recheck,COALESCE(s.stale_signals,0) AS stale_signals,COALESCE(s.can_review,FALSE) AS can_review,COALESCE(s.evidence_pending,FALSE) AS evidence_pending,p.current_signal,b.label AS review_label FROM anomaly_detection.adp_cases c LEFT JOIN signal_state s USING(case_key) LEFT JOIN current_signals p USING(case_key) LEFT JOIN latest_feedback b ON b.case_key=c.case_key AND b.case_revision=c.revision), "
-    effective="effective AS (SELECT a.*,jsonb_set(stored_body::jsonb,'{strongest}',COALESCE(current_signal,stored_body::jsonb->'strongest'))::text AS body,CASE WHEN fresh AND review_label IN ('confirmed_suspicious','reviewed_benign') THEN 'REVIEWED' WHEN fresh AND review_label='needs_evidence' THEN 'EVIDENCE' WHEN can_review THEN 'READY' WHEN evidence_pending THEN 'EVIDENCE_PENDING' WHEN needs_recheck OR NOT fresh THEN 'RECHECK' WHEN state='WITHDRAWN' OR stored_body::jsonb->>'phase'='NO_CURRENT_SIGNAL' THEN 'HISTORY' ELSE 'WATCH' END AS bucket FROM assessed a) "
+    effective="effective AS (SELECT a.*,jsonb_set(stored_body::jsonb,'{strongest}',COALESCE(current_signal,stored_body::jsonb->'strongest'))::text AS body,CASE WHEN state='OUT_OF_SCOPE' THEN 'OUT_OF_SCOPE' WHEN fresh AND review_label IN ('confirmed_suspicious','reviewed_benign') THEN 'REVIEWED' WHEN fresh AND review_label='needs_evidence' THEN 'EVIDENCE' WHEN can_review THEN 'READY' WHEN evidence_pending THEN 'EVIDENCE_PENDING' WHEN needs_recheck OR NOT fresh THEN 'RECHECK' WHEN state='WITHDRAWN' OR stored_body::jsonb->>'phase'='NO_CURRENT_SIGNAL' THEN 'HISTORY' ELSE 'WATCH' END AS bucket FROM assessed a) "
     return signals()+grouped+chosen+assessed+effective
 
 

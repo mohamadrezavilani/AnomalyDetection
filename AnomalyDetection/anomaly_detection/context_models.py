@@ -13,6 +13,8 @@ from .categorical import shift
 FAMILIES=('request_latency','otp_result_change','payment_result_change','typed_target_diversity','journey_profile_change')
 
 def evaluate(context,details):
+    from .behavior_scope import fact as scope_fact,decisions as scope_decisions
+    details=[dict(r,details=scope_fact(r.get('details'),context.get('source',{}))) for r in details]
     session=context['session_key'];target=context['target_ns'];decisions=[]
     records=defaultdict(list);current_scopes=set()
     for record in details:
@@ -115,4 +117,4 @@ def evaluate(context,details):
         kind=None
         for family in FAMILIES:emit(family,'*','INSUFFICIENT_DATA','QUALIFIED_CONTEXT_HISTORY_INSUFFICIENT',
             explanation_fa='شواهد یا سابقهٔ هم‌دامنه برای این محور کافی نیست؛ نتیجهٔ عادی یا شکست صادر نشده است.')
-    return decisions
+    return scope_decisions(decisions,context.get('source',{}))

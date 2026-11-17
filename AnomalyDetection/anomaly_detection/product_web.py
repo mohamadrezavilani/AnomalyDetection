@@ -32,6 +32,7 @@ CSS="""*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172b43;fo
 def text(value):return escape(str(value if value is not None else '—'))
 def when(value):
     return datetime.fromtimestamp(value/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%d %H:%M:%S') if value else '—'
+LABELS['OUT_OF_SCOPE']='خارج از دامنهٔ نسخهٔ رفتاری'
 def badge(state):return '<span class="badge '+text(state)+'">'+text(LABELS.get(state,state))+'</span>'
 def layout(title,body):
     return ('<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -42,6 +43,10 @@ def layout(title,body):
 
 
 def render(store,status,path,args,csrf):
+    if path=='/coverage':
+        from .behavior_scope import behavioral,DISABLED
+        if behavioral(store.state('input_contract')):
+            return layout('پوشش نسخهٔ رفتاری','<p>قرارداد ورودی: viewer-behavior-1؛ روابط مالی خارج از دامنه‌اند.</p><ul>'+''.join('<li>'+text(FAMILIES.get(f,f))+' — خارج از دامنه</li>' for f in sorted(DISABLED))+'</ul><p>روش‌های رفتاری مستقل از روابط مالی فعال‌اند؛ آمادگی هر روش به سابقه و شاهد معتبر بستگی دارد.</p>')
     if path=='/scenarios':
         from .case_summary import render as unified
         shown=dict(args)

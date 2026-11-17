@@ -277,6 +277,8 @@ def affected_closure(db,keys,*,limit=250000):
     claims. Include old links, not just newly admissible ones, in the closure.
     This is maintenance dependency traversal, never evidence of a human action.
     """
+    from .viewer_product_scope import financial_enabled
+    if not financial_enabled(db):return set(keys)
     found=set(keys);front=set(keys);visited_groups=set()
     if len(found)>limit:raise ValueError('affected_dependency_budget_exceeded')
     while front:
@@ -391,6 +393,11 @@ def publish_capture(db,path,start,end,*,mode='forward',epoch_ns=None,fault=None,
         # indexed_requests is bookkeeping of read-model request candidates, not
         # a behavior count. Compute exactly on bootstrap only; online uses delta.
         stamp=now_ns();elapsed=time.monotonic()-started
+        from .viewer_product_scope import read as read_product_scope
+        product_scope=read_product_scope(db)
+        if product_scope['epoch']:
+            db.sql('INSERT INTO viewer_publication_contracts VALUES(?,?,?)',
+                   (generation,product_scope['contract'],product_scope['epoch']))
         db.sql('''INSERT INTO viewer_live_windows VALUES(?,?,?,?,?,?,?,?)
           ON CONFLICT(start_ns) DO UPDATE SET file_hash=excluded.file_hash,
           records=excluded.records,last_publish_ns=excluded.last_publish_ns,
@@ -413,7 +420,8 @@ def publish_capture(db,path,start,end,*,mode='forward',epoch_ns=None,fault=None,
             raise ValueError('capture_changed_during_publication')
         db.conn.commit()
         stage('after_commit')
-        return dict(status='PUBLISHED',mode=mode,records=proof['records'],new_events=result.get('new_events',0),
+        from .viewer_product_scope import read,capabilities
+        return dict(**capabilities(read(db)),status='PUBLISHED',mode=mode,records=proof['records'],new_events=result.get('new_events',0),
                     window_start_utc=iso(start),window_end_utc=iso(end),
                     impacted_requests=impacted,bootstrap=bootstrap,generation=generation,
                     capture_method=proof['proof'].get('method','unknown'),

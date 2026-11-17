@@ -79,10 +79,12 @@ def allocated(admin,parameters,keys,mode,created,stats):
         admin.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(name)));created.remove(name);stats['dropped']+=1
 
 
-def run_lane(db,jobs,setup_jobs,*,purpose,guard,deadline,notice):
-    began=time.perf_counter();db.init();initialize_live(db)
-    all_jobs=setup_jobs+jobs
-    bind_stream(db,start_ns=all_jobs[0]['start'],stream_key='financial-scope-screen')
+def run_lane(db,jobs,setup_jobs,*,purpose,guard,deadline,notice,existing_stream=False,boundary_oracle=None):
+    began=time.perf_counter()
+    if not existing_stream:
+        db.init();initialize_live(db)
+        all_jobs=setup_jobs+jobs
+        bind_stream(db,start_ns=all_jobs[0]['start'],stream_key='financial-scope-screen')
     settings=db.all('SELECT name,setting,unit FROM pg_settings WHERE name=ANY(?)',(list(SETTINGS),))
     effective={r['name']:r['setting'] for r in settings}
     if any(effective.get(k)!='on' for k in ('fsync','full_page_writes','synchronous_commit')):
@@ -130,7 +132,7 @@ def run_lane(db,jobs,setup_jobs,*,purpose,guard,deadline,notice):
         request_delta=[e for e in events if e.get('stage')=='projection_publish_complete' and e.get('table')=='viewer_requests']
         changed=sum(e.get('written_rows',0)+e.get('deleted_rows',0) for e in request_delta) if request_delta else None
         # No post-window full scans in a capacity lane. Correctness is another DB.
-        oracle=retained_snapshot(db,db.mode) if purpose=='correctness' else None
+        oracle=(boundary_oracle(db,job) if boundary_oracle else retained_snapshot(db,db.mode)) if purpose=='correctness' else None
         db.conn.rollback()
         windows.append(dict(ordinal=ordinal,kind=job['kind'],capture_sha256=job['sha256'],
             records=job['records'],new_events=result['new_events'],impacted_requests=result['impacted_requests'],
@@ -142,7 +144,8 @@ def run_lane(db,jobs,setup_jobs,*,purpose,guard,deadline,notice):
             changed_request_count_unavailable_on_bootstrap=changed is None,
             final_copy_insert=final_writes,trace=trace.report(),projection_mutations=events,
             writer_transaction_counters=mutations,writer_backend_counters=counters.delta(before,after),
-            full_output_oracle=oracle,full_table_oracle_executed=purpose=='correctness',
+            full_output_oracle=oracle,full_table_oracle_executed=purpose=='correctness' and boundary_oracle is None,
+            affected_scope_oracle_executed=purpose=='correctness' and boundary_oracle is not None,
             deferred_work_is_not_complete=db.mode!='A'))
         guard()
     return dict(mode=db.mode,purpose=purpose,output_contract=coverage(db.mode),writer_settings=settings,

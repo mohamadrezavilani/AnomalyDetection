@@ -68,9 +68,10 @@ def available_memory():
 
 
 class Sampler:
-    def __init__(self,admin,db,guard,deadline,*,interval=2):
+    def __init__(self,admin,db,guard,deadline,*,interval=2,max_database_bytes=16*1024**3):
         self.admin,self.db,self.guard,self.deadline=admin,db,guard,deadline
         self.interval=interval;self.done=threading.Event();self.waits=Counter();self.samples=0;self.failure=None
+        self.database_budget=max_database_bytes
         self.peaks={};self.first={};self.last={};self.max_database_bytes=0;self.unavailable={}
         self.thread=threading.Thread(target=self.observe,daemon=True)
 
@@ -85,7 +86,7 @@ class Sampler:
         self.waits[(row['wait_event_type'] or 'CPU_OR_RUNNABLE')+':'+(row['wait_event'] or '-')]+=1
         size=self.admin.execute('SELECT pg_database_size(%s) AS n',(self.db.conn.info.dbname,)).fetchone()['n']
         self.max_database_bytes=max(self.max_database_bytes,size)
-        if size>16*1024**3:raise ValueError('SCREEN_DATABASE_SPACE_BUDGET_EXCEEDED')
+        if size>self.database_budget:raise ValueError('SCREEN_DATABASE_SPACE_BUDGET_EXCEEDED')
         for name,pid in (('client',os.getpid()),('postgres_backend',self.db.conn.info.backend_pid)):
             item=process_usage(pid)
             if name=='postgres_backend' and item['status']=='READ' and (item['image_name'] not in ('postgres','postgres.exe') or

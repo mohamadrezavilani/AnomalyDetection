@@ -166,6 +166,8 @@ def read(source,key):
                     message,status=field(body,'message') if body else (None,'missing')
                     raw[(item['origin_key'],item['version_key'])]={'message':message if status=='present' else None}
         profile=build(request[0],events,raw,links,json_section,semantic=semantic[0] if semantic else None)
+        profile['input_contract']=meta.get('input_contract','viewer-full-relations-1')
+        profile['behavioral_features']='observed-behavior-features-1'
         # Read existing raw identity columns; never infer an IP from provider
         # messages or rewrite the pinned Viewer's identity contract.
         observations=q('SELECT o.axis,o.value,o.origin_key,o.version_key,o.at_ns FROM public.viewer_contract_observations o WHERE o.request_key=%s AND o.axis=%s',(key,'service_dispatch.inquiry_result'),cap=128)
