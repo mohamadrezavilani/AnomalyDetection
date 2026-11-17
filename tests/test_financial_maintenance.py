@@ -26,7 +26,7 @@ def fixture():
         process(11,1,r'C:\Windows\powershell.exe','powershell.exe '+arguments),
         process(52,42,r'C:\runtime\python.exe','python.exe -B viewer_performance/Run_Viewer_Web.py --host 127.0.0.1'),
         process(42,32,str(project)+r'\.venv\Scripts\python.exe','python.exe -B viewer_performance/Run_Viewer_Web.py --host 127.0.0.1'),
-        process(32,2,r'C:\Windows\powershell.exe',f'''powershell.exe -NoExit -Command & '{project}\.venv\Scripts\python.exe' -B viewer_performance/Run_Viewer_Web.py --host 127.0.0.1''')]
+        process(32,2,r'C:\Windows\powershell.exe',fr'''powershell.exe -NoExit -Command & '{project}\.venv\Scripts\python.exe' -B viewer_performance/Run_Viewer_Web.py --host 127.0.0.1''')]
     task=dict(Name='FixtureFrontend',Path='\\',State='Running',Enabled=True,
         Actions=[dict(Execute='powershell.exe',Arguments=arguments,WorkingDirectory=None)])
     sources=[dict(path=path,status='READ_ONLY_SOURCE',sha256=hashlib.sha256(body).hexdigest())
@@ -42,6 +42,14 @@ def fixture():
 
 
 class ReviewedMaintenanceTests(unittest.TestCase):
+    def test_query_only_idle_identity_does_not_require_memory_read_access(self):
+        from viewer_performance.financial_screen.resources import process_usage
+        value=process_usage(os.getpid(),cpu_only=True)
+        self.assertEqual(value['status'],'READ')
+        self.assertGreater(value['created_epoch_seconds'],0)
+        self.assertGreaterEqual(value['cpu_seconds'],0)
+        if os.name=='nt':self.assertNotIn('rss_bytes',value)
+
     def test_review_resolves_only_proven_frontend_task_and_single_purpose_launch_shell(self):
         project,value=fixture();original=copy.deepcopy(value)
         result=review.apply_review(project,value,value,'fixture-digest')
@@ -75,6 +83,51 @@ class ReviewedMaintenanceTests(unittest.TestCase):
         rows=iter([dict(usage),dict(usage,cpu_seconds=1.2)])
         with self.assertRaisesRegex(ValueError,'NOT_IDLE'):
             review.idle_ids(snapshot,plan,{},usage=lambda pid:next(rows),wait=lambda _:None)
+
+    def test_reviewed_system_console_is_kept_idle_without_hiding_python_children(self):
+        project,value=fixture()
+        console=dict(ProcessId=62,ParentProcessId=32,CreationDate='/Date(1000010)/',
+            ExecutablePath=review.console_path(),CommandLine=r'\??\C:\Windows\System32\conhost.exe 0x4')
+        value['inventory']['processes'].append(console)
+        plan=review.apply_review(project,value,value,'digest')['restore_plan']
+        shell=plan['idle_launchers'][0]
+        self.assertEqual(plan['idle_console_hosts'],[console])
+        def usage(pid):
+            return dict(status='READ',image_name='conhost.exe' if pid==62 else 'powershell.exe',
+                created_epoch_seconds=1000.01 if pid==62 else 1000.,identity=pid,cpu_seconds=1.)
+        snapshot=dict(processes=[shell,console])
+        self.assertEqual(review.idle_ids(snapshot,plan,{},usage=usage,wait=lambda _:None),{32,62})
+        python=copy.deepcopy(console);python.update(ProcessId=99,ExecutablePath=r'C:\runtime\python.exe')
+        with self.assertRaisesRegex(ValueError,'HAS_ACTIVE_CHILD'):
+            review.idle_ids(dict(processes=[shell,console,python]),plan,{},usage=usage,wait=lambda _:None)
+        descendant=copy.deepcopy(python);descendant.update(ParentProcessId=62)
+        with self.assertRaisesRegex(ValueError,'CONSOLE_HOST_HAS_ACTIVE_CHILD'):
+            review.idle_ids(dict(processes=[shell,console,descendant]),plan,{},usage=usage,wait=lambda _:None)
+
+    def test_console_path_identity_and_cpu_remain_qualified(self):
+        project,value=fixture();console=dict(ProcessId=62,ParentProcessId=32,CreationDate='/Date(1000010)/',
+            ExecutablePath=review.console_path(),CommandLine='fixture console')
+        value['inventory']['processes'].append(console);plan=review.apply_review(project,value,value,'digest')['restore_plan']
+        shell=plan['idle_launchers'][0]
+        for field,changed in (('ExecutablePath',r'C:\unrelated\conhost.exe'),('CreationDate','/Date(1000020)/')):
+            replacement=dict(console,**{field:changed})
+            with self.assertRaisesRegex(ValueError,'HAS_ACTIVE_CHILD'):
+                review.idle_ids(dict(processes=[shell,replacement]),plan,{},wait=lambda _:None)
+        rows=iter([dict(status='READ',image_name='conhost.exe',created_epoch_seconds=1000.01,identity=62,cpu_seconds=1.),
+            dict(status='READ',image_name='conhost.exe',created_epoch_seconds=1000.01,identity=62,cpu_seconds=1.2)])
+        with self.assertRaisesRegex(ValueError,'NOT_IDLE'):
+            review.idle_ids(dict(processes=[shell,console]),plan,{},usage=lambda pid:next(rows),wait=lambda _:None)
+        without_review=copy.deepcopy(plan);without_review['idle_console_hosts']=[]
+        with self.assertRaisesRegex(ValueError,'HAS_ACTIVE_CHILD'):
+            review.idle_ids(dict(processes=[shell,console]),without_review,{},wait=lambda _:None)
+
+    def test_quiescence_failure_reports_the_actual_children(self):
+        _,value=fixture();plan=dict(idle_launchers=[value['inventory']['processes'][-1]],idle_console_hosts=[])
+        snapshot=dict(processes=value['inventory']['processes'],listeners=[],tasks=[])
+        with patch.object(host,'inventory',return_value=snapshot),patch.object(host,'assert_quiescent',side_effect=ValueError('REVIEWED_LAUNCH_SHELL_HAS_ACTIVE_CHILD')),\
+             patch.object(host.time,'monotonic',side_effect=[0,26]):
+            with self.assertRaises(host.HostOperationError) as caught:host.wait_for_quiescence(Path('fixture'),plan)
+        self.assertEqual([p['ProcessId'] for p in caught.exception.details['idle_launcher_children']],[42])
 
     def test_task_operations_pin_actions_and_never_stop_a_windows_service(self):
         _,value=fixture();task=value['inventory']['tasks'][0]

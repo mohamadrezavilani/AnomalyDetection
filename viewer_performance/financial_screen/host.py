@@ -261,9 +261,14 @@ def assert_quiescent(project,snapshot,plan,cpu,*,usage=None):
 def wait_for_quiescence(project,plan,notice=lambda value:None):
     deadline=time.monotonic()+25;cpu={}
     while True:
-        try:assert_quiescent(project,inventory(project),plan,cpu);return
-        except ValueError:
-            if time.monotonic()>=deadline:raise
+        snapshot=inventory(project)
+        try:assert_quiescent(project,snapshot,plan,cpu);return
+        except ValueError as exc:
+            if time.monotonic()>=deadline:
+                parents={p['ProcessId'] for p in plan.get('idle_launchers',[])+plan.get('idle_console_hosts',[])}
+                children=[p for p in snapshot['processes'] if p.get('ParentProcessId') in parents]
+                raise HostOperationError(str(exc),dict(idle_launcher_children=children[:32],
+                    listeners=snapshot['listeners'],tasks=[dict(Name=t['Name'],State=t['State'],Enabled=t['Enabled']) for t in snapshot['tasks']])) from exc
             notice(dict(status='WAITING_FOR_PROJECT_PROCESS_EXIT'));time.sleep(1)
 
 

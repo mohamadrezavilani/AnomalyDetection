@@ -10,7 +10,7 @@ import threading
 import time
 
 
-def process_usage(pid):
+def process_usage(pid,*,cpu_only=False):
     try:
         if os.name=='nt':
             import ctypes
@@ -20,7 +20,7 @@ def process_usage(pid):
             api.CloseHandle.argtypes=[w.HANDLE];api.CloseHandle.restype=w.BOOL
             api.GetProcessTimes.argtypes=[w.HANDLE,*([ctypes.POINTER(w.FILETIME)]*4)]
             api.QueryFullProcessImageNameW.argtypes=[w.HANDLE,w.DWORD,w.LPWSTR,ctypes.POINTER(w.DWORD)]
-            handle=api.OpenProcess(0x1000|0x10,False,pid)
+            handle=api.OpenProcess(0x1000|(0 if cpu_only else 0x10),False,pid)
             if not handle:raise OSError('process handle unavailable')
             class Memory(ctypes.Structure):
                 _fields_=[('cb',w.DWORD),('PageFaultCount',w.DWORD)]+[(n,ctypes.c_size_t) for n in (
@@ -29,15 +29,19 @@ def process_usage(pid):
             try:
                 times=[w.FILETIME() for _ in range(4)]
                 if not api.GetProcessTimes(handle,*[ctypes.byref(t) for t in times]):raise OSError('process times unavailable')
-                memory=Memory();memory.cb=ctypes.sizeof(memory)
-                psapi=ctypes.WinDLL('psapi');psapi.GetProcessMemoryInfo.argtypes=[w.HANDLE,ctypes.c_void_p,w.DWORD]
-                if not psapi.GetProcessMemoryInfo(handle,ctypes.byref(memory),memory.cb):raise OSError('memory unavailable')
+                memory=None
+                if not cpu_only:
+                    memory=Memory();memory.cb=ctypes.sizeof(memory)
+                    psapi=ctypes.WinDLL('psapi');psapi.GetProcessMemoryInfo.argtypes=[w.HANDLE,ctypes.c_void_p,w.DWORD]
+                    if not psapi.GetProcessMemoryInfo(handle,ctypes.byref(memory),memory.cb):raise OSError('memory unavailable')
                 length=w.DWORD(32768);image=ctypes.create_unicode_buffer(length.value)
                 if not api.QueryFullProcessImageNameW(handle,0,image,ctypes.byref(length)):raise OSError('image unavailable')
                 stamp=lambda t:(t.dwHighDateTime<<32)|t.dwLowDateTime
-                return dict(status='READ',identity=stamp(times[0]),cpu_seconds=(stamp(times[2])+stamp(times[3]))/1e7,
-                    rss_bytes=memory.WorkingSetSize,created_epoch_seconds=stamp(times[0])/1e7-11644473600,
+                result=dict(status='READ',identity=stamp(times[0]),cpu_seconds=(stamp(times[2])+stamp(times[3]))/1e7,
+                    created_epoch_seconds=stamp(times[0])/1e7-11644473600,
                     image_name=image.value.replace('\\','/').rsplit('/',1)[-1].lower())
+                if memory is not None:result['rss_bytes']=memory.WorkingSetSize
+                return result
             finally:api.CloseHandle(handle)
         stat=Path('/proc/'+str(pid)+'/stat').read_text();fields=stat.rsplit(')',1)[1].split()
         boot=next(int(line.split()[1]) for line in Path('/proc/stat').read_text().splitlines() if line.startswith('btime '))

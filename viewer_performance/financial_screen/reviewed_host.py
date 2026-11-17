@@ -7,6 +7,7 @@ import copy
 import hashlib
 import json
 import ntpath
+import os
 from pathlib import Path
 import re
 import time
@@ -112,6 +113,15 @@ def reviewed_idle_shell(project,fresh,reviewed):
     return result
 
 
+def console_path():return norm(ntpath.join(os.environ.get('SystemRoot',r'C:\Windows'),'System32','conhost.exe'))
+
+
+def reviewed_console_hosts(fresh,reviewed,idle):
+    parents={p['ProcessId'] for p in idle};prior={p['ProcessId']:p for p in reviewed['inventory']['processes']}
+    return [p for p in fresh['inventory']['processes'] if p.get('ParentProcessId') in parents
+        and norm(p.get('ExecutablePath') or '')==console_path() and same_process(p,prior.get(p['ProcessId'],{}))]
+
+
 def apply_review(project,fresh,reviewed,digest):
     result=copy.deepcopy(fresh);plan=result['restore_plan'];resolved=set()
     if result.get('control_failure'):return result
@@ -124,6 +134,7 @@ def apply_review(project,fresh,reviewed,digest):
             resolved.add('FRONTEND_STOP_AND_RESTORE_PLAN_REQUIRED:'+str(process['ProcessId']))
     idle=reviewed_idle_shell(project,result,reviewed)
     plan['idle_launchers']=idle
+    plan['idle_console_hosts']=reviewed_console_hosts(result,reviewed,idle)
     for process in idle:resolved.add('UNCONTROLLED_PROJECT_PROCESS:'+str(process['ProcessId']))
     plan['issues']=[issue for issue in plan['issues'] if issue not in resolved]
     plan['reviewed_report_sha256']=digest;plan['resolved_issues']=sorted(resolved)
@@ -145,15 +156,15 @@ def created_epoch(process):
     return int(match[1])/1000
 
 
-def idle_ids(snapshot,plan,cpu,*,usage=process_usage,wait=time.sleep):
+def idle_usage(pid):return process_usage(pid,cpu_only=True)
+
+
+def idle_ids(snapshot,plan,cpu,*,usage=idle_usage,wait=time.sleep):
     processes={p['ProcessId']:p for p in snapshot['processes']};allowed=set()
-    for saved in plan.get('idle_launchers',[]):
-        pid=saved['ProcessId'];current=processes.get(pid)
-        if current is None:continue
-        if not same_process(saved,current):raise ValueError('REVIEWED_LAUNCH_SHELL_IDENTITY_CHANGED')
-        if any(p.get('ParentProcessId')==pid for p in processes.values()):raise ValueError('REVIEWED_LAUNCH_SHELL_HAS_ACTIVE_CHILD')
-        row=usage(pid)
-        if row.get('status')!='READ' or row.get('image_name')!='powershell.exe' or abs(row['created_epoch_seconds']-created_epoch(saved))>.02:
+    consoles={p['ProcessId']:p for p in plan.get('idle_console_hosts',[])}
+    def idle_process(saved,name):
+        pid=saved['ProcessId'];row=usage(pid)
+        if row.get('status')!='READ' or row.get('image_name')!=name or abs(row['created_epoch_seconds']-created_epoch(saved))>.02:
             raise ValueError('REVIEWED_LAUNCH_SHELL_OS_IDENTITY_UNAVAILABLE')
         previous=cpu.get(pid)
         if previous is None:
@@ -163,4 +174,16 @@ def idle_ids(snapshot,plan,cpu,*,usage=process_usage,wait=time.sleep):
         delta=row['cpu_seconds']-previous['cpu_seconds']
         if not 0<=delta<=.05:raise ValueError('REVIEWED_LAUNCH_SHELL_IS_NOT_IDLE')
         cpu[pid]=row;allowed.add(pid)
+    for saved in plan.get('idle_launchers',[]):
+        pid=saved['ProcessId'];current=processes.get(pid)
+        if current is None:continue
+        if not same_process(saved,current):raise ValueError('REVIEWED_LAUNCH_SHELL_IDENTITY_CHANGED')
+        for child in (p for p in processes.values() if p.get('ParentProcessId')==pid):
+            old=consoles.get(child['ProcessId'])
+            if not old or not same_process(old,child) or norm(child.get('ExecutablePath') or '')!=console_path():
+                raise ValueError('REVIEWED_LAUNCH_SHELL_HAS_ACTIVE_CHILD')
+            if any(p.get('ParentProcessId')==child['ProcessId'] for p in processes.values()):
+                raise ValueError('REVIEWED_CONSOLE_HOST_HAS_ACTIVE_CHILD')
+            idle_process(child,'conhost.exe')
+        idle_process(saved,'powershell.exe')
     return allowed
