@@ -232,7 +232,7 @@
     "tests/test_viewer_failure.py": "8bd5b3610b88c6a21057d0742931f5d5f7bb463e1f43d43075cb301ea4cb4aba",
     "tests/test_viewer_final_semantic_index.py": "e4353b620df6582bc016d24fdeb65cfa8234f51e89ae4f7759ac8be2319677fd",
     "tests/test_viewer_finalized_projection.py": "5243d3f55455524f9859bc0cd029dbde4cd0f24f9bec43594dea446b91b34321",
-    "tests/test_viewer_financial_screen.py": "572d9aa036ec8fbaf4c4a8582466da9a936e77c119243e1b4d9551186fa4440f",
+    "tests/test_viewer_financial_screen.py": "7a140d35aca32e88a09a88c2a247f51bc537aa9289f1628cac12d22f0dc9f36f",
     "tests/test_viewer_flow_display.py": "39994dd8e85b45b92743ede5c4761d638437eb6c42eb51327645069b114b734f",
     "tests/test_viewer_history_replay.py": "60f6b7eaa9622186ca43561a58dabbbc2bc674e36a091db6a1f14008d3443d5e",
     "tests/test_viewer_history_segments.py": "40baf3e8e331fa053ab44c094a184218a6c427b8997ba70b574e99855e2a849f",

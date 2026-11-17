@@ -1,5 +1,6 @@
 """Isolated scope variants: retained contracts, explicit omissions and recovery."""
 from contextlib import contextmanager
+import json
 import multiprocessing
 import os
 import subprocess
