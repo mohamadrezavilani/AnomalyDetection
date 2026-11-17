@@ -21,7 +21,9 @@ from p24_foundation.viewer_runtime import atomic_json
 from viewer_performance.writer_identity import LEASE_SQL,read_identity
 from viewer_performance.fast_writer import verify_sources,BUILD
 from viewer_performance.Qualify_Capacity_Candidate import literal_database
+from viewer_performance.Run_Viewer_Index_Probe_UTF8 import utf8_environment
 from .experiment import assert_idle
+from .supervision import listener_ancestry,supervisor_sources
 
 
 INVENTORY=r'''
@@ -30,13 +32,16 @@ $ErrorActionPreference='Stop'
 $root=$env:P24_SCREEN_PROJECT_ROOT
 $needle=[regex]::Escape($root)
 $processes=@(Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,CreationDate,ExecutablePath,CommandLine)
+# Include service entries outside the repository. The parent may be Task
+# Scheduler: its Windows service must remain outside project stop operations.
+$relatedPattern=$needle+'|Run_Viewer|run_anomaly|run_behavior_viewer|observe_viewer|Qualify_Viewer|Screen_Financial|SERVICE_ENTRY\.ps1|lan_proxy\.py'
 $tasks=@(Get-ScheduledTask | Where-Object {
-    (($_.Actions | ForEach-Object { $_.Execute+' '+$_.Arguments+' '+$_.WorkingDirectory }) -join ' ') -match ($needle+'|Run_Viewer|run_anomaly|run_behavior_viewer|observe_viewer|Qualify_Viewer|Screen_Financial')
+    (($_.Actions | ForEach-Object { $_.Execute+' '+$_.Arguments+' '+$_.WorkingDirectory }) -join ' ') -match $relatedPattern
 } | ForEach-Object {
     [pscustomobject]@{Name=$_.TaskName;Path=$_.TaskPath;State=[string]$_.State;
         Enabled=$_.Settings.Enabled;Actions=@($_.Actions | Select-Object Execute,Arguments,WorkingDirectory)}
 })
-$services=@(Get-CimInstance Win32_Service | Where-Object { $_.PathName -match $needle } |
+$services=@(Get-CimInstance Win32_Service | Where-Object { $_.PathName -match $relatedPattern } |
     Select-Object Name,State,StartMode,ProcessId,PathName)
 $listeners=@(Get-NetTCPConnection -State Listen -ErrorAction Stop | Where-Object {
     $_.LocalPort -in @(5021,5022) } | Select-Object LocalAddress,LocalPort,OwningProcess)
@@ -64,11 +69,21 @@ def inventory(project):
 
 def command(project,script,*arguments):
     process=subprocess.run([sys.executable,'-B',str(project/script),*map(str,arguments)],
-        cwd=project,capture_output=True,encoding='utf-8-sig',timeout=90)
+        cwd=project,env=utf8_environment(),capture_output=True,encoding='utf-8-sig',timeout=90)
     try:result=json.loads(process.stdout)
     except (ValueError,TypeError):raise HostOperationError('CONTROL_COMMAND_JSON_UNAVAILABLE:'+script,
         dict(exit_code=process.returncode,stderr=(process.stderr or '')[-4096:],stdout=(process.stdout or '')[-4096:])) from None
+    if script=='AnomalyDetection/run_anomaly.py' and arguments and arguments[0]=='worker-status':
+        validate_ad_status(result,process.returncode)
     return result,process.returncode
+
+
+def validate_ad_status(value,return_code=0):
+    valid=(return_code==0 and isinstance(value,dict) and isinstance(value.get('health'),str)
+        and type(value.get('running'))is bool and all(isinstance(value.get(part),dict)
+            and type(value[part].get('locked'))is bool for part in ('process','web')))
+    if not valid:raise HostOperationError('AD_STATUS_UNAVAILABLE_NOT_STOPPED',dict(exit_code=return_code,response=value))
+    return value
 
 
 def parameters(project):
@@ -114,6 +129,7 @@ def own_process_ids(snapshot):
 
 def make_plan(project,snapshot,ad,viewer,web,identity):
     """Pure inventory policy; unknown ownership must be resolved before stop."""
+    validate_ad_status(ad)
     issues=[];active={};owners={}
     if ad.get('diagnostic_failures'):issues.append('AD_PROCESS_IDENTITY_NOT_VERIFIED')
     for role,part in (('ad_worker',ad.get('process',{})),('ad_web',ad.get('web',{}))):
@@ -170,7 +186,18 @@ def preflight(project):
     release=verify_release(project)
     if release['status']!='PASS':raise HostOperationError('SCOPE_SCREEN_SOURCE_INVENTORY_MISMATCH',release)
     snapshot=inventory(project)
-    ad,_=command(project,'AnomalyDetection/run_anomaly.py','worker-status')
+    ancestry=listener_ancestry(snapshot)
+    supervision=dict(listener_ancestry=ancestry,sources=supervisor_sources(ancestry),
+        source_collection='READ_ONLY_NOT_EXECUTED',supervisor_stop_or_restore='NOT_PERFORMED_REVIEW_REQUIRED')
+    try:ad,_=command(project,'AnomalyDetection/run_anomaly.py','worker-status')
+    except HostOperationError as exc:
+        # A failed status command is useful diagnostic evidence, never evidence
+        # that AD stopped. Keep the readonly supervisor report exportable.
+        return dict(status='PREFLIGHT_BLOCKED',inventory=snapshot,
+            restore_plan=dict(active=dict.fromkeys(('ad_worker','ad_web','viewer','viewer_web'),None),
+                owners={},issues=[str(exc)],task_restore=[]),
+            control_failure=dict(code=str(exc),details=exc.details),source_inventory=release,
+            external_supervision=supervision,database_modified=False,workers_stopped=False)
     ad_version,version_code=command(project,'AnomalyDetection/run_anomaly.py','version')
     viewer,_=command(project,'viewer_performance/Stop_Viewer_Worker.py')
     web,_=command(project,'viewer_performance/Stop_Viewer_Web.py')
@@ -192,6 +219,7 @@ def preflight(project):
         inventory=snapshot,restore_plan=plan,ad=ad,ad_release=ad_version,source_inventory=release,viewer=viewer,viewer_web=web,
         writer_identity=identity,cursors_before=before,postgres_sessions=sessions,
         database_modified=False,workers_stopped=False)
+    result['external_supervision']=supervision
     return json.loads(json.dumps(result,default=lambda value:value.isoformat() if hasattr(value,'isoformat') else str(value)))
 
 

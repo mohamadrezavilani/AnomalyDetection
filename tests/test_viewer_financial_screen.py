@@ -6,6 +6,8 @@ import os
 import subprocess
 import sys
 import shutil
+from contextlib import redirect_stdout
+import io
 from pathlib import Path
 import tempfile
 import unittest
@@ -38,6 +40,11 @@ def die(options,path,start,point):
 
 
 class FinancialScreenContracts(unittest.TestCase):
+    @staticmethod
+    def stopped_ad():
+        return dict(health='STOPPED',running=False,process=dict(locked=False,owner=None),
+            web=dict(locked=False,owner=None),diagnostic_failures=[])
+
     def test_only_allocated_namespace_and_known_mode_before_connect(self):
         with patch('psycopg.connect',side_effect=AssertionError('unexpected connection')):
             for name in ('p24_design_viewer','postgres','p24_design_capacity_old_qualification'):
@@ -131,12 +138,97 @@ class FinancialScreenContracts(unittest.TestCase):
         snapshot=dict(processes=[dict(ProcessId=1234,CommandLine='python Observe_Viewer_Fast.py')],
             listeners=[dict(OwningProcess=5678)],services=[dict(Name='watchdog',State='Running',StartMode='Auto')],
             tasks=[dict(Name='relauncher',State='Running',Enabled=True)])
-        plan=make_plan(Path('X:/project'),snapshot,{},dict(status='NO_VIEWER_LOCK_OWNER_OBSERVED'),
+        plan=make_plan(Path('X:/project'),snapshot,self.stopped_ad(),dict(status='NO_VIEWER_LOCK_OWNER_OBSERVED'),
             dict(status='NO_VIEWER_WEB_LISTENER'),None)
         self.assertTrue(any('FRONTEND' in issue for issue in plan['issues']))
         self.assertTrue(any('SERVICE' in issue for issue in plan['issues']))
         self.assertTrue(any('SCHEDULED_TASK' in issue for issue in plan['issues']))
         self.assertTrue(any('UNCONTROLLED_PROJECT_PROCESS' in issue for issue in plan['issues']))
+
+    def test_actual_status_pipe_is_utf8_under_legacy_parent_locale(self):
+        from viewer_performance.financial_screen.host import command
+        expected=self.stopped_ad()|dict(phase='خواندن وضعیت فارسی')
+        with tempfile.TemporaryDirectory() as folder:
+            project=Path(folder);ad=project/'AnomalyDetection';ad.mkdir()
+            (ad/'run_anomaly.py').write_text('import json\nprint(json.dumps('+repr(expected)+',ensure_ascii=False))\n',encoding='utf-8')
+            with patch.dict(os.environ,dict(PYTHONUTF8='0',PYTHONIOENCODING='ascii')):
+                actual,code=command(project,'AnomalyDetection/run_anomaly.py','worker-status')
+            self.assertEqual(code,0);self.assertEqual(actual,expected)
+
+    def test_error_or_missing_ad_status_is_never_assumed_stopped(self):
+        from viewer_performance.financial_screen import host
+        bad=dict(status='ERROR',failure=dict(error_type='UnicodeEncodeError'))
+        for value in ({},bad,dict(health='STOPPED',running=False,process={},web={})):
+            with self.assertRaisesRegex(host.HostOperationError,'AD_STATUS_UNAVAILABLE_NOT_STOPPED'):
+                host.make_plan(Path('X:/project'),dict(processes=[],listeners=[],services=[],tasks=[]),
+                    value,dict(status='NO_VIEWER_LOCK_OWNER_OBSERVED'),dict(status='NO_VIEWER_WEB_LISTENER'),None)
+
+    def test_unreadable_status_still_exports_supervisor_evidence_with_unknown_roles(self):
+        from viewer_performance.financial_screen import host
+        from tools import check_viewer_install
+        snapshot=dict(processes=[],listeners=[],services=[],tasks=[])
+        failure=host.HostOperationError('AD_STATUS_UNAVAILABLE_NOT_STOPPED',dict(response=dict(status='ERROR')))
+        with patch.object(host,'verify_sources'),patch.object(check_viewer_install,'verify_release',return_value=dict(status='PASS')),\
+             patch.object(host,'inventory',return_value=snapshot),patch.object(host,'command',side_effect=failure),\
+             patch.object(host,'product_reader') as database:
+            result=host.preflight(Path('X:/project'))
+        self.assertEqual(result['status'],'PREFLIGHT_BLOCKED')
+        self.assertTrue(all(value is None for value in result['restore_plan']['active'].values()))
+        self.assertIn('external_supervision',result)
+        self.assertFalse(result['workers_stopped']);database.assert_not_called()
+
+    def test_external_frontend_ancestry_and_sources_are_read_only_and_bounded(self):
+        from viewer_performance.financial_screen.supervision import listener_ancestry,supervisor_sources,MAX_FILE_BYTES
+        snapshot=dict(listeners=[dict(OwningProcess=31,LocalPort=5021)],processes=[
+            dict(ProcessId=31,ParentProcessId=21,ExecutablePath=r'C:\runtime\python.exe',
+                CommandLine=r'python.exe -B "C:\fixture support\lan_proxy.py" --bind 192.0.2.1'),
+            dict(ProcessId=21,ParentProcessId=11,ExecutablePath=r'C:\Windows\powershell.exe',
+                CommandLine=r'powershell.exe -File "C:\fixture support\SERVICE_ENTRY.ps1" -Service lan_proxy'),
+            dict(ProcessId=11,ParentProcessId=1,ExecutablePath=r'C:\Windows\svchost.exe',CommandLine='svchost.exe -s Schedule'),
+            dict(ProcessId=1,ParentProcessId=0,ExecutablePath=None,CommandLine=None),
+            dict(ProcessId=99,ParentProcessId=1,ExecutablePath='other.exe',CommandLine=r'C:\unrelated\secrets.py')])
+        ancestry=listener_ancestry(snapshot)
+        self.assertEqual([p['ProcessId'] for p in ancestry[0]['ancestor_chain']],[31,21,11])
+        reads=[]
+        def reader(path,limit):reads.append((path,limit));return b'# synthetic supervisor; do not execute\n'
+        records=supervisor_sources(ancestry,reader=reader)
+        self.assertEqual(len(records),2)
+        self.assertTrue(all(r['status']=='READ_ONLY_SOURCE' and r['executed'] is False for r in records))
+        self.assertFalse(any('secrets' in p for p,_ in reads))
+        over=supervisor_sources(ancestry,reader=lambda path,limit:b'x'*limit)
+        self.assertTrue(all(r['status']=='SOURCE_BYTE_BUDGET_EXCEEDED' and 'content' not in r for r in over))
+        self.assertTrue(all(limit==MAX_FILE_BYTES+1 for _,limit in reads))
+
+    @unittest.skipUnless(os.name=='nt','Windows PowerShell inventory only')
+    def test_inventory_finds_external_scheduled_frontend_without_selecting_system_scheduler_service(self):
+        from viewer_performance.financial_screen.host import powershell,INVENTORY
+        fixture=dict(processes=[],listeners=[],tasks=[dict(TaskName='FixtureFrontend',TaskPath='\\',State='Running',
+            Settings=dict(Enabled=True),Actions=[dict(Execute='powershell.exe',Arguments=r'-File C:\external\SERVICE_ENTRY.ps1 -Service lan_proxy',WorkingDirectory=r'C:\external')])],
+            services=[dict(Name='Schedule',State='Running',StartMode='Auto',ProcessId=11,PathName=r'C:\Windows\svchost.exe -s Schedule')])
+        prefix='''$fixture=ConvertFrom-Json $env:P24_SCREEN_TEST_INVENTORY
+function Get-CimInstance { param($ClassName) if($ClassName -eq 'Win32_Process'){$fixture.processes}else{$fixture.services} }
+function Get-ScheduledTask { $fixture.tasks }
+function Get-NetTCPConnection { param($State) $fixture.listeners }
+'''
+        value=powershell(prefix+INVENTORY,dict(P24_SCREEN_TEST_INVENTORY=json.dumps(fixture),P24_SCREEN_PROJECT_ROOT=r'C:\fixture\product'))
+        self.assertEqual([t['Name'] for t in value['tasks']],['FixtureFrontend'])
+        self.assertEqual(value['services'],[])
+
+    def test_preflight_exports_one_root_report_and_never_starts_maintenance(self):
+        from viewer_performance import Screen_Financial_Product as entry
+        from viewer_performance.financial_screen import host
+        before=dict(status='PREFLIGHT_BLOCKED',restore_plan=dict(issues=['fixture supervisor requires review']))
+        with tempfile.TemporaryDirectory() as folder:
+            project=Path(folder).resolve();output=io.StringIO()
+            with patch.object(entry,'ROOT',project),patch.object(host,'preflight',return_value=before),\
+                 patch.object(host,'maintenance') as maintenance,redirect_stdout(output):
+                code=entry.main(['--project',str(project)])
+            self.assertEqual(code,2);maintenance.assert_not_called()
+            message=json.loads(output.getvalue());target=project/'AnomalyDetection/reports/preflight_to_send.json'
+            self.assertEqual(message['preflight_output'],str(target))
+            saved=json.loads(target.read_text())
+            self.assertEqual(saved['status'],'PREFLIGHT_BLOCKED')
+            self.assertTrue(saved['collection_run'].startswith('Financial_Screen_'))
 
     def test_failed_experiment_restores_previously_active_roles_in_finally(self):
         from viewer_performance.financial_screen import host

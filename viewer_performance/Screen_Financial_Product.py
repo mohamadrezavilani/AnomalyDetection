@@ -56,7 +56,7 @@ def main(argv=None):
     project=args.project.resolve()
     directory=project/'AnomalyDetection/reports'/('Financial_Screen_'+datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_')+uuid.uuid4().hex[:8])
     directory.mkdir(parents=True,exist_ok=False)
-    result=dict(status='SCREEN_PREPARING',output=str(directory/'screen.json'))
+    result=dict(status='SCREEN_PREPARING',output=str(directory/'screen.json'));exported_preflight=None
     done=threading.Event();began=time.monotonic()
     def notice(value):print(json.dumps(value,ensure_ascii=True),flush=True)
     def heartbeat():
@@ -65,7 +65,11 @@ def main(argv=None):
     try:
         with run_lock(project/'AnomalyDetection/reports/financial_screen.lock'):
             if project!=ROOT:raise ValueError('PROJECT_ROOT_MUST_MATCH_TOOL_INSTALLATION')
-            before=preflight(project);atomic_json(directory/'preflight.json',before)
+            before=preflight(project)
+            before.update(collection_run=directory.name,collected_at_utc=datetime.now(timezone.utc).isoformat())
+            atomic_json(directory/'preflight.json',before)
+            exported_preflight=project/'AnomalyDetection/reports/preflight_to_send.json'
+            atomic_json(exported_preflight,before)
             result.update(status=before['status'],preflight_output=str(directory/'preflight.json'),
                 blocking_issues=before['restore_plan']['issues'],workers_stopped=False)
             if args.exclusive_run and before['status']=='PREFLIGHT_READY':
@@ -103,7 +107,7 @@ def main(argv=None):
         if thread.ident is not None:thread.join(1)
     atomic_json(directory/'screen.json',result)
     notice({k:v for k,v in result.items() if k in ('status','blocking_issues','failure','maintenance_status')}|
-        dict(output=str(directory/'screen.json'),preflight_output=str(directory/'preflight.json'),
+        dict(output=str(directory/'screen.json'),preflight_output=str(exported_preflight) if exported_preflight else None,
              experiment_output=str(directory/'experiment.json') if (directory/'experiment.json').exists() else None))
     return 0 if result['status'] in ('PREFLIGHT_READY','SCOPE_SCREEN_COMPLETE_NOT_PRODUCT_ACCEPTANCE') else 2
 
