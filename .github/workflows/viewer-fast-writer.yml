@@ -1,0 +1,54 @@
+name: Explicit Viewer fast writer trial
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'viewer_performance/fast_writer.py'
+      - 'viewer_performance/Run_Viewer_Fast.py'
+      - 'viewer_performance/Qualify_Viewer_Fast.py'
+      - 'viewer_performance/FAST_WRITER_MANIFEST.json'
+      - 'tests/test_viewer_fast_writer.py'
+      - '.github/workflows/viewer-fast-writer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-entrypoints:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - run: python -B -m unittest -v tests.test_viewer_fast_writer tests.test_viewer_launcher_bytes tests.test_viewer_catchup
+  native-publication:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ephemeral-fast-writer-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      P24_DELTA_PG_HOST: 127.0.0.1
+      P24_DELTA_PG_PORT: '5432'
+      P24_DELTA_PG_USER: postgres
+      PGPASSWORD: ephemeral-fast-writer-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Actual trial factory, fences, publication, recovery and old-writer rollback
+        run: >-
+          python -B -m unittest -v tests.test_viewer_fast_writer
+          tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys
+          tests.test_viewer_launcher_bytes tests.test_viewer_catchup tests.test_viewer_history_replay
