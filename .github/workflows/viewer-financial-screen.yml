@@ -7,6 +7,7 @@ on:
       - 'viewer_performance/Screen_Financial_Product.py'
       - 'viewer_performance/Invoke_Financial_Screen.ps1'
       - 'tests/test_viewer_financial_screen.py'
+      - 'tests/test_financial_maintenance.py'
       - '.github/workflows/viewer-financial-screen.yml'
   workflow_dispatch:
 permissions:
@@ -22,7 +23,7 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
       - name: Preflight policy, finally restore, PowerShell syntax and process counters
-        run: python -B -m unittest -v tests.test_viewer_financial_screen.FinancialScreenContracts
+        run: python -B -m unittest -v tests.test_viewer_financial_screen.FinancialScreenContracts tests.test_financial_maintenance
   native-retained-contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -48,4 +49,4 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
       - name: Full reference, retained boundaries, real process kills and independent capacity databases
-        run: python -B -m unittest -v tests.test_viewer_financial_screen
+        run: python -B -m unittest -v tests.test_viewer_financial_screen tests.test_financial_maintenance

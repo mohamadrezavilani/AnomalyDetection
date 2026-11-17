@@ -24,6 +24,7 @@ from viewer_performance.Qualify_Capacity_Candidate import literal_database
 from viewer_performance.Run_Viewer_Index_Probe_UTF8 import utf8_environment
 from .experiment import assert_idle
 from .supervision import listener_ancestry,supervisor_sources
+from .reviewed_host import idle_ids,same_process,created_epoch,check_sources,key
 
 
 INVENTORY=r'''
@@ -54,6 +55,7 @@ class HostOperationError(ValueError):
 
 
 def powershell(code,environment=None):
+    code='[Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false)\n'+code
     encoded=base64.b64encode(code.encode('utf-16le')).decode('ascii')
     result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-EncodedCommand',encoded],
         env={**os.environ,**(environment or {})},capture_output=True,encoding='utf-8-sig',timeout=30)
@@ -113,7 +115,7 @@ def cursors(connection):
 
 def project_processes(snapshot,project):
     needle=str(project).replace('/','\\').lower()
-    pattern=r'(run_viewer|run_anomaly|run_behavior_viewer|observe_viewer|qualify_viewer|collect_capacity|screen_financial|financial_screen|benchmark_history)'
+    pattern=r'(run_viewer|run_anomaly|run_behavior_viewer|observe_viewer|qualify_viewer|collect_capacity|screen_financial|financial_screen|benchmark_history|service_entry\.ps1|lan_proxy\.py|always_on\.py)'
     return [p for p in snapshot['processes'] if needle in (p.get('CommandLine') or '').replace('/','\\').lower()
         or re.search(pattern,p.get('CommandLine') or '',re.I)]
 
@@ -223,11 +225,93 @@ def preflight(project):
     return json.loads(json.dumps(result,default=lambda value:value.isoformat() if hasattr(value,'isoformat') else str(value)))
 
 
-def task_change(task,enabled):
-    verb='Enable-ScheduledTask' if enabled else 'Disable-ScheduledTask'
-    # Arguments are passed through environment data, never interpolated as code.
-    code="$ErrorActionPreference='Stop'; "+verb+" -TaskName $env:P24_SCREEN_TASK_NAME -TaskPath $env:P24_SCREEN_TASK_PATH | Out-Null"
-    powershell(code,{'P24_SCREEN_TASK_NAME':task['Name'],'P24_SCREEN_TASK_PATH':task['Path']})
+def task_control(task,operation):
+    verbs=dict(enable='Enable-ScheduledTask',disable='Disable-ScheduledTask',stop='Stop-ScheduledTask',start='Start-ScheduledTask',inspect=None)
+    if operation not in verbs:raise ValueError('INVALID_REVIEWED_TASK_OPERATION')
+    code=r'''
+$ErrorActionPreference='Stop'
+$task=Get-ScheduledTask -TaskName $env:P24_SCREEN_TASK_NAME -TaskPath $env:P24_SCREEN_TASK_PATH
+$actual=@($task.Actions | Select-Object Execute,Arguments,WorkingDirectory)
+$expected=@((ConvertFrom-Json $env:P24_SCREEN_TASK_ACTIONS) | Select-Object Execute,Arguments,WorkingDirectory)
+if((ConvertTo-Json -InputObject $actual -Depth 8 -Compress) -cne (ConvertTo-Json -InputObject $expected -Depth 8 -Compress)) {
+    throw 'SCHEDULED_TASK_ACTIONS_CHANGED'
+}
+'''
+    if verbs[operation]:code+=verbs[operation]+" -TaskName $env:P24_SCREEN_TASK_NAME -TaskPath $env:P24_SCREEN_TASK_PATH | Out-Null\n"
+    code+=r'''
+$task=Get-ScheduledTask -TaskName $env:P24_SCREEN_TASK_NAME -TaskPath $env:P24_SCREEN_TASK_PATH
+[pscustomobject]@{Name=$task.TaskName;Path=$task.TaskPath;State=[string]$task.State;Enabled=$task.Settings.Enabled;
+    Actions=@($task.Actions | Select-Object Execute,Arguments,WorkingDirectory)} | ConvertTo-Json -Depth 8 -Compress
+'''
+    return powershell(code,dict(P24_SCREEN_TASK_NAME=task['Name'],P24_SCREEN_TASK_PATH=task['Path'],
+        P24_SCREEN_TASK_ACTIONS=json.dumps(task['Actions'])))
+
+
+def task_change(task,enabled):return task_control(task,'enable' if enabled else 'disable')
+
+
+def assert_quiescent(project,snapshot,plan,cpu,*,usage=None):
+    allowed=own_process_ids(snapshot)|idle_ids(snapshot,plan,cpu,**({'usage':usage} if usage else {}))
+    residual=[p for p in project_processes(snapshot,project) if int(p['ProcessId']) not in allowed
+        and 'invoke_financial_screen.ps1' not in (p.get('CommandLine') or '').lower()]
+    if residual or snapshot['listeners'] or any(t['Enabled'] or t['State']=='Running' for t in snapshot['tasks']):
+        raise ValueError('PROJECT_PROCESS_OR_AUTOSTART_REMAINS_DURING_SCREEN')
+
+
+def wait_for_quiescence(project,plan,notice=lambda value:None):
+    deadline=time.monotonic()+25;cpu={}
+    while True:
+        try:assert_quiescent(project,inventory(project),plan,cpu);return
+        except ValueError:
+            if time.monotonic()>=deadline:raise
+            notice(dict(status='WAITING_FOR_PROJECT_PROCESS_EXIT'));time.sleep(1)
+
+
+def stop_reviewed_proxy(project,proxy,*,open_process=None):
+    from viewer_performance.Stop_Viewer_Worker import WindowsProcess
+    open_process=open_process or (lambda pid:WindowsProcess(pid,allow_stop=True))
+    check_sources(proxy);fresh=inventory(project)
+    actual={p['ProcessId']:p for p in fresh['processes']};handles=[]
+    try:
+        for saved in proxy['processes']:
+            if not same_process(saved,actual.get(saved['ProcessId'],{})):raise ValueError('REVIEWED_PROXY_PROCESS_CHANGED_BEFORE_STOP')
+            handle=open_process(saved['ProcessId']);handles.append(handle)
+            if (handle.image.replace('/','\\').lower()!=(saved.get('ExecutablePath') or '').replace('/','\\').lower()
+                    or abs(handle.created.timestamp()-created_epoch(saved))>.02):
+                raise ValueError('REVIEWED_PROXY_PROCESS_HANDLE_MISMATCH')
+        task_control(proxy['task'],'stop')
+        # Task Scheduler may retain a foreground child after its task exits.
+        # Handles opened above pin the verified old processes despite PID reuse.
+        for handle in handles:
+            if handle.api.WaitForSingleObject(handle.handle,1000)!=0:
+                try:handle.terminate()
+                except OSError:
+                    if handle.api.WaitForSingleObject(handle.handle,0)!=0:raise
+        return dict(status='REVIEWED_PROXY_TASK_STOPPED',process_handles_verified=len(handles))
+    finally:
+        for handle in handles:handle.close()
+
+
+def restore_reviewed_proxy(project,proxy):
+    check_sources(proxy);task_change(proxy['task'],True)
+    current=task_control(proxy['task'],'inspect')
+    if current['State']!='Running':task_control(proxy['task'],'start')
+    deadline=time.monotonic()+90
+    while time.monotonic()<deadline:
+        snapshot=inventory(project);task=next((t for t in snapshot['tasks'] if key(t)==key(proxy['task'])),None)
+        endpoints=[e for e in snapshot['listeners'] if (e['LocalAddress'],e['LocalPort']) in
+            {(v['LocalAddress'],v['LocalPort']) for v in proxy['endpoints']}]
+        if task and task['Enabled'] and task['State']=='Running' and task['Actions']==proxy['task']['Actions'] and len(endpoints)==len(proxy['endpoints']):
+            processes={p['ProcessId']:p for p in snapshot['processes']}
+            if len({e['OwningProcess'] for e in endpoints})==1:
+                from .reviewed_host import words,norm
+                owner=processes.get(endpoints[0]['OwningProcess'],{})
+                if [norm(a) for a in words(owner.get('CommandLine') or '')[1:]]==[norm(a) for a in words(proxy['processes'][0]['CommandLine'])[1:]]:
+                    from viewer_performance.Diagnose_Viewer_Web import probe
+                    health=[probe(e['LocalAddress'],e['LocalPort'],'/healthz' if e['LocalPort']==5021 else '/',timeout=5) for e in endpoints]
+                    if all(h.get('http_status')==200 for h in health):return dict(status='REVIEWED_PROXY_RESTORED',endpoints=endpoints)
+        time.sleep(1)
+    raise ValueError('REVIEWED_PROXY_RESTORE_NOT_VERIFIED')
 
 
 def stop_role(project,role):
@@ -263,6 +347,15 @@ def maintenance(project,before,directory,notice=lambda value:None):
     try:
         for task in plan['task_restore']:
             disabled.append(task);task_change(task,False);record('AUTOSTART_DISABLED',dict(name=task['Name'],path=task['Path']))
+        after_disable=inventory(project)
+        if 'inventory' in before:
+            known={p['ProcessId']:p for p in before['inventory']['processes']}
+            for process in project_processes(after_disable,project):
+                if not same_process(process,known.get(process['ProcessId'],{})):
+                    raise ValueError('PROJECT_PROCESS_CHANGED_WHILE_DISABLING_AUTOSTART')
+        proxy_task=plan.get('reviewed_proxy',{}).get('task')
+        if any(t['Enabled'] or (t['State']=='Running' and (not proxy_task or key(t)!=key(proxy_task))) for t in after_disable['tasks']):
+            raise ValueError('UNREVIEWED_TASK_RUNNING_AFTER_AUTOSTART_DISABLE')
         if plan['active']['ad_worker'] or plan['active']['ad_web']:
             attempted.add('ad');record('AD_STOPPED',stop_role(project,'ad'))
         connection=product_reader(project)
@@ -277,15 +370,14 @@ def maintenance(project,before,directory,notice=lambda value:None):
             attempted.add('viewer');record('VIEWER_STOPPED',stop_role(project,'viewer'))
         if plan['active']['viewer_web']:
             attempted.add('viewer_web');record('VIEWER_WEB_STOPPED',stop_role(project,'web'))
+        if plan.get('reviewed_proxy'):
+            attempted.add('proxy');record('REVIEWED_PROXY_STOPPED',stop_reviewed_proxy(project,plan['reviewed_proxy']))
         state['frozen_cursors']=cursors(connection);atomic_json(receipt,state)
         connection.close();connection=None;fenced=False
         with __import__('psycopg').connect(**parameters(project),dbname='postgres',autocommit=True) as admin:
             assert_idle(admin)
         # Unknown replacement processes or observers also block measurement.
-        after=inventory(project)
-        residual=[p for p in project_processes(after,project) if int(p['ProcessId']) not in own_process_ids(after)
-            and 'invoke_financial_screen.ps1' not in (p.get('CommandLine') or '').lower()]
-        if residual:raise ValueError('PROJECT_PROCESS_REMAINS_AFTER_STOP')
+        wait_for_quiescence(project,plan,notice)
         record('PROJECT_QUIESCENCE_VERIFIED');state['status']='EXCLUSIVE_TEST_RUNNING';atomic_json(receipt,state)
         yield state
         with product_reader(project) as check:
@@ -324,9 +416,22 @@ def maintenance(project,before,directory,notice=lambda value:None):
                     state['restore'].append(dict(role=role,launcher_pid=pid))
             except Exception as exc:state['restore_failures'].append(dict(role=role,error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None))
             atomic_json(receipt,state)
+        # Establish the original application roles before watchdogs can act.
+        try:state['after_core_restore']=verify_restore(project,plan)
+        except Exception as exc:state['restore_failures'].append(dict(role='verify_core_restore',error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None))
+        source_ok=True
+        if plan.get('reviewed_proxy'):
+            try:check_sources(plan['reviewed_proxy'])
+            except Exception as exc:
+                source_ok=False;state['restore_failures'].append(dict(role='supervisor_source',error_type=type(exc).__name__,code=str(exc)))
         for task in reversed(disabled):
+            if not source_ok:
+                state['restore_failures'].append(dict(role='scheduled_task',name=task['Name'],code='SUPERVISOR_SOURCE_CHANGED_TASK_LEFT_DISABLED'));continue
             try:task_change(task,True)
             except Exception as exc:state['restore_failures'].append(dict(role='scheduled_task',name=task['Name'],error_type=type(exc).__name__))
+        if 'proxy' in attempted and source_ok:
+            try:state['proxy_restore']=restore_reviewed_proxy(project,plan['reviewed_proxy'])
+            except Exception as exc:state['restore_failures'].append(dict(role='proxy_restore',error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None))
         try:
             state['after_restore']=verify_restore(project,plan)
             with product_reader(project) as check:

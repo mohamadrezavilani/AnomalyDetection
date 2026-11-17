@@ -46,13 +46,16 @@ def main(argv=None):
     group.add_argument('--preflight',action='store_true')
     group.add_argument('--exclusive-run',action='store_true')
     parser.add_argument('--captures-zip',type=Path)
+    parser.add_argument('--reviewed-preflight',type=Path,
+        help='Previously reviewed private preflight; fresh identities and script hashes must match.')
     parser.add_argument('--counts',default='16,64,256')
     parser.add_argument('--history-requests',default='0,4096')
     parser.add_argument('--max-seconds',type=int,default=1800)
     args=parser.parse_args(argv)
     from p24_foundation.viewer_runtime import atomic_json
-    from viewer_performance.financial_screen.host import preflight,maintenance,parameters,inventory,project_processes,own_process_ids
+    from viewer_performance.financial_screen.host import preflight,maintenance,parameters,inventory,assert_quiescent
     from viewer_performance.financial_screen.experiment import run
+    from viewer_performance.financial_screen.reviewed_host import load_review,apply_review
     project=args.project.resolve()
     directory=project/'AnomalyDetection/reports'/('Financial_Screen_'+datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_')+uuid.uuid4().hex[:8])
     directory.mkdir(parents=True,exist_ok=False)
@@ -65,7 +68,9 @@ def main(argv=None):
     try:
         with run_lock(project/'AnomalyDetection/reports/financial_screen.lock'):
             if project!=ROOT:raise ValueError('PROJECT_ROOT_MUST_MATCH_TOOL_INSTALLATION')
+            review=load_review(args.reviewed_preflight) if args.reviewed_preflight else None
             before=preflight(project)
+            if review:before=apply_review(project,before,*review)
             before.update(collection_run=directory.name,collected_at_utc=datetime.now(timezone.utc).isoformat())
             atomic_json(directory/'preflight.json',before)
             exported_preflight=project/'AnomalyDetection/reports/preflight_to_send.json'
@@ -83,15 +88,12 @@ def main(argv=None):
                     from viewer_performance.capacity.baseline import capture_jobs
                     with tempfile.TemporaryDirectory(prefix='screen-input-check-') as validation:
                         capture_jobs(extract_captures(args.captures_zip,Path(validation)))
-                thread.start();last_check=0
+                thread.start();last_check=0;idle_cpu={}
                 def guard_host():
                     nonlocal last_check
                     if time.monotonic()-last_check<5:return
                     last_check=time.monotonic();snapshot=inventory(project)
-                    residual=[p for p in project_processes(snapshot,project) if int(p['ProcessId']) not in own_process_ids(snapshot)
-                        and 'invoke_financial_screen.ps1' not in (p.get('CommandLine') or '').lower()]
-                    if residual or snapshot['listeners'] or any(t['Enabled'] for t in snapshot['tasks']):
-                        raise ValueError('PROJECT_PROCESS_OR_AUTOSTART_RETURNED_DURING_SCREEN')
+                    assert_quiescent(project,snapshot,before['restore_plan'],idle_cpu)
                 with maintenance(project,before,directory,notice) as control:
                     result=run(parameters(project),counts=counts,histories=histories,max_seconds=args.max_seconds,
                         bundle=args.captures_zip,guard_host=guard_host,notice=notice)
