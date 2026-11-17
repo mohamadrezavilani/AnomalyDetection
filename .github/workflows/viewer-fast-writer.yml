@@ -7,7 +7,14 @@ on:
       - 'viewer_performance/Run_Viewer_Fast.py'
       - 'viewer_performance/Qualify_Viewer_Fast.py'
       - 'viewer_performance/FAST_WRITER_MANIFEST.json'
+      - 'viewer_performance/writer_identity.py'
+      - 'viewer_performance/Observe_Viewer_Fast.py'
+      - 'viewer_performance/history_segments.py'
+      - 'viewer_performance/Benchmark_History_Segments.py'
+      - 'viewer_performance/capacity/baseline.py'
       - 'tests/test_viewer_fast_writer.py'
+      - 'tests/test_viewer_writer_identity.py'
+      - 'tests/test_viewer_history_segments.py'
       - '.github/workflows/viewer-fast-writer.yml'
   workflow_dispatch:
 permissions:
@@ -22,7 +29,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - run: python -B -m unittest -v tests.test_viewer_fast_writer tests.test_viewer_launcher_bytes tests.test_viewer_catchup
+      - run: python -B -m unittest -v tests.test_viewer_fast_writer tests.test_viewer_writer_identity tests.test_viewer_history_segments tests.test_viewer_launcher_bytes tests.test_viewer_catchup
   native-publication:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -50,5 +57,9 @@ jobs:
       - name: Actual trial factory, fences, publication, recovery and old-writer rollback
         run: >-
           python -B -m unittest -v tests.test_viewer_fast_writer
+          tests.test_viewer_writer_identity tests.test_viewer_history_segments
+          tests.test_viewer_capacity
           tests.test_viewer_contract_fetch_once tests.test_viewer_local_projection_keys
           tests.test_viewer_launcher_bytes tests.test_viewer_catchup tests.test_viewer_history_replay
+      - name: Full-cost isolated segment build with independent correctness databases
+        run: python -B viewer_performance/Benchmark_History_Segments.py --count 2000 --pairs 2 --output qualification/segments.json

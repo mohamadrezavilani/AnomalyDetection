@@ -1,17 +1,21 @@
 {
-  "build_id": "VIEWER-20261117-C2C3-TRIAL",
+  "build_id": "VIEWER-20261117-C2C3-OBSERVED",
   "base_runtime_source_sha256": "b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8",
-  "source_sha256": "bd42f219e024867a4944b315ecca05fb3cfef6cfb7e2e88e02ac5011b514856f",
+  "source_sha256": "0b59bd134db77800cc615f86c1defcca646fcb1108b76527860b4e2d9326e872",
   "files_sha256": {
+    "AnomalyDetection/validation/observe_viewer_live.py": "6b0ed22d20ebe21f144d3909c945191f38fd4d95860b366d4acb0beac6fe4f2c",
     "tests/test_viewer_fast_writer.py": "c8a7dd81b50c86753874c9205514cfe129e2e1a3c34159cd41afe77bd277fa67",
+    "tests/test_viewer_writer_identity.py": "9648f8b782be732b525ac9f425742a01f930abb96d129c1c284f1a36d7a382ac",
+    "viewer_performance/Observe_Viewer_Fast.py": "fdb680c5ead54afe900d1e93912383c1277e3e40f475d6d23cd56470d12864b4",
     "viewer_performance/Qualify_Capacity_Candidate.py": "98c557c3bcf11d45e16e0f73df37fe1a98d0572466ad58b03b704f39ce1cc448",
-    "viewer_performance/Qualify_Viewer_Fast.py": "611ecce124894021bc07f34fc444b0d8dff55012ee59b47aec7cefb2a58ca489",
+    "viewer_performance/Qualify_Viewer_Fast.py": "a7789a6e83d64b1f04308fd3e86f035e32b4aae8f87ad1e2d3e2a22188434b85",
     "viewer_performance/Run_Viewer_Catchup.py": "971db315b089e750ccbee8b23c6c2e42d3d6d867a1b34958e4d8a1393b53fd30",
     "viewer_performance/Run_Viewer_Fast.py": "1700b40c7b76d64bed338ccb3381e5111fbbaa6715c473eb599913e3888dff3e",
+    "viewer_performance/Run_Viewer_Index_Probe_UTF8.py": "fabfd1044c5506c5215a8702361e2159ed7e6624c2bee2fd50ba47ecd119a0eb",
     "viewer_performance/Run_Viewer_Memory.py": "0f6b466bb852d10bffc862dafe0c9058489707a42298e21b5a8182342a2065c1",
     "viewer_performance/Run_Viewer_Web.py": "d37ce47989dada7d693d7a39883004f07dffcae9f2aacbe206a4db397297b75d",
     "viewer_performance/capacity/__init__.py": "71e32c16dd38aef69b8a32fa7aa530e6f1ef9f540ec52922e37da791d977cdf4",
-    "viewer_performance/capacity/baseline.py": "b2bef3924a6daf24337a9ee50bb6189ab12aed56e5b1c31c241c535bd205ab57",
+    "viewer_performance/capacity/baseline.py": "afa6e7914c7d1c486713875177e2c170b4bb7772890bc8a349ba283b42569b1f",
     "viewer_performance/capacity/contract_fetch_once.py": "0f5f1fed8504b106381219d2b2fedb9b5bec632ab2e25236c8ed8bbac0ef54fb",
     "viewer_performance/capacity/counters.py": "2395f5fdc88ba3b85052c7ccce556c96ed39c3ef02813bb4fa22de578fbe9c06",
     "viewer_performance/capacity/fixtures.py": "17bb68773eadeebef7a45c72e5791fc85e715d7e5b140076640c76240d5aa707",
@@ -20,8 +24,9 @@
     "viewer_performance/capacity/oracle.py": "acf8d464eaf20bc0e100e6cf5a1bca43d5c8339760475aee59d58bae70e571da",
     "viewer_performance/capacity/origin_filter.py": "3af6259af5182bda8b5120d077040b27886301aa9c114869005835494f03c29d",
     "viewer_performance/capacity/trace.py": "0c878650a6bc9e0d3297123e77c4e5aa24c085e227142a7397b8715ca0cdfad5",
-    "viewer_performance/fast_writer.py": "24d0174af40a1f42094d96d8f57fd3e40d12692dda35fce077ab5730263f875f",
-    "viewer_performance/history_replay.py": "ea35d0f2b516bb2d29a0a089528e8339b603b6bfbd0e9d3d958039f7d3596096"
+    "viewer_performance/fast_writer.py": "84fa35e5b2a02578c905bff46b364479ba8113ae818d96886155a4fefc7bc859",
+    "viewer_performance/history_replay.py": "ea35d0f2b516bb2d29a0a089528e8339b603b6bfbd0e9d3d958039f7d3596096",
+    "viewer_performance/writer_identity.py": "9425485cf5fb1487e0ee7760816c0f2493b2bb3d2eeca2329c13228c73e0f1b2"
   },
   "activation": "explicit_Run_Viewer_Fast_only",
   "canonical_runtime_files_changed": false,
@@ -33,5 +38,7 @@
   "parallel_readers": 0,
   "capacity_acceptance": "PENDING_OWNER_TRIAL",
   "eight_hour_web_ad": "NOT_RUN",
-  "rollback": "Stop the trial worker and resume Run_Viewer_Catchup.py --with-anomaly with the same code, database, keys and cursors. No schema or data conversion is required."
+  "rollback": "Stop the trial worker and resume Run_Viewer_Catchup.py --with-anomaly with the same code, database, keys and cursors. No schema or data conversion is required.",
+  "durable_identity": "lease_backend_start_nonce_python_pid_server_and_implementation_hash",
+  "capacity_oracles": "separate_databases_no_full_scans_in_capacity_mode"
 }

@@ -70,7 +70,7 @@ def capture_jobs(paths):
     return jobs
 
 
-def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB,notice=None):
+def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB,notice=None,oracle=True):
     windows=[];schedule_seconds=0;candidate_setup=0;candidate_prepare=None;lane_began=time.perf_counter()
     beginning=jobs[0]['start']
     with db_type(**options) as db:
@@ -120,9 +120,9 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB,notice=N
             if not readable or readable['generation']!=result['generation']:
                 raise AssertionError('publication_not_committed_readable')
             after=counters.snapshot(db.conn) if not db.sqlite else None
-            oracle_began=time.perf_counter();oracle=semantic_snapshot(db)
-            states={r['state']:r['n'] for r in db.all(
-                'SELECT state,COUNT(*) AS n FROM viewer_semantic_occurrences GROUP BY state')}
+            oracle_began=time.perf_counter();snapshot=semantic_snapshot(db) if oracle else None
+            states=({r['state']:r['n'] for r in db.all(
+                'SELECT state,COUNT(*) AS n FROM viewer_semantic_occurrences GROUP BY state')} if oracle else None)
             oracle_seconds=time.perf_counter()-oracle_began
             window=dict(ordinal=ordinal,kind=job['kind'],mode=job['mode'],records=job['records'],
                 capture_sha256=job['sha256'],elapsed_publication_seconds=elapsed,
@@ -132,14 +132,14 @@ def run_lane(options, jobs, *, profiled, history=True, db_type=ViewerDB,notice=N
                 seconds_per_1000_impacted_requests=elapsed*1000/result['impacted_requests'] if result['impacted_requests'] else None,
                 trace=trace.report() if profiled else None,transaction_counters=transaction_counts,
                 backend_counters=counters.delta(before,after) if before else dict(status='NOT_NATIVE'),
-                oracle=oracle,oracle_seconds=oracle_seconds,
+                oracle=snapshot,oracle_seconds=oracle_seconds,full_oracle_executed=oracle,
                 semantic_states=states,
                 cycle_including_diagnostics_and_oracle_seconds=time.perf_counter()-began)
             db.conn.rollback()
             windows.append(window)
             if notice:notice(dict(status='CAPACITY_WINDOW_COMMITTED',ordinal=ordinal,
                 bootstrap=bool(result['bootstrap']),new_events=result['new_events'],
-                seconds=elapsed,semantic_oracle_complete=True))
+                seconds=elapsed,semantic_oracle_complete=oracle))
         return dict(profiled=profiled,windows=windows,writer_settings=settings,index_inventory=layout,
             publication_mode='history' if history else 'forward',
             candidate_prepare_seconds=candidate_setup,candidate_prepare=candidate_prepare,

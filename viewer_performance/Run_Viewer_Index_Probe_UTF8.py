@@ -9,7 +9,7 @@ import subprocess
 import sys
 import uuid
 
-CAPACITY_SHA='8abbdc17d427e9d2c2472d8a9efd50dabce2fa5de6dd8a93e12aabc29bdea6ff'
+CAPACITY_SHA='06dd2222dc1aaca91805635eabe3a3a76dd4b44750305d0016a82270e0d016e1'
 RUNTIME_SHA='b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8'
 SHARED='viewer_performance/Observe_Viewer_Index_Parallel.py'
 DEPENDENCIES=(SHARED,'viewer_performance/Observe_Viewer_Index_Cost.py',

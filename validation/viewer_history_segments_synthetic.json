@@ -1,0 +1,132 @@
+{
+  "candidate": "C6_FRESH_SEGMENT_BUILD",
+  "scope": "TYPED_CHANGESET_STORAGE_ONLY",
+  "product_database_opened": false,
+  "product_modified": false,
+  "detectors_run": false,
+  "correctness": [
+    true,
+    true,
+    true
+  ],
+  "capacity": [
+    {
+      "pair": 0,
+      "variant": "baseline",
+      "setup_seconds": 0.004367100999843387,
+      "prepare": {},
+      "publication_seconds": [
+        0.2004694549996202,
+        0.212822124000013,
+        0.22842346799916413
+      ],
+      "total_storage_seconds_including_setup": 0.6463394159991367,
+      "physical_change_rows": 45007,
+      "full_oracle_executed": false
+    },
+    {
+      "pair": 0,
+      "variant": "segments",
+      "setup_seconds": 0.006599057999665092,
+      "prepare": {
+        "heap_load_seconds": 0.16148808399975678,
+        "index_build_and_validation_seconds": 0.16190746200027206,
+        "global_directory_seconds": 0.2061872680005763,
+        "attach_seconds": 0.0019273529997008154,
+        "prepare_commit_seconds": 0.007316905000152474,
+        "rows": 45007,
+        "bytes": 20776119,
+        "total_prepare_seconds": 0.6828685649998079
+      },
+      "publication_seconds": [
+        0.0011280709995844518,
+        0.0006800519995522336,
+        0.0005322240003806655
+      ],
+      "total_storage_seconds_including_setup": 0.6919725519992426,
+      "physical_change_rows": 45007,
+      "full_oracle_executed": false
+    },
+    {
+      "pair": 1,
+      "variant": "segments",
+      "setup_seconds": 0.006223934999979974,
+      "prepare": {
+        "heap_load_seconds": 0.1664195360008307,
+        "index_build_and_validation_seconds": 0.15855438800008415,
+        "global_directory_seconds": 0.22356161799962138,
+        "attach_seconds": 0.0017838969997683307,
+        "prepare_commit_seconds": 0.005538334999982908,
+        "rows": 45007,
+        "bytes": 20776119,
+        "total_prepare_seconds": 0.7030258319991844
+      },
+      "publication_seconds": [
+        0.0011014620004061726,
+        0.0004967209997630562,
+        0.0006499769997390104
+      ],
+      "total_storage_seconds_including_setup": 0.7116280290001669,
+      "physical_change_rows": 45007,
+      "full_oracle_executed": false
+    },
+    {
+      "pair": 1,
+      "variant": "baseline",
+      "setup_seconds": 0.004160948000389908,
+      "prepare": {},
+      "publication_seconds": [
+        0.23082466300002125,
+        0.2703526839995902,
+        0.3768591500002003
+      ],
+      "total_storage_seconds_including_setup": 0.8825943580004605,
+      "physical_change_rows": 45007,
+      "full_oracle_executed": false
+    }
+  ],
+  "comparisons": [
+    {
+      "pair": 0,
+      "baseline": 0.6463394159991367,
+      "segments": 0.6919725519992426,
+      "reduction_fraction": -0.07060243406254951
+    },
+    {
+      "pair": 1,
+      "segments": 0.7116280290001669,
+      "baseline": 0.8825943580004605,
+      "reduction_fraction": 0.19370883968442998
+    }
+  ],
+  "query_path_performance": "NOT_RUN",
+  "canonical_viewer_backend_integration": "NOT_RUN",
+  "live_capacity": "NOT_ACCEPTED",
+  "cold_cache": "NOT_CONTROLLED",
+  "effective_working_set_pressure": "NOT_QUALIFIED",
+  "original_permanent_index_count": 5,
+  "candidate_local_index_count": 5,
+  "candidate_global_directory_index_count": 2,
+  "read_oracles_interleaved_with_capacity": false,
+  "windows_per_batch": 3,
+  "costs_excluded_from_storage_column": [
+    "Elasticsearch",
+    "change detection",
+    "request/payment/semantic reconstruction",
+    "actual AD"
+  ],
+  "status": "PASS_STORAGE_BOUNDARY_EQUIVALENCE",
+  "decision": "DO_NOT_PROMOTE_THIS_STORAGE_LAYOUT",
+  "cleanup": {
+    "allocated": 6,
+    "dropped": 6
+  },
+  "whole_run_seconds_including_correctness_setup_and_cleanup": 6.6018208999994386,
+  "algorithm_sha256": "f216eb2b39478340c39992ff5528486afc8cb5eac9f0c5194aaa2efdd4b0f6ae",
+  "dataset": "SYNTHETIC_ONLY",
+  "native_correctness_tests": {
+    "tests": 7,
+    "failures": 0,
+    "skips": 0
+  }
+}

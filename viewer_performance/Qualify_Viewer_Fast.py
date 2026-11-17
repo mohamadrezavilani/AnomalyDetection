@@ -16,7 +16,7 @@ import time
 import uuid
 
 
-def qualify(project, bundle, *, pairs=2, notice=lambda value: None):
+def qualify(project, bundle, *, pairs=2, purpose='correctness',notice=lambda value: None):
     project, bundle = Path(project).resolve(), Path(bundle).resolve()
     sys.path.insert(0, str(project))
     from p24_foundation.viewer_data import ViewerDB
@@ -26,12 +26,15 @@ def qualify(project, bundle, *, pairs=2, notice=lambda value: None):
     from viewer_performance.fast_writer import FastWriterDB, BUILD, BASE_RUNTIME, verify_sources
     if not 1 <= pairs <= 2:
         raise ValueError('fast_qualification_pairs_must_be_1_to_2')
+    if purpose not in ('correctness','capacity'):raise ValueError('invalid_fast_qualification_purpose')
     source = verify_sources(project)
     config = literal_database(project)
     began = time.perf_counter()
     output = project / 'AnomalyDetection/reports' / ('Viewer_Fast_Qualification_' +
         datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_') + uuid.uuid4().hex[:8] + '.json')
-    report = dict(status='RUNNING', build_id=BUILD, implementation_source_sha256=source,
+    report = dict(status='RUNNING', build_id=BUILD, implementation_source_sha256=source,purpose=purpose,
+        full_oracles_in_timed_lanes=purpose=='correctness',
+        speed_comparison_is_diagnostic_only=purpose=='correctness',
         canonical_runtime_source_sha256=BASE_RUNTIME, product_database_opened=False,
         product_database_modified=False, workers_restarted=False, qualification_databases_only=True,
         input_bundle_sha256=hashlib.sha256(bundle.read_bytes()).hexdigest(), lanes=[], checks=[],
@@ -67,12 +70,12 @@ def qualify(project, bundle, *, pairs=2, notice=lambda value: None):
                             keys_path=keys)
                         notice(dict(status='FAST_QUALIFICATION_LANE_STARTED', pair=pair, variant=variant))
                         lane = run_lane(options, jobs, profiled=True, history=True,
-                            db_type=FastWriterDB if variant == 'fast' else ViewerDB, notice=notice)
+                            db_type=FastWriterDB if variant == 'fast' else ViewerDB, notice=notice,oracle=purpose=='correctness')
                         lane.update(pair=pair, variant=variant)
                         report['lanes'].append(lane)
                         lanes[variant] = lane
-                    equal = [left['oracle'] == right['oracle'] for left, right in
-                        zip(lanes['canonical']['windows'], lanes['fast']['windows'])]
+                    equal = ([left['oracle'] == right['oracle'] for left, right in
+                        zip(lanes['canonical']['windows'], lanes['fast']['windows'])] if purpose=='correctness' else [])
                     report['checks'].append(dict(pair=pair, order=order,
                         every_publication_equal=equal, all_equal=all(equal) and len(equal)==len(jobs)))
                     def charged(lane):
@@ -90,7 +93,7 @@ def qualify(project, bundle, *, pairs=2, notice=lambda value: None):
                     report['comparisons'].append(dict(pair=pair, canonical=original, fast=fast,
                         reduction_fraction=1-fast['total_charged_seconds']/original['total_charged_seconds']
                             if original['total_charged_seconds'] else None))
-        report['status'] = 'PASS_FAST_EQUIVALENCE' if all(check['all_equal'] for check in report['checks']) else 'FAIL_FAST_OUTPUT_DIFFERENCE'
+        report['status'] = ('PASS_FAST_EQUIVALENCE' if all(check['all_equal'] for check in report['checks']) else 'FAIL_FAST_OUTPUT_DIFFERENCE') if purpose=='correctness' else 'CAPACITY_MEASUREMENT_ONLY'
         if verify_sources(project) != source:
             raise ValueError('fast_qualification_source_changed')
     except Exception as exc:
@@ -119,6 +122,7 @@ def main(argv=None):
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--captures-zip', type=Path, required=True)
     parser.add_argument('--pairs', type=int, choices=(1,2), default=2)
+    parser.add_argument('--purpose',choices=('correctness','capacity'),default='correctness')
     args = parser.parse_args(argv)
     done = threading.Event()
     began = time.monotonic()
@@ -130,7 +134,7 @@ def main(argv=None):
     thread = threading.Thread(target=heartbeat, daemon=True)
     thread.start()
     try:
-        result = qualify(args.project, args.captures_zip, pairs=args.pairs, notice=notice)
+        result = qualify(args.project, args.captures_zip, pairs=args.pairs,purpose=args.purpose, notice=notice)
     except Exception as exc:
         result = dict(status='FAST_QUALIFICATION_BLOCKED', error_type=type(exc).__name__,
             code=str(exc) if isinstance(exc, ValueError) else None,
@@ -139,7 +143,7 @@ def main(argv=None):
         done.set()
         thread.join(1)
     notice(result)
-    return 0 if result['status']=='PASS_FAST_EQUIVALENCE' else 2
+    return 0 if result['status'] in ('PASS_FAST_EQUIVALENCE','CAPACITY_MEASUREMENT_ONLY') else 2
 
 
 if __name__ == '__main__':

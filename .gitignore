@@ -68,3 +68,6 @@ id_ed25519*
 #
 # IMPORTANT: this is a PUBLIC repository. Review any staged user data,
 # access tokens, connection strings and oversized binary files before push.
+
+# Runtime identities, observations and private operator reports.
+/AnomalyDetection/reports/
