@@ -503,7 +503,7 @@
     "tests/test_viewer_behavior_pg.py": "1b2ff00edea2e7c02dcbeb5ac30a2a5a02eac289ffce4057045b8c9a6bfa7aac",
     "AnomalyDetection/anomaly_detection/case_web.py": "e352d36f1eef4a498f798f03c75d5d823057b6ad8d4b69d0ddc84522fc8fe4ea",
     "AnomalyDetection/anomaly_detection/case_summary.py": "c60275e444c17b781e5e68fd6d15ab3bcc6d16f0289ea3c8a87fc333dae8f544",
-    "BEHAVIOR_SCOPE_HANDOFF_FA.md": "aa8590074ff14c50b45ed748eb5274e1782ddf68d9a510935a6a6b2cae62ed62",
+    "BEHAVIOR_SCOPE_HANDOFF_FA.md": "7b3ed507f7b57a3834e4b621a54b8c42faf5390345ef3016214bd500ee3a443e",
     "viewer_performance/Refresh_Behavior_Manifests.py": "aab3c5caeb351fc760ca2f2ae70abc034705ed930b4a1a60d4817f4bc09514c8",
     "AnomalyDetection/tests/test_model_calibration_pins_pg.py": "f6f917113b3cf55db442224ed6a63fbbda30389640f58e2f953ecbe61cb96bf9",
     "AnomalyDetection/anomaly_detection/window_stamp.py": "a3c9122160674afcef0629c0982935cfd4553210b36c3a7d8552b9643eda24bd",
@@ -625,7 +625,7 @@
     "AnomalyDetection/anomaly_detection/product_dependencies.py": "f2b19dac6d3b8467f7aac119214a647c5c36aba9ff39907e7e29490a74d6f6f5",
     "AnomalyDetection/anomaly_detection/product_scheduling.py": "89c23070d3bd328daac4f2fc4659b026c82d6f295a7f8112d26395a54f7085d0",
     "AnomalyDetection/tests/test_service_reference.py": "d84ae4a6ed393ecdbebac33c487c83ae6c2046722ca738977ebea457686d9afe",
-    "tests/test_behavior_install_windows.py": "45b909995ba5206c3701f702d9fcfed8fa01bb35c9396652db7ab8e48b00bd58"
+    "tests/test_behavior_install_windows.py": "0cb286e0955a742b72de37b6b61c2b941f154d22a98b05d4f41adaa3d0e5d8d6"
   },
   "private_operational_reports_included": false,
   "legacy_operational_notes": "Preserved in Git history; current manifest contains source inventory only.",

@@ -48,7 +48,7 @@ class NativeWindowsInstallerTests(unittest.TestCase):
                 subprocess.run([sys.executable,'-m','venv','--without-pip',str(project/'.venv')],check=True,capture_output=True,timeout=60)
                 (project/'private').mkdir();evidence=project/'private/evidence.bin';evidence.write_bytes(b'untouched private evidence')
                 harness=root/'harness.ps1'
-                harness.write_text("$ErrorActionPreference='Stop'\n$global:P24FixtureGit=(Get-Command git -CommandType Application).Source\nfunction global:git { if($args[0] -eq 'remote' -and $args[1] -eq 'get-url'){ 'https://github.com/mohamadrezavilani/AnomalyDetection.git'; $global:LASTEXITCODE=0 } else { & $global:P24FixtureGit @args; $global:LASTEXITCODE=$LASTEXITCODE } }\n& "+quote(installer)+' -Project '+quote(project)+' -TargetCommit '+quote(target)+' -SkipBenchmark\n',encoding='utf-8')
+                harness.write_text("$ErrorActionPreference='Stop'\n$global:P24FixtureGit=(Get-Command git -CommandType Application | Select-Object -First 1).Source\nfunction global:git { if($args[0] -eq 'remote' -and $args[1] -eq 'get-url'){ 'https://github.com/mohamadrezavilani/AnomalyDetection.git'; $global:LASTEXITCODE=0 } else { & $global:P24FixtureGit @args; $global:LASTEXITCODE=$LASTEXITCODE } }\n& "+quote(installer)+' -Project '+quote(project)+' -TargetCommit '+quote(target)+' -SkipBenchmark\n',encoding='utf-8')
                 result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(harness)],
                                       env=dict(os.environ,P24_TEST_INSTALL_PHASE=phase),capture_output=True,text=True,timeout=90)
                 self.assertEqual(result.returncode==0,phase=='pass',result.stdout+result.stderr)
