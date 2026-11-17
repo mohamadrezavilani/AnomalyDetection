@@ -9,6 +9,10 @@ from . import FIVE_NS
 from .snapshot import digest,api_path
 from .temporal import Point,fit,predict,phase,quantile
 
+MIX_MODEL_VERSION='automatic-mix-2'
+ISOLATION_MODEL_VERSION='isolation-forest-2'
+SEQUENCE_MODEL_VERSION='adaptive-order-2'
+
 
 def valid(row):
     first=row.get('first_observed_ns')
@@ -156,8 +160,10 @@ def evaluate(context,history,details=(), *, peer_provider=None):
             if len(selected_rows)>=30 and error<best*.75:family=period;best=error;selected=selected_rows;errors=candidate
         baseline=reference(selected);observed=distance(distribution(counts),baseline)
         cutoff=max(.25,quantile(errors,.99));high=observed>cutoff and rank(observed,errors)<=.05
-        model={'model_id':'pm1:'+digest([target,[[row['start_ns'],row['counts']] for row in selected],family]),
-            'version':'automatic-mix-1','family':family,'cutoff_ns':target,'reference_distribution':baseline,
+        # Holdout revisions can change calibration without changing training.
+        # Both belong to the immutable model used by the decision.
+        model={'model_id':'pm1:'+digest([MIX_MODEL_VERSION,target,[[row['start_ns'],row['counts']] for row in selected],family,errors]),
+            'version':MIX_MODEL_VERSION,'family':family,'cutoff_ns':target,'reference_distribution':baseline,
             'validation_errors':errors,'calibration':'temporal_holdout_not_fraud_probability'}
         emit('service_mix','activity','CANDIDATE' if high else 'NO_DEVIATION_OBSERVED','MIX_DISTANCE' if high else 'MIX_WITHIN_LEARNED_RANGE',
             score=observed,upper=cutoff,model=model,observed_distribution=distribution(counts),
@@ -170,7 +176,7 @@ def evaluate(context,history,details=(), *, peer_provider=None):
         forest=SmallIsolationForest().fit(vectors[:cut]);calibration=[forest.score(row) for row in vectors[cut:]]
         observed=forest.score(count_vector(counts));upper=max(.65,max(calibration)+.02)
         high=observed>upper and rank(observed,calibration)<=.05
-        model={'model_id':'pi1:'+digest([vectors[:cut],target]),'version':'isolation-forest-1','family':'isolation_forest',
+        model={'model_id':'pi1:'+digest([ISOLATION_MODEL_VERSION,vectors[:cut],target,calibration]),'version':ISOLATION_MODEL_VERSION,'family':'isolation_forest',
             'cutoff_ns':target,'sample_size':forest.size,'trees':forest.trees,'calibration_scores':calibration}
         emit('isolation_forest','activity','CANDIDATE' if high else 'NO_DEVIATION_OBSERVED','MULTIVARIATE_ISOLATION' if high else 'MULTIVARIATE_WITHIN_RANGE',
             score=observed,upper=upper,model=model,
@@ -203,7 +209,7 @@ def evaluate(context,history,details=(), *, peer_provider=None):
         high=len(calibration)>=30 and observed>upper and rank(observed,calibration)<=.05
         emit('service_sequence','sequence_statistics','INSUFFICIENT_DATA' if len(calibration)<30 else 'CANDIDATE' if high else 'NO_DEVIATION_OBSERVED',
             'INSUFFICIENT_ORDER_VALIDATION' if len(calibration)<30 else 'ORDER_SURPRISE' if high else 'ORDER_WITHIN_RANGE',
-            score=observed,upper=upper,model={'model_id':'ps1:'+digest([training,target,order]),'version':'adaptive-order-1',
+            score=observed,upper=upper,model={'model_id':'ps1:'+digest([SEQUENCE_MODEL_VERSION,training,target,order,calibration]),'version':SEQUENCE_MODEL_VERSION,
                 'family':'first_order' if order else 'unigram','cutoff_ns':target,'validation_scores':calibration},
             explanation_fa=f'ترتیب خدمات با مدل انتخاب‌شدهٔ مرتبهٔ {order} مقایسه شد؛ امتیاز {observed:.3f} است. مرز پنجره، توالی را قطع نمی‌کند.')
     past_times=[event['anchor_ns']/1e9 for event in past];current_times=[event['anchor_ns']/1e9 for event in current_events]

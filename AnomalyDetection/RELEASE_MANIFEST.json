@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261116-REFERENCE-CONTRACT",
-  "source_sha256": "590e0d1e1844ba71c3cae688766b8f833d9697f200bb729b21819603991735c0",
+  "source_sha256": "a64c001532c76dfa71c40902e0f43e1d0654d5a8b062d2c63ecc1f81870fb98c",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -13,7 +13,7 @@
     "MEETING_REQUIREMENTS_25_FA.md": "54ef408ba1af82cf13fe06f74cc75e99617bc1bb424bbf15a3278841d18746af",
     "METHODS_AND_LATE_DATA_FA.md": "ecc521f538f384b5cacb559bf05416cc67705b3f5de545108a08e1d7ae85bfbb",
     "PRESENTATION_GUIDE_FA.md": "53954989b5a1cf636e98f0a894d07179651e77e44ded72a6051f713f692dd456",
-    "PROJECT_MAP_FA.md": "659b5b4fdd70355248ef689eab9c40af42e85040791e0a4b46a9205b3daf562a",
+    "PROJECT_MAP_FA.md": "175a281fc38d62382a41154035ffcbafbf36019d91345cc154b265c8cb2148f0",
     "README_FA.md": "29b86b40eb42df27ba9185eb2e3daa27246be454293798c368557f99d640e966",
     "RELEASE_NOTES_06_FA.md": "30ee9d107f2d6e4593314c4000d40595a044421dfdb70f62961f14a46d086aa7",
     "RELEASE_NOTES_07_FA.md": "d693652cfea8136acaabe44a86a3fb3dd249e74f861390c52ee7bc0d1f481b8b",
@@ -75,7 +75,7 @@
     "anomaly_detection/product_engine.py": "a03ca5320d1daf2a3ca6e1f291c90b16741953c34a870b34ddbd82a85cf020e2",
     "anomaly_detection/product_enrichment.py": "0794c13a08caf84e013ba41048f2196fd6bbd7a251d0714bb97985fa9cd0f739",
     "anomaly_detection/product_evaluations.py": "fd9e7a9da923eb52957aec652c8053bec5dda16c3199b5c91b6258e60729e1f6",
-    "anomaly_detection/product_models.py": "8ea9795e556d8e32d2fd172b011ec1d5a117b6a3abcb6b7342e6f1db90d71c6a",
+    "anomaly_detection/product_models.py": "105d8130b7bb045bdd34455dad8999019017ca3548c0cc7e9441700a227fe9cf",
     "anomaly_detection/product_pipeline.py": "e4cc1623224eee173c7d006e259a1e28ffbdbeceac84a32f62af62e863253c44",
     "anomaly_detection/product_priority.py": "3c6f964d63ee04a74dfc377b16eebb031d6748543a25a1f5d2a0341db3b64851",
     "anomaly_detection/product_scheduling.py": "89c23070d3bd328daac4f2fc4659b026c82d6f295a7f8112d26395a54f7085d0",
@@ -138,6 +138,7 @@
     "tests/test_independent_regressions.py": "4fee86b48634270616d49663efd1469da07b9b91f1d23b69d55823df068841b3",
     "tests/test_input_subjects.py": "5bb9bf507b7476507d7fd7020634332e13bf750b9ae8fb02ada5e26f37e179f4",
     "tests/test_longitudinal.py": "341c8975ad57591f5a86bc2456300d2b0b82e969bc755e0855970ed7ad6391d2",
+    "tests/test_model_calibration_pins_pg.py": "f6f917113b3cf55db442224ed6a63fbbda30389640f58e2f953ecbe61cb96bf9",
     "tests/test_noc_evidence.py": "ca2bd71993fd2e02fdc41b94d3da8e386b930d8b5c545634f047c22ea74407a5",
     "tests/test_owned_sql.py": "1cca3713e4a3a1cb8f1507619372949a5350f3e80274c93941e3f0ce4f860c48",
     "tests/test_population_invalidation.py": "ec399a13f1f8c66ea9e237a78dd951559552c8d2055e18a47ed01a6fc296de6e",
@@ -165,6 +166,7 @@
     "tests/test_web_diagnostics.py": "037cd2671149e72309e80bf2549429e6cd2999cc4ac1ff342f982ae2653c8b13",
     "tests/test_window_stamp.py": "fa06f2bd314ddd0ab045f6bcc0b856c8371f6505e6bab259c9a411ff68ae432a",
     "validation/AD_CORRECTNESS_REVIEW.json": "2196f41ed673df0005baf18623a2d05215333f1765177374b4d4e680652a8908",
+    "validation/CALIBRATION_PIN_REVIEW.json": "ed39675cf94407b47fb52a3acd7dedf178d83f75321e5370c2a949560d8967b8",
     "validation/PRODUCT_atomic_scope.json": "de897b0639171a1baa99c1cd6bc9788b1f70fa7ff0c94e01068c27e7dee6adcd",
     "validation/PRODUCT_bounds16.json": "a6f864b73c431162dad408166ce79773cfaea7bd3c6aee03d8dfb04c97a803dc",
     "validation/PRODUCT_engine_contract.json": "6736858458f4c5c5370f4ae1cf8ecfeb856cc23d20c1f6ea4d692b7d7dd926e8",
@@ -390,5 +392,21 @@
     "owner_server_validation": "NOT_RUN",
     "detector_thresholds_changed": false,
     "review_note": "Frozen candidate receipt predates release naming. Final checks are attributed to the exact PR31 head; normal dependency invalidation remains in use without forced historical replay."
+  },
+  "calibration_pin_review_candidate": {
+    "candidate_id": "AD-20261117-CALIBRATION-PINS",
+    "base_commit": "47528c6409bdb5228e934f4f08e6e31c11045634",
+    "release_label": "BASE_LABEL_PENDING_MANAGER_COORDINATION",
+    "model_versions": [
+      "automatic-mix-2",
+      "isolation-forest-2",
+      "adaptive-order-2"
+    ],
+    "heldout_calibration_in_model_identity": true,
+    "historical_model_rows_preserved": true,
+    "thresholds_changed": false,
+    "historical_outputs_automatically_repaired": false,
+    "owner_deployment": "NOT_RUN",
+    "all_family_accuracy": "NOT_ACCEPTED"
   }
 }

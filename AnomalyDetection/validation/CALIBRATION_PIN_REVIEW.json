@@ -1,0 +1,57 @@
+{
+  "candidate_id": "AD-20261117-CALIBRATION-PINS",
+  "base_commit": "47528c6409bdb5228e934f4f08e6e31c11045634",
+  "branch": "audit/ad-report-followup-20261117",
+  "release_label": "BASE_LABEL_PENDING_MANAGER_COORDINATION",
+  "affected_families": ["service_mix", "isolation_forest", "service_sequence"],
+  "model_versions": ["automatic-mix-2", "isolation-forest-2", "adaptive-order-2"],
+  "defect": "A changed temporal holdout reused the old model ID despite different stored calibration. ProductStore.complete ON CONFLICT retained the first body.",
+  "proof_level": "SYNTHETIC_EVALUATORS_AND_ACTUAL_NATIVE_PRODUCTSTORE_COMPLETE",
+  "tests": {
+    "new_module": "tests.test_model_calibration_pins_pg",
+    "new_tests": 9,
+    "base_failures": 7,
+    "base_passes": 2,
+    "candidate_new_failures": 0,
+    "targeted_product_and_pin_tests": 26,
+    "full_native_ad": {"total": 353, "failures": 0, "skips": 0},
+    "nonidentity_parity": {"input_cases": 30, "decisions": 214, "different_nonidentity_fields": 0},
+    "rollback_and_retry": "PASS",
+    "future_and_unqualified_history": "EXCLUDED",
+    "current_observation_in_model_id": false,
+    "independent_oracle": {"PASS": 178, "FAIL": 1, "existing_open_failure": "isolation_forest positive fixture"},
+    "continuation": {"PASS": 52},
+    "local_final_run_note": "An earlier full run overlapped a manifest refresh and the separate read-only reporter correctly rejected that mixed copy. The clean final full run, after the manifest stabilized, passed all 353 tests."
+  },
+  "environment": {
+    "postgresql": "18.6 native Linux disposable cluster",
+    "fsync": true,
+    "full_page_writes": true,
+    "synchronous_commit": true,
+    "owner_database_accessed": false,
+    "native_windows_postgresql": "NOT_RUN"
+  },
+  "preservation": {
+    "training_inputs_unchanged": true,
+    "calibration_inputs_and_formulas_unchanged": true,
+    "thresholds_and_decisions_unchanged": true,
+    "finding_and_case_keys_unchanged": true,
+    "request_and_session_ids_unchanged": true,
+    "old_models_not_updated_or_deleted": true,
+    "viewer_unchanged": true,
+    "schema_unchanged": true,
+    "checkpoint_and_history_floor_unchanged": true,
+    "operator_feedback_unchanged": true
+  },
+  "remaining_limits": {
+    "whole_worker_with_owner_data": "NOT_RUN",
+    "precision_recall": "NOT_EVALUATED",
+    "all_30_families": "NOT_ACCEPTED",
+    "historical_results_repaired_by_install_alone": false,
+    "owner_timeouts_or_capacity_fixed": false,
+    "if_positive_sensitivity_fixed": false
+  },
+  "native_case_sync_scope": "ProductStore transactions, model rows and findings are real SQL; cases.sync_actor is stubbed in the focused persistence tests. Existing complete case tests run in the full native suite.",
+  "rollback": "Stop AD, restore a matching reviewed code/manifest pair and restart. Preserve all model versions, evidence, feedback and cursors. No schema or cursor migration is introduced. Reverting restores the old pin collisions.",
+  "reproduce": "On a disposable P24_DELTA_PG_HOST/PORT/USER cluster, run python -B -m unittest tests.test_model_calibration_pins_pg tests.test_product_models -v from AnomalyDetection/. Never use owner production as a qualification database."
+}
