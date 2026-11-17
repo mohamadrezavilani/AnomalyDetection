@@ -1,0 +1,51 @@
+name: Isolated financial product scope screen
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'viewer_performance/financial_screen/**'
+      - 'viewer_performance/Screen_Financial_Product.py'
+      - 'viewer_performance/Invoke_Financial_Screen.ps1'
+      - 'tests/test_viewer_financial_screen.py'
+      - '.github/workflows/viewer-financial-screen.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-control-contracts:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Preflight policy, finally restore, PowerShell syntax and process counters
+        run: python -B -m unittest -v tests.test_viewer_financial_screen.FinancialScreenContracts
+  native-retained-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ephemeral-financial-screen-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      P24_DELTA_PG_HOST: 127.0.0.1
+      P24_DELTA_PG_PORT: '5432'
+      P24_DELTA_PG_USER: postgres
+      PGPASSWORD: ephemeral-financial-screen-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Full reference, retained boundaries, real process kills and independent capacity databases
+        run: python -B -m unittest -v tests.test_viewer_financial_screen
