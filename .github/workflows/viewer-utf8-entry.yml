@@ -1,0 +1,48 @@
+name: Viewer observer UTF-8 transport
+on:
+  pull_request:
+    paths:
+      - 'viewer_performance/Run_Viewer_Index_Probe_UTF8.py'
+      - 'tests/test_viewer_utf8_entry.py'
+      - '.github/workflows/viewer-utf8-entry.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-pipes:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Actual AD CLI, file locks and nested legacy pipe regression
+        run: python -B -m unittest -v tests.test_viewer_utf8_entry tests.test_viewer_index_parallel_probe tests.test_viewer_launcher_bytes tests.test_viewer_install_check
+  native-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ephemeral-utf8-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      P24_DELTA_PG_HOST: 127.0.0.1
+      P24_DELTA_PG_PORT: '5432'
+      P24_DELTA_PG_USER: postgres
+      PGPASSWORD: ephemeral-utf8-test-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: UTF-8 regression plus unchanged read-only observer and source gates
+        run: python -B -m unittest -v tests.test_viewer_utf8_entry tests.test_viewer_index_parallel_probe tests.test_viewer_launcher_bytes tests.test_viewer_install_check
