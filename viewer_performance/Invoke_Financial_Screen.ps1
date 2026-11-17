@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Project = (Split-Path -Parent $PSScriptRoot),
+    [string]$Project = '',
     [string]$Python = '',
     [switch]$Run,
     [string]$CapturesZip = '',
@@ -9,6 +9,15 @@ param(
     [string]$HistoryRequests = '0,4096'
 )
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($Project)) {
+    # Windows PowerShell 5.1 can evaluate parameter defaults before the script
+    # automatic variables have been populated. Resolve the saved file here.
+    $screenScriptPath = $MyInvocation.MyCommand.Path
+    if ([string]::IsNullOrWhiteSpace($screenScriptPath)) {
+        throw 'Cannot resolve the saved launcher path. Pass -Project explicitly.'
+    }
+    $Project = Split-Path -Parent (Split-Path -Parent $screenScriptPath)
+}
 $Project = (Resolve-Path -LiteralPath $Project).Path
 if (-not $Python) { $Python = Join-Path $Project '.venv\Scripts\python.exe' }
 $Python = (Resolve-Path -LiteralPath $Python).Path

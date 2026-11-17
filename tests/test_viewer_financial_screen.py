@@ -4,6 +4,7 @@ import multiprocessing
 import os
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 import tempfile
 import unittest
@@ -79,6 +80,50 @@ class FinancialScreenContracts(unittest.TestCase):
         value=powershell("$tokens=$null;$errors=$null;[void][System.Management.Automation.Language.Parser]::ParseFile($env:P24_SCREEN_PARSE_FILE,[ref]$tokens,[ref]$errors); @{errors=@($errors).Count}|ConvertTo-Json -Compress",
             {'P24_SCREEN_PARSE_FILE':str(path)})
         self.assertEqual(value['errors'],0)
+
+    @unittest.skipUnless(os.name=='nt','Windows PowerShell 5.1 invocation only')
+    def test_powershell_saved_launcher_defaults_from_unrelated_directory(self):
+        # Execute the actual saved .ps1 with no -Project or -Python. A stub
+        # Python target records the handoff; no product code/DB is invoked.
+        source=Path(__file__).resolve().parents[1]/'viewer_performance/Invoke_Financial_Screen.ps1'
+        with tempfile.TemporaryDirectory(prefix='financial launcher ') as folder:
+            project=Path(folder)/'project with spaces';tools=project/'viewer_performance';tools.mkdir(parents=True)
+            unrelated=Path(folder)/'different working directory';unrelated.mkdir()
+            launcher=tools/source.name;shutil.copyfile(source,launcher)
+            (tools/'Screen_Financial_Product.py').write_text(
+                'import json,sys\nprint(json.dumps(dict(arguments=sys.argv[1:],python=sys.executable)))\n',encoding='utf-8')
+            created=subprocess.run([sys.executable,'-m','venv','--without-pip',str(project/'.venv')],
+                capture_output=True,text=True,timeout=60)
+            self.assertEqual(created.returncode,0,created.stderr)
+            result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+                '-File',str(launcher)],cwd=unrelated,capture_output=True,text=True,timeout=30)
+            self.assertEqual(result.returncode,0,result.stderr)
+            record=json.loads(result.stdout);arguments=record['arguments']
+            self.assertEqual(Path(arguments[arguments.index('--project')+1]).resolve(),project.resolve())
+            self.assertEqual(Path(record['python']).resolve(),(project/'.venv/Scripts/python.exe').resolve())
+            self.assertIn('--preflight',arguments)
+            self.assertNotIn('--exclusive-run',arguments)
+
+    @unittest.skipUnless(os.name=='nt','Windows PowerShell 5.1 invocation only')
+    def test_powershell_saved_launcher_forwards_explicit_options_and_failure(self):
+        source=Path(__file__).resolve().parents[1]/'viewer_performance/Invoke_Financial_Screen.ps1'
+        with tempfile.TemporaryDirectory(prefix='financial launcher ') as folder:
+            root=Path(folder);launcher=root/source.name;shutil.copyfile(source,launcher)
+            project=root/'explicit project';tools=project/'viewer_performance';tools.mkdir(parents=True)
+            (tools/'Screen_Financial_Product.py').write_text(
+                'import json,sys\nprint(json.dumps(dict(status="PREFLIGHT_BLOCKED",arguments=sys.argv[1:])))\nsys.exit(2)\n',encoding='utf-8')
+            bundle=root/'capture archive.zip';bundle.write_bytes(b'test placeholder, never opened by the stub')
+            result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+                '-File',str(launcher),'-Project',str(project),'-Python',sys.executable,'-Run',
+                '-CapturesZip',str(bundle),'-MaxSeconds','37','-Counts','1,2,3','-HistoryRequests','0,16'],
+                cwd=root,capture_output=True,text=True,timeout=30)
+            self.assertNotEqual(result.returncode,0)
+            record=json.loads(result.stdout);arguments=record['arguments']
+            self.assertIn('--exclusive-run',arguments);self.assertNotIn('--preflight',arguments)
+            for name,expected in (('--counts','1,2,3'),('--history-requests','0,16'),('--max-seconds','37')):
+                self.assertEqual(arguments[arguments.index(name)+1],expected)
+            self.assertEqual(Path(arguments[arguments.index('--captures-zip')+1]).resolve(),bundle.resolve())
+            self.assertIn('Screen blocked or incomplete',result.stderr)
 
     def test_unknown_frontend_service_observer_and_running_task_block_before_stop(self):
         from viewer_performance.financial_screen.host import make_plan
