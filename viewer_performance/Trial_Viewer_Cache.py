@@ -12,6 +12,7 @@ import ctypes
 import hashlib
 from datetime import datetime,timezone
 import json
+import ntpath
 import os
 from pathlib import Path
 import sys
@@ -20,6 +21,59 @@ import uuid
 
 GIB=1024**3
 TARGETS={'shared_buffers':'12GB','track_io_timing':'on','track_wal_io_timing':'on'}
+PROCESS_SNAPSHOT_PS=r'''@((Get-CimInstance Win32_Process) | ForEach-Object {
+    [pscustomobject]@{pid=[long]$_.ProcessId;parent_pid=[long]$_.ParentProcessId;
+        created_ticks=$(if($_.CreationDate){[long]$_.CreationDate.ToUniversalTime().Ticks}else{$null});
+        image=$_.ExecutablePath}
+})'''
+
+
+class ServiceBindingError(ValueError):
+    def __init__(self,code,details):super().__init__(code);self.details=details
+
+
+def service_owner(snapshot,backend_pid,*,backend_images=('postgres.exe',)):
+    """Bind the live SQL backend to the service by native process ancestry.
+
+    A service's -D argument can name a configuration directory or use another
+    Windows spelling of the same directory. Text equality is not ownership.
+    The live SQL PID and creation-ordered CIM ancestry identify the service
+    without exporting command lines or trusting a guessed path/PID.
+    """
+    service=snapshot.get('service') or {}
+    details=dict(service_name=service.get('Name'),service_state=service.get('State'),
+                 service_pid=service.get('ProcessId'),sql_backend_pid=backend_pid,chain=[])
+    def fail(code):raise ServiceBindingError(code,details)
+    if service.get('Name','').lower()!='postgresql-x64-18' or service.get('State')!='Running':
+        fail('POSTGRESQL_18_SERVICE_NOT_RUNNING')
+    owner=service.get('ProcessId')
+    if type(owner)is not int or owner<=0 or type(backend_pid)is not int or backend_pid<=0:
+        fail('SERVICE_OR_SQL_PROCESS_ID_UNAVAILABLE')
+    rows=snapshot.get('processes') or []
+    if not isinstance(rows,list):fail('WINDOWS_PROCESS_SNAPSHOT_UNAVAILABLE')
+    processes={row.get('pid'):row for row in rows}
+    if len(processes)!=len(rows):fail('AMBIGUOUS_WINDOWS_PROCESS_SNAPSHOT')
+    current=processes.get(backend_pid);seen=set();child_time=None
+    if current and current.get('image') and ntpath.basename(current['image']).lower() not in backend_images:
+        fail('SQL_BACKEND_PROCESS_IMAGE_DOES_NOT_MATCH_POSTGRES')
+    while current and len(seen)<32:
+        pid=current['pid'];created=current.get('created_ticks')
+        if pid in seen:fail('WINDOWS_PROCESS_ANCESTRY_CYCLE')
+        if type(created)is not int or created<=0:fail('WINDOWS_PROCESS_CREATION_TIME_UNAVAILABLE')
+        if child_time is not None and created>child_time:fail('WINDOWS_PARENT_PID_WAS_REUSED')
+        seen.add(pid);details['chain'].append(dict(pid=pid,created_ticks=created,
+            image=ntpath.basename(current.get('image') or '')))
+        if pid==owner:return dict(method='LIVE_SQL_BACKEND_NATIVE_SERVICE_ANCESTRY',**details)
+        child_time=created;current=processes.get(current.get('parent_pid'))
+    fail('POSTGRES_SERVICE_NOT_IN_LIVE_SQL_BACKEND_ANCESTRY')
+
+
+def service_snapshot(h):
+    return h.powershell('''$s=Get-CimInstance Win32_Service -Filter "Name='postgresql-x64-18'"
+        if(-not $s){throw 'POSTGRESQL_18_SERVICE_MISSING'}
+        $p='''+PROCESS_SNAPSHOT_PS+'''
+        [pscustomobject]@{service=($s | Select-Object Name,State,ProcessId);processes=@($p)} |
+            ConvertTo-Json -Depth 8 -Compress''')
 
 
 def require_windows_admin():
@@ -94,7 +148,6 @@ def main(argv=None):
         from viewer_performance.Behavior_Release import restore,verify_cursors
         from viewer_performance.Run_Viewer_Memory import memory_info
         from viewer_performance.writer_identity import LEASE_SQL,read_identity
-        from viewer_performance.financial_screen.reviewed_host import words,norm
         import psycopg
         from psycopg.rows import dict_row
         prior=load(args.rollback) if args.rollback else None
@@ -106,6 +159,8 @@ def main(argv=None):
             raise ValueError('KNOWN_RESUMING_FAST_VIEWER_COMMAND_REQUIRED')
         if not all(plan['active'].values()):raise ValueError('THIS_TRIAL_REQUIRES_PREVIOUS_FOUR_ROLE_PLAN')
         cfg=h.parameters(project);cfg['connect_timeout']=5
+        if str(cfg.get('host') or 'localhost').lower() not in ('localhost','127.0.0.1','::1'):
+            raise ValueError('LOCAL_POSTGRESQL_REQUIRED_FOR_WINDOWS_SERVICE_TRIAL')
         def connect():return psycopg.connect(**cfg,dbname='postgres',autocommit=True,row_factory=dict_row,
             application_name='P24.CacheTrial',options='-c statement_timeout=10000 -c lock_timeout=1000')
         admin=connect()
@@ -118,12 +173,12 @@ def main(argv=None):
         if not prior:memory_guard(memory,original_settings['effective'])
         elif not prior.get('before_settings'):raise ValueError('ROLLBACK_SETTINGS_RECEIPT_REQUIRED')
         directory=admin.execute('SHOW data_directory').fetchone()['data_directory']
-        service=h.powershell("""$s=Get-CimInstance Win32_Service -Filter "Name='postgresql-x64-18'"
-            if(-not $s){throw 'POSTGRESQL_18_SERVICE_MISSING'}
-            $s | Select-Object Name,State,PathName | ConvertTo-Json -Compress""")
-        command=words(service['PathName']);flags=[w.lower() for w in command]
-        if '-d' not in flags or norm(command[flags.index('-d')+1])!=norm(directory) or service['State']!='Running':
-            raise ValueError('SERVICE_DOES_NOT_OWN_THIS_POSTGRES_DATA_DIRECTORY')
+        inventory=service_snapshot(h);service=inventory['service']
+        binding=service_owner(inventory,admin.info.backend_pid)
+        # A still-live command on this exact connection closes the CIM-read
+        # race: a PostgreSQL restart cannot silently reassign its SQL PID.
+        if admin.execute('SELECT pg_backend_pid() AS pid').fetchone()['pid']!=admin.info.backend_pid:
+            raise ValueError('SQL_CONNECTION_CHANGED_DURING_SERVICE_VERIFICATION')
         snapshot=h.inventory(project);known={h.key(t):t for t in plan['task_restore']}
         for task in snapshot['tasks']:
             if h.key(task) not in known or task['Actions']!=known[h.key(task)]['Actions']:
@@ -142,7 +197,7 @@ def main(argv=None):
             target_settings=prior['before_settings'] if prior else TARGETS,rollback_of=str(args.rollback) if prior else None,
             stopping_started=False,attempted_roles=[],disabled_tasks=[],restore_failures=[],new_database_copies=0,
             evidence_deleted=False,checkpoint_seek_performed=False,capacity_acceptance='NOT_ASSIGNED',
-            data_directory=directory,service_name=service['Name'])
+            data_directory=directory,service_name=service['Name'],service_binding=binding)
         save()
         # Record an attempted disable before mutation so an interrupted run
         # has the exact actions and original enabled state for restoration.
@@ -188,6 +243,7 @@ def main(argv=None):
     except Exception as exc:
         failure=dict(error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None,
                      sqlstate=getattr(exc,'sqlstate',None))
+        if isinstance(exc,ServiceBindingError):failure['service_binding']=exc.details
         if state:
             state['failure']=failure
             # If activation failed, put back the exact previous auto.conf

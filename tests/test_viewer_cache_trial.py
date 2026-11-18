@@ -5,6 +5,9 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import copy
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch,MagicMock
 from viewer_performance import Trial_Viewer_Cache as trial
@@ -30,6 +33,58 @@ class MemoryTests(unittest.TestCase):
                          {'shared_buffers':{'setting':str(12*GIB//8192)}})
 
 
+class ServiceOwnershipTests(unittest.TestCase):
+    def snapshot(self):
+        return dict(service=dict(Name='postgresql-x64-18',State='Running',ProcessId=10),processes=[
+            dict(pid=30,parent_pid=20,created_ticks=300,image=r'E:\pg\postgres.exe'),
+            dict(pid=20,parent_pid=10,created_ticks=200,image=r'E:\pg\postgres.exe'),
+            dict(pid=10,parent_pid=4,created_ticks=100,image=r'E:\pg\pg_ctl.exe')])
+
+    def test_live_backend_ancestry_proves_owner_without_any_directory_string_match(self):
+        value=self.snapshot()
+        value['service']['PathName']='pg_ctl.exe -D "E:\\different-config-directory"'
+        proof=trial.service_owner(value,30)
+        self.assertEqual(proof['method'],'LIVE_SQL_BACKEND_NATIVE_SERVICE_ANCESTRY')
+        self.assertEqual([p['pid'] for p in proof['chain']],[30,20,10])
+
+    def test_a_different_service_or_missing_backend_never_authorizes_restart(self):
+        for change in ('different-service-pid','missing-backend','not-running'):
+            value=self.snapshot()
+            if change=='different-service-pid':value['service']['ProcessId']=99
+            elif change=='missing-backend':value['processes']=value['processes'][1:]
+            else:value['service']['State']='Stopped'
+            with self.subTest(change=change),self.assertRaises(trial.ServiceBindingError):trial.service_owner(value,30)
+
+    def test_reused_parent_pid_and_cycles_are_rejected(self):
+        for change in ('newer-parent','cycle','no-creation-time','duplicate-row'):
+            value=self.snapshot()
+            if change=='newer-parent':value['processes'][1]['created_ticks']=301
+            elif change=='cycle':value['processes'][1]['parent_pid']=30;value['processes'][1]['created_ticks']=300
+            elif change=='no-creation-time':value['processes'][1]['created_ticks']=None
+            else:value['processes'].append(copy.deepcopy(value['processes'][0]))
+            with self.subTest(change=change),self.assertRaises(trial.ServiceBindingError):trial.service_owner(value,30)
+
+    def test_sql_backend_with_wrong_visible_image_is_rejected(self):
+        value=self.snapshot();value['processes'][0]['image']='python.exe'
+        with self.assertRaisesRegex(trial.ServiceBindingError,'IMAGE_DOES_NOT_MATCH'):trial.service_owner(value,30)
+
+    @unittest.skipUnless(os.name=='nt','native Windows CIM ancestry required')
+    def test_actual_windows_child_process_cim_schema_and_ancestry(self):
+        from viewer_performance.financial_screen import host
+        child=subprocess.Popen([sys.executable,'-c','import sys;sys.stdin.read()'],stdin=subprocess.PIPE)
+        try:
+            processes=host.powershell(trial.PROCESS_SNAPSHOT_PS+' | ConvertTo-Json -Depth 5 -Compress')
+            value=dict(service=dict(Name='postgresql-x64-18',State='Running',ProcessId=os.getpid()),processes=processes)
+            # Only this test substitutes a Python parent/child for PostgreSQL;
+            # production always uses the real live SQL PID and postgres image.
+            proof=trial.service_owner(value,child.pid,backend_images=('python.exe','pythonw.exe'))
+            self.assertEqual(proof['chain'][-1]['pid'],os.getpid())
+            value['service']['ProcessId']=-1
+            with self.assertRaises(trial.ServiceBindingError):trial.service_owner(value,child.pid,backend_images=('python.exe',))
+        finally:
+            child.stdin.close();child.wait(timeout=10)
+
+
 class LifecycleTests(unittest.TestCase):
     """Exercise orchestration and error recovery; Windows service I/O is mocked."""
     def scenario(self,*,restart_failure=False,sql_recovery_failure=False,external_config=False):
@@ -51,14 +106,17 @@ class LifecycleTests(unittest.TestCase):
                 for name,value in [('shared_buffers',str(8*GIB//8192)),('track_io_timing','off'),('track_wal_io_timing','off')]},auto={})
             after=dict(effective={name:dict(setting=value) for name,value in [
                 ('shared_buffers',str(12*GIB//8192)),('track_io_timing','on'),('track_wal_io_timing','on')]},auto=TARGETS)
-            db=MagicMock();db.closed=False
-            db.execute.return_value.fetchone.return_value={'data_directory':str(data)}
+            db=MagicMock();db.closed=False;db.info.backend_pid=30
+            def sql_result(statement,*args):
+                row={'data_directory':str(data)} if statement=='SHOW data_directory' else {'pid':30}
+                result=MagicMock();result.fetchone.return_value=row;return result
+            db.execute.side_effect=sql_result
             reader=MagicMock();reader.__enter__.return_value=reader
             reader.execute.return_value.fetchall.return_value=[dict(cancelled=True)]
             restarts=[0]
             def powershell(code,*args):
                 if 'Get-CimInstance' in code:
-                    return dict(Name='postgresql-x64-18',State='Running',PathName='pg_ctl.exe runservice -D "'+str(data)+'"')
+                    return ServiceOwnershipTests().snapshot()
                 if 'Restart-Service' in code:
                     events.append('restart');restarts[0]+=1
                     if restart_failure and restarts[0]==1:
