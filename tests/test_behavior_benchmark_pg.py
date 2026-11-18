@@ -55,13 +55,34 @@ class NativeBehaviorBenchmarkTests(unittest.TestCase):
         from viewer_performance.behavior_oracle import retained,archives
         with ViewerDB(**self.options) as db:before=(retained(db),archives(db));cursor=db.one('SELECT * FROM viewer_live_state')
         result=run(Path(__file__).resolve().parents[1],self.root/'benchmark',lambda:None,lambda value:None,
-                   windows=2,max_seconds=180,parameters=self.params,options=self.options,capture_paths=[j['path'] for j in self.jobs],qualification_disk_path=self.root)
+                   windows=2,max_seconds=180,parameters=self.params,options=self.options,capture_paths=[j['path'] for j in self.jobs],qualification_disk_path=Path(__file__).resolve().parents[1])
         self.assertEqual(result['status'],'LARGE_HISTORY_EQUIVALENCE_AND_CAPACITY_COMPLETE',result.get('failure'))
         self.assertEqual(len(result['lanes']),6);self.assertEqual(result['remaining_owned_databases'],[])
         self.assertEqual([l['scope_mode'] for l in result['lanes'][2:]],['full','behavior','behavior','full'])
         self.assertTrue(all(w['full_output_oracle'] is None for l in result['lanes'][2:] for w in l['windows']))
         self.assertFalse(result['capacity_target_accepted'])
         with ViewerDB(**self.options) as db:self.assertEqual((retained(db),archives(db)),before);self.assertEqual(db.one('SELECT * FROM viewer_live_state'),cursor)
+    def test_history_prefix_advances_in_each_clone_transaction_and_source_stays_frozen(self):
+        from viewer_performance.behavior_benchmark import run
+        from viewer_performance.history_replay import HistoryReplay
+        from p24_foundation.viewer_data import ViewerDB
+        from viewer_performance.capacity.fixtures import START,FIVE
+        with ViewerDB(**self.options) as db:
+            db.sql('UPDATE viewer_live_state SET next_ns=? WHERE id=1',(START+2*FIVE,));db.conn.commit()
+            replay=HistoryReplay(db,'2026-10-23');initial=replay.initialize();before_live=db.one('SELECT * FROM viewer_live_state')
+        result=run(Path(__file__).resolve().parents[1],self.root/'history-benchmark',lambda:None,lambda value:None,
+                   windows=2,max_seconds=180,parameters=self.params,options=self.options,capture_paths=[j['path'] for j in self.jobs],
+                   qualification_disk_path=Path(__file__).resolve().parents[1])
+        self.assertEqual(result['status'],'LARGE_HISTORY_EQUIVALENCE_AND_CAPACITY_COMPLETE',result.get('failure'))
+        for lane in result['lanes']:
+            receipts=lane['history_checkpoint_receipts'];self.assertEqual(len(receipts),2)
+            self.assertEqual([r['next_ns'] for r in receipts],[START+FIVE,START+2*FIVE])
+            self.assertEqual(receipts[-1]['published_windows'],2);self.assertEqual(receipts[-1]['skipped_windows'],0)
+            self.assertEqual(receipts[-1]['status'],'COMPLETE')
+        with ViewerDB(**self.options) as db:
+            self.assertEqual(HistoryReplay(db,'2026-10-23').state(),initial)
+            self.assertEqual(db.one('SELECT * FROM viewer_live_state'),before_live)
+
     def test_crash_after_tag_recovers_only_exact_owned_copy(self):
         folder=self.root/'crash';folder.mkdir()
         child=multiprocessing.get_context('spawn').Process(target=crash_owned_copy,args=(self.params,self.name,str(folder)))

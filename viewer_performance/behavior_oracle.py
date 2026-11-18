@@ -60,6 +60,9 @@ def table_digest(db,table,columns='*',where='TRUE',check=lambda:None):
 def retained(db,check=lambda:None):
     result={table:table_digest(db,table,columns,check=check) for table,columns in RETAINED.items()}
     result.update({table:table_digest(db,table,where=where,check=check) for table,where in SHARED.items()})
+    if db.one("SELECT to_regclass('public.viewer_history_replay_state') AS name")['name']:
+        result['viewer_history_replay_state']=table_digest(db,'viewer_history_replay_state',
+            'id,run_id,from_ns,next_ns,end_ns,stream_key,keys_fingerprint,skipped_windows,published_windows,status,started_ns,ad_prepared,ad_started',check=check)
     return result
 
 

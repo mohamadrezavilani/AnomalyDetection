@@ -81,7 +81,7 @@ def allocated(admin,parameters,keys,mode,created,stats):
         admin.execute(sql.SQL('DROP DATABASE {}').format(sql.Identifier(name)));created.remove(name);stats['dropped']+=1
 
 
-def run_lane(db,jobs,setup_jobs,*,purpose,guard,deadline,notice,existing_stream=False,boundary_oracle=None):
+def run_lane(db,jobs,setup_jobs,*,purpose,guard,deadline,notice,existing_stream=False,boundary_oracle=None,publication_fault=None):
     began=time.perf_counter()
     if not existing_stream:
         db.init();initialize_live(db)
@@ -114,7 +114,8 @@ def run_lane(db,jobs,setup_jobs,*,purpose,guard,deadline,notice,existing_stream=
         notice(dict(status='FINANCIAL_SCREEN_WINDOW',purpose=purpose,mode=db.mode,ordinal=ordinal,kind=job['kind']))
         try:
             with trace.span('publication'):
-                result=publisher(db,trace)(job['path'],job['start'],job['start']+FIVE,mode=job['mode'])
+                result=publisher(db,trace)(job['path'],job['start'],job['start']+FIVE,mode=job['mode'],
+                    fault=(lambda stage:publication_fault(db,job,stage)) if publication_fault else None)
             publication_seconds=time.perf_counter()-clock;client_cpu=time.process_time()-cpu
         except BaseException as exc:
             lost=time.perf_counter()-clock;rollback=time.perf_counter()

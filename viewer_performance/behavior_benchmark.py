@@ -5,10 +5,12 @@ Separate capacity copies use balanced AB/BA and contain no output oracle.
 No source DDL/publication, FORCE DROP, source cursor or durability changes.
 """
 import ast
+from datetime import datetime
 import json
 from pathlib import Path
 import shutil
 import time
+from zoneinfo import ZoneInfo
 
 from p24_foundation.viewer_product_scope import FULL,BEHAVIOR,set_scope,read
 from p24_foundation.viewer_online import FIVE_NS
@@ -47,7 +49,7 @@ def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=
     report=dict(status='LARGE_HISTORY_BENCHMARK_RUNNING',lanes=lanes,product_evidence_modified=False,
         product_cursors_modified=False,history='PHYSICAL_COPY_OF_FROZEN_PRODUCT',cold_cache='NOT_CONTROLLED',
         ad_and_web_during_exclusive_benchmark='STOPPED',traffic_representativeness='NOT_ESTABLISHED_BY_TWO_TO_EIGHT_WINDOWS',
-        whole_product_acceptance='NOT_RUN',capacity_target_accepted=False,cleanup_failures=[],behavior_tool_identity=identity)
+        whole_product_acceptance='NOT_RUN',capacity_target_accepted=False,cleanup_failures=[],behavior_tool_identity=identity,requested_windows=windows)
     parameters=parameters or host_parameters(project);options=options or existing_options(project)
     source=options['config']['dbname']
     if source=='p24_design_viewer' and qualification_disk_path is not None:
@@ -87,6 +89,13 @@ def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=
             state=db.one('SELECT * FROM viewer_live_state WHERE id=1')
             present=db.one("SELECT to_regclass('public.viewer_history_replay_state') AS name")
             history=db.one('SELECT * FROM viewer_history_replay_state WHERE id=1') if present['name'] else None
+            history=history if history and history['status']=='RUNNING' else None
+            if history:
+                remaining=(history['end_ns']-history['next_ns'])//FIVE_NS
+                eligible=[n for n in (2,4,8) if n<=min(windows,remaining)]
+                if not eligible:raise ValueError('NOT_ENOUGH_MISSING_WINDOWS_BEFORE_HISTORY_REPLAY_END')
+                windows=max(eligible)
+            report['selected_windows']=windows
             start=history['next_ns'] if history and history['status']=='RUNNING' else state['next_ns']
             report['source_history_catalog']=db.all("SELECT relname,n_live_tup,pg_relation_size(relid) AS heap_bytes FROM pg_stat_user_tables WHERE schemaname='public' AND relname IN ('viewer_events','viewer_raw_events','viewer_requests','viewer_links')")
             report['source_checkpoint']=dict(start_ns=state['start_ns'],next_ns=state['next_ns'],generation=state['generation'])
@@ -126,6 +135,24 @@ def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=
                         config=dict(parameters,dbname=allocation['name'],options='-c jit=off -c work_mem=64MB -c temp_buffers=128MB -c wal_compression='+codec)
                         with ScreenDB(config=config,keys_path=options['keys_path'],mode='A') as db:
                             set_scope(db,FULL if mode=='full' else BEHAVIOR);db.conn.commit()
+                            replay_receipts=[];pending={}
+                            def publication_fault(db,job,stage):
+                                if not history:return
+                                from viewer_performance.history_replay import HistoryReplay
+                                replay=HistoryReplay(db,datetime.fromtimestamp(history['from_ns']/1e9,ZoneInfo('Asia/Tehran')).date().isoformat())
+                                if stage=='before_commit':
+                                    row=replay.state();replay.guard(row)
+                                    if row['run_id']!=history['run_id'] or row['next_ns']!=job['start'] or job['start']+FIVE_NS>row['end_ns']:
+                                        raise ValueError('BENCHMARK_HISTORY_CHECKPOINT_CHANGED')
+                                    # Same hook as HistoryReplay.step: charge
+                                    # the checkpoint UPDATE in the publication
+                                    # transaction, never after the timed commit.
+                                    replay.advance(row,job['start']+FIVE_NS,published=1);pending[job['start']]=row
+                                elif stage=='after_commit':
+                                    row=replay.state();old=pending.pop(job['start'])
+                                    if row['next_ns']!=job['start']+FIVE_NS or row['published_windows']!=old['published_windows']+1 or row['skipped_windows']!=old['skipped_windows']:
+                                        raise AssertionError('BENCHMARK_REPLAY_PREFIX_NOT_COMMITTED_WITH_PUBLICATION')
+                                    replay_receipts.append({k:row[k] for k in ('run_id','next_ns','published_windows','skipped_windows','status')})
                             old_archives=None
                             if purpose=='correctness' and mode=='behavior':
                                 with PhaseBudget(guard,deadline,connection=db.conn,disk=data):old_archives=archives(db,check)
@@ -138,7 +165,10 @@ def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=
                                     return value
                             with Sampler(admin,db,check,deadline,max_database_bytes=size+16*1024**3) as samples:
                                 lane=run_lane(db,jobs,[],purpose=purpose,guard=check,deadline=deadline,notice=notice,
-                                    existing_stream=True,boundary_oracle=oracle if purpose=='correctness' else None)
+                                    existing_stream=True,boundary_oracle=oracle if purpose=='correctness' else None,
+                                    publication_fault=publication_fault if history else None)
+                            if history and len(replay_receipts)!=len(jobs):raise AssertionError('BENCHMARK_REPLAY_RECEIPTS_INCOMPLETE')
+                            lane['history_checkpoint_receipts']=replay_receipts
                             lane.update(scope_mode=mode,pair=ordinal//2,copy_seconds=allocation['copy_seconds'],resources=samples.report())
                             for i,w in enumerate(lane['windows']):
                                 if jobs[i]['records'] and not w['new_events']:raise ValueError('FRESH_COVERAGE_WITHOUT_NEW_EVIDENCE_REJECTED')
