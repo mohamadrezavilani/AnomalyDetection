@@ -563,7 +563,7 @@
     "AnomalyDetection/tests/test_source_scheduling.py": "66cffa0a609435b6bfe2bcb6c5ce896399bfaa784e6317c5db51528849275137",
     "AnomalyDetection/tests/test_web_diagnostics.py": "037cd2671149e72309e80bf2549429e6cd2999cc4ac1ff342f982ae2653c8b13",
     "AnomalyDetection/anomaly_detection/scenario_worker.py": "0adf46a097a29f7b256c0afbec5cccda0c78239c8fc2cd556bce4da35110c8ff",
-    ".github/workflows/viewer-delta.yml": "b2e65afcff0b227d86e267f51a34ddeb17f9cb54da55d797db1b7b520bf10bc2",
+    ".github/workflows/viewer-delta.yml": "d094247bc091c941365cb39928f8f7d60eed8bbb5b487ac81454d7199d40affd",
     "AnomalyDetection/anomaly_detection/case_export.py": "5c94a227922c54887ce86aa3d78613376bbe6910e3fe14e763277c51b56700a8",
     "AnomalyDetection/anomaly_detection/process_control.py": "f02ba887733131017468f36d3eb3cdaae115106faac210ba5dbf96c8af68a1da",
     "AnomalyDetection/tests/test_audit_fixes.py": "5f38aad091621daec04aa03744341a14d7ef34ffaf39db343e16d0d7b5df6e5e",
@@ -627,7 +627,9 @@
     "AnomalyDetection/tests/test_service_reference.py": "d84ae4a6ed393ecdbebac33c487c83ae6c2046722ca738977ebea457686d9afe",
     "tests/test_behavior_install_windows.py": "972018d07dd76b4c2c9e164b88bc63dc2a12b731c72cac3e85c9430b802c40d7",
     "viewer_performance/behavior_install_git.py": "d9b9c691759e269c9e8bab61848351e157f879c860709d00fbc28ff167ef026f",
-    "tests/test_behavior_git_precheck.py": "1f188e150eafce51d7c35bf7ba0ce6aed5881df93df90adbc6b3d143062cd08e"
+    "tests/test_behavior_git_precheck.py": "1f188e150eafce51d7c35bf7ba0ce6aed5881df93df90adbc6b3d143062cd08e",
+    "viewer_performance/Trial_Viewer_Cache.py": "19ee91717703d791271d849b5897e5f238aa9a5b471ae9100f364198b448abd4",
+    "tests/test_viewer_cache_trial.py": "b6293f55cbc304f5f4394d3968151f2e44702453cfe6284cfed57784a6b27803"
   },
   "private_operational_reports_included": false,
   "legacy_operational_notes": "Preserved in Git history; current manifest contains source inventory only.",
