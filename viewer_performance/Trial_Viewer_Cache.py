@@ -16,6 +16,7 @@ import ntpath
 import os
 from pathlib import Path
 import sys
+import subprocess
 import time
 import uuid
 
@@ -29,6 +30,10 @@ PROCESS_SNAPSHOT_PS=r'''@((Get-CimInstance Win32_Process) | ForEach-Object {
 
 
 class ServiceBindingError(ValueError):
+    def __init__(self,code,details):super().__init__(code);self.details=details
+
+
+class ServiceActivationError(ValueError):
     def __init__(self,code,details):super().__init__(code);self.details=details
 
 
@@ -72,8 +77,83 @@ def service_snapshot(h):
     return h.powershell('''$s=Get-CimInstance Win32_Service -Filter "Name='postgresql-x64-18'"
         if(-not $s){throw 'POSTGRESQL_18_SERVICE_MISSING'}
         $p='''+PROCESS_SNAPSHOT_PS+'''
-        [pscustomobject]@{service=($s | Select-Object Name,State,ProcessId);processes=@($p)} |
+        [pscustomobject]@{service=($s | Select-Object Name,State,ProcessId,StartName,PathName);processes=@($p)} |
             ConvertTo-Json -Depth 8 -Compress''')
+
+
+def orphan_owner(snapshot,admin,report):
+    """Prove the reported live cluster and stopped service are the same target.
+
+    This explicit recovery route requires the private read-only inventory.
+    The live SQL connection, pid-file header, unchanged native process creation
+    identity, service account and executable/config directory must all agree.
+    """
+    from viewer_performance.financial_screen.reviewed_host import words,norm
+    service=snapshot.get('service') or {};sql=report.get('sql') or {}
+    def fail(code):raise ServiceBindingError(code,dict(service_name=service.get('Name'),service_state=service.get('State')))
+    if (not report.get('same_server_during_collection') or report.get('settings_modified')
+            or service.get('State')!='Stopped' or service.get('ProcessId')!=0
+            or service.get('Name','').lower()!='postgresql-x64-18'):
+        fail('ORPHAN_RECOVERY_REQUIRES_REPORTED_STOPPED_SERVICE')
+    account=lambda v:''.join(str(v).lower().split())
+    owner=report.get('postmaster_owner') or {}
+    if (owner.get('ReturnValue')!=0 or account(owner.get('Domain','')+'\\'+owner.get('User',''))!='ntauthority\\networkservice'
+            or account(service.get('StartName'))!='ntauthority\\networkservice'):
+        fail('ORPHAN_AND_SERVICE_ACCOUNTS_MUST_MATCH_NETWORK_SERVICE')
+    current=admin.execute("""SELECT current_setting('data_directory') AS directory,
+        current_setting('config_file') AS config_file,
+        EXTRACT(EPOCH FROM pg_postmaster_start_time())::double precision AS started,
+        (SELECT system_identifier::text FROM pg_control_system()) AS system_identifier""").fetchone()
+    if (current['system_identifier']!=sql.get('system_identifier')
+            or norm(current['directory'])!=norm(sql.get('data_directory',''))
+            or norm(current['config_file'])!=norm(sql.get('config_file',''))):
+        fail('LIVE_CLUSTER_DIFFERS_FROM_RUNTIME_REPORT')
+    expected_start=datetime.fromisoformat(sql['postmaster_started']).timestamp()
+    if abs(current['started']-expected_start)>.001:fail('POSTMASTER_RESTARTED_SINCE_RUNTIME_REPORT')
+    header=admin.execute("SELECT pg_read_file('postmaster.pid',0,1024) AS body").fetchone()['body'].splitlines()
+    master_pid=int(header[0]);started_epoch=int(header[2])
+    if master_pid!=sql.get('postmaster_pid') or norm(header[1])!=norm(current['directory']):
+        fail('POSTMASTER_PID_FILE_DIFFERS_FROM_RUNTIME_REPORT')
+    rows={r['pid']:r for r in snapshot['processes']};master=rows.get(master_pid);backend=rows.get(admin.info.backend_pid)
+    reported=next((p for p in report.get('postmaster_ancestry',[]) if p.get('pid')==master_pid),None)
+    if (not master or not reported or not backend or backend.get('parent_pid')!=master_pid
+            or master.get('created_ticks')!=reported.get('created_ticks')
+            or norm(master.get('image',''))!=norm(reported.get('image',''))
+            or ntpath.basename(master.get('image') or '').lower()!='postgres.exe'):
+        fail('LIVE_NATIVE_POSTMASTER_IDENTITY_NOT_PROVEN')
+    if abs(master['created_ticks']//10_000_000-62_135_596_800-started_epoch)>2:
+        fail('NATIVE_POSTMASTER_PID_WAS_REUSED')
+    command=words(service.get('PathName') or '');flags=[v.lower() for v in command]
+    pg_ctl=ntpath.join(ntpath.dirname(master['image']),'pg_ctl.exe')
+    if (not command or norm(command[0])!=norm(pg_ctl) or 'runservice' not in flags or '-d' not in flags
+            or norm(command[flags.index('-d')+1])!=norm(ntpath.dirname(current['config_file']))
+            or '-o' in flags):
+        fail('STOPPED_SERVICE_EXECUTABLE_OR_CONFIG_DIFFERS_FROM_LIVE_CLUSTER')
+    return dict(method='REPORTED_ORPHAN_TO_MATCHING_NETWORK_SERVICE',system_identifier=current['system_identifier'],
+                postmaster_pid=master_pid,created_ticks=master['created_ticks'],pg_ctl=pg_ctl,
+                data_directory=current['directory'],service_name=service['Name'],adopt_orphan=True)
+
+
+def activate_service(h,binding,*,run=subprocess.run,progress=lambda value:None):
+    """Fast, graceful stop of the proven orphan, then one normal SCM start.
+
+    pg_ctl uses the named signal pipe and its pid file; no OS process kill or
+    second server start is attempted while the old server remains active.
+    """
+    if binding.get('adopt_orphan'):
+        progress('STOPPING_VERIFIED_ORPHAN_POSTGRESQL')
+        try:
+            result=run([binding['pg_ctl'],'-D',binding['data_directory'],'-m','fast','-w','-t','120','stop'],
+                capture_output=True,encoding='utf-8',errors='replace',timeout=140)
+        except subprocess.TimeoutExpired as exc:
+            raise ServiceActivationError('PG_CTL_GRACEFUL_STOP_TIMEOUT',dict(timeout_seconds=140)) from exc
+        if result.returncode:
+            raise ServiceActivationError('PG_CTL_GRACEFUL_STOP_FAILED:'+str(result.returncode),
+                dict(returncode=result.returncode,stdout=str(result.stdout or '')[-16000:],stderr=str(result.stderr or '')[-16000:]))
+        progress('STARTING_MATCHING_POSTGRESQL_SERVICE')
+        h.powershell("Start-Service -Name postgresql-x64-18 -ErrorAction Stop; [pscustomobject]@{status='STARTED'} | ConvertTo-Json -Compress")
+    else:
+        h.powershell("Restart-Service -Name postgresql-x64-18 -ErrorAction Stop; [pscustomobject]@{status='RESTARTED'} | ConvertTo-Json -Compress")
 
 
 def require_windows_admin():
@@ -129,6 +209,7 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--release-receipt',type=Path)
     parser.add_argument('--rollback',type=Path,help='The cache trial cache.json receipt')
+    parser.add_argument('--runtime-report',type=Path,help='Read-only inventory proving a live orphan and its matching stopped service')
     args=parser.parse_args(argv)
     if bool(args.release_receipt)==bool(args.rollback):parser.error('choose --release-receipt or --rollback')
     project=Path.cwd().resolve();sys.path[:0]=[str(project),str(project/'.venv/Lib/site-packages')]
@@ -174,7 +255,9 @@ def main(argv=None):
         elif not prior.get('before_settings'):raise ValueError('ROLLBACK_SETTINGS_RECEIPT_REQUIRED')
         directory=admin.execute('SHOW data_directory').fetchone()['data_directory']
         inventory=service_snapshot(h);service=inventory['service']
-        binding=service_owner(inventory,admin.info.backend_pid)
+        binding=(orphan_owner(inventory,admin,load(args.runtime_report))
+                 if args.runtime_report and service.get('State')=='Stopped'
+                 else service_owner(inventory,admin.info.backend_pid))
         # A still-live command on this exact connection closes the CIM-read
         # race: a PostgreSQL restart cannot silently reassign its SQL PID.
         if admin.execute('SELECT pg_backend_pid() AS pid').fetchone()['pid']!=admin.info.backend_pid:
@@ -229,10 +312,12 @@ def main(argv=None):
             state['applied_auto_conf_sha256']=hashlib.sha256(auto_path.read_bytes()).hexdigest()
         admin.close();admin=None
         save('RESTARTING_POSTGRESQL')
-        h.powershell("""$ErrorActionPreference='Stop'
-            Restart-Service -Name postgresql-x64-18 -ErrorAction Stop
-            Get-Service -Name postgresql-x64-18 | Select-Object Name,Status | ConvertTo-Json -Compress""")
+        activate_service(h,binding,progress=save)
         admin=connect()
+        if binding.get('adopt_orphan'):
+            service_owner(service_snapshot(h),admin.info.backend_pid)
+            actual_id=admin.execute('SELECT system_identifier::text AS id FROM pg_control_system()').fetchone()['id']
+            if actual_id!=binding['system_identifier']:raise ValueError('STARTED_SERVICE_IS_A_DIFFERENT_CLUSTER')
         after=settings_snapshot(admin);state['after_settings']=after
         expected=prior['before_settings']['effective'] if prior else {
             'shared_buffers':{'setting':str(12*GIB//8192)},'track_io_timing':{'setting':'on'},'track_wal_io_timing':{'setting':'on'}}
@@ -244,6 +329,7 @@ def main(argv=None):
         failure=dict(error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None,
                      sqlstate=getattr(exc,'sqlstate',None))
         if isinstance(exc,ServiceBindingError):failure['service_binding']=exc.details
+        if isinstance(exc,ServiceActivationError):failure['service_activation']=exc.details
         if state:
             state['failure']=failure
             # If activation failed, put back the exact previous auto.conf
@@ -252,7 +338,15 @@ def main(argv=None):
                 try:
                     if admin is None or admin.closed:admin=connect()
                     restore_parameters(admin,original_settings);admin.close();admin=None
-                    h.powershell("Restart-Service -Name postgresql-x64-18 -ErrorAction Stop; [pscustomobject]@{status='RESTARTED'} | ConvertTo-Json -Compress")
+                    # If the orphan never stopped, its original cache is still
+                    # active. Restoring auto.conf is sufficient; do not start
+                    # another server against its occupied directory.
+                    live_orphan=False
+                    if state.get('service_binding',{}).get('adopt_orphan'):
+                        status=h.powershell("[pscustomobject]@{state=[string](Get-Service postgresql-x64-18).Status} | ConvertTo-Json -Compress")
+                        live_orphan=status['state']=='Stopped'
+                    if not live_orphan:
+                        h.powershell("Restart-Service -Name postgresql-x64-18 -ErrorAction Stop; [pscustomobject]@{status='RESTARTED'} | ConvertTo-Json -Compress")
                     state['settings_restored_after_failure']=True
                 except Exception as recovery:
                     state['settings_sql_restore_failure']=dict(error_type=type(recovery).__name__)

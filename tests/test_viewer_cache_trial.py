@@ -10,6 +10,7 @@ import subprocess
 import sys
 import unittest
 from unittest.mock import patch,MagicMock
+from types import SimpleNamespace
 from viewer_performance import Trial_Viewer_Cache as trial
 from viewer_performance.Trial_Viewer_Cache import (GIB,TARGETS,memory_guard,
     settings_snapshot,set_parameters,restore_parameters)
@@ -85,9 +86,64 @@ class ServiceOwnershipTests(unittest.TestCase):
             child.stdin.close();child.wait(timeout=10)
 
 
+class OrphanRecoveryTests(unittest.TestCase):
+    def fixture(self):
+        epoch=1_760_000_000;tick=(62_135_596_800+epoch)*10_000_000
+        master=dict(pid=10,parent_pid=99,created_ticks=tick,image=r'C:\pg\bin\postgres.exe')
+        service=dict(Name='postgresql-x64-18',State='Stopped',ProcessId=0,
+            StartName='NT AUTHORITY\\NetworkService',
+            PathName='"C:\\pg\\bin\\pg_ctl.exe" runservice -N "postgresql-x64-18" -D "C:\\pg\\data" -w')
+        snapshot=dict(service=service,processes=[master,dict(pid=30,parent_pid=10,created_ticks=tick+10_000_000,image=master['image'])])
+        sql=dict(data_directory='C:/pg/data',config_file='C:/pg/data/postgresql.conf',
+                 system_identifier='fixture-cluster',postmaster_pid=10,
+                 postmaster_started=trial.datetime.fromtimestamp(epoch+4,trial.timezone.utc).isoformat())
+        report=dict(same_server_during_collection=True,settings_modified=False,sql=sql,
+                    postmaster_owner=dict(Domain='NT AUTHORITY',User='NETWORK SERVICE',ReturnValue=0),postmaster_ancestry=[copy.deepcopy(master)])
+        current=dict(directory=sql['data_directory'],config_file=sql['config_file'],started=epoch+4,system_identifier='fixture-cluster')
+        admin=MagicMock();admin.info.backend_pid=30
+        def execute(statement,*args):
+            row={'body':f'10\nC:/pg/data\n{epoch}\n'} if 'pg_read_file' in statement else current
+            cursor=MagicMock();cursor.fetchone.return_value=row;return cursor
+        admin.execute.side_effect=execute
+        return snapshot,admin,report,current
+
+    def test_stopped_service_can_adopt_only_the_reported_live_cluster_and_account(self):
+        snapshot,admin,report,_=self.fixture()
+        result=trial.orphan_owner(snapshot,admin,report)
+        self.assertTrue(result['adopt_orphan']);self.assertEqual(result['postmaster_pid'],10)
+        self.assertEqual(result['pg_ctl'],r'C:\pg\bin\pg_ctl.exe')
+
+    def test_another_cluster_restart_account_or_service_directory_is_rejected(self):
+        for change in ('cluster','restart','account','directory','native-parent','reused-master'):
+            snapshot,admin,report,current=self.fixture()
+            if change=='cluster':current['system_identifier']='another-cluster'
+            elif change=='restart':current['started']+=1
+            elif change=='account':snapshot['service']['StartName']='LocalSystem'
+            elif change=='directory':snapshot['service']['PathName']=snapshot['service']['PathName'].replace('C:\\pg\\data','C:\\other-data')
+            elif change=='native-parent':snapshot['processes'][1]['parent_pid']=99
+            else:snapshot['processes'][0]['created_ticks']+=10_000_000
+            with self.subTest(change=change),self.assertRaises(trial.ServiceBindingError):
+                trial.orphan_owner(snapshot,admin,report)
+
+    def test_handoff_uses_graceful_stop_and_starts_service_only_after_success(self):
+        snapshot,admin,report,_=self.fixture();binding=trial.orphan_owner(snapshot,admin,report)
+        host=MagicMock();run=MagicMock(return_value=SimpleNamespace(returncode=0,stdout='',stderr=''))
+        trial.activate_service(host,binding,run=run)
+        args=run.call_args.args[0]
+        self.assertEqual(args[0],binding['pg_ctl']);self.assertEqual(args[-1],'stop')
+        self.assertIn('fast',args);self.assertNotIn('immediate',args)
+        self.assertIn('Start-Service',host.powershell.call_args.args[0])
+        host.reset_mock();run.return_value.returncode=1
+        run.return_value.stderr='The shutdown signal could not be sent.'
+        with self.assertRaisesRegex(trial.ServiceActivationError,'GRACEFUL_STOP_FAILED') as caught:
+            trial.activate_service(host,binding,run=run)
+        self.assertIn('shutdown signal',caught.exception.details['stderr'])
+        host.powershell.assert_not_called()
+
+
 class LifecycleTests(unittest.TestCase):
     """Exercise orchestration and error recovery; Windows service I/O is mocked."""
-    def scenario(self,*,restart_failure=False,sql_recovery_failure=False,external_config=False):
+    def scenario(self,*,restart_failure=False,sql_recovery_failure=False,external_config=False,orphan=False,orphan_stop_failure=False):
         from viewer_performance.financial_screen import host
         from viewer_performance import Behavior_Release,Run_Viewer_Memory
         from viewer_performance import writer_identity
@@ -113,17 +169,20 @@ class LifecycleTests(unittest.TestCase):
             db.execute.side_effect=sql_result
             reader=MagicMock();reader.__enter__.return_value=reader
             reader.execute.return_value.fetchall.return_value=[dict(cancelled=True)]
-            restarts=[0]
+            restarts=[0];service_started=[False]
             def powershell(code,*args):
                 if 'Get-CimInstance' in code:
-                    return ServiceOwnershipTests().snapshot()
+                    value=ServiceOwnershipTests().snapshot()
+                    if orphan and not service_started[0]:value['service'].update(State='Stopped',ProcessId=0)
+                    return value
+                if 'Get-Service' in code:return dict(state='Running' if service_started[0] else 'Stopped')
                 if 'Restart-Service' in code:
                     events.append('restart');restarts[0]+=1
                     if restart_failure and restarts[0]==1:
                         if external_config:config.write_bytes(b'unrelated-admin-change\n')
                         raise TimeoutError('simulated service start failure')
                 if 'Stop-Service' in code:events.append('stop-service');return dict(state='Stopped')
-                if 'Start-Service' in code:events.append('start-service')
+                if 'Start-Service' in code:events.append('start-service');service_started[0]=True
                 return dict(status='RESTARTED')
             def apply(db,settings):events.append('apply');config.write_bytes(b'trial-config\n')
             def undo(db,settings):
@@ -132,6 +191,12 @@ class LifecycleTests(unittest.TestCase):
             def restore(project,receipt,state):
                 events.append('restore-roles');state['status']='PREVIOUS_ROLES_RESTORED'
                 for t in state['disabled_tasks']:host.task_change(t,True)
+            def activation(host,binding,*,progress):
+                def native_stop(*args,**kwargs):
+                    events.append('pg-ctl-stop')
+                    return SimpleNamespace(returncode=int(orphan_stop_failure),stdout='',stderr='simulated graceful stop rejection')
+                return activate(host,binding,progress=progress,run=native_stop)
+            activate=trial.activate_service
             replacements=[(trial,'require_windows_admin',lambda:None),
                 (check_viewer_install,'verify_release',lambda p:dict(status='PASS')),
                 (Run_Viewer_Memory,'memory_info',lambda:dict(total_bytes=32*GIB,available_bytes=19*GIB)),
@@ -144,10 +209,23 @@ class LifecycleTests(unittest.TestCase):
                 (Behavior_Release,'restore',restore),(trial,'settings_snapshot',MagicMock(side_effect=[before,after])),
                 (trial,'set_parameters',apply),(trial,'restore_parameters',undo)]
             for module,name,value in replacements:stack.enter_context(patch.object(module,name,value))
+            if orphan:
+                runtime=root/'runtime.json';runtime.write_text('{}')
+                stack.enter_context(patch.object(trial,'orphan_owner',return_value=dict(adopt_orphan=True,
+                    pg_ctl='pg_ctl.exe',data_directory=str(data),system_identifier='fixture-cluster')))
+                stack.enter_context(patch.object(trial,'activate_service',activation))
+                original_query=db.execute.side_effect
+                def query(statement,*args):
+                    if 'pg_control_system' in statement:
+                        cursor=MagicMock();cursor.fetchone.return_value={'id':'fixture-cluster'};return cursor
+                    return original_query(statement,*args)
+                db.execute.side_effect=query
             stack.enter_context(patch('psycopg.connect',return_value=db))
             previous=Path.cwd();os.chdir(root);stack.callback(os.chdir,previous)
             output=io.StringIO()
-            with redirect_stdout(output):code=trial.main(['--release-receipt',str(release)])
+            arguments=['--release-receipt',str(release)]
+            if orphan:arguments+=['--runtime-report',str(runtime)]
+            with redirect_stdout(output):code=trial.main(arguments)
             receipts=list((root/'AnomalyDetection/reports').glob('Viewer_Cache_Trial_*/cache.json'))
             self.assertEqual(len(receipts),1,output.getvalue());receipt=receipts[0]
             return code,json.loads(receipt.read_text()),events,config.read_bytes()
@@ -163,6 +241,20 @@ class LifecycleTests(unittest.TestCase):
     def test_failed_restart_restores_previous_settings_and_the_roles(self):
         code,state,events,_=self.scenario(restart_failure=True)
         self.assertEqual(code,2);self.assertTrue(state['settings_restored_after_failure'])
+        self.assertLess(events.index('undo-settings'),events.index('restore-roles'))
+
+    def test_orphan_is_stopped_before_service_start_then_roles_resume(self):
+        code,state,events,_=self.scenario(orphan=True)
+        self.assertEqual(code,0)
+        self.assertLess(events.index('pg-ctl-stop'),events.index('start-service'))
+        self.assertLess(events.index('start-service'),events.index('restore-roles'))
+        self.assertNotIn('restart',events)
+
+    def test_rejected_orphan_shutdown_restores_settings_and_roles_without_second_server_start(self):
+        code,state,events,_=self.scenario(orphan=True,orphan_stop_failure=True)
+        self.assertEqual(code,2);self.assertTrue(state['settings_restored_after_failure'])
+        self.assertEqual(state['failure']['service_activation']['returncode'],1)
+        self.assertNotIn('start-service',events);self.assertNotIn('restart',events)
         self.assertLess(events.index('undo-settings'),events.index('restore-roles'))
 
     def test_failed_server_start_can_restore_unchanged_auto_conf_without_sql(self):
