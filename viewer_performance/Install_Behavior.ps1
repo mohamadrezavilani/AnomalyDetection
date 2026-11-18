@@ -10,20 +10,21 @@ $ErrorActionPreference='Stop'
 Set-Location -LiteralPath $Project
 $Project=(Get-Location).Path
 $adPython=(Resolve-Path .\.venv\Scripts\python.exe).Path
-$adPrevious=(git rev-parse HEAD).Trim()
+$adGit=(Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+$adPrevious=(& $adGit rev-parse HEAD).Trim()
 if($LASTEXITCODE -ne 0){throw 'Existing Git checkout required.'}
-$adChanges=git status --porcelain --untracked-files=no
-if($LASTEXITCODE -ne 0 -or $adChanges){throw 'Tracked files changed. Preserve and review them before upgrading.'}
-$adRemote=(git remote get-url origin).Trim().TrimEnd('/').ToLowerInvariant()
+$adRemote=(& $adGit remote get-url origin).Trim().TrimEnd('/').ToLowerInvariant()
 if($adRemote -notin @('https://github.com/mohamadrezavilani/anomalydetection.git','https://github.com/mohamadrezavilani/anomalydetection')){throw 'Unexpected origin repository.'}
-git fetch origin main
+& $adGit fetch origin main
 if($LASTEXITCODE -ne 0){throw 'Git fetch failed; no services stopped.'}
-git merge-base --is-ancestor $TargetCommit FETCH_HEAD
+& $adGit merge-base --is-ancestor $TargetCommit FETCH_HEAD
 if($LASTEXITCODE -ne 0){throw 'Target must already be reviewed and merged into origin/main.'}
-git merge-base --is-ancestor $adPrevious $TargetCommit
+& $adGit merge-base --is-ancestor $adPrevious $TargetCommit
 if($LASTEXITCODE -ne 0){throw 'Only a fast-forward from the installed checkout is allowed.'}
-$adStage=git show "${TargetCommit}:viewer_performance/Behavior_Release.py"
+$adStage=& $adGit show "${TargetCommit}:viewer_performance/Behavior_Release.py"
 if($LASTEXITCODE -ne 0){throw 'Pinned target has no release controller.'}
+$adGitCheck=& $adGit show "${TargetCommit}:viewer_performance/behavior_install_git.py"
+if($LASTEXITCODE -ne 0){throw 'Pinned target has no diagnostic Git precheck.'}
 $adFolder=Join-Path $Project ('AnomalyDetection\reports\Behavior_Release_'+(Get-Date -Format 'yyyyMMdd_HHmmss')+'_'+[guid]::NewGuid().ToString('N').Substring(0,8))
 New-Item -ItemType Directory -Path $adFolder -ErrorAction Stop | Out-Null
 $adReceipt=Join-Path $adFolder 'release.json'
@@ -34,11 +35,18 @@ $env:P24_BEHAVIOR_INSTALLER_PID=[string]$PID;$env:P24_BEHAVIOR_INSTALLER_PATH=$P
 $OutputEncoding=New-Object System.Text.UTF8Encoding($false);$env:PYTHONIOENCODING='utf-8'
 $adPrepared=$false
 try {
+    $adGitReport=Join-Path $adFolder 'git-precheck.json'
+    $adGitCheck | & $adPython -B - --project $Project --target $TargetCommit --git $adGit --output $adGitReport
+    if($LASTEXITCODE -ne 0){throw ('Git precheck blocked before service stop. Exact paths and cause: '+$adGitReport)}
     # Freeze using the OLD installed helpers before touching tracked source.
     $adStage | & $adPython -B - --project $Project --receipt $adReceipt --action prepare-update --reviewed-preflight $ReviewedPreflight
     if($LASTEXITCODE -ne 0){throw 'Prepare blocked. Read release.json; tracked source was not updated.'}
     $adPrepared=$true
-    git merge --ff-only $TargetCommit
+    # Catch edits made during draining; preserve generated receipts in place.
+    $adGitReport=Join-Path $adFolder 'git-frozen-check.json'
+    $adGitCheck | & $adPython -B - --project $Project --target $TargetCommit --git $adGit --output $adGitReport
+    if($LASTEXITCODE -ne 0){throw ('Git changed while stopping. Exact paths and cause: '+$adGitReport)}
+    & $adGit merge --ff-only $TargetCommit
     if($LASTEXITCODE -ne 0){throw 'Fast-forward failed. No scope activation performed.'}
     $adAction='benchmark-install'
     if($SkipBenchmark){$adAction='install'}
@@ -51,7 +59,7 @@ try {
     if($adPrepared -and (Test-Path -LiteralPath $adReceipt)){
         $adState=Get-Content -LiteralPath $adReceipt -Raw -Encoding UTF8 | ConvertFrom-Json
         if($adState.status -eq 'PREPARED_FOR_MAIN_UPDATE' -and -not $adState.scope_command){
-            git reset --keep $adPrevious
+            & $adGit reset --keep $adPrevious
             if($LASTEXITCODE -ne 0){Write-Warning 'Code recovery blocked by a concurrent edit; use the receipt.'}
         }
     }
