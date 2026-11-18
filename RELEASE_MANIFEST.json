@@ -628,8 +628,8 @@
     "tests/test_behavior_install_windows.py": "972018d07dd76b4c2c9e164b88bc63dc2a12b731c72cac3e85c9430b802c40d7",
     "viewer_performance/behavior_install_git.py": "d9b9c691759e269c9e8bab61848351e157f879c860709d00fbc28ff167ef026f",
     "tests/test_behavior_git_precheck.py": "1f188e150eafce51d7c35bf7ba0ce6aed5881df93df90adbc6b3d143062cd08e",
-    "viewer_performance/Trial_Viewer_Cache.py": "8efc493644d489f56e0df0221779a7ed5bf7860675c356e13840c277c79b9017",
-    "tests/test_viewer_cache_trial.py": "98595116d25e45dfd9c0079220035421bcc783801384776500dcc996f10503c3"
+    "viewer_performance/Trial_Viewer_Cache.py": "6e50884059b1b4642704e564dd7eece1ecb2ea923dda02d64bf6b0a029ab0b45",
+    "tests/test_viewer_cache_trial.py": "99c68b6cc954758f795de3efab3b6fc4a52648a3d8af6192bf16db0f159fbb70"
   },
   "private_operational_reports_included": false,
   "legacy_operational_notes": "Preserved in Git history; current manifest contains source inventory only.",

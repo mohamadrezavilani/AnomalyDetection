@@ -141,6 +141,28 @@ class OrphanRecoveryTests(unittest.TestCase):
         host.powershell.assert_not_called()
 
 
+class ViewerStopTests(unittest.TestCase):
+    def test_delayed_server_release_retries_only_the_verified_pending_stop(self):
+        host=MagicMock();host.command.side_effect=[
+            (dict(status='VIEWER_BACKEND_STOP_PENDING',process_stopped=True),2),
+            (dict(status='VIEWER_BACKEND_STOPPED',postgres_lock_released=True),0)]
+        state={};save=MagicMock();wait=MagicMock()
+        result=trial.stop_viewer(host,Path('.'),state,save,wait=wait)
+        self.assertEqual(result['status'],'VIEWER_BACKEND_STOPPED')
+        self.assertEqual(len(state['viewer_stop_attempts']),2);wait.assert_called_once_with(1)
+        self.assertTrue(all(call.args[-1]=='--stop' for call in host.command.call_args_list))
+
+    def test_blocked_stop_keeps_the_underlying_stage_and_code_without_retrying_a_changed_owner(self):
+        host=MagicMock();result=dict(status='VIEWER_CONTROL_BLOCKED',stage='identify_and_control_viewer',
+            error_type='ControlError',code='VIEWER_LEASE_OR_TCP_OWNER_CHANGED')
+        host.command.return_value=(result,2);state={}
+        with self.assertRaises(trial.ViewerControlError) as caught:
+            trial.stop_viewer(host,Path('.'),state,lambda *a:None,wait=MagicMock())
+        self.assertEqual(caught.exception.details['result'],result)
+        self.assertEqual(state['viewer_stop_attempts'][0]['result']['code'],result['code'])
+        self.assertEqual(host.command.call_count,1)
+
+
 class LifecycleTests(unittest.TestCase):
     """Exercise orchestration and error recovery; Windows service I/O is mocked."""
     def scenario(self,*,restart_failure=False,sql_recovery_failure=False,external_config=False,orphan=False,orphan_stop_failure=False):
@@ -168,7 +190,14 @@ class LifecycleTests(unittest.TestCase):
                 result=MagicMock();result.fetchone.return_value=row;return result
             db.execute.side_effect=sql_result
             reader=MagicMock();reader.__enter__.return_value=reader
-            reader.execute.return_value.fetchall.return_value=[dict(cancelled=True)]
+            def read_sql(statement,*args):
+                if 'pg_cancel_backend' in statement:
+                    # Reproduce the old ordering hazard: the writer can exit
+                    # while its later TCP/handle identity checks are running.
+                    events.append('cancel-before-client-binding')
+                    raise RuntimeError('writer exited before control acquired its stable handle')
+                cursor=MagicMock();cursor.fetchall.return_value=[];return cursor
+            reader.execute.side_effect=read_sql
             restarts=[0];service_started=[False]
             def powershell(code,*args):
                 if 'Get-CimInstance' in code:
@@ -204,6 +233,7 @@ class LifecycleTests(unittest.TestCase):
                 (host,'inventory',lambda p:dict(tasks=[task])),
                 (host,'task_change',lambda t,on:events.append('enable-task' if on else 'disable-task')),
                 (host,'stop_role',lambda p,r:events.append('stop-'+r)),
+                (host,'command',lambda p,script,*args:(events.append('stop-viewer') or dict(status='VIEWER_WORKER_STOPPED'),0)),
                 (host,'product_reader',lambda p:reader),(host,'cursors',lambda r:dict()),
                 (writer_identity,'read_identity',lambda *args:dict(backend_pid=1,backend_start='2',application_name='verified')),
                 (Behavior_Release,'restore',restore),(trial,'settings_snapshot',MagicMock(side_effect=[before,after])),
@@ -237,6 +267,8 @@ class LifecycleTests(unittest.TestCase):
         self.assertLess(events.index('restart'),events.index('restore-roles'))
         self.assertLess(events.index('restore-roles'),events.index('enable-task'))
         self.assertEqual(state['new_database_copies'],0);self.assertFalse(state['checkpoint_seek_performed'])
+        self.assertNotIn('cancel-before-client-binding',events)
+        self.assertEqual(state['viewer_stop_attempts'][0]['result']['status'],'VIEWER_WORKER_STOPPED')
 
     def test_failed_restart_restores_previous_settings_and_the_roles(self):
         code,state,events,_=self.scenario(restart_failure=True)

@@ -3,8 +3,8 @@
 Run outside the checkout using its venv Python from the checkout directory.
 Uses an already-restored release receipt for the known launch commands/tasks.
 No copy, evidence deletion, reindex, model execution, source edit or cursor seek.
-Cancels an unfinished publication before stopping its verified writer; its
-transaction rolls back and the same durable checkpoint is retried on restart.
+Stops the verified writer without first cancelling its SQL connection; its
+unfinished transaction rolls back and the durable checkpoint is retried.
 Actual capacity is NOT accepted by changing a setting or restoring processes.
 """
 import argparse
@@ -35,6 +35,31 @@ class ServiceBindingError(ValueError):
 
 class ServiceActivationError(ValueError):
     def __init__(self,code,details):super().__init__(code);self.details=details
+
+
+class ViewerControlError(ValueError):
+    def __init__(self,code,details):super().__init__(code);self.details=details
+
+
+def stop_viewer(h,project,state,save,*,wait=time.sleep):
+    """Let the installed controller bind its live client before stopping it.
+
+    A preceding pg_cancel_backend can make that client exit between its lease,
+    TCP and handle checks. The controller already aborts an unfinished publish
+    through the verified process and exact SQL lease. Retain its complete
+    structured result, including a blocked stage/code, in the private receipt.
+    """
+    done=('VIEWER_WORKER_STOPPED','VIEWER_BACKEND_STOPPED','NO_VIEWER_LOCK_OWNER_OBSERVED')
+    for _ in range(12):
+        result,code=h.command(project,'viewer_performance/Stop_Viewer_Worker.py','--stop')
+        state.setdefault('viewer_stop_attempts',[]).append(dict(return_code=code,result=result))
+        save('STOPPING_VIEWER')
+        if code==0 and result.get('status') in done:return result
+        if result.get('status')!='VIEWER_BACKEND_STOP_PENDING':
+            raise ViewerControlError('CONTROLLED_STOP_BLOCKED:viewer:'+str(result.get('status')),
+                                     dict(return_code=code,result=result))
+        wait(1)
+    raise ViewerControlError('CONTROLLED_STOP_TIMEOUT:viewer',dict(last_result=result))
 
 
 def service_owner(snapshot,backend_pid,*,backend_images=('postgres.exe',)):
@@ -220,7 +245,10 @@ def main(argv=None):
         state.update(fields)
         from p24_foundation.viewer_runtime import atomic_json
         atomic_json(receipt,state)
-        print(json.dumps(dict(status=state['status'],output=str(receipt)),ensure_ascii=True),flush=True)
+        notice=dict(status=state['status'],output=str(receipt))
+        if state.get('failure') and status in ('CACHE_TRIAL_FAILED','CACHE_TRIAL_INCOMPLETE_SEND_RECEIPT'):
+            notice['failure']=state['failure']
+        print(json.dumps(notice,ensure_ascii=True),flush=True)
     try:
         require_windows_admin()
         from tools.check_viewer_install import verify_release
@@ -280,6 +308,7 @@ def main(argv=None):
             target_settings=prior['before_settings'] if prior else TARGETS,rollback_of=str(args.rollback) if prior else None,
             stopping_started=False,attempted_roles=[],disabled_tasks=[],restore_failures=[],new_database_copies=0,
             evidence_deleted=False,checkpoint_seek_performed=False,capacity_acceptance='NOT_ASSIGNED',
+            maintenance_source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             data_directory=directory,service_name=service['Name'],service_binding=binding)
         save()
         # Record an attempted disable before mutation so an interrupted run
@@ -293,15 +322,8 @@ def main(argv=None):
         state['attempted_roles'].append('viewer');save('STOPPING_VIEWER')
         with h.product_reader(project) as reader:
             owner=read_identity(project,[dict(r) for r in reader.execute(LEASE_SQL).fetchall()])
-            # This is the current receipt-proven backend, not an old PID. The
-            # unfinished atomic publication is retried from its durable cursor.
-            state['cancelled_writer_identity']=owner;save()
-            stopped=reader.execute("""SELECT pg_cancel_backend(pid) AS cancelled FROM pg_stat_activity
-                WHERE pid=%s AND EXTRACT(EPOCH FROM backend_start)::text=%s
-                AND datname=current_database() AND application_name=%s""",
-                (owner['backend_pid'],owner['backend_start'],owner['application_name'])).fetchall()
-            state['publication_cancel_result']=[dict(r) for r in stopped]
-        h.stop_role(project,'viewer')
+            state['verified_writer_before_stop']=owner;save()
+        stop_viewer(h,project,state,save)
         with h.product_reader(project) as reader:state['frozen_cursors']=h.cursors(reader)
         save('APPLYING_CACHE_SETTINGS')
         settings_written=True
@@ -330,6 +352,8 @@ def main(argv=None):
                      sqlstate=getattr(exc,'sqlstate',None))
         if isinstance(exc,ServiceBindingError):failure['service_binding']=exc.details
         if isinstance(exc,ServiceActivationError):failure['service_activation']=exc.details
+        if isinstance(exc,ViewerControlError):failure['viewer_control']=exc.details
+        if h is not None and isinstance(exc,h.HostOperationError):failure['host_operation']=exc.details
         if state:
             state['failure']=failure
             # If activation failed, put back the exact previous auto.conf
