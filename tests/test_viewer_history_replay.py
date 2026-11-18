@@ -315,10 +315,10 @@ class NativeHistoryReplayTests(ReplayChecks,unittest.TestCase):
     def test_readonly_ad_source_follows_committed_history_instead_of_jumping_to_newer_islands(self):
         from contextlib import contextmanager
         import sys
-        sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'AnomalyDetection'))
-        from anomaly_detection.product_source import ProductSource
-        from anomaly_detection.product_pipeline import read_window,apply_window
-        from anomaly_detection.product_store import ProductStore
+        with patch.object(sys,'path',[str(Path(__file__).resolve().parents[1]/'AnomalyDetection'),*sys.path]):
+            from anomaly_detection.product_source import ProductSource
+            from anomaly_detection.product_pipeline import read_window,apply_window
+            from anomaly_detection.product_store import ProductStore
         import psycopg
         from psycopg.rows import dict_row
         self.seed_gap();self.db.conn.commit()

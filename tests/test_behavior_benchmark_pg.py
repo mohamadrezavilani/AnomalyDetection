@@ -55,7 +55,7 @@ class NativeBehaviorBenchmarkTests(unittest.TestCase):
         from viewer_performance.behavior_oracle import retained,archives
         with ViewerDB(**self.options) as db:before=(retained(db),archives(db));cursor=db.one('SELECT * FROM viewer_live_state')
         result=run(Path(__file__).resolve().parents[1],self.root/'benchmark',lambda:None,lambda value:None,
-                   windows=2,max_seconds=180,parameters=self.params,options=self.options,capture_paths=[j['path'] for j in self.jobs])
+                   windows=2,max_seconds=180,parameters=self.params,options=self.options,capture_paths=[j['path'] for j in self.jobs],qualification_disk_path=self.root)
         self.assertEqual(result['status'],'LARGE_HISTORY_EQUIVALENCE_AND_CAPACITY_COMPLETE',result.get('failure'))
         self.assertEqual(len(result['lanes']),6);self.assertEqual(result['remaining_owned_databases'],[])
         self.assertEqual([l['scope_mode'] for l in result['lanes'][2:]],['full','behavior','behavior','full'])

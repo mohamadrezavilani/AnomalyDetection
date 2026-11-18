@@ -32,7 +32,7 @@ def literal_settings(project):
     return values
 
 
-def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=None,options=None,capture_paths=None):
+def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=None,options=None,capture_paths=None,qualification_disk_path=None):
     import psycopg
     from psycopg.rows import dict_row
     from viewer_performance.financial_screen.host import parameters as host_parameters
@@ -50,6 +50,8 @@ def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=
         whole_product_acceptance='NOT_RUN',capacity_target_accepted=False,cleanup_failures=[],behavior_tool_identity=identity)
     parameters=parameters or host_parameters(project);options=options or existing_options(project)
     source=options['config']['dbname']
+    if source=='p24_design_viewer' and qualification_disk_path is not None:
+        raise ValueError('PRODUCT_DISK_GUARD_MUST_USE_SERVER_DATA_DIRECTORY')
     if source!='p24_design_viewer' and not (source.startswith('p24_design_capacity_template_') and source.endswith('_qualification')):
         raise ValueError('PRODUCT_OR_OWNED_QUALIFICATION_TEMPLATE_REQUIRED')
     admin=psycopg.connect(**parameters,dbname='postgres',autocommit=True,row_factory=dict_row,
@@ -64,7 +66,13 @@ def run(project,directory,guard,notice,*,windows=4,max_seconds=21600,parameters=
         check()
         if int(admin.execute('SHOW server_version_num').fetchone()['server_version_num'])<180000:raise ValueError('POSTGRESQL_18_REQUIRED')
         size=admin.execute('SELECT pg_database_size(%s) AS bytes',(source,)).fetchone()['bytes']
-        data=admin.execute('SHOW data_directory').fetchone()['data_directory'];free=shutil.disk_usage(data).free
+        server_directory=admin.execute('SHOW data_directory').fetchone()['data_directory']
+        # Docker's server path is in another filesystem namespace. A client
+        # path is allowed only for the explicitly disposable test template; it
+        # never qualifies server free space or bypasses the product disk gate.
+        data=str(Path(qualification_disk_path).resolve()) if qualification_disk_path is not None else server_directory
+        report['disk_capacity_scope']='QUALIFICATION_CLIENT_FILESYSTEM_NOT_SERVER_VOLUME' if qualification_disk_path is not None else 'LOCAL_SERVER_DATA_DIRECTORY'
+        free=shutil.disk_usage(data).free
         if free<2*size+8*1024**3:raise ValueError('INSUFFICIENT_SPACE_FOR_LARGE_HISTORY_COPY')
         codec=wal_codec(admin)
         report.update(source_database_bytes=size,free_bytes_before=free,wal_compression=codec,
