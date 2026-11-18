@@ -1,0 +1,340 @@
+"""Cache headroom gates and reversible ALTER SYSTEM on disposable PostgreSQL."""
+import os
+from contextlib import ExitStack,redirect_stdout
+import io
+import json
+from pathlib import Path
+import tempfile
+import copy
+import subprocess
+import sys
+import unittest
+from unittest.mock import patch,MagicMock
+from types import SimpleNamespace
+from viewer_performance import Trial_Viewer_Cache as trial
+from viewer_performance.Trial_Viewer_Cache import (GIB,TARGETS,memory_guard,
+    settings_snapshot,set_parameters,restore_parameters)
+
+
+class MemoryTests(unittest.TestCase):
+    def test_32_gib_minus_firmware_and_19_gib_available_fit(self):
+        memory_guard(dict(total_bytes=32*GIB-1024**2,available_bytes=19*GIB),
+                     {'shared_buffers':{'setting':str(8*GIB//8192)}})
+
+    def test_low_headroom_or_insufficient_machine_cannot_change_settings(self):
+        for total,available,code in [(16*GIB,12*GIB,'REQUIRES_AT_LEAST'),
+                (32*GIB,7*GIB,'OS_RESERVE')]:
+            with self.subTest(total=total),self.assertRaisesRegex(ValueError,code):
+                memory_guard(dict(total_bytes=total,available_bytes=available),
+                             {'shared_buffers':{'setting':str(8*GIB//8192)}})
+
+    def test_repeating_an_already_applied_trial_does_not_restart_it(self):
+        with self.assertRaisesRegex(ValueError,'NO_RESTART_NEEDED'):
+            memory_guard(dict(total_bytes=32*GIB,available_bytes=19*GIB),
+                         {'shared_buffers':{'setting':str(12*GIB//8192)}})
+
+
+class ServiceOwnershipTests(unittest.TestCase):
+    def snapshot(self):
+        return dict(service=dict(Name='postgresql-x64-18',State='Running',ProcessId=10),processes=[
+            dict(pid=30,parent_pid=20,created_ticks=300,image=r'E:\pg\postgres.exe'),
+            dict(pid=20,parent_pid=10,created_ticks=200,image=r'E:\pg\postgres.exe'),
+            dict(pid=10,parent_pid=4,created_ticks=100,image=r'E:\pg\pg_ctl.exe')])
+
+    def test_live_backend_ancestry_proves_owner_without_any_directory_string_match(self):
+        value=self.snapshot()
+        value['service']['PathName']='pg_ctl.exe -D "E:\\different-config-directory"'
+        proof=trial.service_owner(value,30)
+        self.assertEqual(proof['method'],'LIVE_SQL_BACKEND_NATIVE_SERVICE_ANCESTRY')
+        self.assertEqual([p['pid'] for p in proof['chain']],[30,20,10])
+
+    def test_a_different_service_or_missing_backend_never_authorizes_restart(self):
+        for change in ('different-service-pid','missing-backend','not-running'):
+            value=self.snapshot()
+            if change=='different-service-pid':value['service']['ProcessId']=99
+            elif change=='missing-backend':value['processes']=value['processes'][1:]
+            else:value['service']['State']='Stopped'
+            with self.subTest(change=change),self.assertRaises(trial.ServiceBindingError):trial.service_owner(value,30)
+
+    def test_reused_parent_pid_and_cycles_are_rejected(self):
+        for change in ('newer-parent','cycle','no-creation-time','duplicate-row'):
+            value=self.snapshot()
+            if change=='newer-parent':value['processes'][1]['created_ticks']=301
+            elif change=='cycle':value['processes'][1]['parent_pid']=30;value['processes'][1]['created_ticks']=300
+            elif change=='no-creation-time':value['processes'][1]['created_ticks']=None
+            else:value['processes'].append(copy.deepcopy(value['processes'][0]))
+            with self.subTest(change=change),self.assertRaises(trial.ServiceBindingError):trial.service_owner(value,30)
+
+    def test_sql_backend_with_wrong_visible_image_is_rejected(self):
+        value=self.snapshot();value['processes'][0]['image']='python.exe'
+        with self.assertRaisesRegex(trial.ServiceBindingError,'IMAGE_DOES_NOT_MATCH'):trial.service_owner(value,30)
+
+    @unittest.skipUnless(os.name=='nt','native Windows CIM ancestry required')
+    def test_actual_windows_child_process_cim_schema_and_ancestry(self):
+        from viewer_performance.financial_screen import host
+        child=subprocess.Popen([sys.executable,'-c','import sys;sys.stdin.read()'],stdin=subprocess.PIPE)
+        try:
+            processes=host.powershell(trial.PROCESS_SNAPSHOT_PS+' | ConvertTo-Json -Depth 5 -Compress')
+            value=dict(service=dict(Name='postgresql-x64-18',State='Running',ProcessId=os.getpid()),processes=processes)
+            # Only this test substitutes a Python parent/child for PostgreSQL;
+            # production always uses the real live SQL PID and postgres image.
+            proof=trial.service_owner(value,child.pid,backend_images=('python.exe','pythonw.exe'))
+            self.assertEqual(proof['chain'][-1]['pid'],os.getpid())
+            value['service']['ProcessId']=-1
+            with self.assertRaises(trial.ServiceBindingError):trial.service_owner(value,child.pid,backend_images=('python.exe',))
+        finally:
+            child.stdin.close();child.wait(timeout=10)
+
+
+class OrphanRecoveryTests(unittest.TestCase):
+    def fixture(self):
+        epoch=1_760_000_000;tick=(62_135_596_800+epoch)*10_000_000
+        master=dict(pid=10,parent_pid=99,created_ticks=tick,image=r'C:\pg\bin\postgres.exe')
+        service=dict(Name='postgresql-x64-18',State='Stopped',ProcessId=0,
+            StartName='NT AUTHORITY\\NetworkService',
+            PathName='"C:\\pg\\bin\\pg_ctl.exe" runservice -N "postgresql-x64-18" -D "C:\\pg\\data" -w')
+        snapshot=dict(service=service,processes=[master,dict(pid=30,parent_pid=10,created_ticks=tick+10_000_000,image=master['image'])])
+        sql=dict(data_directory='C:/pg/data',config_file='C:/pg/data/postgresql.conf',
+                 system_identifier='fixture-cluster',postmaster_pid=10,
+                 postmaster_started=trial.datetime.fromtimestamp(epoch+4,trial.timezone.utc).isoformat())
+        report=dict(same_server_during_collection=True,settings_modified=False,sql=sql,
+                    postmaster_owner=dict(Domain='NT AUTHORITY',User='NETWORK SERVICE',ReturnValue=0),postmaster_ancestry=[copy.deepcopy(master)])
+        current=dict(directory=sql['data_directory'],config_file=sql['config_file'],started=epoch+4,system_identifier='fixture-cluster')
+        admin=MagicMock();admin.info.backend_pid=30
+        def execute(statement,*args):
+            row={'body':f'10\nC:/pg/data\n{epoch}\n'} if 'pg_read_file' in statement else current
+            cursor=MagicMock();cursor.fetchone.return_value=row;return cursor
+        admin.execute.side_effect=execute
+        return snapshot,admin,report,current
+
+    def test_stopped_service_can_adopt_only_the_reported_live_cluster_and_account(self):
+        snapshot,admin,report,_=self.fixture()
+        result=trial.orphan_owner(snapshot,admin,report)
+        self.assertTrue(result['adopt_orphan']);self.assertEqual(result['postmaster_pid'],10)
+        self.assertEqual(result['pg_ctl'],r'C:\pg\bin\pg_ctl.exe')
+
+    def test_another_cluster_restart_account_or_service_directory_is_rejected(self):
+        for change in ('cluster','restart','account','directory','native-parent','reused-master'):
+            snapshot,admin,report,current=self.fixture()
+            if change=='cluster':current['system_identifier']='another-cluster'
+            elif change=='restart':current['started']+=1
+            elif change=='account':snapshot['service']['StartName']='LocalSystem'
+            elif change=='directory':snapshot['service']['PathName']=snapshot['service']['PathName'].replace('C:\\pg\\data','C:\\other-data')
+            elif change=='native-parent':snapshot['processes'][1]['parent_pid']=99
+            else:snapshot['processes'][0]['created_ticks']+=10_000_000
+            with self.subTest(change=change),self.assertRaises(trial.ServiceBindingError):
+                trial.orphan_owner(snapshot,admin,report)
+
+    def test_handoff_uses_graceful_stop_and_starts_service_only_after_success(self):
+        snapshot,admin,report,_=self.fixture();binding=trial.orphan_owner(snapshot,admin,report)
+        host=MagicMock();run=MagicMock(return_value=SimpleNamespace(returncode=0,stdout='',stderr=''))
+        trial.activate_service(host,binding,run=run)
+        args=run.call_args.args[0]
+        self.assertEqual(args[0],binding['pg_ctl']);self.assertEqual(args[-1],'stop')
+        self.assertIn('fast',args);self.assertNotIn('immediate',args)
+        self.assertIn('Start-Service',host.powershell.call_args.args[0])
+        host.reset_mock();run.return_value.returncode=1
+        run.return_value.stderr='The shutdown signal could not be sent.'
+        with self.assertRaisesRegex(trial.ServiceActivationError,'GRACEFUL_STOP_FAILED') as caught:
+            trial.activate_service(host,binding,run=run)
+        self.assertIn('shutdown signal',caught.exception.details['stderr'])
+        host.powershell.assert_not_called()
+
+
+class ViewerStopTests(unittest.TestCase):
+    def test_delayed_server_release_retries_only_the_verified_pending_stop(self):
+        host=MagicMock();host.command.side_effect=[
+            (dict(status='VIEWER_BACKEND_STOP_PENDING',process_stopped=True),2),
+            (dict(status='VIEWER_BACKEND_STOPPED',postgres_lock_released=True),0)]
+        state={};save=MagicMock();wait=MagicMock()
+        result=trial.stop_viewer(host,Path('.'),state,save,wait=wait)
+        self.assertEqual(result['status'],'VIEWER_BACKEND_STOPPED')
+        self.assertEqual(len(state['viewer_stop_attempts']),2);wait.assert_called_once_with(1)
+        self.assertTrue(all(call.args[-1]=='--stop' for call in host.command.call_args_list))
+
+    def test_blocked_stop_keeps_the_underlying_stage_and_code_without_retrying_a_changed_owner(self):
+        host=MagicMock();result=dict(status='VIEWER_CONTROL_BLOCKED',stage='identify_and_control_viewer',
+            error_type='ControlError',code='VIEWER_LEASE_OR_TCP_OWNER_CHANGED')
+        host.command.return_value=(result,2);state={}
+        with self.assertRaises(trial.ViewerControlError) as caught:
+            trial.stop_viewer(host,Path('.'),state,lambda *a:None,wait=MagicMock())
+        self.assertEqual(caught.exception.details['result'],result)
+        self.assertEqual(state['viewer_stop_attempts'][0]['result']['code'],result['code'])
+        self.assertEqual(host.command.call_count,1)
+
+
+class LifecycleTests(unittest.TestCase):
+    """Exercise orchestration and error recovery; Windows service I/O is mocked."""
+    def scenario(self,*,restart_failure=False,sql_recovery_failure=False,external_config=False,orphan=False,orphan_stop_failure=False):
+        from viewer_performance.financial_screen import host
+        from viewer_performance import Behavior_Release,Run_Viewer_Memory
+        from viewer_performance import writer_identity
+        from tools import check_viewer_install
+        events=[]
+        with tempfile.TemporaryDirectory() as temp,ExitStack() as stack:
+            root=Path(temp);data=root/'pgdata';data.mkdir()
+            (root/'AnomalyDetection/reports').mkdir(parents=True)
+            config=data/'postgresql.auto.conf';config.write_bytes(b'original-config\n')
+            task=dict(Name='P24-Viewer-Worker',Path='\\',State='Ready',Enabled=True,Actions=[])
+            plan=dict(viewer_restart=['viewer_performance/Run_Viewer_Fast.py','--trial'],
+                      active={r:True for r in ('ad_worker','ad_web','viewer','viewer_web')},task_restore=[task])
+            release=root/'release.json';release.write_text(json.dumps(dict(status='PREVIOUS_ROLES_RESTORED',
+                before=dict(restore_plan=plan),restore_failures=[])))
+            before=dict(effective={name:dict(setting=value,unit='8kB' if name=='shared_buffers' else None)
+                for name,value in [('shared_buffers',str(8*GIB//8192)),('track_io_timing','off'),('track_wal_io_timing','off')]},auto={})
+            after=dict(effective={name:dict(setting=value) for name,value in [
+                ('shared_buffers',str(12*GIB//8192)),('track_io_timing','on'),('track_wal_io_timing','on')]},auto=TARGETS)
+            db=MagicMock();db.closed=False;db.info.backend_pid=30
+            def sql_result(statement,*args):
+                row={'data_directory':str(data)} if statement=='SHOW data_directory' else {'pid':30}
+                result=MagicMock();result.fetchone.return_value=row;return result
+            db.execute.side_effect=sql_result
+            reader=MagicMock();reader.__enter__.return_value=reader
+            def read_sql(statement,*args):
+                if 'pg_cancel_backend' in statement:
+                    # Reproduce the old ordering hazard: the writer can exit
+                    # while its later TCP/handle identity checks are running.
+                    events.append('cancel-before-client-binding')
+                    raise RuntimeError('writer exited before control acquired its stable handle')
+                cursor=MagicMock();cursor.fetchall.return_value=[];return cursor
+            reader.execute.side_effect=read_sql
+            restarts=[0];service_started=[False]
+            def powershell(code,*args):
+                if 'Get-CimInstance' in code:
+                    value=ServiceOwnershipTests().snapshot()
+                    if orphan and not service_started[0]:value['service'].update(State='Stopped',ProcessId=0)
+                    return value
+                if 'Get-Service' in code:return dict(state='Running' if service_started[0] else 'Stopped')
+                if 'Restart-Service' in code:
+                    events.append('restart');restarts[0]+=1
+                    if restart_failure and restarts[0]==1:
+                        if external_config:config.write_bytes(b'unrelated-admin-change\n')
+                        raise TimeoutError('simulated service start failure')
+                if 'Stop-Service' in code:events.append('stop-service');return dict(state='Stopped')
+                if 'Start-Service' in code:events.append('start-service');service_started[0]=True
+                return dict(status='RESTARTED')
+            def apply(db,settings):events.append('apply');config.write_bytes(b'trial-config\n')
+            def undo(db,settings):
+                events.append('undo-settings')
+                if sql_recovery_failure:raise ConnectionError('service unavailable')
+            def restore(project,receipt,state):
+                events.append('restore-roles');state['status']='PREVIOUS_ROLES_RESTORED'
+                for t in state['disabled_tasks']:host.task_change(t,True)
+            def activation(host,binding,*,progress):
+                def native_stop(*args,**kwargs):
+                    events.append('pg-ctl-stop')
+                    return SimpleNamespace(returncode=int(orphan_stop_failure),stdout='',stderr='simulated graceful stop rejection')
+                return activate(host,binding,progress=progress,run=native_stop)
+            activate=trial.activate_service
+            replacements=[(trial,'require_windows_admin',lambda:None),
+                (check_viewer_install,'verify_release',lambda p:dict(status='PASS')),
+                (Run_Viewer_Memory,'memory_info',lambda:dict(total_bytes=32*GIB,available_bytes=19*GIB)),
+                (host,'parameters',lambda p:{}),(host,'powershell',powershell),
+                (host,'inventory',lambda p:dict(tasks=[task])),
+                (host,'task_change',lambda t,on:events.append('enable-task' if on else 'disable-task')),
+                (host,'stop_role',lambda p,r:events.append('stop-'+r)),
+                (host,'command',lambda p,script,*args:(events.append('stop-viewer') or dict(status='VIEWER_WORKER_STOPPED'),0)),
+                (host,'product_reader',lambda p:reader),(host,'cursors',lambda r:dict()),
+                (writer_identity,'read_identity',lambda *args:dict(backend_pid=1,backend_start='2',application_name='verified')),
+                (Behavior_Release,'restore',restore),(trial,'settings_snapshot',MagicMock(side_effect=[before,after])),
+                (trial,'set_parameters',apply),(trial,'restore_parameters',undo)]
+            for module,name,value in replacements:stack.enter_context(patch.object(module,name,value))
+            if orphan:
+                runtime=root/'runtime.json';runtime.write_text('{}')
+                stack.enter_context(patch.object(trial,'orphan_owner',return_value=dict(adopt_orphan=True,
+                    pg_ctl='pg_ctl.exe',data_directory=str(data),system_identifier='fixture-cluster')))
+                stack.enter_context(patch.object(trial,'activate_service',activation))
+                original_query=db.execute.side_effect
+                def query(statement,*args):
+                    if 'pg_control_system' in statement:
+                        cursor=MagicMock();cursor.fetchone.return_value={'id':'fixture-cluster'};return cursor
+                    return original_query(statement,*args)
+                db.execute.side_effect=query
+            stack.enter_context(patch('psycopg.connect',return_value=db))
+            previous=Path.cwd();os.chdir(root);stack.callback(os.chdir,previous)
+            output=io.StringIO()
+            arguments=['--release-receipt',str(release)]
+            if orphan:arguments+=['--runtime-report',str(runtime)]
+            with redirect_stdout(output):code=trial.main(arguments)
+            receipts=list((root/'AnomalyDetection/reports').glob('Viewer_Cache_Trial_*/cache.json'))
+            self.assertEqual(len(receipts),1,output.getvalue());receipt=receipts[0]
+            return code,json.loads(receipt.read_text()),events,config.read_bytes()
+
+    def test_apply_restores_roles_before_reenabling_the_original_task(self):
+        code,state,events,_=self.scenario()
+        self.assertEqual(code,0);self.assertEqual(state['status'],'CACHE_TRIAL_APPLIED_ROLES_RESTORED')
+        self.assertLess(events.index('stop-viewer'),events.index('apply'))
+        self.assertLess(events.index('restart'),events.index('restore-roles'))
+        self.assertLess(events.index('restore-roles'),events.index('enable-task'))
+        self.assertEqual(state['new_database_copies'],0);self.assertFalse(state['checkpoint_seek_performed'])
+        self.assertNotIn('cancel-before-client-binding',events)
+        self.assertEqual(state['viewer_stop_attempts'][0]['result']['status'],'VIEWER_WORKER_STOPPED')
+
+    def test_failed_restart_restores_previous_settings_and_the_roles(self):
+        code,state,events,_=self.scenario(restart_failure=True)
+        self.assertEqual(code,2);self.assertTrue(state['settings_restored_after_failure'])
+        self.assertLess(events.index('undo-settings'),events.index('restore-roles'))
+
+    def test_orphan_is_stopped_before_service_start_then_roles_resume(self):
+        code,state,events,_=self.scenario(orphan=True)
+        self.assertEqual(code,0)
+        self.assertLess(events.index('pg-ctl-stop'),events.index('start-service'))
+        self.assertLess(events.index('start-service'),events.index('restore-roles'))
+        self.assertNotIn('restart',events)
+
+    def test_rejected_orphan_shutdown_restores_settings_and_roles_without_second_server_start(self):
+        code,state,events,_=self.scenario(orphan=True,orphan_stop_failure=True)
+        self.assertEqual(code,2);self.assertTrue(state['settings_restored_after_failure'])
+        self.assertEqual(state['failure']['service_activation']['returncode'],1)
+        self.assertNotIn('start-service',events);self.assertNotIn('restart',events)
+        self.assertLess(events.index('undo-settings'),events.index('restore-roles'))
+
+    def test_failed_server_start_can_restore_unchanged_auto_conf_without_sql(self):
+        code,state,events,config=self.scenario(restart_failure=True,sql_recovery_failure=True)
+        self.assertEqual(code,2);self.assertTrue(state['settings_restored_after_failure'])
+        self.assertEqual(config,b'original-config\n')
+        self.assertLess(events.index('start-service'),events.index('restore-roles'))
+
+    def test_config_changed_by_another_operator_is_never_overwritten(self):
+        code,state,events,config=self.scenario(restart_failure=True,sql_recovery_failure=True,external_config=True)
+        self.assertEqual(code,2);self.assertIn('AUTO_CONF_CHANGED',state['settings_restore_failure']['code'])
+        self.assertEqual(config,b'unrelated-admin-change\n')
+
+
+@unittest.skipUnless(os.environ.get('P24_DELTA_PG_HOST'),'private disposable PG18 required')
+class NativeSettingsTests(unittest.TestCase):
+    def setUp(self):
+        import psycopg
+        from psycopg.rows import dict_row
+        self.admin=psycopg.connect(host=os.environ['P24_DELTA_PG_HOST'],
+            port=int(os.environ['P24_DELTA_PG_PORT']),user=os.environ.get('P24_DELTA_PG_USER','postgres'),
+            dbname='postgres',autocommit=True,row_factory=dict_row)
+        self.before=settings_snapshot(self.admin)
+        self.addCleanup(self.admin.close)
+        self.addCleanup(lambda:restore_parameters(self.admin,self.before))
+
+    def test_native_trial_writes_three_settings_without_restart_or_data_mutation(self):
+        self.admin.execute('CREATE TEMP TABLE cache_trial_witness(id int PRIMARY KEY, body text)')
+        self.admin.execute("INSERT INTO cache_trial_witness VALUES(1,'unchanged checkpoint witness')")
+        started=self.admin.execute('SELECT pg_postmaster_start_time() AS value').fetchone()['value']
+        set_parameters(self.admin,TARGETS)
+        changed=settings_snapshot(self.admin)
+        self.assertEqual(changed['auto'],TARGETS)
+        self.assertEqual(changed['effective']['shared_buffers']['setting'],self.before['effective']['shared_buffers']['setting'])
+        self.assertEqual(self.admin.execute('SELECT pg_postmaster_start_time() AS value').fetchone()['value'],started)
+        self.assertEqual(self.admin.execute('SELECT * FROM cache_trial_witness').fetchall(),
+                         [{'id':1,'body':'unchanged checkpoint witness'}])
+        restore_parameters(self.admin,self.before)
+        self.assertEqual(settings_snapshot(self.admin)['auto'],self.before['auto'])
+
+    def test_existing_overrides_are_restored_and_unknown_parameters_are_refused(self):
+        set_parameters(self.admin,{'track_io_timing':'on','track_wal_io_timing':'off'})
+        custom=settings_snapshot(self.admin)
+        set_parameters(self.admin,TARGETS)
+        restore_parameters(self.admin,custom)
+        self.assertEqual(settings_snapshot(self.admin)['auto'],custom['auto'])
+        with self.assertRaisesRegex(ValueError,'UNSUPPORTED_CACHE_PARAMETER'):
+            set_parameters(self.admin,{'fsync':'off'})
+
+
+if __name__=='__main__':unittest.main()
