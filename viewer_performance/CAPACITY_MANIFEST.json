@@ -1,7 +1,7 @@
 {
   "build_id": "CAPACITY-20261117-OBSERVED",
   "scope": "isolated_qualification_not_runtime_release",
-  "root_runtime_source_sha256": "b7273437ea42c1aea7d0183c3020be133c84dba5735c68a01a6fd81a4b56d7c8",
+  "root_runtime_source_sha256": "78f181f85b46601c5eb49997a5bbd2a0c1aef128f1cbd0e11c4f8d16009e8392",
   "runtime_changed": false,
   "production_modified": false,
   "files_sha256": {
@@ -17,10 +17,10 @@
     "tests/test_viewer_origin_filter.py": "c2cdb4ee36651b778e9fe4c4c4a69c1f2fd6d2dc8965b80705570bffba4b0914",
     "viewer_performance/Benchmark_History_Segments.py": "b62f8403523c50e23d088393a9aceb1e25bd2bff9010fca6c7aea92abc0c3c7d",
     "viewer_performance/CAPACITY_BASELINE_FA.md": "a3c78f95c8a59fa2f4df8e4308fce5cde98eb3b3174fe6bc200f32184557e5f8",
-    "viewer_performance/Collect_Capacity_Inputs.py": "4510dfd4b9a4be8cca0e46f3911489a03fffc06f1325ebd75037a806aced5a80",
+    "viewer_performance/Collect_Capacity_Inputs.py": "fecf01504f0fbc0e460e7d4e304dfb3fcaba47f889575dab28adc2054452f939",
     "viewer_performance/Observe_Viewer_Index_Cost.py": "a8e7e6b3dfa852cc542119a25f7efab0d13a86846b7bd1fae612d6cbc3d4b33e",
     "viewer_performance/Observe_Viewer_Index_Parallel.py": "e79643b30e425a885a4b99199f4e1d1bbdf094b69a98f8eafea791122dad6ca0",
-    "viewer_performance/Qualify_Capacity_Candidate.py": "98c557c3bcf11d45e16e0f73df37fe1a98d0572466ad58b03b704f39ce1cc448",
+    "viewer_performance/Qualify_Capacity_Candidate.py": "2b8e8b9b93b09e0f5c2741e89af495c53d5ca3eb95b36a0c7b22774b27d53f03",
     "viewer_performance/capacity/__init__.py": "71e32c16dd38aef69b8a32fa7aa530e6f1ef9f540ec52922e37da791d977cdf4",
     "viewer_performance/capacity/baseline.py": "afa6e7914c7d1c486713875177e2c170b4bb7772890bc8a349ba283b42569b1f",
     "viewer_performance/capacity/contract_fetch_once.py": "0f5f1fed8504b106381219d2b2fedb9b5bec632ab2e25236c8ed8bbac0ef54fb",
@@ -29,7 +29,7 @@
     "viewer_performance/capacity/index_prefetch.py": "de81842190eef0e5ebeeeb5566fc5333e092731ebad344298ef6d8b36d6773ca",
     "viewer_performance/capacity/local_projection_keys.py": "0bf8667fee2c88468153a4c8fed5e5e30a37a37fd7011c370ebe15e6bed66c2a",
     "viewer_performance/capacity/oracle.py": "acf8d464eaf20bc0e100e6cf5a1bca43d5c8339760475aee59d58bae70e571da",
-    "viewer_performance/capacity/origin_filter.py": "3af6259af5182bda8b5120d077040b27886301aa9c114869005835494f03c29d",
+    "viewer_performance/capacity/origin_filter.py": "8c769e9dd3a5c64f5c90eea06c77298d2be5c4a5d77081854177d3dea703b362",
     "viewer_performance/capacity/trace.py": "0c878650a6bc9e0d3297123e77c4e5aa24c085e227142a7397b8715ca0cdfad5",
     "viewer_performance/history_segments.py": "f216eb2b39478340c39992ff5528486afc8cb5eac9f0c5194aaa2efdd4b0f6ae"
   },
@@ -39,5 +39,6 @@
   "capacity_60_to_120_windows_per_hour": "NOT_ACCEPTED",
   "eight_hour_sustained": "NOT_RUN",
   "effective_cache_pressure": "NOT_RUN",
-  "private_measurements_published": false
+  "private_measurements_published": false,
+  "source_sha256": "c3e22425e63c786ca5251031b66b4750be305d4ee3e540a1038b4025e45e9587"
 }

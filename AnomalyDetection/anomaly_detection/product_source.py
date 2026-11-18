@@ -77,7 +77,9 @@ class ProductSource:
         require(rows and rows[0]['semantic_state']=='ready' and rows[0]['catalog_fingerprint']==CATALOG_SHA and
             rows[0]['generation']==rows[0]['semantic_generation'],'SOURCE_NOT_READY')
         row=rows[0];require(row['has_error'] is False,'SOURCE_REPORTED_ERROR')
-        source=dict(row,namespace='viewer:'+row['stream_key'],runtime_sha256=self.identity['runtime_sha256'],captured_at_ns=time.time_ns(),
+        from .behavior_scope import source_scope
+        product_scope=source_scope(q)
+        source=dict(row,**product_scope,namespace='viewer:'+row['stream_key'],runtime_sha256=self.identity['runtime_sha256'],captured_at_ns=time.time_ns(),
             catalog_status='CURRENT',semantic_schema=SEMANTIC_SCHEMA,maintenance='CLEAR',consistent_snapshot=True,
             evidence_mode='postgresql_readonly_snapshot',source_finality='not_established',source_role=flags[0]['source_role'],source_read_only=True)
         audit=q("SELECT to_regclass('public.viewer_retention_audit') AS present",cap=1)

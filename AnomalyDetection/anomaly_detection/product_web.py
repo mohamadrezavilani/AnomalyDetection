@@ -32,6 +32,7 @@ CSS="""*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172b43;fo
 def text(value):return escape(str(value if value is not None else '—'))
 def when(value):
     return datetime.fromtimestamp(value/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%d %H:%M:%S') if value else '—'
+LABELS['OUT_OF_SCOPE']='خارج از دامنهٔ نسخهٔ رفتاری'
 def badge(state):return '<span class="badge '+text(state)+'">'+text(LABELS.get(state,state))+'</span>'
 def layout(title,body):
     return ('<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -89,6 +90,8 @@ def render(store,status,path,args,csrf):
         body+='<section><h2>چرا یک رفتار پرونده ندارد؟</h2><p>در صفحهٔ ارزیابی‌ها می‌توانید نشست را انتخاب کنید و دریافت رفتار، انتظار در صف، دادهٔ ناکافی و تصمیم ثبت‌شده را جدا ببینید.</p><a class="button" href="/evaluations">بررسی ارزیابی یک نشست</a></section>'
         return layout('داشبورد',body)
     if path=='/coverage':
+        from .behavior_scope import behavioral,DISABLED
+        active_scope=store.state('input_contract')
         body='<section><h2>روش‌های فعال و کیفیت پوشش</h2><table><tr><th>خانواده</th><th>روش و مرز تفسیر</th></tr>'
         descriptions={'continuous_rate':'شمارش دقیق بر اساس زمان رخداد در بازه‌های لغزان ۵ دقیقه، یک ساعت، یک روز و یک هفته؛ مرجع هم‌مدت، فقط از نشست‌های دیگر و گذشته. مرز پنجره یا روز، تحلیل و پرونده را قطع نمی‌کند.',
             'service_population':'حجم اجرا، تعداد نشست و تمرکز مصرف در سطح خدمت و کل سامانه؛ مدل عمومی تغییر الگو با ارزیابی زمانی و زمینهٔ ساعتی/روزانه/هفتگی در صورت کفایت داده.',
@@ -122,7 +125,7 @@ def render(store,status,path,args,csrf):
             'multi_session_service':'افزایش نامعمول تعداد نشست‌های فعال همان خدمت، در census کامل و مرجع هم‌واحد.',
             'multi_session_target':'هم‌پوشانی موضوع ورودی بین چند نشست در نمونهٔ مستقل، در برابر مرجع با حجم قابل مقایسه؛ اشتراک IP یا موضوع، هویت مشترک یا تبانی قطعی نیست.',
             'service_health':'نتیجهٔ صریح هم‌دامنه در census کامل یا نمونهٔ مستقل چندنشستی؛ نمونهٔ انتخاب‌شده صرفاً برای نامزدها و افزایش ترافیک، دلیل قطعی نیست.'})
-        body+=''.join('<tr><td>'+text(label)+'</td><td>'+text(descriptions[key])+'</td></tr>' for key,label in FAMILIES.items())+'</table>'
+        body+=''.join('<tr><td>'+text(label)+'</td><td>'+text('خارج از دامنهٔ نسخهٔ رفتاری؛ به روابط مالی وابسته است.' if behavioral(active_scope) and key in DISABLED else descriptions[key])+'</td></tr>' for key,label in FAMILIES.items())+'</table>'
         body+='<div class="notice">سوابق و بازخوردها در PostgreSQL باقی می‌مانند. خواندن و محاسبه صفحه‌ای و محدود است؛ محدودیت حافظه به معنی حذف تاریخ قدیمی نیست. کامل‌بودن CDC منبع و تاریخچه‌ای که پیش از مشاهده حذف شده باشد تضمین نمی‌شود.</div>'
         body+='<p>تشخیص هدف مشترک، معنای payload، اتصال OTP و قطعیت مالی فقط با قرارداد و شاهد مناسب قابل ارزیابی‌اند؛ در دادهٔ فاقد این شاهد، نتیجه نامعلوم باقی می‌ماند. دقت و recall واقعی هنوز با برچسب مستقل اندازه‌گیری نشده‌اند.</p></section>'
         body+='<section><h3>زمان، نگهداری و بازخورد</h3><p>پنج دقیقه، واحد انتشار و تکمیل منبع است؛ عمر رفتار یا پرونده نیست. تحلیل نرخ تا یک هفته و تحلیل محتوای تجمعی تا ۳۰ روز روی زمان رخداد انجام می‌شوند؛ زمینهٔ مدل‌های تاریخی تا ۵۶ روز است. سابقهٔ پرونده، نسخه‌های شاهد و بازخوردها در PostgreSQL نگه داشته می‌شوند و با پایان پنجره یا روز پاک نمی‌شوند. حذف یا بازنشانی منبع، دادهٔ گذشتهٔ ازدست‌رفته را قابل بازسازی نمی‌کند.</p><p>یک SessionID در تغییر IP حفظ می‌شود. اتصال چند Session به یک شخص نیازمند شناسهٔ معتبر شخص در قرارداد منبع است؛ اشتراک قبض یا IP چنین هویتی نمی‌سازد.</p><p>نظر اپراتور بازبینی مدل‌های وابسته را در صف می‌گذارد؛ مدل محتوایی شواهدِ مشکوک یا بازبینی‌نشدهٔ واجد معیار را از مرجع کنار می‌گذارد. تأیید عادی می‌تواند شواهد همان نسخه را برگرداند. شاهد تازه بازبینی دوباره می‌خواهد؛ بازخورد، دستور مسدودسازی نیست.</p></section>'
@@ -186,10 +189,15 @@ def render(store,status,path,args,csrf):
         if fact is None:raise LookupError()
         versions=store.raw.execute('SELECT change_type,observed_ns,body FROM anomaly_detection.adp_versions WHERE request_key=%s ORDER BY id DESC LIMIT 25',(key,)).fetchall()
         body='<section><h2>شاهد و تاریخچهٔ درخواست</h2><p class="ltr">'+text(key)+'</p><p>زمان رفتار: '+text(when(fact['at_ns']))+' · آخرین بازبینی شاهد: '+text(when(fact['last_audit_ns']))+'</p>'
-        body+='<p><a href="http://127.0.0.1:5021/request/'+key+'">بازکردن شاهد اصلی در Viewer ↗</a></p><pre>'+text(json.dumps(json.loads(fact['details'] or fact['body']),ensure_ascii=False,indent=2))+'</pre></section>'
-        journey=store.raw.execute('SELECT body,observed_ns FROM anomaly_detection.adp_journeys WHERE request_key=%s',(key,)).fetchone()
+        from .behavior_scope import fact as scope_fact,behavioral,FULL
+        scope=store.state('input_contract');original=json.loads(fact['details'] or fact['body'])
+        body+='<p>قرارداد شاهد ذخیره‌شده: '+text(original.get('versions',{}).get('input_contract',FULL))+' · قرارداد نمایش: '+text(scope.get('input_contract',FULL))+'</p>'
+        body+='<p><a href="http://127.0.0.1:5021/request/'+key+'">بازکردن شاهد اصلی در Viewer ↗</a></p><pre>'+text(json.dumps(scope_fact(original,scope),ensure_ascii=False,indent=2))+'</pre></section>'
+        journey=None if behavioral(scope) else store.raw.execute('SELECT body,observed_ns FROM anomaly_detection.adp_journeys WHERE request_key=%s',(key,)).fetchone()
         if journey:body+='<section><h3>مراحل و روابط دریافت‌شده از Viewer</h3><p>مشاهده: '+text(when(journey['observed_ns']))+'</p><pre>'+text(json.dumps(json.loads(journey['body']),ensure_ascii=False,indent=2))+'</pre></section>'
-        for version in versions:body+='<section><h3>'+text(when(version['observed_ns']))+' · '+text(version['change_type'])+'</h3><details><summary>نسخهٔ مشاهده‌شده</summary><pre>'+text(version['body'])+'</pre></details></section>'
+        for version in versions:
+            old=json.loads(version['body']);shown=scope_fact(old,scope)
+            body+='<section><h3>'+text(when(version['observed_ns']))+' · '+text(version['change_type'])+'</h3><p>سابقه؛ قرارداد اصلی: '+text(old.get('versions',{}).get('input_contract',FULL))+'</p><details><summary>نسخهٔ مشاهده‌شده با دامنهٔ نمایش جاری</summary><pre>'+text(json.dumps(shown,ensure_ascii=False,indent=2))+'</pre></details></section>'
         return layout('تاریخچهٔ شاهد',body)
     if path=='/legacy':
         exists=store.raw.execute("SELECT to_regclass('anomaly_detection.ad2_findings') AS name").fetchone()['name']

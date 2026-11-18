@@ -15,6 +15,8 @@ DDL=[
 
 
 def schedule(store,job,families,now):
+    from .behavior_scope import behavioral,DISABLED
+    if behavioral(store.state('input_contract')):families=[f for f in families if f not in DISABLED]
     if not families:
         store.raw.execute('DELETE FROM anomaly_detection.adp_model_queue WHERE session_key=%s AND target_ns=%s',(job['session_key'],job['target_ns']));return
     store.raw.execute('INSERT INTO anomaly_detection.adp_model_queue(session_key,target_ns,expected_version,due_ns,families) VALUES(%s,%s,%s,%s,%s) ON CONFLICT(session_key,target_ns) DO UPDATE SET expected_version=excluded.expected_version,due_ns=excluded.due_ns,families=excluded.families',

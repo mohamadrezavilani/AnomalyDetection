@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 from tests import test_viewer_minimal_pg as native
 from tests import test_viewer_online as online
 from tests.test_viewer_online import START,FIVE_NS,iso,snapshot,verified_file
@@ -60,8 +61,8 @@ class NativeWindowEpochTests(EpochChecks,unittest.TestCase):
     setUp=native.NativeMinimalPublicationTests.setUp
 
     def source(self):
-        sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'AnomalyDetection'))
-        from anomaly_detection.product_source import ProductSource
+        with patch.object(sys,'path',[str(Path(__file__).resolve().parents[1]/'AnomalyDetection'),*sys.path]):
+            from anomaly_detection.product_source import ProductSource
         import psycopg
         from psycopg.rows import dict_row
         source=object.__new__(ProductSource)

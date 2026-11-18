@@ -3,7 +3,7 @@ import json,re
 from urllib.parse import urlencode
 from .cases import current,LABELS as ISSUES,review_token
 
-STATES={'EVIDENCE_PENDING':'نامزد آماری؛ در انتظار تکمیل شاهد','WATCH':'مشاهدهٔ آماری؛ پشتوانهٔ بیشتر لازم است','HISTORY':'سابقه؛ الگو در ارزیابی بعدی دیده نشده','NEEDS_REVIEW':'نیازمند بررسی','HOLD':'در انتظار شاهد','WITHDRAWN':'یافتهٔ بازپس‌گرفته‌شده',
+STATES={'OUT_OF_SCOPE':'خارج از دامنهٔ نسخهٔ رفتاری','EVIDENCE_PENDING':'نامزد آماری؛ در انتظار تکمیل شاهد','WATCH':'مشاهدهٔ آماری؛ پشتوانهٔ بیشتر لازم است','HISTORY':'سابقه؛ الگو در ارزیابی بعدی دیده نشده','NEEDS_REVIEW':'نیازمند بررسی','HOLD':'در انتظار شاهد','WITHDRAWN':'یافتهٔ بازپس‌گرفته‌شده',
  'RECHECK_REQUIRED':'در حال بازبینی','reviewed_benign':'بررسی‌شده؛ عادی','confirmed_suspicious':'مشکوک با تأیید اپراتور',
  'needs_evidence':'اپراتور شاهد بیشتری خواسته است'}
 
@@ -13,8 +13,11 @@ def render(store,path,args,csrf):
     def read(row):
         from .case_summary import case_status
         state=case_status(store,row['case_key'])
-        shown={'EVIDENCE_PENDING':'EVIDENCE_PENDING','READY':'NEEDS_REVIEW','RECHECK':'RECHECK_REQUIRED','WATCH':'WATCH','HISTORY':'HISTORY','EVIDENCE':'needs_evidence','REVIEWED':state['review_label']}[state['bucket']]
+        shown={'OUT_OF_SCOPE':'OUT_OF_SCOPE','EVIDENCE_PENDING':'EVIDENCE_PENDING','READY':'NEEDS_REVIEW','RECHECK':'RECHECK_REQUIRED','WATCH':'WATCH','HISTORY':'HISTORY','EVIDENCE':'needs_evidence','REVIEWED':state['review_label']}[state['bucket']]
         body=json.loads(state['body']);body['_historical_signals_pending']=state['stale_signals']
+        if state['bucket']=='OUT_OF_SCOPE':
+            from .behavior_scope import decisions
+            body['strongest']=decisions([body['strongest']],store.state('input_contract'))[0]
         return body,shown,state['fresh']
     def metric(body):
         strongest=body['strongest'];observed=strongest.get('observed');expected=strongest.get('expected')
@@ -38,7 +41,7 @@ def render(store,path,args,csrf):
             value=json.loads(row['body']);url='/scenario-evaluation/'+row['scope_key'] if row['source_kind']=='feature' else '/evaluation/'+row['job_session']+'/'+str(row['target_ns']) if row['job_session'] else None
             content+='<tr><td>'+text(when(row['begin_ns']))+' تا '+text(when(row['end_ns']))+'</td><td>'+text(value.get('explanation_fa') or value.get('reason'))
             if url:content+=' <a href="'+text(url)+'">دلیل و شاهد</a>'
-            content+='</td><td>'+text({'ACTIVE':'یافتهٔ ثبت‌شده','DEFERRED':'شاهد یا پوشش ناقص','WITHDRAWN':'معیار قبلی برقرار نیست'}.get(row['state'],row['state']))+'</td></tr>'
+            content+='</td><td>'+text({'OUT_OF_SCOPE':'خارج از دامنهٔ نسخهٔ رفتاری','ACTIVE':'یافتهٔ ثبت‌شده','DEFERRED':'شاهد یا پوشش ناقص','WITHDRAWN':'معیار قبلی برقرار نیست'}.get(row['state'],row['state']))+'</td></tr>'
         return content+'</table>'
     if path=='/incidents':
         from .case_summary import render as summary_render
@@ -55,7 +58,7 @@ def render(store,path,args,csrf):
     if data.get('evidence_last_change_ns'):body+='<p>آخرین تکمیل یا اصلاح شاهد: '+text(when(data['evidence_last_change_ns']))+'</p>'
     if status=='WATCH':
         body+='<div class="notice">این یافته هنوز پشتوانهٔ لازم برای اولویت مستقل بررسی را ندارد. نادر بودن آماری به‌تنهایی رفتار مشکوک را تأیید نمی‌کند؛ شواهد و نسخه‌های قبلی محفوظ‌اند.</div>'
-    body+='<p>ارزیابی ورودی جاری: '+('بله' if fresh else 'در صف بازبینی؛ نتیجهٔ قبلی عادی فرض نمی‌شود')+'</p>'
+    body+='<p>ارزیابی ورودی جاری: '+('این روش خارج از دامنه است؛ سابقه و بازخورد محفوظ‌اند' if status=='OUT_OF_SCOPE' else 'بله' if fresh else 'در صف بازبینی؛ نتیجهٔ قبلی عادی فرض نمی‌شود')+'</p>'
     if data.get('_historical_signals_pending'):
         body+='<p>تعداد معیارهای تاریخیِ منتظر بازبینی: '+text(data['_historical_signals_pending'])+'؛ وضعیت آماده بر پایهٔ یافتهٔ جاریِ دارای شاهد است و به معنی پایان بازبینی تمام سابقه نیست.</p>'
     if data['entity_type']=='actor':body+='<a href="http://127.0.0.1:5021/session/'+text(data['entity_key'])+'/behavior">رفتار پیوستهٔ نشست در Viewer ↗</a>'
@@ -65,7 +68,8 @@ def render(store,path,args,csrf):
     related=store.raw.execute('SELECT case_key,body FROM anomaly_detection.adp_cases WHERE case_key<>%s '
         'AND (entity_type=%s AND entity_key=%s OR service_path=%s) ORDER BY last_ns DESC LIMIT 20',
         (key,data['entity_type'],data['entity_key'],data['service_path'])).fetchall()
-    linked=store.raw.execute('SELECT DISTINCT b.case_key,v.basis FROM anomaly_detection.adp_case_requests a '
+    from .behavior_scope import behavioral
+    linked=[] if behavioral(store.state('input_contract')) else store.raw.execute('SELECT DISTINCT b.case_key,v.basis FROM anomaly_detection.adp_case_requests a '
         'JOIN anomaly_detection.adp_viewer_relations v ON (a.request_key=v.from_request OR a.request_key=v.to_request) '
         'JOIN anomaly_detection.adp_journeys j ON j.request_key=v.origin_request '
         'JOIN anomaly_detection.adp_facts f ON f.request_key=j.request_key AND f.revision=j.semantic_revision '

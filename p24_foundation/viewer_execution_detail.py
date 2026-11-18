@@ -58,6 +58,8 @@ def _provider_body(payload):
 
 def execution_detail(db, card):
     """Compose one bounded page in the caller's read-only snapshot."""
+    from .viewer_product_scope import financial_enabled
+    financial=financial_enabled(db)
     key = card['request_key']
     events = db.all('''SELECT e.origin_key,e.version_key,e.at_ns,e.kind,e.callpath,e.code,
         (SELECT COUNT(*) FROM viewer_events v WHERE v.origin_key=e.origin_key) AS variants
@@ -108,7 +110,7 @@ def execution_detail(db, card):
           AND (SELECT COUNT(*) FROM viewer_events v WHERE v.origin_key=c.origin_key)=1
           AND EXISTS(SELECT 1 FROM viewer_events v WHERE v.origin_key=c.origin_key
                      AND v.version_key=c.version_key)
-        ORDER BY c.raw_value LIMIT ?''', (key, INVOICE_LIMIT + 1)) if not conflicted else []
+        ORDER BY c.raw_value LIMIT ?''', (key, INVOICE_LIMIT + 1)) if not conflicted and financial else []
     invoices = [r['raw_value'] for r in invoice_rows[:INVOICE_LIMIT]]
     truncated = truncated or len(invoice_rows) > INVOICE_LIMIT
 

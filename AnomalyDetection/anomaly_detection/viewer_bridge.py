@@ -43,6 +43,10 @@ def read_journey(source,key):
     with source.snapshot() as q:
         meta=source.metadata(q);facade=reader(source.project,q)
         semantic=q(SELECT+'WHERE s.request_key=%s',(key,),cap=1)
+        from .behavior_scope import behavioral
+        if behavioral(meta):
+            return dict(source=meta,semantic=semantic[0] if semantic else None,status='OUT_OF_SCOPE',
+                input_contract=meta['input_contract'],financial_relations='OUT_OF_SCOPE')
         journey=facade.service_journey(key,max_requests=96)
         context=facade.service_context_card(key)
         payment=facade.service_payment_journey(key)

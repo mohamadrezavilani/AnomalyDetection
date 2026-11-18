@@ -1,58 +1,48 @@
-# اجرای جاری Viewer و AD
+# اجرای Viewer و AD با قرارداد رفتاری
 
-Writer آزمایشی جاری `VIEWER-20261117-C2C3-OBSERVED` است. فقط فرمان `Run_Viewer_Fast.py --trial` آن را فعال می‌کند. اجرای `Run_Viewer_Catchup.py` مسیر قبلی است؛ قبل از اجرای هر کدام، Writer دیگر باید با ابزار کنترل متوقف شده باشد. پاسخ `VIEWER_WORKER_ALREADY_RUNNING` یعنی فرمان دوم شروع نشده است و به‌تنهایی هویت یا سلامت پردازهٔ موجود را ثابت نمی‌کند.
+این راهنما مربوط به کاندید `VIEWER-20261117-BEHAVIOR-SCOPE` و `AD-20261117-BEHAVIOR-SCOPE` است؛ هویت دقیق را از commit و manifest بخوانید. قابلیت محصول تغییر کرده است: رفتارهای مشاهده‌شده حفظ می‌شوند و روابط مالی ساخته یا تحلیل نمی‌شوند. دیتابیس قدیمی تا انتخاب صریح، full باقی می‌ماند. این کاندید هنوز پذیرش ظرفیتِ تاریخچهٔ بزرگ و اجرای عملیاتی ندارد؛ اکنون روی سرور نصب نشود.
 
-AD جاری از PR35، برچسب `AD-20261116-REFERENCE-CONTRACT` و SHA منبع `a64c001532c76dfa71c40902e0f43e1d0654d5a8b062d2c63ecc1f81870fb98c` دارد. تغییر PR35 کالیبراسیون مؤثر را در هویت immutable مدل pin می‌کند؛ روش، آستانه، کلید پرونده، نظر انسانی و schema تغییر ندارند. صحت همهٔ خانواده‌ها یا precision/recall تولیدی پذیرفته نشده‌اند.
+جزئیات دامنه و آزمون‌ها در [BEHAVIOR_SCOPE_HANDOFF_FA.md](BEHAVIOR_SCOPE_HANDOFF_FA.md) آمده است. نصب مستقیم شاخهٔ تحویل اولیه یا pull پیش از توقف سرویس‌ها روش ارتقا نیست.
 
-## نصب روی main و ادامه از cursor موجود
+## ارتقا پس از بازبینی و تعیین زمان آزمون مالک
 
-اگر فقط بستهٔ غربال دامنهٔ مالی نصب می‌شود، دستور همان بخش `FINANCIAL_SCOPE_FA.md` را اجرا کنید: `git pull` و `Invoke_Financial_Screen.ps1` بدون `-Run`. این کار پیش‌بررسی است و چیزی را متوقف نمی‌کند. دستور توقف/راه‌اندازی زیر برای ارتقای Writer است؛ نصب ابزارهای مستقل غربال به آن نیاز ندارد. حالت‌های تشخیصی B/D و هستهٔ پیشنهادی C، Writer یا AD اجرای اصلی نمی‌شوند.
+فایل `viewer_performance/Install_Behavior.ps1` را از commit بازبینی‌شده بیرون از checkout جاری ذخیره کنید. اسکریپت را با `powershell.exe -File` اجرا کنید، نه dot-source در یک shell ناشناخته. مسیر پروژه و SHA کامل چهل‌کاراکتریِ نسخهٔ تأییدشده و مرج‌شده به origin/main الزامی‌اند. نمونهٔ زیر الگو است؛ مقدار `APPROVED_40_HEX_COMMIT` باید با commit واقعیِ تأییدشده جایگزین شود:
 
-فقط نسخهٔ بازبینی‌شده را نصب کنید. اگر pull شامل تغییر AnomalyDetection باشد، AD نیز پیش از آن متوقف و پس از بررسی نسخه راه‌اندازی شود. این بسته فایل‌های اجرایی AD را عوض نمی‌کند. وب و دیتابیس فعلی، محدودهٔ اول آبان و هر دو cursor تاریخی و live حفظ می‌شوند؛ reset یا seek جدید لازم نیست.
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\P24_Tools\Install_Behavior.ps1 -Project E:\P24\pishkhan24 -TargetCommit APPROVED_40_HEX_COMMIT -ReviewedPreflight E:\P24\pishkhan24\AnomalyDetection\reports\preflight_to_send.json
+```
+
+پیش‌بررسیِ خصوصی باید طرح بازگشت frontend، Task و نقش‌های فعلی را به‌طور مشخص تأیید کند. اسکریپت ابتدا با helperهای نصب‌شدهٔ قدیمی، supervisorها را غیرفعال، AD را متوقف و پایان commit جاری Viewer را fence می‌کند؛ سپس Writer/وب/frontend بازبینی‌شده را می‌بندد و نبود session و پردازش باقیمانده را بررسی می‌کند. کد فقط پس از آن fast-forward می‌شود. کار نیمه‌کاره به معنی اجازهٔ توقف کور یا شروع دستی watchdog نیست.
+
+حالت پیش‌فرض benchmark و سپس انتخاب behavior است. PostgreSQL روشن و durability حفظ می‌شوند. از تاریخچهٔ واقعی کپی‌های مجزا و از پنجره‌های مفقود بعدی Capture یکسان تهیه می‌شود. correctness و ظرفیت جدا هستند؛ تنها کپی‌های دارای رسید مالکیت قابل پاک‌سازی‌اند. دادهٔ اصلی، کلیدها و checkpoint جابه‌جا نمی‌شوند. چهار پنجره، نمایندگی تمام بار یا cache سرد را اثبات نمی‌کنند.
+
+`-SkipBenchmark` فقط برای اجرای بعدی با qualification معتبر و منطبق با همین کد/داده است؛ محدودیت آزمون قبلی روی دیتابیس تازه را رفع نمی‌کند. اسکریپت source را فقط در شکست **پیش از شروع تغییر scope و پیش از بازیابی نقش‌ها** با `git reset --keep` برمی‌گرداند؛ ویرایش هم‌زمان و فایل خصوصی نادیده گرفته نمی‌شوند. پس از شروع تغییر scope، checkout قدیمی روش rollback نیست.
+
+## ادامه از وضعیت موجود و بازگشت
+
+شروعِ تاریخ، floor، کلیدها، stream، cursor تاریخی و live تغییر نمی‌کنند. فقط همان نقش‌هایی که پیش از توقف فعال بوده‌اند طبق restore plan بازگردانده می‌شوند. پیام موفقیت نصب باید با scope READY، source identity، سلامت واقعی و بازیابی همان Task/Action همراه باشد.
+
+برای بازگشت مالی، پس از freeze معتبر همان نصب‌کننده با `-RestoreFull` و commit تأییدشده اجرا می‌شود. بازگشت با کد سازگار جدید انجام می‌شود: SQL links از نسخه‌های raw نگه‌داشته‌شده، سپس closureهای دقیق درخواست در batchهای قابل‌ادامه بازسازی می‌شوند. انتشار نهاییِ full فقط پس از اتمام همهٔ batchها انجام می‌شود. این عملیات ممکن است طولانی باشد؛ سقف ثابت ۹۰ ثانیه ندارد. `-MaxSeconds` بودجهٔ صریح آن است، نه زمان تضمین‌شدهٔ تکمیل.
+
+شکست یا قطع بازسازی، `RESTORING_FULL` و رسید پیشرفت را حفظ می‌کند و Worker/Taskها خودکار شروع نمی‌شوند. با همان release.json و کد تأییدشده یکی از اقدام‌های صریح زیر انتخاب می‌شود:
+
+```powershell
+# ادامهٔ همان بازسازیِ متوقف‌شده:
+.\.venv\Scripts\python.exe -B viewer_performance/Behavior_Release.py --project . --receipt PATH_TO_RELEASE_JSON --action resume-rollback --max-seconds 43200
+# یا بازگشت صریح به رفتار و سپس بازیابی نقش‌های قبلی:
+.\.venv\Scripts\python.exe -B viewer_performance/Behavior_Release.py --project . --receipt PATH_TO_RELEASE_JSON --action enable-after-repair
+```
+
+اگر cleanup کپی متوقف شد، `--action cleanup-copies` با همان release.json فقط OID و tag منطبق با allocations.json را می‌پذیرد. کپی مبهم، session باقیمانده یا تغییر مالکیت پاک نمی‌شود؛ DROP FORCE و کشتن پردازش ناشناس راه بازیابی نیستند. رسید را بفرستید.
+
+## مشاهدهٔ جدا همراه وب و AD
+
+پس از بازیابی نقش‌ها و انتخاب رفتار، آزمون هم‌زمان مستقل لازم است:
 
 ```powershell
 cd E:\P24\pishkhan24
-$adPython = (Resolve-Path .\.venv\Scripts\python.exe).Path
-$done = @('VIEWER_WORKER_STOPPED','VIEWER_BACKEND_STOPPED','NO_VIEWER_LOCK_OWNER_OBSERVED')
-foreach ($attempt in 1..6) {
-    $text = (& $adPython -B viewer_performance/Stop_Viewer_Worker.py --stop | Out-String)
-    $text
-    $state = ($text | ConvertFrom-Json).status
-    if ($state -in $done) { break }
-    if ($state -ne 'VIEWER_BACKEND_STOP_PENDING') { throw 'Viewer stop blocked.' }
-    Start-Sleep -Seconds 1
-}
-if ($state -notin $done) { throw 'Viewer stop not confirmed.' }
-git pull --ff-only origin main
-if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
-& $adPython -B AnomalyDetection/run_anomaly.py version
-if ($LASTEXITCODE -ne 0) { throw 'AD release verification failed.' }
-& $adPython -B AnomalyDetection/run_anomaly.py worker-start
-if ($LASTEXITCODE -ne 0) { throw 'AD start failed.' }
-& $adPython -B viewer_performance/Run_Viewer_Fast.py --trial
+.\.venv\Scripts\python.exe -B viewer_performance/Observe_Viewer_Fast.py --project . --seconds 28800
+.\.venv\Scripts\python.exe -B AnomalyDetection/run_anomaly.py acceptance-report --seconds 60
 ```
 
-Writer فقط پس از گرفتن lease اختصاصی PostgreSQL، رسید پایدارِ هویت کد، PID پایتون، PID و زمان شروع اتصال، nonce اتصال و هویت سرور را ثبت می‌کند. فایل startup قدیمی جای این اثبات نیست. تغییر پردازه، اتصال، کد، منبع یا شکاف رسیدها، مشاهده را ناقص/نامعتبر می‌کند. qualification ایزوله نمی‌تواند رسید فعال محصول را جایگزین کند.
-
-## مشاهدهٔ بدون پیمایش کامل جداول
-
-در پنجرهٔ دیگری اجرا کنید و JSON خروجی را برای بازبینی بفرستید:
-
-```powershell
-cd E:\P24\pishkhan24
-.\.venv\Scripts\python.exe -B viewer_performance/Observe_Viewer_Fast.py --project . --seconds 3600 --windows 12
-```
-
-برای مشاهدهٔ هشت‌ساعته، `--seconds 28800` و بدون `--windows` استفاده شود. این فرمان خودش پذیرش ظرفیت صادر نمی‌کند. فقط انتشارهای تازه با رسید commit معتبر شمرده می‌شوند؛ skip، staging و بازپخش بدون شاهد تازه ظرفیت درج شاهد نیستند. اولین تکمیل ممکن است از قبل آغاز شده باشد و از زمان چرخه حذف می‌شود. دریافت تا commit، زمان commit و COPY/INSERTهای نهایی ثبت می‌شوند. سهم این عملیات تمام هزینهٔ UPDATE/DELETE یا تمام نگهداری ایندکس نیست. آمار cache و دیسک کلاستر به Writer منتسب نمی‌شود.
-
-هویت و heartbeat AD نیز بررسی و پیشرفت شمارنده‌های همان instance گزارش می‌شود. تعداد pending از آمار cacheشدهٔ Worker با timestamp و وضعیت کامل‌بودن گزارش می‌شود؛ پذیرش عقب‌ماندگی AD از این آمار قدیمی نتیجه نمی‌شود. timeout یا خطای AD نیاز به بررسی مستقل دارد و با فعال‌بودن پردازه حل‌شده فرض نمی‌شود.
-
-## صحت، ظرفیت و ذخیره‌سازی مستقل‌اند
-
-`Qualify_Viewer_Fast.py --purpose correctness` در دیتابیس‌های اختصاصی، خروجی کامل هر مرز را مقایسه می‌کند. `--purpose capacity` دیتابیس‌های تازهٔ دیگری می‌سازد و در بین پنجره‌ها oracle کامل اجرا نمی‌کند. مقایسهٔ حالت correctness معیار ظرفیت نیست. بارگذاری fixture، initialization، کنترل‌های صحت و cleanup در رسید کامل از زمان ستون انتشار تفکیک شده‌اند و ناپدید نمی‌شوند. هیچ‌یک نمایندهٔ قطعی working set خارج از cache یا دریافت زندهٔ Elasticsearch نیستند.
-
-C2/C3 بهبود میانی‌اند. C1 و C4 در Worker محصول فعال نیستند. آزمایش C6 در `history_segments.py` و `Benchmark_History_Segments.py`، heap تازه و ایندکس پس از load، دایرکتوری‌های یکتایی سراسری و انتشار prefix را با هزینهٔ کامل می‌سنجد. این نمونه فقط change-set ذخیره‌سازی را می‌سنجد؛ backend آمادهٔ Viewer، مسیر query پذیرفته‌شده یا migration محصول نیست.
-
-## بازگشت
-
-ابتدا Writer آزمایشی را با همان ابزار stop متوقف و آزادشدن lease را بررسی کنید، سپس `Run_Viewer_Catchup.py --with-anomaly` را اجرا کنید. نیازی به checkout قدیمی، حذف شاهد، تغییر کلید، پاک‌کردن feedback یا تبدیل داده نیست. هدف ۶۰–۱۲۰ انتشار تاریخی تازه در ساعت و آزمون پایدار همراه وب و AD همچنان باز است. تاریخچهٔ راهنماهای قبلی در Git محفوظ است؛ راهنمای جاری همین فایل است.
+این فرمان‌ها اکنون مجوز اجرای زنده نیستند. گزارش `release.json`، `benchmark.json`، `allocations.json` و `scope-progress.json` به‌همراه JSON مشاهده‌گر و ZIP acceptance برای بررسی لازم‌اند و خصوصی می‌مانند. pendingِ cacheشده با timestamp خودش تفسیر می‌شود؛ از آن به‌تنهایی نبود رشد backlog نتیجه نمی‌گیریم. هویت Worker، صف تازه در ابتدا/انتها، آخرین پنجرهٔ کامل Viewer/AD و خطاها باید منطبق باشند. هشت ساعت پذیرش ظرفیتِ قبولیافته از برنامه استخراج نمی‌شود؛ باید شاهد واقعی آن بررسی شود.

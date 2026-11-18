@@ -58,6 +58,8 @@ class ServicePaymentJourneyMixin:
                     callpath=row.get('callpath'))
 
     def service_payment_journey(self, request_key):
+        from .viewer_product_scope import financial_enabled
+        if not financial_enabled(self):return None
         """Explicit directed paths only; shared baskets/Session cannot bridge them.
 
         The panel is current-snapshot evidence. No cached result survives a later

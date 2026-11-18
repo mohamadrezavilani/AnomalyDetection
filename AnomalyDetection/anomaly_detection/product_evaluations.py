@@ -26,6 +26,7 @@ REASONS={
     'QUALIFIED_CONTEXT_HISTORY_INSUFFICIENT':'سابقهٔ دارای شاهد در این محور کافی نیست.',
     'LEARNED_RANGE_NOT_EXCEEDED':'مقدار مشاهده‌شده از محدودهٔ آموخته‌شده عبور نکرده است.',
     'RELATIVE_INCREASE':'افزایش نسبت به مرجع آموخته‌شده گزارش شده است.'}
+LABELS['OUT_OF_SCOPE']='خارج از دامنهٔ نسخهٔ رفتاری'
 
 
 def parse_session(value):
@@ -121,6 +122,8 @@ def render(store,path,args):
     else:body+='<div class="notice">برای این بازه پرونده‌ای ثبت نشده است. دلیل ارزیابی یا وضعیت صف در همین صفحه نمایش داده می‌شود.</div>'
     current=evaluation_state(job) not in ('PENDING','RECHECK_REQUIRED','SCOPE_PENDING','COVERAGE_ONLY')
     primary_value=json.loads(job.get('evaluation') or '{}')
+    from .behavior_scope import FULL,decisions as scope_decisions
+    body+='<p>قرارداد نتیجهٔ ذخیره‌شده: <bdi>'+text(primary_value.get('input_contract',FULL))+'</bdi> · قرارداد جاری: <bdi>'+text(store.state('input_contract').get('input_contract',FULL))+'</bdi>. سوابق با قرارداد قبلی، نتیجهٔ تازهٔ قرارداد جاری محسوب نمی‌شوند.</p>'
     primary_current=job.get('primary_version') is not None and primary_value.get('primary_version')==job['primary_version']
     if primary_current:
         body+='<p>مقایسهٔ نرخ خدمت با نسخهٔ جاریِ داده ثبت شده است؛ بررسی روش‌های تکمیلی جدا ادامه دارد.</p>'
@@ -137,7 +140,7 @@ def render(store,path,args):
         body+='</table>'
     body+='</section>'
     value=json.loads(job['evaluation']) if job.get('evaluation') else {}
-    decisions=value.get('decisions',[])
+    decisions=scope_decisions(value.get('decisions',[]),store.state('input_contract'))
     if decisions:
         body+='<section><h2>'+('تصمیم‌های ثبت‌شده؛ وضعیت هر روش جداست' if current or primary_current else 'تصمیم‌های نسخهٔ قبلی')+'</h2><div class="scroll"><table><tr><th>روش</th><th>خدمت</th><th>نتیجه</th><th>مشاهده / انتظار</th><th>دلیل</th></tr>'
         for decision in decisions:

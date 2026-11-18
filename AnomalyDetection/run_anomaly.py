@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import sys
 
-EXPECTED_BUILD = "AD-20261116-REFERENCE-CONTRACT"
+EXPECTED_BUILD = "AD-20261117-BEHAVIOR-SCOPE"
 ROOT = Path(__file__).resolve().parent
 VERIFIED_FILES = {}
 sys.dont_write_bytecode = True

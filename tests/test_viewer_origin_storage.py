@@ -239,9 +239,9 @@ class NativeOriginStorageTests(unittest.TestCase):
         import psycopg
         from psycopg.rows import dict_row
         project=Path(__file__).resolve().parents[1]
-        sys.path.insert(0,str(project/'AnomalyDetection'))
-        from anomaly_detection.pg_source import BudgetQuery
-        from anomaly_detection.viewer_bridge import reader
+        with patch.object(sys,'path',[str(project/'AnomalyDetection'),*sys.path]):
+            from anomaly_detection.pg_source import BudgetQuery
+            from anomaly_detection.viewer_bridge import reader
         self.fixture(100);self.upgrade();self.db.conn.commit()
         with psycopg.connect(**self.config,row_factory=dict_row,autocommit=True,
                 options='-c default_transaction_read_only=on -c statement_timeout=2000') as raw:

@@ -408,6 +408,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             from psycopg.rows import dict_row
             self.conn.row_factory=dict_row
         self.param='?' if self.sqlite else '%s'
+        self._product_scope=None
 
     def close(self):self.conn.close()
     def __enter__(self):return self
@@ -443,6 +444,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         try:cursor.executemany(statement if self.sqlite else statement.replace('?',self.param),values)
         finally:cursor.close()
     _INGEST_INSERTS={
+        'viewer_contract_observations':('origin_key,version_key,request_key,at_ns,callpath,axis,value,field_path,authority',' ON CONFLICT DO NOTHING'),
         'viewer_events':('origin_key,version_key,file_hash,filename,row_number,at_ns,request_key,session_key,ip_key,callpath,kind,code,observation',''),
         'viewer_raw_events':('origin_key,version_key,raw_request_id,raw_session_id,raw_ip,payload',' ON CONFLICT(origin_key,version_key) DO NOTHING'),
         'viewer_event_captures':('file_hash,origin_key,capture_key,canonical_version_key,row_number',' ON CONFLICT DO NOTHING'),
@@ -450,6 +452,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         'viewer_capture_projections':('origin_key,capture_key,canonical_version_key,file_hash,filename,row_number,payload',' ON CONFLICT DO NOTHING'),
     }
     _INGEST_ORDER={
+        'viewer_contract_observations':'origin_key,version_key,axis,value,field_path',
         'viewer_events':'origin_key,version_key',
         'viewer_raw_events':'origin_key,version_key',
         'viewer_event_captures':'file_hash,origin_key,capture_key,row_number',
@@ -676,6 +679,10 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         if self.sqlite:
             if not self.conn.in_transaction:self.sql('BEGIN IMMEDIATE')
         else:self.sql('SELECT pg_advisory_xact_lock(240026, 2)')
+        from .viewer_product_scope import read
+        value=read(self,refresh=True)
+        if value['state']=='RESTORING_FULL' and not getattr(self,'_financial_repair',False):
+            raise ValueError('financial_restore_in_progress')
         from .viewer_window_epochs import maintenance
         maintenance(self)
     def init(self):
@@ -862,6 +869,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                         kind=classify(call);code=safe_codes(row['message']);obs=paid_observation(row['message'],call)
                         self._ingest_insert('viewer_events',(origin,signature,digest,path.name,n,utc_ns(row.get('@timestamp')),
                              token(self.keys,'request',rid),token(self.keys,'session',session),token(self.keys,'ip',ip),call,kind,code,obs))
+                        from .viewer_product_scope import observed_dispatch
+                        observed_dispatch(self,row,origin,signature,token(self.keys,'request',rid))
                         # Store full original data alongside HMAC relational keys.
                         self.insert_raw_event(origin,signature,row)
                         existing.append(dict(version_key=signature,request_key=token(self.keys,'request',rid)))
@@ -869,7 +878,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                         self._ingest_insert('viewer_event_captures',(digest,origin,signature,signature,n))
                         # SQL parameters are evidence, not new user requests.
                         if kind=='sql':
+                            from .viewer_product_scope import financial_enabled
                             parsed=sql_links(row['message'])
+                            if not financial_enabled(self):parsed={k:v for k,v in parsed.items() if k=='query_parameters_hash'}
                             if 'ud_prc_userSessionHasAccess' in call:
                                 try:
                                     access,_=sql_parameters(row['message'])
@@ -1172,7 +1183,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         if request_keys is None or getattr(self,'_legacy_projection_writes',False):
             return self._rebuild_requests(request_keys=request_keys,commit=commit)
         self.write_lock()
-        with self.finalized_projection(REQUEST_TABLES,use_indexed_scope=use_indexed_scope):
+        from .viewer_product_scope import financial_enabled
+        tables=REQUEST_TABLES if financial_enabled(self) else tuple(t for t in REQUEST_TABLES if t!='viewer_action_history')
+        with self.finalized_projection(tables,use_indexed_scope=use_indexed_scope):
             result=self._rebuild_requests(request_keys=request_keys,commit=False)
         if commit:self.conn.commit()
         return result
@@ -1205,7 +1218,10 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                       status TEXT NOT NULL, source_request_key TEXT NOT NULL,
                       source_callpath TEXT NOT NULL, origin_key TEXT NOT NULL, version_key TEXT NOT NULL,
                       PRIMARY KEY(action_key,origin_key,version_key,status))''')
+        from .viewer_product_scope import financial_enabled
+        financial=financial_enabled(self)
         for table,col in (('viewer_action_history','action_key'),('viewer_actions','action_key'),('viewer_requests','request_key')):
+            if table=='viewer_action_history' and not financial:continue
             self.sql('DELETE FROM '+table+(' WHERE '+col+' IN (SELECT request_key FROM viewer_projection_scope)' if scoped else ''))
         self.progress('rebuild_requests_aggregate',scope='incremental' if scoped else 'bootstrap')
         # Only this failing aggregate is modified; remaining read models,
@@ -1285,7 +1301,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         self.progress('rebuild_payment_index')
         payment_started=time.monotonic()
         payment_index=defaultdict(list)
-        for link in self.all(self._projection_payment_links_sql(scoped=scoped,postgres=not self.sqlite,cached=scoped and not self.sqlite)):
+        for link in (self.all(self._projection_payment_links_sql(scoped=scoped,postgres=not self.sqlite,cached=scoped and not self.sqlite)) if financial else ()):
             payment_index[(link['link_domain'],link['link_key'])].append(link['request_key'])
         request_links=defaultdict(list)
         for (kind,key),rids in payment_index.items():
@@ -1322,7 +1338,7 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         self.progress('reconcile_business_outcomes_complete',seconds=round(time.monotonic()-outcomes_started,3))
         self.progress('reconcile_payment_outcomes')
         outcomes_started=time.monotonic()
-        self._reconcile_payment_outcomes()
+        if financial:self._reconcile_payment_outcomes()
         self.progress('reconcile_payment_outcomes_complete',seconds=round(time.monotonic()-outcomes_started,3))
         # A manual legacy full rebuild does not silently serve stale semantic
         # anchors. The next explicit semantic-index-build reconciles them.
@@ -1503,6 +1519,8 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         via the explicit include_internal flag. The service classification is
         operator-controlled and always separate from initiation provenance.
         """
+        from .viewer_product_scope import financial_enabled,observed_outcome
+        financial=financial_enabled(self)
         where=[];args=[]
         if not include_internal:where.append('(r.root_call IS NOT NULL OR r.conflicted=1)')
         if session:
@@ -1538,7 +1556,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             if outcome=='success':where.append("r.root_code='G00000'")
             elif outcome=='failure':where.append("r.root_code IS NOT NULL AND r.root_code<>'G00000'")
             elif outcome=='unknown':where.append('r.root_code IS NULL')
-            elif outcome=='confirmed':where.append("a.current_outcome='confirmed_per_approved_contract'")
+            elif outcome=='confirmed':
+                if not financial:raise ValueError('financial_filter_out_of_scope')
+                where.append("a.current_outcome='confirmed_per_approved_contract'")
         if from_ns is not None:where.append('r.ended_ns>=?');args.append(from_ns)
         if to_ns is not None:where.append('r.started_ns<?');args.append(to_ns)
         scope=' WHERE '+' AND '.join(where) if where else ''
@@ -1555,17 +1575,27 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             item['raw_request_id']=self.raw_request_id(item['request_key'])
             item['when_fa']=tehran(item['root_ns'] or item['started_ns'])
             item['service_name']=item['name'] or (core_name(item['root_call']) if item['root_call'] else 'بدون API اصلی')
-            item['raw_target']=self.raw_target_value(item['request_key'],item['target_key']) if item.get('target_key') else None
-            item['inquiry_journey']=self.inquiry_payment_journey(item['request_key']) if item.get('name') in INQUIRIES and (target or role=='business' or session or session_key or service) else None
-            item['service_journey']=self.service_journey(item['request_key']) if (session or session_key or request_id) else None
+            item['raw_target']=self.raw_target_value(item['request_key'],item['target_key']) if financial and item.get('target_key') else None
+            item['inquiry_journey']=self.inquiry_payment_journey(item['request_key']) if financial and item.get('name') in INQUIRIES and (target or role=='business' or session or session_key or service) else None
+            from .viewer_product_scope import financial_enabled
+            item['service_journey']=self.service_journey(item['request_key']) if financial_enabled(self) and (session or session_key or request_id) else None
+            if not financial_enabled(self):
+                item.update(workflow_key=None,target_key=None,target_type=None,financial_relations='OUT_OF_SCOPE')
+                item['current_outcome']=observed_outcome(item)
         return dict(items=rows,total=count,limit=limit,offset=offset)
 
     def actions(self,session_key,limit=25,offset=0,category=None,service=None,result=None):
+        from .viewer_product_scope import financial_enabled,observed_outcome
+        financial=financial_enabled(self)
         where=['a.session_key=?'];args=[session_key]
         if category=='main':where.append("a.category='business'")
         elif category:where.append('a.category=?');args.append(category)
         if service:where.append('a.name=?');args.append(service)
-        if result:where.append('a.current_outcome=?');args.append(result)
+        if result:
+            if financial:where.append('a.current_outcome=?');args.append(result)
+            else:
+                where.append("(SELECT CASE WHEN a.current_outcome IN ('unknown','success','failure','no_payable_bill','not_found','provider_unavailable') THEN a.current_outcome WHEN r.root_code IS NULL THEN 'unknown' WHEN r.root_code='G00000' THEN 'success' ELSE 'failure' END FROM viewer_requests r WHERE r.request_key=a.root_request_key)=?")
+                args.append(result)
         constraint=' WHERE '+' AND '.join(where)
         count=self.one('SELECT COUNT(*) AS n FROM viewer_actions a'+constraint,args)['n']
         rows=self.all('''SELECT a.*,r.event_count,r.sql_count,r.provider_count,r.root_code,
@@ -1573,6 +1603,9 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
                   LEFT JOIN viewer_requests r ON r.request_key=a.root_request_key'''+constraint+
                   ' ORDER BY a.at_ns DESC,a.action_key LIMIT ? OFFSET ?',args+[limit,offset])
         for r in rows:
+            if not financial:
+                r.update(workflow_key=None,target_key=None,target_type=None,financial_relations='OUT_OF_SCOPE',
+                    current_outcome=observed_outcome(r))
             r['raw_request_id']=self.raw_request_id(r['root_request_key'])
             r['when_fa']=tehran(r['at_ns']);r['target_alias']=r['target_key'][:9] if r['target_key'] else 'نامشخص'
         return dict(items=rows,total=count,limit=limit,offset=offset)
@@ -1669,6 +1702,16 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
         row['service_context']=root.get('service_context') if root else None
         row['api']=(root['root_call'] or '').split(' Line:',1)[0] if root else ''
         row['when_fa']=tehran(row['at_ns'])
+        from .viewer_product_scope import financial_enabled,out_of_scope
+        if not financial_enabled(self):
+            row.update(workflow_key=None,target_key=None,target_type=None,link_basis='out_of_scope',related=[],bill_related=[],
+                inquiry_journey=None,bill_item_journey=None,payment_contract=None,service_payments=None,service_journey=None,
+                outcome_history=[],financial_scope=out_of_scope())
+            # Old materialized payment outcomes are not direct observations.
+            from .viewer_product_scope import observed_outcome
+            observed=self.one('SELECT root_code FROM viewer_requests WHERE request_key=?',(row['root_request_key'],)) or {}
+            row['current_outcome']=observed_outcome(dict(observed,current_outcome=row.get('current_outcome')))
+            return row
         row['link_basis']='platform_payment' if (row['workflow_key'] or '').startswith('platform_payment:') else (
               'invoice_or_query' if row['workflow_key'] else 'none')
         # Payment-linked activity is shown beside (not folded into) each distinct HTTP attempt.
@@ -1694,6 +1737,10 @@ class ViewerDB(ServiceContextMixin, ServicePaymentJourneyMixin, BillItemJourneyM
             row['raw_request_id']=self.raw_request_id(key)
             row['raw_session_id']=self.raw_session_id(row['session_key']) if row['session_key'] else None
             row['from_fa']=tehran(row['started_ns']);row['to_fa']=tehran(row['ended_ns'])
+            from .viewer_product_scope import financial_enabled,out_of_scope
+            if not financial_enabled(self):
+                row.update(inquiry_journey=None,bill_item_journey=None,payment_contract=None,service_payments=None,service_journey=None,financial_scope=out_of_scope())
+                return row
             row['inquiry_journey']=self.inquiry_payment_journey(key) if core_name(row['root_call'] or '') in INQUIRIES else None
             row['bill_item_journey']=self.bill_item_journey(key,request=row,inquiry_journey=row['inquiry_journey'])
             row['payment_contract']=self.payment_contract_card(key)

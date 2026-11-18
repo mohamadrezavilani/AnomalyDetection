@@ -307,6 +307,11 @@ class PaymentContractMixin:
         finally:cursor.close()
 
     def rebuild_payment_contract(self, *, max_events=None, request_keys=None, commit=True,reuse_projection_events=False):
+        from .viewer_product_scope import financial_enabled,out_of_scope
+        if not financial_enabled(self):
+            result=self.reconcile_service_dispatches(request_keys)
+            if commit:self.conn.commit()
+            return dict(**out_of_scope(),dispatch_actions_changed=result['actions_changed'])
         if reuse_projection_events and (request_keys is None or commit):
             raise ValueError('contract_event_reuse_requires_atomic_scoped_publication')
         if request_keys is None or getattr(self,'_legacy_projection_writes',False):
@@ -448,6 +453,8 @@ class PaymentContractMixin:
              e['request_key'],eligibility,RULE_VERSION,confidence,e['at_ns']))
 
     def payment_contract_card(self,request_key):
+        from .viewer_product_scope import financial_enabled
+        if not financial_enabled(self):return None
         """Card for a single RequestID; does not merge unrelated attempts."""
         items=self.all('''SELECT issuer,kind,scope,field_path,raw_value,identity_key,origin_key,version_key
           FROM viewer_contract_identifiers WHERE request_key=? ORDER BY kind,field_path LIMIT 200''',(request_key,))

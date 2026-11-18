@@ -154,6 +154,8 @@ class ProductStore:
     def save_state(self,name,value):
         self.raw.execute('INSERT INTO anomaly_detection.adp_state VALUES(%s,%s) ON CONFLICT(name) DO UPDATE SET body=excluded.body',(name,canonical(value)))
     def bind(self,source):
+        from .behavior_scope import bind as bind_scope
+        bind_scope(self,source)
         binding={key:source[key] for key in ('namespace','stream_key','keys_fingerprint')}
         old=self.state('source_binding')
         require(not old or old==binding,'PRODUCT_SOURCE_IDENTITY_CHANGED')
@@ -476,7 +478,7 @@ class ProductStore:
             'AND f.id=(SELECT MAX(latest.id) FROM anomaly_detection.adp_feedback latest WHERE latest.incident_key=i.incident_key)',
             (job['session_key'],job['target_ns']-HISTORY_NS,job['target_ns'])).fetchall()}
     def details(self,job):
-        rows=self.raw.execute('SELECT f.request_key,f.at_ns,f.service_path,f.details,f.revision,f.anchor_key,f.state,f.source_present,j.body AS journey,j.semantic_revision FROM anomaly_detection.adp_facts f '
+        rows=self.raw.execute('SELECT f.request_key,f.at_ns,f.service_path,f.details,f.revision,f.anchor_key,f.state,f.source_present,j.body AS journey,j.semantic_revision,j.observed_ns AS journey_observed_ns FROM anomaly_detection.adp_facts f '
             'LEFT JOIN anomaly_detection.adp_journeys j ON j.request_key=f.request_key WHERE f.session_key=%s '
             'AND f.at_ns>=%s AND f.at_ns<%s AND f.eligible=TRUE '
             'AND (NOT EXISTS(SELECT 1 FROM anomaly_detection.adp_source_windows sw WHERE sw.start_ns=(f.at_ns/%s)*%s) '
@@ -485,12 +487,21 @@ class ProductStore:
             'ORDER BY f.at_ns DESC,f.request_key DESC LIMIT 4097',
             (job['session_key'],job['target_ns']-HISTORY_NS,job['target_ns']+FIVE_NS,FIVE_NS,FIVE_NS,FIVE_NS,FIVE_NS)).fetchall()
         values=[]
+        active_scope=self.state('input_contract')
+        requalification=self.state('finance_requalification')
         for row in reversed(rows[:4096]):
             fact=json.loads(row['details']) if row['details'] else None
             if fact and (not row['source_present'] or row['state']!='active' or fact.get('semantic',{}).get('revision')!=row['revision'] or
                          fact.get('semantic',{}).get('anchor_key')!=row['anchor_key']):fact=None
-            if fact and row['journey'] and row['semantic_revision']==fact.get('semantic',{}).get('revision'):
+            if fact and requalification and fact.get('versions',{}).get('scope_epoch',0)<requalification['scope_epoch']:
+                # Keep direct behavior usable while financial caches await a
+                # fresh audit at the restored epoch. No negative result inferred.
+                fact=dict(fact,identifiers=[],relations=[],viewer_journey={},financial_relations='REQUALIFICATION_REQUIRED')
+            if fact and fact.get('financial_relations')!='REQUALIFICATION_REQUIRED' and row['journey'] and row['semantic_revision']==fact.get('semantic',{}).get('revision') and (not requalification or
+                    (row['journey_observed_ns'] or 0)>=requalification['required_since_ns']):
                 fact['viewer_journey']=json.loads(row['journey'])
+            from .behavior_scope import fact as scope_fact
+            fact=scope_fact(fact,active_scope)
             values.append({'request_key':row['request_key'],'at_ns':row['at_ns'],'service_path':row['service_path'],'details':fact})
         return values,len(rows)<=4096
     def peer(self,service,target):
@@ -539,6 +550,10 @@ class ProductStore:
                     "FROM anomaly_detection.adb_points WHERE metric='active_session_p95' ON CONFLICT DO NOTHING")
         return state
     def complete(self,job,context,decisions,now, *, fault=None):
+        from .behavior_scope import decisions as scope_decisions,behavioral,DISABLED
+        scope=self.state('input_contract') or context.get('source',{})
+        decisions=scope_decisions(decisions,scope)
+        context=dict(context,source=dict(context['source'],**scope))
         key=(job['session_key'],job['target_ns']);changed=0
         with self.transaction():
             row=self.raw.execute('SELECT version,primary_version FROM anomaly_detection.adp_jobs WHERE session_key=%s AND target_ns=%s FOR UPDATE',key).fetchone()
@@ -557,13 +572,15 @@ class ProductStore:
                 previous=old.get(finding_key);decision=current.get(finding_key)
                 if decision is None:
                     body=json.loads(previous['body'])
+                    if behavioral(scope) and body['family'] in DISABLED:
+                        decision=scope_decisions([body],scope)[0]
                     unavailable=any(d['family']==body['family'] and d['status']=='INSUFFICIENT_DATA' and
                         d.get('service_path','*') in ('*',body.get('service_path','*')) for d in decisions)
                     unmodelled=any(w.get('unmapped_behaviors',0) for w in context.get('windows',[]) if w['start_ns']==job['target_ns'])
                     known_absent=bool(context.get('target_complete') and not unavailable and not unmodelled)
-                    decision=body|{'status':'NO_DEVIATION_OBSERVED' if known_absent else 'INSUFFICIENT_DATA',
+                    if decision is None:decision=body|{'status':'NO_DEVIATION_OBSERVED' if known_absent else 'INSUFFICIENT_DATA',
                         'reason':'NOT_PRESENT_IN_CURRENT_COMPLETE_EVALUATION' if known_absent else 'FAMILY_OR_TARGET_COVERAGE_UNKNOWN'}
-                state=('ACTIVE' if decision['status']=='CANDIDATE' else 'DEFERRED' if decision['status']=='INSUFFICIENT_DATA' else 'WITHDRAWN')
+                state=('OUT_OF_SCOPE' if decision['status']=='OUT_OF_SCOPE' else 'ACTIVE' if decision['status']=='CANDIDATE' else 'DEFERRED' if decision['status']=='INSUFFICIENT_DATA' else 'WITHDRAWN')
                 if previous is None and state!='ACTIVE':continue
                 model=decision.get('model')
                 value={k:v for k,v in decision.items() if k!='model'}|{'state':state,'source_observed_ns':context['source']['captured_at_ns']}
@@ -618,12 +635,15 @@ class ProductStore:
             fields+=('model_id','duration_ns','begin_ns','end_ns','span_evidence_verified','other_session_epochs','peer_session_epochs','empirical_tail_rank','adjusted_empirical_tail_rank','comparison_count',
                 'subject_field','verified_input_requests','observed_requests','observed_span_ns','reference_model_id','upper_bound_tail_rank',
                 'screening_level','screening_policy','calibration_status','baseline_unit','single_signal_review_eligible','reference_max','review_basis','review_policy_version','independent_positive_history','history_interval_ns')
-            pending=list(context.get('pending_families') or ())
+            pending=[f for f in (context.get('pending_families') or ()) if not (behavioral(scope) and f in DISABLED)]
             if 'continuous_rate' not in pending and any(d.get('reason')=='CONTINUOUS_MODEL_READ_RETRY' for d in decisions):
                 pending.append('continuous_rate')
             from .review_policy import VERSION as review_version
             evaluation={'decisions':[{k:decision[k] for k in fields if k in decision} for decision in decisions],
                 'changed_findings':changed,'operator_alert':False,'rate_history_policy_version':review_version,'pending_families':pending,
+                'input_contract':scope.get('input_contract','viewer-full-relations-1'),'behavioral_features':'observed-behavior-features-1',
+                'scope_epoch':scope.get('scope_epoch',0),
+                'out_of_scope_families':sorted(DISABLED) if behavioral(scope) else [],
                 'evaluator_version':EVALUATOR_VERSION,
                 'primary_version':row['primary_version'],'primary_qualified_requests':context.get('primary_qualified_requests'),
                 'primary_expected_requests':context.get('primary_expected_requests')}

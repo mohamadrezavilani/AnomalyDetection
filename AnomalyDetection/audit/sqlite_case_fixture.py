@@ -19,6 +19,7 @@ class Store:
     def __init__(self):
         self.db=sqlite3.connect(':memory:');self.db.row_factory=sqlite3.Row
         self.db.execute("ATTACH DATABASE ':memory:' AS anomaly_detection")
+        self.db.execute('CREATE TABLE anomaly_detection.adp_state(name TEXT PRIMARY KEY,body TEXT NOT NULL)')
         class BoolOr:
             def __init__(self):self.value=False
             def step(self,x):self.value|=bool(x)

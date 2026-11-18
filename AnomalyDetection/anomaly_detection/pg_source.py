@@ -11,7 +11,7 @@ from contextvars import ContextVar
 
 from . import SOURCE_SHA, CATALOG_SHA, SEMANTIC_SCHEMA, CONTRACT
 from .snapshot import Snapshot, ContractError, api_path, require, MAX_ROWS
-from .source_profiles import SUPPORTED_RUNTIMES,r31_overlay_allowed,r32_release_allowed,r33_release_allowed,r34_release_allowed,r35_release_allowed,r36_release_allowed,r37_release_allowed,r38_release_allowed,r39_release_allowed,r310_release_allowed
+from .source_profiles import SUPPORTED_RUNTIMES,r31_overlay_allowed,r32_release_allowed,r33_release_allowed,r34_release_allowed,r35_release_allowed,r36_release_allowed,r37_release_allowed,r38_release_allowed,r39_release_allowed,r310_release_allowed,r311_release_allowed
 
 DEFAULT_SAMPLE = 32
 MAX_SAMPLE = 64
@@ -61,7 +61,7 @@ def installed_source_identity(project):
     actual=value.hexdigest();viewer=project/'p24_foundation/viewer_data.py'
     overlay=r31_overlay_allowed(declared,actual,count,hashlib.sha256(viewer.read_bytes()).hexdigest() if viewer.is_file() else None)
     require(count > 0 and (declared==SOURCE_SHA and actual==SOURCE_SHA or overlay or
-        r32_release_allowed(declared,actual,count) or r33_release_allowed(declared,actual,count) or r34_release_allowed(declared,actual,count) or r35_release_allowed(declared,actual,count) or r36_release_allowed(declared,actual,count) or r37_release_allowed(declared,actual,count) or r38_release_allowed(declared,actual,count) or r39_release_allowed(declared,actual,count) or r310_release_allowed(declared,actual,count)), "SOURCE_INSTALLED_BYTES_MISMATCH")
+        r32_release_allowed(declared,actual,count) or r33_release_allowed(declared,actual,count) or r34_release_allowed(declared,actual,count) or r35_release_allowed(declared,actual,count) or r36_release_allowed(declared,actual,count) or r37_release_allowed(declared,actual,count) or r38_release_allowed(declared,actual,count) or r39_release_allowed(declared,actual,count) or r310_release_allowed(declared,actual,count) or r311_release_allowed(declared,actual,count)), "SOURCE_INSTALLED_BYTES_MISMATCH")
     return {"runtime_sha256": value.hexdigest(), "checked_runtime_files": count}
 
 
@@ -228,10 +228,18 @@ def collect_sample(query, *, runtime_sha256, sample_limit=DEFAULT_SAMPLE, captur
             require(len(rows) <= MAX_ROWS, "SOURCE_ROW_BUDGET_EXCEEDED")
         return rows
 
-    tables = {name: scoped(name) for name in ("viewer_semantic_occurrences", "viewer_requests",
-                                              "viewer_contract_observations", "viewer_contract_edges")}
-    tables["viewer_contract_identifiers"] = scoped("viewer_contract_identifiers",
-        "origin_key,version_key,request_key,issuer,kind,scope,field_path,identity_key")
+    from .behavior_scope import source_scope,behavioral
+    product_scope=source_scope(query)
+    tables = {name: scoped(name) for name in ('viewer_semantic_occurrences','viewer_requests')}
+    if behavioral(product_scope):
+        tables['viewer_contract_edges']=[];tables['viewer_contract_identifiers']=[]
+        tables['viewer_contract_observations']=[]
+        for begin in range(0,len(keys),200):
+            tables['viewer_contract_observations'].extend(query("SELECT * FROM public.viewer_contract_observations WHERE request_key=ANY(%s) AND axis LIKE 'service_dispatch.%%'",(keys[begin:begin+200],)))
+    else:
+        tables['viewer_contract_edges']=scoped('viewer_contract_edges')
+        tables['viewer_contract_observations']=scoped('viewer_contract_observations')
+        tables['viewer_contract_identifiers']=scoped('viewer_contract_identifiers','origin_key,version_key,request_key,issuer,kind,scope,field_path,identity_key')
     initial_events = scoped("viewer_events", "origin_key,version_key,request_key,at_ns,callpath")
     origins = {row["origin_key"] for row in initial_events}
     origins.update(row["origin_key"] for row in tables["viewer_contract_observations"])
@@ -261,6 +269,7 @@ def collect_sample(query, *, runtime_sha256, sample_limit=DEFAULT_SAMPLE, captur
                      ",".join("%s" for _ in keys) + ")", keys, cap=sample_limit)
     stamp = time.time_ns() if captured_at_ns is None else captured_at_ns
     snapshot = Snapshot({"format": CONTRACT, "source": {
+        **product_scope,
         "namespace": "viewer:" + live[0]["stream_key"], "stream_key": live[0]["stream_key"],
         "keys_fingerprint": live[0]["keys_fingerprint"], "runtime_sha256": runtime_sha256,
         "catalog_fingerprint": catalog[0]["fingerprint"], "catalog_status": "CURRENT",

@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - 'p24_foundation/**'
+      - 'tests/test_viewer_behavior*'
+      - 'tests/test_behavior_*'
+      - 'tests/test_financial_maintenance.py'
+      - 'tests/test_viewer_financial_screen.py'
+      - 'tests/test_viewer_service_dispatch.py'
       - 'tests/test_viewer_minimal*'
       - 'tests/test_viewer_scoped_inputs.py'
       - 'tests/test_viewer_web_existing.py'
@@ -32,7 +37,7 @@ permissions:
 jobs:
   native-postgresql:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:18
@@ -81,6 +86,13 @@ jobs:
           tests.test_viewer_prefix_storage
           tests.test_viewer_window_epochs
           tests.test_viewer_direct_web
+          tests.test_viewer_behavior_scope
+          tests.test_viewer_behavior_pg
+          tests.test_viewer_service_dispatch
+          tests.test_viewer_financial_screen
+          tests.test_financial_maintenance
+          tests.test_behavior_release
+          tests.test_behavior_benchmark_pg
       - name: AD compatibility and unit regressions
         working-directory: AnomalyDetection
         env:
@@ -91,7 +103,7 @@ jobs:
         run: python -B -m unittest discover -s tests -q
   windows-launchers:
     runs-on: windows-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -103,4 +115,4 @@ jobs:
       - name: Recheck byte preservation with Windows Git conversion enabled
         run: git -c core.autocrlf=true -c core.eol=crlf checkout -- Start_Viewer.cmd Start_Viewer_Standard.cmd tools/viewer.ps1
       - name: Exact bytes and real Windows process handles
-        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing tests.test_viewer_lan_access tests.test_viewer_direct_web tests.test_viewer_origin_storage tests.test_viewer_web_budget tests.test_viewer_web_control tests.test_viewer_catchup tests.test_viewer_history_replay tests.test_viewer_window_epochs
+        run: python -B -m unittest -v tests.test_viewer_launcher_bytes tests.test_viewer_process_control tests.test_viewer_web_existing tests.test_viewer_lan_access tests.test_viewer_direct_web tests.test_viewer_origin_storage tests.test_viewer_web_budget tests.test_viewer_web_control tests.test_viewer_catchup tests.test_viewer_history_replay tests.test_viewer_window_epochs tests.test_financial_maintenance tests.test_viewer_behavior_scope tests.test_behavior_release tests.test_behavior_install_windows

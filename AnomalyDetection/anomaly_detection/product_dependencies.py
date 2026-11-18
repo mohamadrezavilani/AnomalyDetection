@@ -76,6 +76,8 @@ def _context_scopes_changed(store,scopes):
 
 def service_details(store,job,services):
     output={};inputs={}
+    from .behavior_scope import current_fact
+    scope=store.state('input_contract');repair=store.state('finance_requalification')
     for service in sorted(set(services)):
         name='context:'+service
         with store.transaction():
@@ -102,7 +104,7 @@ def service_details(store,job,services):
                     values.append({'request_key':row['request_key'],'at_ns':row['at_ns'],'service_path':row['service_path'],'details':fact})
                 if len(store.model_cache)>=256:store.model_cache.clear()
                 store.model_cache[key]=values
-            for row in store.model_cache[key]:output[row['request_key']]=row
+            for row in store.model_cache[key]:output[row['request_key']]=dict(row,details=current_fact(row.get('details'),scope,repair))
     return list(output.values()),inputs
 
 def apply_cohort(store,packet,*,advance=True):
