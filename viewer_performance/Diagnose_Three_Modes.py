@@ -261,6 +261,8 @@ def ad_lane(profile):
                 'evaluated_jobs','scenario_evaluations','source_pages','audited_requests','source_failures_total',
                 'owned_apply_failures_total','scenario_failures_total','evaluation_timeouts_total','input_contract',
                 'input_contract_check','behavior_scope_migration','last_source_failure','last_storage_failure','last_scenario_failure')}
+            for key in ('window_lanes','last_source_failure_event','last_owned_apply_failure_event','last_evaluation_failure_event','last_fatal_failure'):
+                profile.state['worker'][key]=value.get(key)
         return write_json(path,value)
     old_write=product_worker.write_json;product_worker.write_json=observed_write
     restores=[profile.wrap(obj,name,label) for obj,name,label in (
@@ -344,7 +346,8 @@ def _target_progress(db,targets):
             and not any((actor['pending'],models,population['pending'],scenario['pending'],profiles)) and all(censuses.values())
             and all(traffic.get(at) is True for at in targets))
         return dict(status='READ',shared=shared,actor=actor,model_queue=models,population=population,scenario=scenario,
-            profile_refreshes=profiles,cursor_coverage=censuses,traffic_window_coverage=traffic,migration=states.get('behavior_scope_migration_v2'),
+            profile_refreshes=profiles,cursor_coverage=censuses,cursors={key:states.get(key) for key in censuses},
+            traffic_window_coverage=traffic,migration=states.get('behavior_scope_migration_v2'),
             observed_target_queues_drained=drained,full_method_coverage='NOT_CERTIFIED_BY_QUEUE_DRAIN')
     except Exception as exc:return dict(status='UNAVAILABLE',failure=failure(exc),observed_target_queues_drained=False)
 
@@ -507,8 +510,13 @@ def run(project,receipt,windows,seconds,host):
         state['tool_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
         ad,code=host.command('AnomalyDetection/run_anomaly.py','worker-status')
         viewer,_=host.command('viewer_performance/Stop_Viewer_Worker.py');web,_=host.command('viewer_performance/Stop_Viewer_Web.py')
+        if viewer.get('status') not in ('VIEWER_WORKER_IDENTIFIED','NO_VIEWER_LOCK_OWNER_OBSERVED','VIEWER_BACKEND_WITHOUT_CLIENT'):
+            raise host.h.HostOperationError('VIEWER_CONTROL_UNAVAILABLE_BEFORE_TEST',viewer)
+        if web.get('status') not in ('VIEWER_WEB_IDENTIFIED','NO_VIEWER_WEB_LISTENER'):
+            raise host.h.HostOperationError('VIEWER_WEB_CONTROL_UNAVAILABLE_BEFORE_TEST',web)
         plan['active']=dict(ad_worker=ad['process']['locked'],ad_web=ad['web']['locked'],
-            viewer=viewer.get('status')=='VIEWER_WORKER_IDENTIFIED',viewer_web=web.get('status')=='VIEWER_WEB_IDENTIFIED')
+            viewer=viewer.get('status')=='VIEWER_WORKER_IDENTIFIED' or viewer.get('status')=='VIEWER_BACKEND_WITHOUT_CLIENT' and plan['active']['viewer'],
+            viewer_web=web.get('status')=='VIEWER_WEB_IDENTIFIED')
         snapshot=host.inventory();state['original_task_states']=snapshot['tasks']
         state['stopping_started']=True;state['attempted_roles']=['ad','viewer','viewer_web']
         record('DISABLING_PROJECT_AUTOSTART')
