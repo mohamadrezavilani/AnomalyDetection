@@ -197,6 +197,7 @@ def viewer_lane(profile,windows):
             profile.state['selected_session_overrides']=overrides
             profile.state['effective_writer_settings']=db.all(SETTINGS_SQL.replace('%s','?'),(list(NAMES),));db.conn.rollback()
             profile.state['backend_pid']=db.conn.info.backend_pid
+            profile.state['writer_identity']=dict(db.writer_identity.record)
             restores=[profile.wrap(db,name,'viewer:'+name) for name in (*METHODS,'_rebuild_requests','build_semantic_index')]
             try:
                 while len(profile.state['windows'])<windows:
@@ -254,6 +255,7 @@ def ad_lane(profile):
     def observed_write(path,value):
         if Path(path).name=='product_status.json':
             profile.state['worker']={k:value.get(k) for k in ('state','phase','scenario_phase','owner','heartbeat_ns',
+                'pid','instance_token','build_id','source_sha256',
                 'evaluated_jobs','scenario_evaluations','source_pages','audited_requests','source_failures_total',
                 'owned_apply_failures_total','scenario_failures_total','evaluation_timeouts_total','input_contract',
                 'input_contract_check','behavior_scope_migration','last_source_failure','last_storage_failure','last_scenario_failure')}
@@ -312,6 +314,16 @@ def source_snapshot(db):
 
 
 def target_progress(db,targets):
+    if not targets:return dict(status='WAITING_FOR_FRESH_PUBLICATIONS',observed_target_queues_drained=False)
+    try:
+        with db.transaction():
+            db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+            db.execute("SET LOCAL statement_timeout='1000ms'")
+            return _target_progress(db,targets)
+    except Exception as exc:return dict(status='UNAVAILABLE',failure=failure(exc),observed_target_queues_drained=False)
+
+
+def _target_progress(db,targets):
     """Observed target work only; empty or timed-out queries are not completion."""
     if not targets:return dict(status='WAITING_FOR_FRESH_PUBLICATIONS',observed_target_queues_drained=False)
     try:
@@ -420,6 +432,8 @@ def phase(project,directory,mode,windows,seconds,host,*,targets=None):
                 notice('THREE_MODE_PROGRESS',mode=mode,elapsed_seconds=round(elapsed),fresh_windows=len(targets or []),
                     targets_requested=windows,ad=progress);last_notice=elapsed
             if mode=='viewer_only' and children['viewer'].poll() is not None:break
+            if mode=='combined' and children['viewer'].poll() is not None and viewer.get('status')!='THREE_FRESH_PUBLICATIONS_FINISHED':
+                conditions.append('VIEWER_EXITED_WITHOUT_THREE_PUBLICATIONS');break
             if mode=='ad_only' and progress.get('observed_target_queues_drained'):break
             if mode=='combined' and children['viewer'].poll() is not None and progress.get('observed_target_queues_drained'):break
             if any(p.poll() is not None and (role!='viewer' or mode=='ad_only') for role,p in children.items()):
@@ -449,6 +463,7 @@ def phase(project,directory,mode,windows,seconds,host,*,targets=None):
         source_before=before,source_after=after,canonical_receipts=receipts,ad_target_progress=progress,roles=role_reports,samples=samples,
         production_capacity_acceptance='NOT_ASSIGNED',full_method_acceptance='NOT_ASSIGNED',
         comparable_paired_inputs=False,existing_backlog_is_serviced=True)
+    result['installed_source_inventory']=inventory
     result['counter_limitations']=['Per-backend WAL/I/O snapshots can lag and miss short source sessions.',
         'PG file reads can be served from OS cache; physical device traffic is not attributed.',
         'RSS includes shared pages and must not be summed across PostgreSQL processes.']
@@ -462,7 +477,7 @@ def run(project,receipt,windows,seconds,host):
     if not isinstance(old,dict) or not (old.get('before') or {}).get('restore_plan'):raise ValueError('EXISTING_ROLE_RESTORE_RECEIPT_REQUIRED')
     plan=old['before']['restore_plan']
     state=dict(tool=TOOL,status='PREPARING',project=str(project),before=dict(restore_plan=plan),disabled_tasks=[],
-        attempted_roles=[],stopping_started=False,phases=[],database='p24_design_viewer',product_data_modified=True,
+        attempted_roles=[],stopping_started=False,phases=[],database='p24_design_viewer',product_data_may_be_modified=True,
         database_copies=0,checkpoint_seek=False,scenario_families_disabled=[],source_filter_changed=False,
         maximum_seconds_per_phase=seconds,restore_failures=[],dedicated_web_traffic='STOPPED')
     def record(status):state['status']=status;save(out,state);notice(status,output=str(out))
@@ -471,6 +486,8 @@ def run(project,receipt,windows,seconds,host):
         if verify_release(project)['status']!='PASS':raise ValueError('INSTALLED_CODE_INVENTORY_MISMATCH')
         state['app_manifest']=read(project/'AnomalyDetection/RELEASE_MANIFEST.json')
         state['app_manifest'].pop('files_sha256',None)
+        state['viewer_manifest']=read(project/'viewer_performance/FAST_WRITER_MANIFEST.json',{})
+        state['viewer_manifest'].pop('files_sha256',None)
         state['tool_sha256']=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
         ad,code=host.command('AnomalyDetection/run_anomaly.py','worker-status')
         viewer,_=host.command('viewer_performance/Stop_Viewer_Worker.py');web,_=host.command('viewer_performance/Stop_Viewer_Web.py')
@@ -521,12 +538,35 @@ def run(project,receipt,windows,seconds,host):
         except BaseException as exc:state['restore_error']=failure(exc)
         status='THREE_MODE_DIAGNOSTIC_EXPORTED' if len(state['phases'])==3 and not state.get('failure') and not state.get('restore_error') else 'THREE_MODE_PARTIAL_SEND_BUNDLE'
         record(status)
+        manager_report(folder,state)
         bundle=folder.with_suffix('.zip')
         with zipfile.ZipFile(bundle,'w',zipfile.ZIP_DEFLATED) as z:
             for file in folder.rglob('*'):
                 if file.is_file():z.write(file,file.relative_to(folder))
         notice(status,output=str(bundle),phases=[dict(mode=p['mode'],status=p['status']) for p in state['phases']])
     return state
+
+
+def manager_report(folder,state):
+    lines=['# Three-mode live diagnostic', '', 'Status: '+state['status'],
+        'Production DB: p24_design_viewer; no database copies; different fresh inputs/history between Viewer lanes.',
+        'Instrumentation overhead is included. Queue drain is not accuracy/full-method/capacity acceptance.', '']
+    for phase in state['phases']:
+        lines+=['## '+phase['mode'], 'Status: '+phase['status'],
+            'Elapsed seconds: '+str(phase.get('elapsed_seconds')), 'Published/target windows: '+str(phase.get('targets')),
+            'Condition issues: '+str(phase.get('conditions_issues')), 'AD target progress: '+json.dumps(phase.get('ad_target_progress'),ensure_ascii=True), '']
+        for role,value in phase.get('roles',{}).items():
+            lines+=['### '+role, 'Client CPU seconds: '+str(value.get('client_cpu_seconds')),
+                'Actor attempts in targets / other history: '+str(value.get('actor_evaluation_attempts_in_targets'))+' / '+str(value.get('actor_evaluation_attempts_outside_targets')),
+                'Cache probe counts (not unique model evaluations): '+str(value.get('cache_probes')), '',
+                '| Path | Exclusive seconds | Inclusive seconds | Calls | Failures |', '|---|---:|---:|---:|---:|']
+            rows=(value.get('trace') or {}).get('spans') or {}
+            for name,row in sorted(rows.items(),key=lambda x:-x[1]['exclusive_seconds'])[:20]:
+                lines.append('| '+name+' | '+str(row['exclusive_seconds'])+' | '+str(row['inclusive_seconds'])+' | '+str(row['calls'])+' | '+str(row['failures'])+' |')
+            lines+=['', 'Inclusive paths overlap; do not add them. Client CPU excludes PostgreSQL backend CPU.', '']
+    lines+=['## Restoration',json.dumps(dict(failure=state.get('failure'),restore_error=state.get('restore_error'),
+        restore_failures=state.get('restore_failures')),ensure_ascii=True)]
+    (Path(folder)/'MANAGER_REPORT.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
 
 
 @contextmanager

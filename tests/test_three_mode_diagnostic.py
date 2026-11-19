@@ -48,9 +48,11 @@ class DiagnosticTests(unittest.TestCase):
                 return dict(mode=args[2],status='DIAGNOSTIC_TARGETS_FINISHED',targets=[d.FIVE,2*d.FIVE,3*d.FIVE])
             restored=[]
             def restore(project,path,state):restored.append(state['before']['restore_plan']['active']);state['restore_failures']=[]
-            with patch('tools.check_viewer_install.verify_release',return_value={'status':'PASS'}),patch.object(d,'phase',side_effect=run_phase),patch('viewer_performance.Behavior_Release.restore',side_effect=restore),redirect_stdout(io.StringIO()):
+            with patch('tools.check_viewer_install.verify_release',return_value={'status':'PASS'}),patch.object(d,'phase',side_effect=run_phase),patch('viewer_performance.Behavior_Release.restore',side_effect=restore),patch('viewer_performance.Run_Viewer_Catchup.choose_overrides',return_value={}),patch('viewer_performance.Run_Viewer_Catchup.supported_compression',return_value='pglz'),patch('viewer_performance.Run_Viewer_Memory.memory_info',return_value={}),redirect_stdout(io.StringIO()):
                 result=d.run(project,previous,3,30,host)
             self.assertEqual(len(restored),1);self.assertEqual(result['status'],'THREE_MODE_PARTIAL_SEND_BUNDLE')
+            self.assertEqual(len(result['phases']),1)
+            self.assertEqual(result['failure']['code'],'FIXTURE_AD_START_FAILURE')
             bundle=next((project/'AnomalyDetection/reports').glob('*.zip'))
             with zipfile.ZipFile(bundle) as z:self.assertIn('run.json',z.namelist())
             self.assertEqual(result['database_copies'],0);self.assertEqual(result['scenario_families_disabled'],[])
