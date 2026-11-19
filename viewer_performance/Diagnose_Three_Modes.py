@@ -41,8 +41,10 @@ def notice(status,**values):
 
 
 def failure(exc):
-    return dict(error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None,
-                sqlstate=getattr(exc,'sqlstate',None))
+    value=dict(error_type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None,
+               sqlstate=getattr(exc,'sqlstate',None))
+    if isinstance(getattr(exc,'details',None),dict):value['details']=exc.details
+    return value
 
 
 class StopDiagnostic(BaseException):pass

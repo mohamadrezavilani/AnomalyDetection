@@ -54,7 +54,8 @@ class DiagnosticTests(unittest.TestCase):
             self.assertEqual(len(result['phases']),1)
             self.assertEqual(result['failure']['code'],'FIXTURE_AD_START_FAILURE')
             bundle=next((project/'AnomalyDetection/reports').glob('*.zip'))
-            with zipfile.ZipFile(bundle) as z:self.assertIn('run.json',z.namelist())
+            with zipfile.ZipFile(bundle) as z:
+                self.assertIn('run.json',z.namelist());self.assertIn('MANAGER_REPORT.md',z.namelist())
             self.assertEqual(result['database_copies'],0);self.assertEqual(result['scenario_families_disabled'],[])
 
 
