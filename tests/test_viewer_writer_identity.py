@@ -45,6 +45,8 @@ class IdentityTests(unittest.TestCase):
         source=dict(status='READ',next_ns=10*FIVE)
         self.assertIsNone(ad_prefix_distance(source,{}))
         self.assertEqual(ad_prefix_distance(source,dict(window_lanes={'fresh_cursor':{'cursor':{'next_ns':7*FIVE}}})),3)
+        self.assertIsNone(ad_prefix_distance(source,dict(fresh_and_verified=False,
+            window_lanes={'fresh_cursor':{'cursor':{'next_ns':7*FIVE}}})))
 
     def test_a_stale_pointer_does_not_establish_a_running_implementation(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -120,7 +122,8 @@ class NativeIdentityTests(unittest.TestCase):
                     def wait(seconds):
                         tick[0]+=seconds
                         viewer_online.publish_capture(db,jobs[1]['path'],START+FIVE,START+2*FIVE)
-                    ad=lambda project:dict(identity=dict(pid=10,instance_token='fixture'),counters={},window_lanes={})
+                    ad=lambda project:dict(identity=dict(pid=10,instance_token='fixture'),counters={},window_lanes={},
+                        input_contract=dict(input_contract='viewer-full-relations-1',scope_epoch=0))
                     with psycopg.connect(**self.parameters,dbname=name,autocommit=True,row_factory=dict_row,
                             options='-c default_transaction_read_only=on') as connection,patch(
                             'viewer_performance.fast_writer.verify_sources',return_value=digest),patch(
@@ -129,6 +132,24 @@ class NativeIdentityTests(unittest.TestCase):
                     self.assertEqual(result['status'],'VERIFIED_WRITER_OBSERVATION',result['throughput'])
                     self.assertEqual(result['throughput']['newly_complete_windows'],1)
                     self.assertFalse(result['full_table_oracles_executed'])
+                    # A stale AD heartbeat is a failed AD observation, not a
+                    # failed publication and not a reason to lose Viewer data.
+                    def wait_stale(seconds):
+                        tick[0]+=seconds
+                        viewer_online.publish_capture(db,jobs[2]['path'],START+2*FIVE,START+3*FIVE)
+                    with psycopg.connect(**self.parameters,dbname=name,autocommit=True,row_factory=dict_row,
+                            options='-c default_transaction_read_only=on') as connection,patch(
+                            'viewer_performance.fast_writer.verify_sources',return_value=digest),patch(
+                            'AnomalyDetection.validation.observe_viewer_live.source_inventory',return_value=inventory):
+                        degraded=collect(root,Reader(connection),seconds=10,target=1,clock=lambda:tick[0],wait=wait_stale,
+                            ad=lambda project:dict(identity=dict(pid=10,instance_token='fixture'),counters={},
+                                window_lanes={},fresh_and_verified=False,state='RUNNING_HEARTBEAT_STALE'))
+                    self.assertEqual(degraded['status'],'PARTIAL_VERIFIED_WRITER_OBSERVATION')
+                    self.assertIsNone(degraded['throughput']['failure'])
+                    self.assertEqual(degraded['throughput']['newly_complete_windows'],1)
+                    self.assertEqual(len(degraded['publication_receipts']),1)
+                    self.assertEqual(degraded['ad_observation_status'],'DEGRADED_OR_UNVERIFIABLE')
+                    self.assertEqual(degraded['ad_progress_delta'],{})
         finally:self.admin.execute(self.pgsql.SQL('DROP DATABASE {}').format(self.pgsql.Identifier(name)))
 
     def test_actual_lease_binding_and_after_commit_receipts_include_index_and_commit_costs(self):

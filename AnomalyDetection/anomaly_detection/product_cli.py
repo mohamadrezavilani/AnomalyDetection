@@ -41,9 +41,9 @@ def main(sha):
         if command=='version':value={'build_id':BUILD_ID,'source_sha256':sha,'storage_backend':'postgresql','sqlite_loaded':'sqlite3' in sys.modules}
         elif command=='worker-start':
             value=start(ROOT,sha)
-            print(json.dumps(value,ensure_ascii=False,indent=2));return 0 if value['status'] in ('STARTED','STARTING','ALREADY_RUNNING') else 2
+            print(json.dumps(value,ensure_ascii=True,indent=2));return 0 if value['status'] in ('STARTED','STARTING','ALREADY_RUNNING') else 2
         elif command=='worker-stop':
-            value=stop(ROOT);print(json.dumps(value,ensure_ascii=False));return 0 if value['status'] in ('STOPPED','ALREADY_STOPPED') else 2
+            value=stop(ROOT);print(json.dumps(value,ensure_ascii=True));return 0 if value['status'] in ('STOPPED','ALREADY_STOPPED') else 2
         elif command=='worker-status':value=status(ROOT)
         elif command=='history-rescan':
             from .history_rescan import run as rescan_history
@@ -52,7 +52,7 @@ def main(sha):
             from .history_reset import run as reset_history
             value=reset_history(ROOT,sha,args.from_tehran_date,apply=args.apply,pg_data_dir=args.pg_data_dir)
             value.update(build_id=BUILD_ID,source_sha256=sha)
-            print(json.dumps(value,ensure_ascii=False,indent=2))
+            print(json.dumps(value,ensure_ascii=True,indent=2))
             return 2 if value['status']=='HISTORY_RESET_BLOCKED' else 0
         elif command=='worker-run':
             from .product_worker import run
@@ -107,6 +107,6 @@ def main(sha):
             observed,path=export_report(ROOT,sha,observe_seconds=seconds)
             value={'status':'REPORT_EXPORTED','health':observed['health'],'output':str(path),'web_url':'http://127.0.0.1:5022/',
                 'build_id':BUILD_ID,'source_sha256':sha}
-        print(json.dumps(value,ensure_ascii=False,indent=2));return 0
+        print(json.dumps(value,ensure_ascii=True,indent=2));return 0
     except Exception as exc:
-        print(json.dumps({'status':'ERROR','failure':safe_failure(exc)},ensure_ascii=False));return 1
+        print(json.dumps({'status':'ERROR','failure':safe_failure(exc)},ensure_ascii=True));return 1

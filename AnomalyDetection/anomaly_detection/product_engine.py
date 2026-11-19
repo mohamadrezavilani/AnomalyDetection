@@ -4,6 +4,7 @@ from .snapshot import digest,require
 from .temporal import Point,fit
 from . import FIVE_NS,EVALUATOR_VERSION
 from collections import Counter
+from copy import deepcopy
 from .snapshot import api_path
 
 
@@ -89,16 +90,64 @@ def evaluate_job(store,job,context,now, *, progress=None,mode='full'):
         decisions+=continuous;peer_inputs.update(inputs)
     # Method changes must neither reuse an old model receipt nor leave a
     # completed job looking current solely because its input version matches.
-    renamed={}
+    # Providers may return cached model objects. Naming a receipt must not
+    # mutate those inputs or re-hash the already-renamed cache on the next job.
+    decisions=deepcopy(decisions)
+    renamed={d['model']['model_id']:'am2:'+digest([EVALUATOR_VERSION,d['model']['model_id']])
+             for d in decisions if d.get('model')}
     for decision in decisions:
         model=decision.get('model')
         if model:
-            old=model['model_id'];new='am2:'+digest([EVALUATOR_VERSION,old])
-            model.update(model_id=new,implementation_version=EVALUATOR_VERSION);renamed[old]=new
-    for decision in decisions:
+            # Copy each node separately too: two emitted decisions can share
+            # the same provider model object within one cached batch.
+            model=dict(model,model_id=renamed[model['model_id']],implementation_version=EVALUATOR_VERSION)
+            if model.get('reference_model_id') in renamed:model['reference_model_id']=renamed[model['reference_model_id']]
+            decision['model']=model
         for field in ('model_id','reference_model_id'):
             if decision.get(field) in renamed:decision[field]=renamed[decision[field]]
         decision['evaluator_version']=EVALUATOR_VERSION
     context=dict(context,peer_inputs=peer_inputs,evaluator_version=EVALUATOR_VERSION)
     stage('commit_result')
     return store.complete(job,context,decisions,now)
+
+
+def warm_model_references(store,now,limit=64):
+    """Requeue old model-bearing results in finite, restartable parent pages.
+
+    Old receipts remain immutable. The new evaluator namespace prevents an
+    existing broken child receipt winning ON CONFLICT DO NOTHING. Requalifying
+    results does not alter source cursors, baselines or human feedback.
+    """
+    import json
+    from .model_queue import schedule
+    key='model_reference_requalification_v2'
+    require(type(limit) is int and 1<=limit<=128,'MODEL_REFERENCE_RECHECK_LIMIT')
+    with store.transaction():
+        state=store.state(key)
+        if state.get('done'):return state
+        if 'through' not in state:
+            row=store.raw.execute('SELECT session_key,target_ns FROM anomaly_detection.adp_jobs ORDER BY session_key DESC,target_ns DESC LIMIT 1').fetchone()
+            state['through']=[row['session_key'],row['target_ns']] if row else None
+        rows=[]
+        if state['through']:
+            after=' AND (session_key,target_ns)>(%s,%s)' if state.get('after') else ''
+            rows=store.raw.execute('SELECT * FROM anomaly_detection.adp_jobs WHERE (session_key,target_ns)<=(%s,%s)'+after+
+                ' ORDER BY session_key,target_ns LIMIT %s',(*state['through'],*(state.get('after') or ()),limit)).fetchall()
+        changed=0
+        for row in rows:
+            evaluation=json.loads(row['evaluation'] or '{}')
+            if row['target_ns']<getattr(store,'history_floor_ns',0):continue
+            if row['dirty'] or row['processed_version']!=row['version'] or not row['last_evaluated_ns'] or evaluation.get('evaluator_version')==EVALUATOR_VERSION:continue
+            families={d['family'] for d in evaluation.get('decisions',[]) if d.get('model_id') or d.get('reference_model_id')}
+            if not families:continue
+            queued=store.raw.execute('SELECT families FROM anomaly_detection.adp_model_queue WHERE session_key=%s AND target_ns=%s',
+                (row['session_key'],row['target_ns'])).fetchone()
+            if queued:families.update(json.loads(queued['families']))
+            from .behavior_scope import behavioral,DISABLED
+            if behavioral(store.state('input_contract')):families.difference_update(DISABLED)
+            if not families:continue
+            schedule(store,row,sorted(families),now);changed+=1
+        state.update(scanned=state.get('scanned',0)+len(rows),requeued=state.get('requeued',0)+changed,done=len(rows)<limit)
+        if rows:state['after']=[rows[-1]['session_key'],rows[-1]['target_ns']]
+        store.save_state(key,state)
+    return state

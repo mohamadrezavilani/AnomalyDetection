@@ -1,7 +1,7 @@
 """Independent PostgreSQL consumer; delegates selected pinned Viewer read models."""
 
-BUILD_ID = "AD-20261117-BEHAVIOR-SCOPE"
-EVALUATOR_VERSION = 'audit-evaluator-20261110-1'
+BUILD_ID = "AD-20261119-BEHAVIOR-RECOVERY"
+EVALUATOR_VERSION = 'audit-evaluator-20261119-2'
 CONTRACT = "AD-SNAPSHOT-v1"
 SOURCE_SHA = "84e9dcc984092735dd4785a26b5af02019eda63d0d5d7ee221bb0c84da37e993"
 CATALOG_SHA = "1989cf2ed1dbcd7202f76dcfb8f9530ceadef4331ba01ee55bc0e31f88b36fb6"

@@ -1,12 +1,12 @@
 {
   "build_id": "VIEWER-20261117-BEHAVIOR-SCOPE",
   "base_runtime_source_sha256": "78f181f85b46601c5eb49997a5bbd2a0c1aef128f1cbd0e11c4f8d16009e8392",
-  "source_sha256": "d000e59961907564ae062d6817aac43ff346794e617881132d28251624d881f4",
+  "source_sha256": "15ea9aa4f31682c37cd58b995756a6bb3c752a0052a51ce59da774b55e9da550",
   "files_sha256": {
     "AnomalyDetection/validation/observe_viewer_live.py": "6b0ed22d20ebe21f144d3909c945191f38fd4d95860b366d4acb0beac6fe4f2c",
     "tests/test_viewer_fast_writer.py": "c8a7dd81b50c86753874c9205514cfe129e2e1a3c34159cd41afe77bd277fa67",
-    "tests/test_viewer_writer_identity.py": "9648f8b782be732b525ac9f425742a01f930abb96d129c1c284f1a36d7a382ac",
-    "viewer_performance/Observe_Viewer_Fast.py": "fdb680c5ead54afe900d1e93912383c1277e3e40f475d6d23cd56470d12864b4",
+    "tests/test_viewer_writer_identity.py": "10ceb3031002f6dcfb487fda5f7abfb5628c4ae568a845be66225341303bc887",
+    "viewer_performance/Observe_Viewer_Fast.py": "fbba7e3227de1d3d5e552908623f836ae5c16d30eadfa86e6cc2203019b886fd",
     "viewer_performance/Qualify_Capacity_Candidate.py": "2b8e8b9b93b09e0f5c2741e89af495c53d5ca3eb95b36a0c7b22774b27d53f03",
     "viewer_performance/Qualify_Viewer_Fast.py": "a7789a6e83d64b1f04308fd3e86f035e32b4aae8f87ad1e2d3e2a22188434b85",
     "viewer_performance/Run_Viewer_Catchup.py": "971db315b089e750ccbee8b23c6c2e42d3d6d867a1b34958e4d8a1393b53fd30",

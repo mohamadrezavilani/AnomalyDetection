@@ -51,12 +51,14 @@ class ControlWireTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)/'سرور';root.mkdir();ad=verified_ad_fixture(root)
             with patch.dict(os.environ,{'PYTHONIOENCODING':'cp1252','PYTHONUTF8':'0'}):
-                # The old invocation reproduces the otherwise hidden RuntimeError.
+                # Direct CLI and the UTF-8 wrapper must both preserve the same Persian status.
                 old=subprocess.run([sys.executable,'-B',str(ad/'run_anomaly.py'),'worker-status'],
                     cwd=root,capture_output=True,timeout=20)
-                self.assertNotEqual(old.returncode,0)
-                self.assertEqual(json.loads(old.stdout)['failure']['error_type'],'UnicodeEncodeError')
+                self.assertEqual(old.returncode,0,old.stderr)
+                direct=json.loads(old.stdout)
+                self.assertEqual(direct['unverified_worker_status']['note'],'وضعیت اجرای پروژه')
                 result=invoke_ad(root,['worker-status'])
+                self.assertEqual(result,direct)
                 self.assertFalse(result['process']['locked']);self.assertFalse(result['web']['locked'])
                 self.assertEqual(result['unverified_worker_status']['note'],'وضعیت اجرای پروژه')
                 self.assertEqual(os.environ['PYTHONIOENCODING'],'cp1252')

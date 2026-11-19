@@ -113,6 +113,10 @@ class NativeBehaviorScopeTests(unittest.TestCase):
                              ('pf1:finance',actor,target,'payment_result_change','context','ACTIVE',1,3,'old',canonical(body),target))
         changed=dict(source,input_contract=BEHAVIOR,scope_epoch=1,financial_relations='OUT_OF_SCOPE')
         with self.store.transaction():self.store.bind(changed)
+        from anomaly_detection.behavior_scope import advance_migration,MIGRATION
+        self.assertFalse(self.store.state(MIGRATION)['complete'])
+        for _ in range(10):
+            if advance_migration(self.store,limit=1)['complete']:break
         self.assertEqual(self.raw.execute('SELECT state FROM anomaly_detection.adp_findings').fetchone()['state'],'OUT_OF_SCOPE')
         self.assertEqual(case_status(self.store,case)['bucket'],'OUT_OF_SCOPE')
         self.assertEqual(self.store.state('fresh_cursor'),{'next_ns':target})
