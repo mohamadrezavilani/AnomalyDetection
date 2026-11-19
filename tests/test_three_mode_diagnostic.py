@@ -20,6 +20,32 @@ class DiagnosticTests(unittest.TestCase):
         value=d.target_progress(db,[d.FIVE])
         self.assertEqual(value['status'],'UNAVAILABLE');self.assertFalse(value['observed_target_queues_drained'])
 
+    def test_final_publication_is_reloaded_when_process_exits_after_the_last_sample(self):
+        from contextlib import redirect_stdout
+        import io
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);folder=root/'lane';host=MagicMock();db=MagicMock()
+            host.reader.return_value.__enter__.return_value=db
+            def rows(sql,*args):
+                cursor=MagicMock()
+                cursor.fetchall.return_value=([dict(start_ns=i*d.FIVE,generation=i) for i in (1,2,3)] if 'viewer_live_receipts r' in sql else [])
+                return cursor
+            db.execute.side_effect=rows
+            host.command.side_effect=lambda script,*args:(dict(process={'locked':False},web={'locked':False}),0) if script.endswith('run_anomaly.py') else (dict(status='NO_VIEWER_WEB_LISTENER'),0)
+            class Child:
+                def __init__(self,*args,**kwargs):d.save(folder/'viewer.json',{'status':'PUBLISHING','windows':[{'start_ns':i*d.FIVE} for i in (1,2)]})
+                def poll(self):
+                    d.save(folder/'viewer.json',{'status':'THREE_FRESH_PUBLICATIONS_FINISHED','windows':[{'start_ns':i*d.FIVE} for i in (1,2,3)]})
+                    return 0
+                def wait(self,timeout):return 0
+            snapshot=dict(live={'generation':0},scope={},server_settings=[])
+            with patch.object(d.subprocess,'Popen',Child),patch.object(d,'source_snapshot',return_value=snapshot),patch.object(d,'target_progress',return_value={'observed_target_queues_drained':False}),patch(
+                    'AnomalyDetection.validation.observe_viewer_live.source_inventory',return_value=({},set())),redirect_stdout(io.StringIO()):
+                result=d.phase(root,folder,'viewer_only',3,30,host)
+            self.assertEqual(result['targets'],[d.FIVE,2*d.FIVE,3*d.FIVE])
+            self.assertEqual(result['status'],'DIAGNOSTIC_TARGETS_FINISHED')
+            self.assertEqual(len(result['canonical_receipts']),3)
+
     def test_profile_stops_on_an_explicit_control_file_and_exports_a_partial_profile(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);p=d.RuntimeProfile(root,root,'ad',60)
@@ -178,6 +204,7 @@ class NativeDiagnosticTests(unittest.TestCase):
                 'CREATE TABLE anomaly_detection.adp_model_queue(target_ns BIGINT)',
                 'CREATE TABLE anomaly_detection.adp_population_jobs(start_ns BIGINT,dirty BOOLEAN,version INTEGER,processed_version INTEGER)',
                 'CREATE TABLE anomaly_detection.adp_scenario_jobs(target_ns BIGINT,dirty BOOLEAN,version INTEGER,processed_version INTEGER)',
+                'CREATE TABLE anomaly_detection.adp_traffic_counts(start_ns BIGINT,body TEXT)',
                 'CREATE TABLE anomaly_detection.adp_profile_tasks(request_key TEXT)',
                 'CREATE TABLE anomaly_detection.adp_window_members(start_ns BIGINT,request_key TEXT)',
                 'CREATE TABLE anomaly_detection.adp_profiles(request_key TEXT,at_ns BIGINT)',
@@ -187,6 +214,7 @@ class NativeDiagnosticTests(unittest.TestCase):
             for at in targets:
                 conn.execute('INSERT INTO anomaly_detection.adp_source_windows VALUES(%s,TRUE)',(at,))
                 conn.execute('INSERT INTO anomaly_detection.adp_population_jobs VALUES(%s,FALSE,1,1)',(at,))
+                conn.execute('INSERT INTO anomaly_detection.adp_traffic_counts VALUES(%s,%s)',(at,json.dumps({'complete':True})))
                 conn.execute("INSERT INTO anomaly_detection.adp_jobs VALUES(%s,FALSE,1,1,1,1,%s,'BEHAVIOR_TARGET')",(at,json.dumps({'pending_families':[],'evaluator_version':__import__('AnomalyDetection.anomaly_detection',fromlist=['EVALUATOR_VERSION']).EVALUATOR_VERSION})))
             for key in ('fresh_cursor','scenario_traffic_cursor','service_sample_fresh_cursor'):
                 conn.execute('INSERT INTO anomaly_detection.adp_state VALUES(%s,%s)',(key,json.dumps({'next_ns':4*d.FIVE})))

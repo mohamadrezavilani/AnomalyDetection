@@ -335,14 +335,16 @@ def _target_progress(db,targets):
         models=db.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_model_queue WHERE target_ns=ANY(%s)',(targets,)).fetchone()['n']
         population=dict(db.execute('SELECT COUNT(*) AS total,COUNT(*) FILTER(WHERE dirty OR processed_version<>version) AS pending FROM anomaly_detection.adp_population_jobs WHERE start_ns=ANY(%s)',(targets,)).fetchone())
         scenario=dict(db.execute('SELECT COUNT(*) AS total,COUNT(*) FILTER(WHERE dirty OR processed_version<>version) AS pending FROM anomaly_detection.adp_scenario_jobs WHERE target_ns=ANY(%s)',(targets,)).fetchone())
+        traffic={r['start_ns']:r['complete'] for r in db.execute("SELECT start_ns,BOOL_AND(COALESCE((body::jsonb->>'complete')::boolean,FALSE)) AS complete FROM anomaly_detection.adp_traffic_counts WHERE start_ns=ANY(%s) GROUP BY start_ns",(targets,)).fetchall()}
         profiles=db.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_profile_tasks t WHERE EXISTS(SELECT 1 FROM anomaly_detection.adp_window_members m WHERE m.request_key=t.request_key AND m.start_ns=ANY(%s)) OR EXISTS(SELECT 1 FROM anomaly_detection.adp_profiles p WHERE p.request_key=t.request_key AND (p.at_ns/%s)*%s=ANY(%s))',(targets,FIVE,FIVE,targets)).fetchone()['n']
         states={r['name']:json.loads(r['body']) for r in db.execute("SELECT name,body FROM anomaly_detection.adp_state WHERE name=ANY(%s)",(['fresh_cursor','scenario_traffic_cursor','service_sample_fresh_cursor','behavior_scope_migration_v2'],)).fetchall()}
         end=max(targets)+FIVE
         censuses={k:states.get(k,{}).get('next_ns',0)>=end for k in ('fresh_cursor','scenario_traffic_cursor','service_sample_fresh_cursor')}
         drained=(len(shared)==len(targets) and all(r['complete'] for r in shared) and population['total']==len(targets)
-            and not any((actor['pending'],models,population['pending'],scenario['pending'],profiles)) and all(censuses.values()))
+            and not any((actor['pending'],models,population['pending'],scenario['pending'],profiles)) and all(censuses.values())
+            and all(traffic.get(at) is True for at in targets))
         return dict(status='READ',shared=shared,actor=actor,model_queue=models,population=population,scenario=scenario,
-            profile_refreshes=profiles,cursor_coverage=censuses,migration=states.get('behavior_scope_migration_v2'),
+            profile_refreshes=profiles,cursor_coverage=censuses,traffic_window_coverage=traffic,migration=states.get('behavior_scope_migration_v2'),
             observed_target_queues_drained=drained,full_method_coverage='NOT_CERTIFIED_BY_QUEUE_DRAIN')
     except Exception as exc:return dict(status='UNAVAILABLE',failure=failure(exc),observed_target_queues_drained=False)
 
@@ -379,6 +381,10 @@ def backend_counters(db,rows):
     return json.loads(json.dumps(values,default=str))
 
 
+def viewer_targets(value):
+    return [w['start_ns'] for w in value.get('windows',[]) if type(w.get('start_ns')) is int]
+
+
 def phase(project,directory,mode,windows,seconds,host,*,targets=None):
     from AnomalyDetection.validation.observe_viewer_live import activity_rows,source_inventory
     from viewer_performance.financial_screen.resources import process_usage,available_memory
@@ -401,8 +407,7 @@ def phase(project,directory,mode,windows,seconds,host,*,targets=None):
             role_reports={k:read(directory/(k+'.json'),{}) for k in children}
             viewer=role_reports.get('viewer',{});observed=viewer.get('windows',[])
             if mode!='ad_only':
-                targets=[w.get('window_start_ns',w.get('start_ns')) for w in observed]
-                targets=[n for n in targets if type(n) is int]
+                targets=viewer_targets(viewer)
                 save(directory/'targets.json',dict(targets=targets))
             with host.reader() as db:
                 rows=[dict(r) for r in db.execute("SELECT pid,backend_start,application_name,backend_type,state,wait_event_type,wait_event,query,EXTRACT(EPOCH FROM(clock_timestamp()-query_start))::float AS query_age_seconds,pg_blocking_pids(pid) AS blocking_pids FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() ORDER BY pid LIMIT 129").fetchall()]
@@ -433,11 +438,18 @@ def phase(project,directory,mode,windows,seconds,host,*,targets=None):
                 except Exception as exc:conditions.append('ROLE_OBSERVATION_UNAVAILABLE:'+type(exc).__name__)
                 notice('THREE_MODE_PROGRESS',mode=mode,elapsed_seconds=round(elapsed),fresh_windows=len(targets or []),
                     targets_requested=windows,ad=progress);last_notice=elapsed
-            if mode=='viewer_only' and children['viewer'].poll() is not None:break
-            if mode=='combined' and children['viewer'].poll() is not None and viewer.get('status')!='THREE_FRESH_PUBLICATIONS_FINISHED':
+            viewer_done=mode!='ad_only' and children['viewer'].poll() is not None
+            if viewer_done:
+                viewer=read(directory/'viewer.json',{})
+                latest_targets=viewer_targets(viewer)
+                if latest_targets!=targets:
+                    targets=latest_targets;save(directory/'targets.json',dict(targets=targets))
+                    progress=dict(status='TARGET_SET_CHANGED',observed_target_queues_drained=False);last_progress=-30
+            if mode=='viewer_only' and viewer_done:break
+            if mode=='combined' and viewer_done and viewer.get('status')!='THREE_FRESH_PUBLICATIONS_FINISHED':
                 conditions.append('VIEWER_EXITED_WITHOUT_THREE_PUBLICATIONS');break
             if mode=='ad_only' and progress.get('observed_target_queues_drained'):break
-            if mode=='combined' and children['viewer'].poll() is not None and progress.get('observed_target_queues_drained'):break
+            if mode=='combined' and viewer_done and len(targets)==windows and progress.get('observed_target_queues_drained'):break
             if any(p.poll() is not None and (role!='viewer' or mode=='ad_only') for role,p in children.items()):
                 conditions.append('ROLE_EXITED_BEFORE_PHASE_END');break
             time.sleep(min(5,max(0,seconds-(time.monotonic()-began))))
@@ -450,10 +462,12 @@ def phase(project,directory,mode,windows,seconds,host,*,targets=None):
                 host.stop('viewer' if role=='viewer' else 'ad')
                 p.wait(timeout=20)
         for log in logs:log.close()
+    role_reports={k:read(directory/(k+'.json'),{}) for k in children}
+    if mode!='ad_only':
+        targets=viewer_targets(role_reports.get('viewer',{}));save(directory/'targets.json',dict(targets=targets))
     with host.reader() as db:
         after=source_snapshot(db);progress=target_progress(db,targets or [])
         receipts=[dict(r) for r in db.execute('SELECT w.start_ns,w.end_ns,w.generation,w.records,r.file_hash,r.new_events,r.published_ns FROM public.viewer_live_windows w JOIN public.viewer_live_receipts r ON r.start_ns=w.start_ns AND r.generation=w.generation AND r.file_hash=w.file_hash AND r.records=w.records WHERE w.start_ns=ANY(%s)',(targets or [],)).fetchall()]
-    role_reports={k:read(directory/(k+'.json'),{}) for k in children}
     if any(r.get('status') in ('FAILED','PROFILE_FAILED') for r in role_reports.values()):conditions.append('CHILD_OPERATION_FAILED')
     if before['scope']!=after['scope']:conditions.append('INPUT_SCOPE_CHANGED')
     if before['server_settings']!=after['server_settings']:conditions.append('POSTGRES_SETTINGS_CHANGED')
