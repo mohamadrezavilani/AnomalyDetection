@@ -77,56 +77,109 @@ def decisions(values,source):
     return result
 
 
+MIGRATION='behavior_scope_migration_v2'
+
+
 def bind(store,source):
+    """Bind the active contract immediately; schedule bounded legacy cleanup.
+
+    Every new decision observes the active contract, even while old rows are
+    being converted. Migration completion is a separate durable receipt.
+    """
     if 'input_contract' not in source:return
     current={k:source[k] for k in ('input_contract','scope_epoch','behavioral_features','financial_relations')}
     old=store.state('input_contract')
     require(not old or current['scope_epoch']>=old.get('scope_epoch',0),'PRODUCT_INPUT_CONTRACT_EPOCH_REGRESSED')
     require(not old or current['scope_epoch']!=old.get('scope_epoch',0) or old==current,
             'PRODUCT_INPUT_CONTRACT_CHANGED_WITHOUT_NEW_EPOCH')
-    if old==current:return
-    if hasattr(store,'model_cache'):store.model_cache.clear()
-    store.save_state('input_contract',current)
-    store.save_state('input_contract_history:'+str(current['scope_epoch']),current)
-    if not behavioral(current):
-        if behavioral(old):
-            # Bounded durable migration; never reset source cursors or delete
-            # behavior history. Old finance cannot become current merely by
-            # changing scope back to full.
+    changed=old!=current
+    if changed:
+        if hasattr(store,'model_cache'):store.model_cache.clear()
+        store.save_state('input_contract',current)
+        store.save_state('input_contract_history:'+str(current['scope_epoch']),current)
+        if not behavioral(current) and behavioral(old):
             import time
             store.save_state('finance_requalification',dict(scope_epoch=current['scope_epoch'],
                 required_since_ns=time.time_ns(),jobs_after=None,facts_after=None,jobs_done=False,facts_done=False))
-            store.raw.execute("UPDATE anomaly_detection.adp_case_signals SET state='DEFERRED',qualified=FALSE,review_eligible=FALSE WHERE family=ANY(%s) AND state='OUT_OF_SCOPE'",(list(DISABLED),))
-            changed=store.raw.execute("SELECT DISTINCT case_key FROM anomaly_detection.adp_case_signals WHERE family=ANY(%s)",(list(DISABLED),)).fetchall()
-            from .cases import refresh
-            for row in changed:refresh(store,row['case_key'],time.time_ns())
-        return
-    # This is a one-time scope migration, not a reset/retraining of behavior
-    # history. Existing finding/case versions and feedback remain untouched.
-    changed=store.raw.execute("UPDATE anomaly_detection.adp_case_signals SET state='OUT_OF_SCOPE',qualified=FALSE,review_eligible=FALSE "
-        "WHERE family=ANY(%s) AND state<>'OUT_OF_SCOPE' RETURNING case_key",(list(DISABLED),)).fetchall()
-    findings=store.raw.execute("SELECT * FROM anomaly_detection.adp_findings WHERE family=ANY(%s) AND state<>'OUT_OF_SCOPE'",(list(DISABLED),)).fetchall()
-    import time,json
-    now=time.time_ns()
-    for row in findings:
-        body=decisions([json.loads(row['body'])],current)[0]|dict(state='OUT_OF_SCOPE')
-        revision=row['revision']+1
-        store.raw.execute("UPDATE anomaly_detection.adp_findings SET state='OUT_OF_SCOPE',revision=%s,body=%s,content_digest=%s,updated_ns=%s WHERE finding_key=%s",(revision,canonical(body),digest(body),now,row['finding_key']))
-        store.raw.execute('INSERT INTO anomaly_detection.adp_finding_versions VALUES(%s,%s,%s,%s)',(row['finding_key'],revision,canonical(body),now))
-    from .cases import refresh
-    import time,json
-    now=time.time_ns()
-    for key in sorted({r['case_key'] for r in changed}):
-        refresh(store,key,now)
-        active=store.raw.execute("SELECT 1 FROM anomaly_detection.adp_case_signals WHERE case_key=%s AND state='ACTIVE' LIMIT 1",(key,)).fetchone()
-        if not active:
-            row=store.raw.execute('SELECT * FROM anomaly_detection.adp_cases WHERE case_key=%s',(key,)).fetchone()
-            if row:
-                body=json.loads(row['body'])|dict(state='OUT_OF_SCOPE',input_contract=BEHAVIOR,reason='FINANCIAL_RELATIONS_OUT_OF_SCOPE')
-                version=row['revision']+1
+    migration=store.state(MIGRATION)
+    needs=behavioral(current) or changed and behavioral(old) or bool(migration and not migration.get('complete'))
+    if needs and (not migration or migration.get('scope_epoch')!=current['scope_epoch']):
+        if migration:store.save_state(MIGRATION+':'+str(migration['scope_epoch']),migration)
+        store.save_state(MIGRATION,dict(scope_epoch=current['scope_epoch'],input_contract=current['input_contract'],
+            phase='signals',status='IN_PROGRESS',complete=False,pages=0,scanned=0,changed=0))
+
+
+def advance_migration(store,limit=32):
+    """One PK-bounded parent page, atomically committed with its cursor.
+
+    Predicates are evaluated only AFTER a finite parent page. A sparse finance
+    subset cannot make a LIMIT query rescan the entire unrelated history. Case
+    history and feedback remain; no aggregate of all signals/evidence is needed
+    merely to put a finance-only case outside the active product scope.
+    """
+    import json,time
+    require(type(limit) is int and 1<=limit<=128,'SCOPE_MIGRATION_PAGE_LIMIT')
+    with store.transaction():
+        state=store.state(MIGRATION);scope=store.state('input_contract')
+        if not state or state.get('complete'):return state
+        require(state['scope_epoch']==scope.get('scope_epoch') and state['input_contract']==scope.get('input_contract'),
+                'SCOPE_MIGRATION_CONTRACT_CHANGED')
+        phases=('signals','findings','cases');phase=state['phase']
+        tables={'signals':('adp_case_signals','signal_key'),'findings':('adp_findings','finding_key'),'cases':('adp_cases','case_key')}
+        table,key=tables[phase]
+        if 'through' not in state:
+            row=store.raw.execute('SELECT '+key+' FROM anomaly_detection.'+table+' ORDER BY '+key+' DESC LIMIT 1').fetchone()
+            state['through']=row[key] if row else None
+        rows=[]
+        if state['through'] is not None:
+            after=' AND '+key+'>%s' if state.get('after') is not None else ''
+            params=(state['through'],state['after'],limit) if after else (state['through'],limit)
+            rows=store.raw.execute('SELECT * FROM anomaly_detection.'+table+' WHERE '+key+'<=%s'+after+
+                ' ORDER BY '+key+' LIMIT %s',params).fetchall()
+        now=time.time_ns();changed=0;behavior=behavioral(scope)
+        for row in rows:
+            if phase=='signals':
+                if row['family'] not in DISABLED:continue
+                desired='OUT_OF_SCOPE' if behavior else 'DEFERRED'
+                if row['state']==desired or not behavior and row['state']!='OUT_OF_SCOPE':continue
+                store.raw.execute('UPDATE anomaly_detection.adp_case_signals SET state=%s,qualified=FALSE,review_eligible=FALSE WHERE signal_key=%s',
+                                  (desired,row[key]));changed+=1
+            elif phase=='findings':
+                if not behavior or row['family'] not in DISABLED or row['state']=='OUT_OF_SCOPE':continue
+                body=decisions([json.loads(row['body'])],scope)[0]|dict(state='OUT_OF_SCOPE')
+                revision=row['revision']+1
+                store.raw.execute("UPDATE anomaly_detection.adp_findings SET state='OUT_OF_SCOPE',revision=%s,body=%s,content_digest=%s,updated_ns=%s WHERE finding_key=%s",
+                    (revision,canonical(body),digest(body),now,row[key]))
+                store.raw.execute('INSERT INTO anomaly_detection.adp_finding_versions VALUES(%s,%s,%s,%s)',
+                                  (row[key],revision,canonical(body),now));changed+=1
+            else:
+                from .cases import KINDS
+                if row['issue_kind'] not in {KINDS[f] for f in DISABLED}:continue
+                desired='OUT_OF_SCOPE' if behavior else 'HOLD'
+                if row['state']==desired or not behavior and row['state']!='OUT_OF_SCOPE':continue
+                # The existing (case_key,state,...) index bounds this probe.
+                active=store.raw.execute("SELECT 1 FROM anomaly_detection.adp_case_signals WHERE case_key=%s AND state='ACTIVE' LIMIT 1",(row[key],)).fetchone()
+                if active:continue
+                body=json.loads(row['body'])|dict(state=desired,input_contract=scope['input_contract'],scope_epoch=scope['scope_epoch'],
+                    reason='FINANCIAL_RELATIONS_OUT_OF_SCOPE' if behavior else 'FINANCE_REQUALIFICATION_REQUIRED',active_signals=0)
+                if behavior:
+                    body['deferred_signals']=0
+                    if body.get('strongest',{}).get('family') in DISABLED:
+                        body['strongest']=decisions([body['strongest']],scope)[0]
+                revision=row['revision']+1
                 store.raw.execute('UPDATE anomaly_detection.adp_cases SET state=%s,revision=%s,body=%s,content_digest=%s,updated_ns=%s WHERE case_key=%s',
-                    ('OUT_OF_SCOPE',version,canonical(body),digest(body),now,key))
-                store.raw.execute('INSERT INTO anomaly_detection.adp_case_versions VALUES(%s,%s,%s,%s)',(key,version,canonical(body),now))
+                    (desired,revision,canonical(body),digest(body),now,row[key]))
+                store.raw.execute('INSERT INTO anomaly_detection.adp_case_versions VALUES(%s,%s,%s,%s)',
+                                  (row[key],revision,canonical(body),now));changed+=1
+        state.update(pages=state['pages']+1,scanned=state['scanned']+len(rows),changed=state['changed']+changed)
+        if rows:state['after']=rows[-1][key]
+        if not rows or rows[-1][key]>=state['through']:
+            next_index=phases.index(phase)+1
+            if next_index==len(phases):state.update(phase='complete',status='COMPLETE',complete=True)
+            else:
+                state['phase']=phases[next_index];state.pop('after',None);state.pop('through',None)
+        store.save_state(MIGRATION,state)
+    return state
 
 
 def advance_requalification(store,limit=128):

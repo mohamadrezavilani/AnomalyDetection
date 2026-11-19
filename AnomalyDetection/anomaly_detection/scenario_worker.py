@@ -3,7 +3,7 @@ from .process_control import safe_failure
 from .history_scope import effective_floor
 
 
-def step(store,source,clock,cycle,state):
+def step(store,source,clock,cycle,state,*,source_ready=True):
     if not callable(getattr(source,'profile',None)):return
     from .scenario_store import seed,next_profile,save_profile,process_one
     errors=state.setdefault('scenario_lane_failures',{});due=state.setdefault('scenario_lane_retry_ns',{})
@@ -27,7 +27,7 @@ def step(store,source,clock,cycle,state):
         lane='service_sample_old_cursor' if cycle%8==6 else 'service_sample_fresh_cursor'
         packet=read(source,store.state(lane));state['last_service_sample']=apply(store,packet,lane)
         if lane=='service_sample_old_cursor' and packet['status']=='CAUGHT_UP':store.save_state(lane,{'next_ns':effective_floor(packet['source'])})
-    if cycle%4==2:attempt('sample_service_requests',sample)
+    if source_ready and cycle%4==2:attempt('sample_service_requests',sample)
     def profiles():
         until=clock.monotonic()+1.0
         for turn in range(4):
@@ -39,7 +39,8 @@ def step(store,source,clock,cycle,state):
                 store.raw.execute('UPDATE anomaly_detection.adp_profile_tasks SET due_ns=%s,attempts=attempts+1 WHERE request_key=%s',(clock.time_ns()+60_000_000_000,key));raise
             state['content_reads']=state.get('content_reads',0)+1
             if clock.monotonic()>=until:break
-    attempt('read_request_content',profiles)
+    if source_ready:attempt('read_request_content',profiles)
+    state['scenario_source_reads_deferred']=not source_ready
     def model():
         store.active_scenario_scope=None
         try:outcome=process_one(store,clock.time_ns())
@@ -66,6 +67,6 @@ def step(store,source,clock,cycle,state):
             if getattr(exc,'sqlstate',None)=='57014':
                 cursor=store.state(lane);cursor['page_size']=max(64,int(cursor.get('page_size',1024))//2);store.save_state(lane,cursor)
             raise
-    if cycle%8==1:attempt('read_technical_request_census',traffic)
+    if source_ready and cycle%8==1:attempt('read_technical_request_census',traffic)
     state['last_scenario_failure']=max(errors.values(),key=lambda x:x['at_ns']) if errors else None
     state['scenario_queue_activity']=getattr(store,'scenario_queue_activity',{})

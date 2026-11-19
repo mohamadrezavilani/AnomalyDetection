@@ -16,10 +16,14 @@ def maintenance(store,clock,cycle,state):
     def previous():
         value=store.state('previous_import')
         return value if value.get('done') else store.import_previous()
-    tasks=[('job_scope_backfill',scope),('case_migration',lambda:backfill(store)),
+    from .behavior_scope import advance_migration
+    tasks=[('behavior_scope_migration',lambda:advance_migration(store)),('job_scope_backfill',scope),('case_migration',lambda:backfill(store)),
         ('review_policy_migration',lambda:requalify(store,clock.time_ns())),
         ('population_backfill',lambda:population_warm(store)),('previous_import',previous)]
-    if cycle%16==1:tasks.append(('rate_history_requalification',lambda:history_warm(store)))
+    if cycle%16==1:
+        from .product_engine import warm_model_references
+        tasks += [('rate_history_requalification',lambda:history_warm(store)),
+                  ('model_reference_requalification',lambda:warm_model_references(store,clock.time_ns()))]
     if cycle%4==0:tasks += [('service_reference_warm',lambda:warm_one(store)),('live_priority_warm',lambda:store.warm_live_priorities()),('evidence_priority_backfill',lambda:priority_warm(store,clock.time_ns()))]
     failures=state.setdefault('maintenance_failures',{});due=state.setdefault('maintenance_retry_ns',{})
     for name,call in tasks:

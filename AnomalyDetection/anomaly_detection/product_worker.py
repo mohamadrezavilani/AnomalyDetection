@@ -21,6 +21,7 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
             source_pages=0,evaluated_jobs=0,audited_requests=0,cohort_windows=0,source_attempts=0,
             historical_recheck_age_limit=None,operator_parameters_required=False,operator_alerts=0,precision_recall='NOT_EVALUATED',sqlite_loaded='sqlite3' in sys.modules)
         next_scope_check=0.
+        scope_check_pending=False
         raw=store=source=None;next_connect=next_source=next_report=next_heartbeat=next_web=0.;turn=cycles=iterations=0
         from .viewer_priority import ViewerPriority
         viewer_priority=ViewerPriority()
@@ -113,16 +114,10 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                 elif source is not None and hasattr(source,'analysis_floor_ns'):
                     source.analysis_floor_ns=store.history_floor_ns
                 state.update(state='DEGRADED_SOURCE' if state.get('last_source_failure') else
-                    'DEGRADED_OWNED_APPLY' if any(state.get(k) for k in ('semantic_apply_blocked','audit_apply_blocked','window_apply_blocked')) else 'RUNNING',phase='owned_historical_import')
+                    'DEGRADED_OWNED_APPLY' if any(state.get(k) for k in ('semantic_apply_blocked','audit_apply_blocked','window_apply_blocked','contract_apply_blocked')) else 'RUNNING',phase='owned_historical_import')
+                analysis_admitted=False
                 try:
                     keys=[];job=None
-                    if source is not None and callable(getattr(source,'metadata',None)) and clock.monotonic()>=next_scope_check:
-                        with source.snapshot() as query:scope_source=source.metadata(query)
-                        with store.transaction():store.bind(scope_source)
-                        state['input_contract']=store.state('input_contract')
-                        next_scope_check=clock.monotonic()+30
-                    from .behavior_scope import advance_requalification
-                    with store.transaction():advance_requalification(store)
                     # Serving existing owned results is independent of the
                     # disk admission decision for background analysis.
                     if web and clock.monotonic()>=next_web:
@@ -140,7 +135,27 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                     if not admission['admitted']:
                         state.update(state='WAITING_FOR_VIEWER_PUBLICATION',phase='yield_disk_to_viewer')
                         publish();wait(.5);continue
-                    cycles+=1
+                    cycles+=1;analysis_admitted=True
+                    if source is not None and callable(getattr(source,'metadata',None)) and clock.monotonic()>=next_scope_check:
+                        state['phase']='read_input_contract';publish(True)
+                        with source.snapshot() as query:scope_source=source.metadata(query)
+                        state['phase']='apply_input_contract';publish(True)
+                        with store.transaction():store.bind(scope_source)
+                        state['input_contract']=store.state('input_contract')
+                        state['input_contract_check']={'status':'CURRENT','checked_ns':clock.time_ns()}
+                        state['contract_apply_blocked']=False
+                        if state.get('last_owned_apply_failure_event',{}).get('phase')=='apply_input_contract':
+                            state['last_storage_failure']=None
+                        if state.get('last_source_failure_event',{}).get('phase') in ('read_input_contract','apply_input_contract'):
+                            state['last_source_failure']=None
+                        state['behavior_scope_migration']=store.state('behavior_scope_migration_v2')
+                        scope_check_pending=False
+                        next_scope_check=clock.monotonic()+30
+                    if scope_check_pending:
+                        state.update(state='DEGRADED_OWNED_APPLY' if state.get('contract_apply_blocked') else 'DEGRADED_SOURCE',phase='wait_input_contract_retry')
+                        publish();wait(.2);continue
+                    from .behavior_scope import advance_requalification
+                    with store.transaction():advance_requalification(store)
                     from .runtime_lanes import maintenance
                     from .population import process_one as population_process
                     maintenance(store,clock,cycles,state)
@@ -333,6 +348,18 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                     state['last_storage_failure']=None;publish();wait(.05)
                 except Exception as exc:
                     failure=safe_failure(exc)
+                    contract_rejected=(state['phase']=='apply_input_contract' and str(exc) in (
+                        'PRODUCT_INPUT_CONTRACT_EPOCH_REGRESSED','PRODUCT_INPUT_CONTRACT_CHANGED_WITHOUT_NEW_EPOCH',
+                        'PRODUCT_SOURCE_IDENTITY_CHANGED','PRODUCT_SOURCE_GENERATION_REGRESSED'))
+                    if state['phase']=='apply_input_contract' and getattr(exc,'sqlstate',None) in ('57014','55P03'):
+                        # bind() has unwound its owned transaction. A bounded
+                        # write retry does not require dropping a live lease.
+                        scope_check_pending=True;next_scope_check=clock.monotonic()+10
+                        state.update(state='DEGRADED_OWNED_APPLY',contract_apply_blocked=True,last_storage_failure=failure)
+                        state['input_contract_check']={'status':'RETRY_OWNED_APPLY','failure':failure,'at_ns':clock.time_ns()}
+                        state['owned_apply_failures_total']=state.get('owned_apply_failures_total',0)+1
+                        state['last_owned_apply_failure_event']={'phase':state['phase'],'at_ns':clock.time_ns(),'failure':failure,'queries':raw.metrics()}
+                        publish(True);wait(.2);continue
                     if str(exc)=='PRODUCT_CONTEXT_INPUT_CHANGED_RETRY':
                         state['input_retries']=state.get('input_retries',0)+1
                         publish(True);continue
@@ -386,8 +413,11 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                         state.update(state='DEGRADED_EVIDENCE_QUEUE',last_storage_failure=failure)
                         state['last_evidence_queue_failure']={'at_ns':clock.time_ns(),'queries':raw.metrics(),'failure':failure}
                         publish(True);wait(.05);continue
-                    if state['phase'].startswith(('read_','audit_')):
+                    if state['phase'].startswith(('read_','audit_')) or contract_rejected:
                         state.update(state='DEGRADED_SOURCE',last_source_failure=failure)
+                        if state['phase']=='read_input_contract' or contract_rejected:
+                            scope_check_pending=True;next_scope_check=clock.monotonic()+10
+                            state['input_contract_check']={'status':'RETRY_SOURCE','failure':failure,'at_ns':clock.time_ns()}
                         state['source_failures_total']=state.get('source_failures_total',0)+1
                         state['last_source_failure_event']={'phase':state['phase'],'lane':state.get('active_source_lane'),
                             'at_ns':clock.time_ns(),'failure':failure,'queries':getattr(source,'last_metrics',[])}
@@ -408,9 +438,9 @@ def run(root,sha, *, source_factory=ProductSource,prepare_pg=prepare,clock=None,
                 finally:
                     # Reserved content/model work also runs after a failed
                     # source read, primary evaluation or evidence selection.
-                    if store is not None:
+                    if store is not None and analysis_admitted:
                         from .scenario_worker import step as scenario_step
-                        scenario_step(store,source,clock,cycles,state)
+                        scenario_step(store,source,clock,cycles,state,source_ready=not scope_check_pending)
                         publish()
             else:state.update(state='STOPPED',stop_reason='OFFLINE_TEST_CYCLE_BOUND')
         except KeyboardInterrupt:state.update(state='STOPPED',stop_reason='INTERRUPTED')

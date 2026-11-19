@@ -19,20 +19,28 @@ FIVE=300*SECOND
 def ad_status(project):
     from viewer_performance.Run_Viewer_Index_Probe_UTF8 import run_utf8
     child=run_utf8([sys.executable,'-B',str(project/'AnomalyDetection/run_anomaly.py'),'worker-status'],timeout=15)
-    if child.returncode:raise ValueError('ad_status_command_failed')
     value=json.loads(child.stdout)
-    if not value.get('running') or not value.get('observation_matches_process') or value.get('heartbeat_age_seconds',999)>30:
-        raise ValueError('ad_worker_not_fresh_and_verified')
-    owner=value['process']['owner'];worker=value['worker'];stats=worker.get('statistics',{})
+    owner=(value.get('process') or {}).get('owner') or {};worker=value.get('worker') or {};stats=worker.get('statistics',{})
+    expected=json.loads((project/'AnomalyDetection/RELEASE_MANIFEST.json').read_text(encoding='utf-8-sig'))
+    installed_match=all(owner.get(k)==expected.get(k) for k in ('build_id','source_sha256'))
+    fresh=bool(not child.returncode and value.get('running') and value.get('observation_matches_process')
+        and installed_match and type(value.get('heartbeat_age_seconds')) in (int,float) and value['heartbeat_age_seconds']<=30)
     return dict(identity={k:owner.get(k) for k in ('pid','instance_token','build_id','source_sha256')},
-        heartbeat_age_seconds=value['heartbeat_age_seconds'],state=value['health'],
+        fresh_and_verified=fresh,running=value.get('running'),observation_matches_process=value.get('observation_matches_process'),
+        matches_installed_release=installed_match,installed_ad_identity={k:expected.get(k) for k in ('build_id','source_sha256')},
+        status_read_exit_code=child.returncode,diagnostic_failure=value.get('failure'),
+        heartbeat_age_seconds=value.get('heartbeat_age_seconds'),state=value.get('health',value.get('status')),
+        heartbeat_ns=worker.get('heartbeat_ns'),phase=worker.get('phase'),
+        input_contract=worker.get('input_contract'),input_contract_check=worker.get('input_contract_check'),
+        behavior_scope_migration=worker.get('behavior_scope_migration'),
         counters={k:worker.get(k) for k in ('evaluated_jobs','scenario_evaluations','source_pages',
             'audited_requests','source_attempts','owned_apply_failures_total','scenario_failures_total',
             'source_failures_total','evaluation_timeouts_total')},
         window_lanes=worker.get('window_lanes',{}),statistics_at_ns=worker.get('statistics_at_ns'),
         statistics_status=worker.get('statistics_status'),
         jobs=stats.get('jobs'),population_queue=stats.get('population_queue'),
-        latest_failures={k:worker.get(k) for k in ('last_source_failure','last_storage_failure','last_scenario_failure')},
+        latest_failures={k:worker.get(k) for k in ('last_source_failure','last_storage_failure','last_scenario_failure',
+            'last_source_failure_event','last_owned_apply_failure_event','last_evaluation_failure_event','last_fatal_failure')},
         pending_counts_are_worker_cached_statistics=True)
 
 
@@ -48,8 +56,23 @@ def prefix_snapshot(reader):
 
 
 def ad_prefix_distance(source,ad):
+    if (ad or {}).get('fresh_and_verified') is False:return None
     cursor=(ad or {}).get('window_lanes',{}).get('fresh_cursor',{}).get('cursor',{}).get('next_ns')
     return max(0,(source['next_ns']-cursor)//FIVE) if source.get('status')=='READ' and type(cursor)is int else None
+
+
+def scope_snapshot(reader):
+    try:
+        rows=reader.rows('SELECT contract,epoch,state FROM public.viewer_product_scope WHERE id=1')
+        return dict(status='READ',**rows[0]) if len(rows)==1 else dict(status='UNAVAILABLE')
+    except Exception as exc:return dict(status='UNAVAILABLE',error_type=type(exc).__name__)
+
+
+def scope_agreement(viewer,ad):
+    contract=(ad or {}).get('input_contract') or {}
+    if viewer.get('status')!='READ' or not contract:return 'UNAVAILABLE'
+    return 'MATCH' if (viewer.get('state')=='READY' and contract.get('input_contract')==viewer.get('contract')
+        and contract.get('scope_epoch')==viewer.get('epoch')) else 'MISMATCH'
 
 
 class Measurement:
@@ -123,7 +146,15 @@ def collect(project,reader,*,seconds,target=0,clock=time.monotonic,wait=time.sle
                 or receipt['canonical_runtime_source_sha256']!=BASE_RUNTIME):
             raise ValueError('running_writer_is_not_installed_implementation')
         return receipt
-    identity=current();before=ad(project);prefix_before=prefix_snapshot(reader);old=recent_publications(project,identity)
+    ad_samples=[];ad_issues=set()
+    def read_ad():
+        try:value=ad(project)
+        except Exception as exc:value=dict(fresh_and_verified=False,identity={},counters={},
+            state='STATUS_READ_FAILED',diagnostic_failure={'error_type':type(exc).__name__})
+        ad_samples.append(dict(observed_monotonic=clock(),value=value))
+        if value.get('fresh_and_verified') is False:ad_issues.add('AD_HEARTBEAT_OR_IDENTITY_UNVERIFIED')
+        return value
+    identity=current();before=read_ad();prefix_before=prefix_snapshot(reader);scope_before=scope_snapshot(reader);old=recent_publications(project,identity)
     generation=reader.rows('SELECT generation FROM public.viewer_live_state WHERE id=1')[0]['generation']
     began=clock();measurement=Measurement(identity,old[-1]['sequence'] if old else 0,began,generation)
     samples=[];activity=Counter();failure=None;last_ad=before;next_ad=began+60
@@ -142,8 +173,8 @@ def collect(project,reader,*,seconds,target=0,clock=time.monotonic,wait=time.sle
             measurement.add(now,rows,observed=clock())
             if verify_sources(project)!=source:raise ValueError('installed_writer_changed')
             if clock()>=next_ad:
-                last_ad=ad(project);next_ad=clock()+60
-                if last_ad['identity']!=before['identity']:raise ValueError('ad_instance_changed')
+                last_ad=read_ad();next_ad=clock()+60
+                if last_ad.get('identity')!=before.get('identity'):ad_issues.add('AD_INSTANCE_CHANGED')
             snapshot=activity_rows(reader.rows(ACTIVITY_SQL),names)
             # Compact uniform-time samples; no SQL/key/body export and no full
             # table scans. Bound memory for the eight-hour maximum.
@@ -159,8 +190,8 @@ def collect(project,reader,*,seconds,target=0,clock=time.monotonic,wait=time.sle
             committed_windows=len(measurement.rows),implementation_source_sha256=source))
         wait(min(5,max(0,seconds-(clock()-began))))
     try:
-        after=ad(project)
-        if after['identity']!=before['identity']:failure='ad_instance_changed'
+        after=read_ad()
+        if after.get('identity')!=before.get('identity'):ad_issues.add('AD_INSTANCE_CHANGED')
         # Revalidate after the final AD call as well: a process replacement at
         # the end must not turn into an accepted same-implementation result.
         if identity_key(current())!=identity_key(identity):failure='writer_changed_at_observation_end'
@@ -169,11 +200,19 @@ def collect(project,reader,*,seconds,target=0,clock=time.monotonic,wait=time.sle
     summary=measurement.summary(clock()-began)
     if failure:summary.update(status='INVALID',failure=failure)
     prefix_after=prefix_snapshot(reader)
-    return dict(status='PARTIAL_VERIFIED_WRITER_OBSERVATION' if summary['failure'] else 'VERIFIED_WRITER_OBSERVATION',
+    scope_after=scope_snapshot(reader)
+    agreements=dict(before=scope_agreement(scope_before,before),after=scope_agreement(scope_after,after))
+    if any(value!='MATCH' for value in agreements.values()):ad_issues.add('INPUT_CONTRACT_UNVERIFIED_OR_CHANGED')
+    comparable=bool(after and not ad_issues and before.get('identity')==after.get('identity'))
+    return dict(status='PARTIAL_VERIFIED_WRITER_OBSERVATION' if summary['failure'] or ad_issues else 'VERIFIED_WRITER_OBSERVATION',
         database_modified=False,workers_restarted=False,writer_identity=identity,throughput=summary,
         baseline_generation=generation,
+        publication_receipts=measurement.rows,
+        viewer_scope_before=scope_before,viewer_scope_after=scope_after,input_contract_agreement=agreements,
+        ad_observation_status='DEGRADED_OR_UNVERIFIABLE' if ad_issues else 'STABLE_VERIFIED_PROCESS',
+        ad_observation_issues=sorted(ad_issues),ad_samples=ad_samples,
         ad_before=before,ad_after=after,ad_progress_delta={k:after['counters'][k]-v
-            for k,v in before['counters'].items() if after and type(v)is int and type(after['counters'].get(k))is int},
+            for k,v in before['counters'].items() if comparable and type(v)is int and type(after['counters'].get(k))is int},
         samples=samples,final_write_samples=[dict(operation=k[0],relations=k[1],samples=v) for k,v in activity.items()],
         source_prefix_before=prefix_before,source_prefix_after=prefix_after,
         ad_fresh_prefix_distance_windows_before=ad_prefix_distance(prefix_before,before),
