@@ -1,6 +1,6 @@
 {
   "build_id": "AD-20261119-BEHAVIOR-RECOVERY",
-  "source_sha256": "d87c50d865e0f6988b3ba9e854dc3e12ca754bd7518f18ec6b7d4f86caf2bf72",
+  "source_sha256": "8b7b7be5420306cc4ecf46f77243a05a3e04cf6a223c2d0c26f0d50e2138047d",
   "files_sha256": {
     "ACCEPTANCE_SCENARIOS_25_FA.md": "0736348c6fe512e9849add98fac8d16da49b803ec1477347d6bd755296c80bc5",
     "AGENTS.md": "52edd117b86b2ce876e6baf70d4df77807e83e6252aae6b2b11c7bec2568fff1",
@@ -74,7 +74,7 @@
     "anomaly_detection/product_control.py": "657efa8af906a10d14ea07c8ef1cc993dcee1654af424c8a6edf6379dcc06c4c",
     "anomaly_detection/product_dependencies.py": "f2b19dac6d3b8467f7aac119214a647c5c36aba9ff39907e7e29490a74d6f6f5",
     "anomaly_detection/product_diagnostics.py": "75268b6ae364e0038cbde079fc3127ba3dcf8b233e927f16d253665ec1491805",
-    "anomaly_detection/product_engine.py": "e0b9321d0d9580d47793dbf7183f6bb971730f821b7b8b361ad01d76cc616425",
+    "anomaly_detection/product_engine.py": "ff18c3510d3553b7af1a78cdb84eb57889ba612289af830414e04634c359ecab",
     "anomaly_detection/product_enrichment.py": "0794c13a08caf84e013ba41048f2196fd6bbd7a251d0714bb97985fa9cd0f739",
     "anomaly_detection/product_evaluations.py": "3974dd2cb80a102c22d2b275b99928ba6c73e247cc315727d1af6075116ebe2c",
     "anomaly_detection/product_models.py": "105d8130b7bb045bdd34455dad8999019017ca3548c0cc7e9441700a227fe9cf",
@@ -133,7 +133,7 @@
     "tests/test_acceptance_report.py": "45f4f93ab93366f2c4736d2b6869d3a499781890553589b802b5df50a7660876",
     "tests/test_audit_continuation.py": "423d3c4284233fc23219b52e490bbab6ab4bf4a434fc0dfd95ba8b48586bc576",
     "tests/test_audit_fixes.py": "5f38aad091621daec04aa03744341a14d7ef34ffaf39db343e16d0d7b5df6e5e",
-    "tests/test_behavior_recovery.py": "a2af7d2eb8c14a4565f6b5c1e758d46bc73cbdd251ff29649852b2dc67738966",
+    "tests/test_behavior_recovery.py": "16b74d87c68d2086a325b7c7756659fff1909b218afb52ab8ea59f3e5c8176f3",
     "tests/test_behavior_scope.py": "c62f2ac091cf84f0865e2c8f70677f5ca0b93f93300ee2a5eea44d835f3edd6d",
     "tests/test_bounded_source_work.py": "825a1520e97b4fe083006da9910494804246adf4bd47febe010e929c5ea36523",
     "tests/test_context_models.py": "98216183ae4ba2c2ca34fda6c257ddb89f3ddb75dac1183e31a2e6e2869a4463",

@@ -63,6 +63,11 @@ def ad_prefix_distance(source,ad):
 
 def scope_snapshot(reader):
     try:
+        present=reader.rows("SELECT to_regclass('public.viewer_product_scope') AS present")
+        if present and not present[0]['present']:
+            # Same legacy default as Viewer and the AD source contract. It
+            # cannot match a behavior contract without the explicit scope row.
+            return dict(status='READ',contract='viewer-full-relations-1',epoch=0,state='READY',scope_origin='LEGACY_FULL_DEFAULT')
         rows=reader.rows('SELECT contract,epoch,state FROM public.viewer_product_scope WHERE id=1')
         return dict(status='READ',**rows[0]) if len(rows)==1 else dict(status='UNAVAILABLE')
     except Exception as exc:return dict(status='UNAVAILABLE',error_type=type(exc).__name__)

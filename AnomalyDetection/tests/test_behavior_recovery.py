@@ -231,11 +231,15 @@ class NativeBehaviorRecoveryTests(unittest.TestCase):
     def test_old_model_results_are_requeued_by_bounded_page_without_resetting_jobs_or_history(self):
         from anomaly_detection.product_engine import warm_model_references
         from anomaly_detection.snapshot import canonical
+        with self.store.transaction():self.store.bind(source())
         self.raw.execute('INSERT INTO anomaly_detection.adp_jobs(session_key,target_ns,version,processed_version,dirty,last_evaluated_ns,evaluation) '
             "SELECT 'actor-'||i,%s,3,3,FALSE,1,%s FROM generate_series(1,5) i",(FIVE_NS,canonical({'evaluator_version':'old',
                 'decisions':[{'family':'rate_5m','model_id':'old-model'}]})))
+        self.raw.execute("INSERT INTO anomaly_detection.adp_jobs(session_key,target_ns,version,processed_version,dirty,last_evaluated_ns,evaluation) VALUES('actor-6',%s,3,3,FALSE,1,%s)",
+            (FIVE_NS,canonical({'evaluator_version':'old','decisions':[{'family':'payment_result_change','model_id':'old-finance-model'}]})))
         state=warm_model_references(self.store,1,limit=2)
         self.assertEqual(state['scanned'],2);self.assertFalse(state['done'])
         while not state['done']:state=warm_model_references(self.store,1,limit=2)
         self.assertEqual(self.raw.execute('SELECT COUNT(*) AS n FROM anomaly_detection.adp_model_queue').fetchone()['n'],5)
+        self.assertEqual(state['requeued'],5)
         self.assertTrue(self.raw.execute('SELECT BOOL_AND(version=3 AND processed_version=3 AND NOT dirty) AS ok FROM anomaly_detection.adp_jobs').fetchone()['ok'])

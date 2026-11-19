@@ -143,6 +143,9 @@ def warm_model_references(store,now,limit=64):
             queued=store.raw.execute('SELECT families FROM anomaly_detection.adp_model_queue WHERE session_key=%s AND target_ns=%s',
                 (row['session_key'],row['target_ns'])).fetchone()
             if queued:families.update(json.loads(queued['families']))
+            from .behavior_scope import behavioral,DISABLED
+            if behavioral(store.state('input_contract')):families.difference_update(DISABLED)
+            if not families:continue
             schedule(store,row,sorted(families),now);changed+=1
         state.update(scanned=state.get('scanned',0)+len(rows),requeued=state.get('requeued',0)+changed,done=len(rows)<limit)
         if rows:state['after']=[rows[-1]['session_key'],rows[-1]['target_ns']]
