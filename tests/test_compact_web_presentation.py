@@ -16,8 +16,8 @@ class PresentationTests(unittest.TestCase):
 
     def test_group_list_labels_threshold_and_keeps_identity_inside_details(self):
         self.db.execute.return_value.fetchall.return_value = [dict(
-            group_id='a'*32, method='actor_rate', service='Core.v1/LoginByOTP',
-            session_id='private-long-session',first_ns=0,last_ns=300000000000,
+            group_id='a'*32, methods=['actor_rate'], service='Core.v1/LoginByOTP',
+            session_id='private-long-session',session_count=2,has_service_scope=True,first_ns=0,last_ns=300000000000,
             signal_count=3,finding_id='f',result=dict(observed=51,baseline=3,
             threshold=18.8,reference_windows=24))]
         response=self.client.get('/incidents')

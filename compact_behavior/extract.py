@@ -31,6 +31,8 @@ BUSINESS_SQL = {
 PROVIDERS = {
     "Services.v1/WaterBills": "ClientAyanCoInquiry.WaterBillInquiry",
     "Services.v1/GasBills": "ClientAyanCoInquiry.GasBillInquiry",
+    # PostPackagesStatusHandler.CallService invokes exactly this provider.
+    "Services.v1/PostPackagesStatus": "ClientAyanCoInquiry.PostTrackingInquiry",
 }
 ANCILLARY = {
     "ClientAyanCoPaymentGateway.PaymentInquiry",
@@ -201,6 +203,11 @@ def sql_fields(message):
         raw = text[end : marks[j + 1][0] if j + 1 < len(marks) else len(text)].strip()
         try:
             if name in ("queryparameters", "queryresult"):
+                # SQL nullable payloads are logged as an empty parameter value.
+                # Absence is not malformed JSON and must not shadow an exact
+                # reviewed same-request provider. Nonempty malformed JSON blocks.
+                if not raw:
+                    continue
                 value = scrub(json.loads(raw, object_pairs_hook=unique_object))
             else:
                 value = raw
