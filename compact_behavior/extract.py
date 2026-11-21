@@ -170,7 +170,7 @@ def scrub(value, depth=0):
     return value
 
 
-def sql_fields(message, context=None, context_source=None):
+def sql_fields(message, context=None, context_source=None, observed_at_ns=None):
     """Recognized parameter boundaries at JSON depth zero; no SQL text retained."""
     if "(SQL Parameters:" not in message:
         return {}, set()
@@ -203,7 +203,7 @@ def sql_fields(message, context=None, context_source=None):
         if name not in ("queryparameters", "queryresult", "action", "serviceid"):
             if context is not None and name in request_context.SQL_FIELDS:
                 raw = text[end : marks[j + 1][0] if j + 1 < len(marks) else len(text)].strip()
-                request_context.observe(context, request_context.SQL_FIELDS[name], raw, context_source + '.@' + name)
+                request_context.observe(context, request_context.SQL_FIELDS[name], raw, context_source + '.@' + name, observed_at_ns)
             continue
         raw = text[end : marks[j + 1][0] if j + 1 < len(marks) else len(text)].strip()
         try:
@@ -347,7 +347,6 @@ def facts(row):
     if not request:
         return None
     result = empty(request)
-    context = request_context.from_log(row)
     result["raw_request_ids"] = [raw_request]
     if request_state != "present":
         result["issues"].append("request_id_" + request_state)
@@ -366,6 +365,7 @@ def facts(row):
     except ValueError:
         at = None
         result["issues"].append("timestamp_unavailable")
+    context = request_context.from_log(row, at)
     path, path_status = field(row, "CallPath")
     message, message_status = field(row, "message")
     path = LINE.sub("", path) if isinstance(path, str) else ""
@@ -380,7 +380,7 @@ def facts(row):
         if re.match(r"^(?:GET|POST|PUT|DELETE|PATCH|HEAD)\s+https?://", message):
             if not context:
                 context = request_context.empty()
-            request_context.observe(context, 'http_method', message.split(' ', 1)[0], 'public_http_completion')
+            request_context.observe(context, 'http_method', message.split(' ', 1)[0], 'public_http_completion', at)
             code = STATUS.search(message)
             duration, _ = field(row, "ExecutionTime")
             try:
@@ -425,7 +425,7 @@ def facts(row):
                 dict(direction=label, basis=basis, path=path, observed_at_ns=at)
             )
             continue
-        context = request_context.combine(context, request_context.from_payload(value, 'payload.' + path))
+        context = request_context.combine(context, request_context.from_payload(value, 'payload.' + path, at))
         result[label].append(
             dict(basis=basis, path=path, **packed(value), observed_at_ns=at)
         )
@@ -455,7 +455,7 @@ def facts(row):
     if path in request_context.SQL_PATHS or path == "DBPath.pishkhan24.application.ud_prc_invoiceRequest":
         if path in request_context.SQL_PATHS and not context:
             context = request_context.empty()
-        params, errors = sql_fields(message, context if path in request_context.SQL_PATHS else None, path)
+        params, errors = sql_fields(message, context if path in request_context.SQL_PATHS else None, request_context.SQL_SOURCES.get(path, path), at)
         if (
             path.endswith(".ud_prc_userSessionHasAccess")
             and "action" in params

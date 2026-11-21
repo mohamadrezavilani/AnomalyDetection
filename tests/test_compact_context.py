@@ -44,6 +44,13 @@ class CompactContextTests(unittest.TestCase):
         self.assertNotIn('ip',other['values'])
         self.assertEqual(other['values']['http_method'][0]['value'],'POST')
 
+    def test_first_evidence_time_is_preserved_without_inventing_unknown_time(self):
+        a=from_log({'IP':'192.0.2.1'}, 100)
+        b=from_log({'IP':'192.0.2.1'}, 200)
+        self.assertEqual(combine(a,b)['values']['ip'][0]['first_ns'],100)
+        c=combine(a,from_log({'IP':'192.0.2.1'}))['values']['ip'][0]
+        self.assertTrue(c['undated']);self.assertEqual(c['first_ns'],100)
+
     def test_metadata_does_not_change_existing_features_or_quality(self):
         a=materialize('test',facts(row()))
         b=materialize('test',facts(dict(row(),IP='192.0.2.1',UserAgent='Browser')))

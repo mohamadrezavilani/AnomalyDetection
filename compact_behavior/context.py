@@ -13,6 +13,15 @@ SQL_PATHS = {
     'DBPath.pishkhan24.application.ud_prc_userSessionCreate',
     'DBPath.pishkhan24.application.ud_prc_userSessionUpdateInfo',
 }
+SQL_SOURCES = dict(zip(sorted(SQL_PATHS), ('sql.create', 'sql.access', 'sql.update')))
+SOURCE_NAMES = {value: key for key, value in SQL_SOURCES.items()}
+
+
+def source_label(source):
+    prefix, separator, suffix = source.partition('.@')
+    return SOURCE_NAMES.get(prefix, prefix) + separator + suffix
+
+
 SQL_FIELDS = {'ipaddress': 'ip', 'useragent': 'user_agent', 'application': 'application',
               'platform': 'platform', 'version': 'app_version'}
 LOG_FIELDS = {'IP': 'ip', 'UserAgent': 'user_agent', 'userAgent': 'user_agent'}
@@ -32,7 +41,7 @@ def normalized_ip(value):
         return None
 
 
-def observe(context, field, value, source):
+def observe(context, field, value, source, observed_at_ns=None):
     if not isinstance(value, str):
         return
     value = value.strip()
@@ -57,15 +66,18 @@ def observe(context, field, value, source):
         if entry['value'] == value:
             sources = sorted(set(entry['sources'] + [source]))
             entry['sources'] = sources[:MAX_SOURCES]
+            times = [v for v in (entry.get('first_ns'), observed_at_ns) if v is not None]
+            entry['first_ns'] = min(times) if times else None
+            entry['undated'] = entry.get('undated', False) or observed_at_ns is None
             return
-    values.append({'value': value, 'sources': [source]})
+    values.append({'value': value, 'sources': [source], 'first_ns': observed_at_ns, 'undated': observed_at_ns is None})
     values.sort(key=lambda e: e['value'])
     if len(values) > MAX_VALUES:
         del values[MAX_VALUES:]
         context['limited'] = sorted(set(context['limited'] + [field + '_variants']))
 
 
-def from_log(row):
+def from_log(row, observed_at_ns=None):
     result = empty()
     source = row.get('_source', row if 'fields' not in row else {})
     for data in (source, row.get('fields', {})):
@@ -74,7 +86,7 @@ def from_log(row):
         for name, target in LOG_FIELDS.items():
             value = data.get(name)
             for item in value if isinstance(value, list) else [value]:
-                observe(result, target, item, 'log.' + name)
+                observe(result, target, item, 'log.' + name, observed_at_ns)
     return result if result['values'] or result['limited'] else {}
 
 
@@ -97,10 +109,14 @@ def combine(a, b):
             if old is None:
                 entries[entry['value']] = entry
                 field_changed = True
-            elif any(source not in old['sources'] for source in entry['sources']):
+            else:
                 sources = sorted(set(old['sources'] + entry['sources']))[:MAX_SOURCES]
-                if sources != old['sources']:
-                    entries[entry['value']] = {'value': entry['value'], 'sources': sources}
+                times = [v for v in (old.get('first_ns'), entry.get('first_ns')) if v is not None]
+                merged = {'value': entry['value'], 'sources': sources,
+                    'first_ns': min(times) if times else None,
+                    'undated': old.get('undated', False) or entry.get('undated', False)}
+                if merged != old:
+                    entries[entry['value']] = merged
                     field_changed = True
         if field_changed:
             if len(entries) > MAX_VALUES:
@@ -110,7 +126,7 @@ def combine(a, b):
     return {'version': VERSION, 'values': values, 'limited': limited} if changed else a
 
 
-def from_payload(value, source):
+def from_payload(value, source, observed_at_ns=None):
     """Supplementary body observations, never asserted to be client headers."""
     context = empty()
     names = {'ip': 'ip', 'ipaddress': 'ip', 'clientip': 'ip', 'useragent': 'user_agent',
@@ -127,7 +143,7 @@ def from_payload(value, source):
             for key, child in item.items():
                 target = names.get(str(key).lower().replace('_', '').replace('-', ''))
                 if target:
-                    observe(context, target, child, source + '.' + str(key)[:64])
+                    observe(context, target, child, source + '.' + str(key)[:64], observed_at_ns)
                 if isinstance(child, (dict, list)):
                     walk(child, depth + 1)
                 if remaining < 0:
