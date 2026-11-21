@@ -89,7 +89,7 @@ class CompactExtractionTests(unittest.TestCase):
         state=extract([row(),row(path='DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2',message=msg),
                        row(path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:[{"WaterBillID":"222"}]')])['req-1']
         body=materialize('s',state)
-        self.assertEqual(body['features']['input']['targets']['WaterBillID'],'001')
+        self.assertEqual(body['features']['input']['targets']['WaterBillID'],[{'type':'string','value':'001'}])
         self.assertNotIn('do-not-store',json.dumps(state))
     def test_nested_encoded_secrets_and_otp_are_removed_but_result_code_retained(self):
         x=scrub({'Parameters':'{"Password":"secret","OTP":"12345","Code":"G00000"}','AccessToken':'secret'})

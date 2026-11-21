@@ -2,30 +2,24 @@
 
 The owner and manager changed the product scope on 21 November 2026: extract observed API executions with the input, output and features needed for behavior analysis. Raw-log archival, financial relationship reconstruction and migration of the old anomaly models are outside the new product scope. RequestID identity, authoritative Session continuity, explicit uncertainty and late corrections remain required.
 
-Start with the [current Persian roadmap](Pishkhan24_Project_Roadmap.md), then the [compact behavior contract, execution guide and qualification results](compact_behavior/README_FA.md).
+Start with the [current Persian roadmap](Pishkhan24_Project_Roadmap.md) and [product contract, Windows deployment and rollback runbook](compact_product/README_FA.md).
 
-## Current delivery
+The current candidate is `COMPACT-PRODUCT-20261121-2`: independent ingestion, eight explainable compact AD methods, version-fenced dirty consumption, pending lifecycle, manual-refresh web and supervised roles. It uses fresh `p24_compact_v2` / `p24_compact_ad_v2` schemas and fresh model references; legacy tables and feedback are retained.
 
-`compact_behavior/` implements the independent path:
+Features preserve typed array multiplicity, explicit per-component completeness and selected-evidence parse validity. Nested duplicate JSON keys cannot silently overwrite targets. Empty object structure is represented. Both Core and Services AddUserData/GetUserData are automatic support observations, excluded from business-rate methods. InvoiceRegister dispatch requires reviewed same-request evidence.
 
-`Elasticsearch -> bounded in-memory extraction -> compact PostgreSQL behavior and payload tables`
+Results and exact-version acknowledgements commit together. Timing confirmation belongs to the particular analysis revision, so a crash during a later correction cannot reuse an earlier fast timing. Freshness excludes pending reference reanalysis. Installation requires actual consumed publications, completed warmup, drained analysis work, confirmed latency, responsive web and a verified running supervisor.
 
-Behavior changes, dirty-window notifications and the independent checkpoint commit atomically in the `p24_compact` schema. The extraction/storage core does not import or read the legacy Viewer/AD. The Windows benchmark controller uses the installed application's process-control helpers to stop and restore existing roles.
+Run the code from a fixed release worktree and pass the installed project's data/config path with `--project`. The Windows Task uses that same release code directory. The installer first checks and measures all three roles; it keeps the candidate only after its short gate and otherwise restores the previous roles. Defaults bind the manual-refresh UI to `0.0.0.0` on ports 5021 and 5022.
 
-The extraction/storage gate passed on the owner's Windows server with PostgreSQL 18.6: three fresh Elasticsearch windows, 214,911 source documents and 45,051 observed public-API behaviors. Per-window times were 22.250, 22.921 and 21.547 seconds; the entire child process took 67.110 seconds. Exact unique-document counts and empty terminal scroll pages were verified. All original roles were restored and legacy cursors stayed unchanged during the trial.
+The existing 99 tests passed independently against PostgreSQL18.6 and actual ingestion/analysis/web processes. The final regression set contains 112 tests. GitHub Actions also exercise real Chromium and native Windows PowerShell parsing. Owner-server joint throughput, reboot, eight-hour stability, representative history and labeled precision/recall require the corresponding server receipts and are not accepted from development tests.
 
-This is a successful small prototype gate. The compact schema initially contained no behaviors; the new UI, independent AD consumer/baselines, continuous operation and representative-history capacity are still pending. The observed short-run rate is not production acceptance with AD and web. Content extraction coverage, pending lifecycle and dirty consumption must be completed before continuous cutover.
+PR44's earlier owner trial processed three fresh ES windows in about 22 seconds each for extraction/storage only. That fresh-schema prototype result is not the capacity of this full product. Its original evidence is retained in [the prototype guide](compact_behavior/README_FA.md).
 
-The qualified runtime is `COMPACT-PROTOTYPE-20261121-4`, package SHA256 `4970eb9a4dfcdeeded2f77b306d57085370714eb4ebeb5fa3014b2e537c9f294`. The 56 compact tests passed locally and in native PostgreSQL CI; Linux and Windows compact checks passed as well. The separate existing Viewer regression workflow also passed. See the Persian guide for evidence identifiers, timing scope and remaining limitations.
-
-## Existing application
-
-`p24_foundation/`, `review_ui/`, `viewer_performance/` and `AnomalyDetection/` retain the installed Viewer/AD implementation and operational tooling. They are not switched over by merging this prototype. Their operational guides are [VIEWER_README_FA.md](VIEWER_README_FA.md) and [AnomalyDetection/README_FA.md](AnomalyDetection/README_FA.md); financial or historical acceptance requirements in older material do not override the current roadmap.
-
-Use the existing Python 3.12 environment and private `viewer_config.local.py`. No credentials, source documents or complete operational report bundles are included in the repository.
+Legacy application code remains in `p24_foundation/`, `review_ui/`, `viewer_performance/` and `AnomalyDetection/`. Only operational stop/restore helpers are reused during Windows cutover; compact extraction and AD do not consume their raw tables or models. Private settings and operational bundles are not included in Git.
 
 ```text
-python -B -m unittest -v tests.test_compact_extract tests.test_compact_trial
+python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_trial tests.test_compact_operations
 ```
 
-Native PostgreSQL tests additionally require `P24_DELTA_PG_HOST`, `P24_DELTA_PG_PORT`, `P24_DELTA_PG_USER` and connection authentication; run `tests.test_compact_pg` in the same environment. The Windows owner-server benchmark command and recovery procedure are in the compact guide.
+Native PostgreSQL tests additionally require `P24_DELTA_PG_HOST`, `P24_DELTA_PG_PORT`, `P24_DELTA_PG_USER` and authentication; run `tests.test_compact_pg`, `tests.test_compact_product_pg` and `tests.test_compact_product_runtime`. See the runbook for owner-server installation and observation.
