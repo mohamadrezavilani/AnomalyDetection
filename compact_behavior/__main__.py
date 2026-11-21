@@ -96,7 +96,7 @@ def run(args):
         server_measurement_required=True,command_token=getattr(args,'trial_token',None),**process_info())
     save(args.output,report)
     if args.trace_memory:tracemalloc.start()
-    store=None;began=time.monotonic();done=threading.Event()
+    store=None;active_source=None;began=time.monotonic();done=threading.Event()
     def heartbeat():
         while not done.wait(15):notice('COMPACT_PROTOTYPE_RUNNING',elapsed_seconds=round(time.monotonic()-began),committed_windows=len(report['windows']))
     thread=threading.Thread(target=heartbeat,daemon=True);thread.start()
@@ -128,6 +128,10 @@ def run(args):
             if getattr(args,'stop_file',None) and args.stop_file.exists():raise InterruptedError('prototype_stop_requested')
             notice('COMPACT_EXTRACTING',**values)
         for source in sources:
+            active_source=source
+            if isinstance(source,ElasticWindow):
+                report['active_window']={'start_ns':source.start,'end_ns':source.end,'method':'elasticsearch'}
+                save(args.output,report)
             progress()
             result=measure_window(store,stream,source,progress=progress)
             report['windows'].append(result);save(args.output,report)
@@ -140,7 +144,8 @@ def run(args):
         report['status']='COMPACT_PROTOTYPE_INCOMPLETE'
         # Do not put source message bodies, credentials, URLs or arbitrary SQL exceptions in receipts.
         report['failure']=dict(type=type(exc).__name__,code=str(exc) if isinstance(exc,(ValueError,TimeoutError)) else None,
-                               sqlstate=getattr(exc,'sqlstate',None))
+                               sqlstate=getattr(exc,'sqlstate',None),details=getattr(exc,'details',None))
+        if active_source is not None:report['source_response_diagnostics']=getattr(active_source,'response_diagnostics',[])
     finally:
         if store:store.close()
         done.set();thread.join(1)

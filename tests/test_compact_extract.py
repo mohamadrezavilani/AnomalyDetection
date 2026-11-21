@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from compact_behavior.extract import Extractor,Limits,LimitExceeded,behavior_id,facts,merge,materialize,instant,scrub,sql_parameters
-from compact_behavior.source import WindowFile,ElasticWindow,settings
+from compact_behavior.source import WindowFile,ElasticWindow,settings,ElasticPageError,response_summary
 
 T=instant('2026-10-20T08:20:00Z')
 def row(request='req-1',session='session-1',path='Services.v1/WaterBills',message=None,at='2026-10-20T08:20:10Z'):
@@ -94,6 +94,48 @@ class CompactExtractionTests(unittest.TestCase):
 
 
 class SourceTests(unittest.TestCase):
+    def test_rejection_retains_exact_protocol_reason_without_documents(self):
+        response={'timed_out':True,'_shards':{'total':3,'successful':2,'failed':1},
+            'hits':{'total':{'relation':'eq','value':9},'hits':[{'_source':{'password':'PRIVATE'}}]},'pit_id':'PRIVATE_PIT'}
+        with self.assertRaises(ElasticPageError) as caught:ElasticWindow.checked(response)
+        details=caught.exception.details
+        self.assertIn('timed_out_not_explicit_false',details['rejected_checks'])
+        self.assertIn('successful_shards_not_total',details['rejected_checks'])
+        self.assertEqual(details['shards']['failed'],1);self.assertNotIn('PRIVATE',json.dumps(details))
+    def test_missing_flag_and_invalid_shard_shape_are_not_treated_as_complete(self):
+        for response in [{'_shards':{'failed':0}}, {'timed_out':False,'_shards':None}, []]:
+            with self.assertRaises(ElasticPageError) as caught:ElasticWindow.checked(response)
+            self.assertTrue(caught.exception.details['rejected_checks'])
+    def test_read_only_probe_closes_rotated_pit_on_valid_first_hit(self):
+        from compact_behavior.probe_elastic import probe
+        instances=[]
+        class Fake(ElasticWindow):
+            def __init__(self,*a,**kw):super().__init__(*a,**kw);self.calls=[];instances.append(self)
+            def request(self,path,body=None,method='POST'):
+                self.calls.append((path,body,method))
+                if path=='/':return {'version':{'number':'8.19'}}
+                if '_pit?' in path:return {'id':'pit1'}
+                if method=='DELETE':return {}
+                return {'pit_id':'pit2','timed_out':False,'_shards':{'total':1,'successful':1,'failed':0},
+                    'hits':{'total':{'relation':'eq','value':100},'hits':[{'sort':[1],'_source':row()}]}}
+        result=probe({'host':'http://example.test','index_pattern':'logs-*'},T,source_factory=Fake)
+        self.assertEqual(result['status'],'FIRST_SEARCH_PAGE_VALID');self.assertFalse(result['services_stopped'])
+        self.assertEqual(result['full_window_completeness'],'NOT_TESTED')
+        self.assertEqual(instances[0].calls[-1],('/_pit',{'id':'pit2'},'DELETE'))
+        self.assertEqual(result['response_diagnostics'][0]['summary']['returned_hits'],1)
+        self.assertNotIn('RequestID',json.dumps(result))
+    def test_read_only_probe_reports_rejection_without_stopping_services(self):
+        from compact_behavior.probe_elastic import probe
+        class Fake(ElasticWindow):
+            def request(self,path,body=None,method='POST'):
+                if path=='/':return {'version':{'number':'8.19'}}
+                if '_pit?' in path:return {'id':'pit1'}
+                if method=='DELETE':return {}
+                return {'timed_out':True,'_shards':{'total':1,'successful':1,'failed':0},'hits':{'total':0,'hits':[]}}
+        result=probe({'host':'http://example.test','index_pattern':'logs-*'},T,source_factory=Fake)
+        self.assertEqual(result['status'],'FIRST_SEARCH_PAGE_REJECTED')
+        self.assertEqual(result['failure']['details']['timed_out'],True)
+        self.assertFalse(result['database_modified']);self.assertFalse(result['services_stopped'])
     def test_file_stream_checks_footer_complete_and_count(self):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'window.json.gz'

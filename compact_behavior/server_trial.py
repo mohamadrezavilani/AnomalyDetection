@@ -13,6 +13,31 @@ import zipfile
 from .__main__ import save,notice
 
 
+def source_preflight(project,windows):
+    """Check the actual next source page before disabling any project roles."""
+    from .source import settings,ElasticWindow
+    from .store import Store
+    from .probe_elastic import probe
+    from . import FIVE
+    cfg=settings(project/'viewer_config.local.py');elastic=cfg['ELASTICSEARCH']
+    stream=ElasticWindow(elastic,0,FIVE).namespace;store=Store(cfg['DATABASE'])
+    try:
+        store.conn.execute('SET default_transaction_read_only=on')
+        present=store.conn.execute("SELECT to_regclass('p24_compact.streams') AS present").fetchone()['present']
+        start=store.cursor(stream) if present else None
+    finally:store.close()
+    if start is None:start=(time.time_ns()-60_000_000_000)//FIVE*FIVE-windows*FIVE
+    return probe(elastic,start)
+
+
+def save_bundle(folder):
+    bundle=folder.with_suffix('.zip')
+    with zipfile.ZipFile(bundle,'w',zipfile.ZIP_DEFLATED) as archive:
+        for file in folder.rglob('*'):
+            if file.is_file():archive.write(file,file.relative_to(folder))
+    return bundle
+
+
 def read(path):
     try:return json.loads(Path(path).read_text(encoding='utf-8-sig'))
     except (OSError,ValueError):return None
@@ -94,10 +119,7 @@ def trial(project,old_receipt,folder,*,host,restore,execute):
         except BaseException as exc:state['restore_error']=dict(type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None)
         state['status']='COMPACT_TRIAL_MEASURED_ROLES_RESTORED' if state.get('trial_result')=='MEASURED' and not state.get('restore_error') and not state['restore_failures'] else 'COMPACT_TRIAL_PARTIAL_SEND_BUNDLE'
         save(receipt,state)
-        bundle=folder.with_suffix('.zip')
-        with zipfile.ZipFile(bundle,'w',zipfile.ZIP_DEFLATED) as archive:
-            for file in folder.rglob('*'):
-                if file.is_file():archive.write(file,file.relative_to(folder))
+        bundle=save_bundle(folder)
         notice(state['status'],output=str(bundle),receipt=str(receipt))
     return state
 
@@ -123,6 +145,15 @@ def main():
                 except (ProcessLookupError,OSError):pass
             restore(project,a.restore_receipt,state);notice('COMPACT_ORIGINAL_ROLES_RESTORED');return 0
         folder=project/'AnomalyDetection/reports'/('Compact_Prototype_'+datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_')+uuid.uuid4().hex[:8])
+        folder.mkdir(parents=True,exist_ok=True)
+        notice('COMPACT_CHECKING_SOURCE_WITH_SERVICES_RUNNING')
+        try:preflight=source_preflight(project,a.windows)
+        except Exception as exc:preflight={'status':'SOURCE_PREFLIGHT_ERROR','failure':{'type':type(exc).__name__,
+            'code':str(exc) if isinstance(exc,ValueError) else None,'details':getattr(exc,'details',None)}}
+        save(folder/'source-preflight.json',preflight)
+        if preflight.get('status')!='FIRST_SEARCH_PAGE_VALID':
+            notice('COMPACT_SOURCE_PREFLIGHT_BLOCKED',services_stopped=False,output=str(save_bundle(folder)))
+            return 2
         def execute(directory,state):
             output=directory/'prototype.json';stop_file=directory/'stop.json';token=uuid.uuid4().hex
             command=[sys.executable,'-X','utf8','-B','-m','compact_behavior','--config',str(project/'viewer_config.local.py'),

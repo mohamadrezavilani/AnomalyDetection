@@ -65,6 +65,16 @@ class TrialTests(unittest.TestCase):
             root=Path(directory);(root/'a.py').write_text('changed')
             (root/'MANIFEST.json').write_text(json.dumps({'build_id':'test','files_sha256':{'a.py':'0'*64}}))
             with self.assertRaisesRegex(ValueError,'bytes_changed'):verify(root)
+    def test_source_preflight_reads_only_own_cursor_and_never_initializes_tables(self):
+        from compact_behavior.server_trial import source_preflight
+        config={'DATABASE':{'dbname':'unused'},'ELASTICSEARCH':{'host':'http://example.test','index_pattern':'logs-*'}}
+        with patch('compact_behavior.source.settings',return_value=config),patch('compact_behavior.store.Store') as factory, \
+             patch('compact_behavior.probe_elastic.probe',return_value={'status':'FIRST_SEARCH_PAGE_VALID'}) as check:
+            db=factory.return_value;db.conn.execute.return_value.fetchone.return_value={'present':'p24_compact.streams'}
+            db.cursor.return_value=123
+            result=source_preflight(Path('/project'),3)
+            self.assertEqual(result['status'],'FIRST_SEARCH_PAGE_VALID');db.init.assert_not_called();db.publish.assert_not_called()
+            db.close.assert_called_once();check.assert_called_once_with(config['ELASTICSEARCH'],123)
 
 
 if __name__=='__main__':unittest.main()

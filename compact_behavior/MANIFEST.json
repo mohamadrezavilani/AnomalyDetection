@@ -1,13 +1,14 @@
 {
-  "build_id": "COMPACT-PROTOTYPE-20261121-1",
+  "build_id": "COMPACT-PROTOTYPE-20261121-2",
   "contract": "compact-behavior-1",
   "files_sha256": {
     "__init__.py": "0f0e26e523fe54b2f4fa9ff2a31baf4ad952bb04fd7037b014d5dcf6946f0c9e",
-    "__main__.py": "61cd7e218f87edb4279c64a0c3c95133011fb146c97b820069704ace3f299238",
+    "__main__.py": "552970956c22d85fcdb4fd22db0bfabe95f9a9ee0ddaafae79345d03cf2c2f8a",
     "extract.py": "68c83b20ef5474cf2e29d2cb1d3b996dc45d830ad77fc3da22b1e0c290ea176f",
-    "server_trial.py": "c30296416b6def1b6c079d951b33bcd7de6602845dfd076a0a5b3d7a6522bb67",
-    "source.py": "3f3409edead7e09a81b1ff499c98efda011e788aa2cc228135e67aba239f9f9b",
+    "probe_elastic.py": "b5daa9ba908d7a286b5cbe2e6ce962dd0187a0856825a6bf03c96cb1247bb4b2",
+    "server_trial.py": "17ddc0f37629f924d7c7805b1e26acb930430d4d960f29e1ebb3dcd455a9c568",
+    "source.py": "3feafdaf1cb89518d58809be634c0426fd174b89e42ed7998a49517e292f6d34",
     "store.py": "c12dd2e7eecf048eacd1a08db9ee04e1252146d292339af04179c16eb521776f",
-    "version.py": "2a23065cb8c7a8a6449cf158e2a7d64ac820de5c17d63770e1d164395c78d626"
+    "version.py": "d0253774320c112f7f5e3cc4bfb1f8505d5a4a1db2e81d242fea8c6d8a8528b4"
   }
 }

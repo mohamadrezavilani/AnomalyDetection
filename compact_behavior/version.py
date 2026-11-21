@@ -17,6 +17,6 @@ def verify(root=None):
 
 if __name__=='__main__':
     root=Path(__file__).resolve().parent
-    value=dict(build_id='COMPACT-PROTOTYPE-20261121-1',contract='compact-behavior-1',
+    value=dict(build_id='COMPACT-PROTOTYPE-20261121-2',contract='compact-behavior-1',
                files_sha256={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.glob('*.py'))})
     (root/'MANIFEST.json').write_text(json.dumps(value,indent=2)+'\n',encoding='utf-8')

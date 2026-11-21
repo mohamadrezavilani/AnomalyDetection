@@ -14,6 +14,32 @@ from urllib.request import Request, urlopen
 from .extract import instant, iso, LimitExceeded
 
 
+class ElasticPageError(ValueError):
+    def __init__(self,code,details):
+        super().__init__(code);self.details=details
+
+
+def response_summary(response):
+    """Only protocol metadata; never document hits, PIT IDs or credentials."""
+    if not isinstance(response,dict):return {'response_type':type(response).__name__}
+    shards=response.get('_shards');hits=response.get('hits')
+    def shape(value):return type(value).__name__
+    summary={'fields':sorted(response),'timed_out':response.get('timed_out'),
+        'timed_out_present':'timed_out' in response,'terminated_early':response.get('terminated_early'),
+        'took':response.get('took'),'shards_type':shape(shards),'hits_type':shape(hits)}
+    if isinstance(shards,dict):
+        summary['shards']={k:shards.get(k) for k in ['total','successful','skipped','failed']}
+        summary['shard_value_types']={k:shape(shards.get(k)) for k in ['total','successful','skipped','failed']}
+        failures=shards.get('failures')
+        if isinstance(failures,list):
+            summary['shard_failures']=[{'status':v.get('status'),'reason_type':(v.get('reason') or {}).get('type')
+                if isinstance(v.get('reason'),dict) else shape(v.get('reason'))} for v in failures[:8] if isinstance(v,dict)]
+    if isinstance(hits,dict):
+        summary['total_hits']=hits.get('total');summary['returned_hits']=len(hits['hits']) if isinstance(hits.get('hits'),list) else None
+    if isinstance(response.get('error'),dict):summary['error_type']=response['error'].get('type')
+    return summary
+
+
 def settings(path):
     values={}
     def literal(n):
@@ -97,6 +123,7 @@ class ElasticWindow:
     def __init__(self,config,start_ns,end_ns,*,page_size=5000,budget=180):
         self.config=config;self.start=start_ns;self.end=end_ns;self.page_size=page_size;self.budget=budget
         self.metadata={};self.count=0;self.network_seconds=0.;self.pages=0
+        self.response_diagnostics=[]
         root=str(config.get('host','')).rstrip('/');parts=urlsplit(root)
         if parts.scheme not in ('http','https') or not parts.netloc or parts.username:raise ValueError('invalid_elastic_host')
         self.root=root;self.index=config.get('index_pattern')
@@ -121,15 +148,24 @@ class ElasticWindow:
         finally:self.network_seconds+=time.monotonic()-started
     @staticmethod
     def checked(response,expected=None):
+        details=response_summary(response)
+        if not isinstance(response,dict):raise ElasticPageError('elastic_partial_page',dict(details,rejected_checks=['response_not_object']))
         shards=response.get('_shards',{})
-        if response.get('timed_out') is not False or response.get('terminated_early') is True or \
-            type(shards.get('failed')) is not int or shards['failed']!=0 or shards.get('successful')!=shards.get('total'):
-            raise ValueError('elastic_partial_page')
-        hits=response.get('hits',{});total=hits.get('total')
+        rejected=[]
+        if response.get('timed_out') is not False:rejected.append('timed_out_not_explicit_false')
+        if response.get('terminated_early') is True:rejected.append('terminated_early')
+        if not isinstance(shards,dict):rejected.append('shards_not_object');shards={}
+        if any(type(shards.get(k)) is not int or shards[k]<0 for k in ['total','successful']):rejected.append('invalid_shard_counts')
+        if type(shards.get('failed')) is not int or shards['failed']!=0:rejected.append('failed_shards_not_zero_integer')
+        if shards.get('successful')!=shards.get('total'):rejected.append('successful_shards_not_total')
+        if rejected:raise ElasticPageError('elastic_partial_page',dict(details,rejected_checks=rejected))
+        hits=response.get('hits',{})
+        if not isinstance(hits,dict):raise ElasticPageError('elastic_hits_required',details)
+        total=hits.get('total')
         if isinstance(total,dict) and total.get('relation')=='eq':total=total.get('value')
         if total is None:total=expected
-        if type(total) is not int or total<0 or (expected is not None and total!=expected):raise ValueError('elastic_inexact_count')
-        if not isinstance(hits.get('hits'),list):raise ValueError('elastic_hits_required')
+        if type(total) is not int or total<0 or (expected is not None and total!=expected):raise ElasticPageError('elastic_inexact_count',dict(details,expected_total=expected))
+        if not isinstance(hits.get('hits'),list):raise ElasticPageError('elastic_hits_required',details)
         return hits['hits'],total
     def records(self):
         self.deadline=time.monotonic()+self.budget;pit=sid=None;expected=None;last=None;use_pit=True
@@ -151,6 +187,9 @@ class ElasticWindow:
                 elif sid is None:response=self.request('/'+index+'/_search?scroll=3m',dict(body,sort=['_doc']))
                 else:response=self.request('/_search/scroll',{'scroll':'3m','scroll_id':sid})
                 if not use_pit:sid=response.get('_scroll_id',sid)
+                self.response_diagnostics.append(dict(method='pit_search_after' if use_pit else 'scroll',
+                    page=self.pages+1,summary=response_summary(response)))
+                self.response_diagnostics=self.response_diagnostics[-4:]
                 hits,total=self.checked(response,expected);expected=total;self.pages+=1
                 if not hits:break
                 for hit in hits:
