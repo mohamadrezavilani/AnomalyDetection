@@ -198,7 +198,7 @@ class ElasticWindow:
         index=quote(self.index,safe='*,_-:.')
         body=dict(size=self.page_size,track_total_hits=True,query={'range':{'@timestamp':{'gte':iso(self.start),'lt':iso(self.end)}}},
                   timeout='30s',terminate_after=0,
-                  _source=['@timestamp','CallPath','RequestID','Session','message','ExecutionTime'])
+                  _source=['@timestamp','CallPath','RequestID','Session','message','ExecutionTime','IP','UserAgent','userAgent'])
         try:
             try:opened=self.request('/'+index+'/_pit?keep_alive=3m&allow_partial_search_results=false');pit=opened.get('id')
             except HTTPError as exc:

@@ -11,7 +11,9 @@ from . import CONTRACT, EXTRACTOR, FEATURES
 from .json_value import unique_object
 from .payload import packed, normalize as normalize_payload, identity as payload_identity, feature as payload_feature
 from .services import operation_role, operation_catalog, meaningful, operation_label
+from . import context as request_context
 
+CONTROL = re.compile(r"[\x00-\x1f]")
 API = re.compile(r"^(?:Core|Services)\.v\d+/[A-Za-z][A-Za-z0-9_]*$")
 LINE = re.compile(r"\s+Line:\d+.*$")
 STATUS = re.compile(r"\(([A-Z]{1,3}\d{4,6})\s*\|\s*([A-Za-z_]+)\)")
@@ -106,7 +108,7 @@ def identity(value):
         or value.strip().upper() in ("N/A", "NULL")
     ):
         return None
-    if len(value) > 512 or any(ord(c) < 32 for c in value):
+    if len(value) > 512 or CONTROL.search(value):
         return None
     # GUID representations compare canonically; other opaque identifiers retain case.
     compact = value.replace("-", "")
@@ -168,7 +170,7 @@ def scrub(value, depth=0):
     return value
 
 
-def sql_fields(message):
+def sql_fields(message, context=None, context_source=None):
     """Recognized parameter boundaries at JSON depth zero; no SQL text retained."""
     if "(SQL Parameters:" not in message:
         return {}, set()
@@ -199,6 +201,9 @@ def sql_fields(message):
     errors = set()
     for j, (begin, end, name) in enumerate(marks):
         if name not in ("queryparameters", "queryresult", "action", "serviceid"):
+            if context is not None and name in request_context.SQL_FIELDS:
+                raw = text[end : marks[j + 1][0] if j + 1 < len(marks) else len(text)].strip()
+                request_context.observe(context, request_context.SQL_FIELDS[name], raw, context_source + '.@' + name)
             continue
         raw = text[end : marks[j + 1][0] if j + 1 < len(marks) else len(text)].strip()
         try:
@@ -263,6 +268,12 @@ def empty(request):
 
 
 def union(before, after, limit, issues, label):
+    # Common singleton/empty sets need neither JSON keys nor sorting.
+    if len(before) <= min(limit, 1) and len(after) <= min(limit, 1):
+        if not after or before == after:
+            return before
+        if not before:
+            return after
     unique = {canonical(x): x for x in before + after}
     if len(unique) > limit:
         raise LimitExceeded(label + "_limit")
@@ -292,7 +303,7 @@ def timed_union(before, after, limit, label):
     return [unique[k] for k in sorted(unique)]
 
 
-def merge(a, b, limits=Limits()):
+def merge(a, b, limits=Limits(), *, _check_size=True, _normalized=False):
     if a["request_id"] != b["request_id"]:
         raise ValueError("request_identity_changed")
     c = empty(a["request_id"])
@@ -313,11 +324,17 @@ def merge(a, b, limits=Limits()):
     for key in ("sessions", "apis", "roots", "raw_request_ids", "raw_session_ids"):
         c[key] = union(a[key], b[key], limits.variants, c["issues"], key)
     for key in ("inputs", "outputs"):
+        if _normalized and not b[key]:
+            c[key] = a[key]
+            continue
         c[key] = timed_union([normalize_payload(x) for x in a[key]], [normalize_payload(x) for x in b[key]], limits.surfaces, key)
     for key, fn in [("first_ns", min), ("last_ns", max)]:
         values = [v for v in (a[key], b[key]) if v is not None]
         c[key] = fn(values) if values else None
-    if len(canonical(c).encode()) > limits.state_bytes:
+    context = request_context.combine(a.get('request_context', {}), b.get('request_context', {}))
+    if context:
+        c['request_context'] = context
+    if _check_size and len(canonical(c).encode()) > limits.state_bytes:
         error = LimitExceeded("request_state_bytes_limit")
         error.details = dict(limit_bytes=limits.state_bytes, measured_bytes=len(canonical(c).encode()), apis=c["apis"], inputs=len(c["inputs"]), outputs=len(c["outputs"]))
         raise error
@@ -330,6 +347,7 @@ def facts(row):
     if not request:
         return None
     result = empty(request)
+    context = request_context.from_log(row)
     result["raw_request_ids"] = [raw_request]
     if request_state != "present":
         result["issues"].append("request_id_" + request_state)
@@ -360,6 +378,9 @@ def facts(row):
         result["apis"] = [path]
         # Only the public HTTP completion contributes final outcome/duration.
         if re.match(r"^(?:GET|POST|PUT|DELETE|PATCH|HEAD)\s+https?://", message):
+            if not context:
+                context = request_context.empty()
+            request_context.observe(context, 'http_method', message.split(' ', 1)[0], 'public_http_completion')
             code = STATUS.search(message)
             duration, _ = field(row, "ExecutionTime")
             try:
@@ -404,6 +425,7 @@ def facts(row):
                 dict(direction=label, basis=basis, path=path, observed_at_ns=at)
             )
             continue
+        context = request_context.combine(context, request_context.from_payload(value, 'payload.' + path))
         result[label].append(
             dict(basis=basis, path=path, **packed(value), observed_at_ns=at)
         )
@@ -430,11 +452,10 @@ def facts(row):
                         observed_at_ns=at,
                     )
                 )
-    if path in (
-        "DBPath.pishkhan24.application.ud_prc_userSessionHasAccess",
-        "DBPath.pishkhan24.application.ud_prc_invoiceRequest",
-    ):
-        params, errors = sql_fields(message)
+    if path in request_context.SQL_PATHS or path == "DBPath.pishkhan24.application.ud_prc_invoiceRequest":
+        if path in request_context.SQL_PATHS and not context:
+            context = request_context.empty()
+        params, errors = sql_fields(message, context if path in request_context.SQL_PATHS else None, path)
         if (
             path.endswith(".ud_prc_userSessionHasAccess")
             and "action" in params
@@ -453,6 +474,8 @@ def facts(row):
             value = params["serviceid"]
             if re.fullmatch(r"[0-9]{1,12}", value):
                 result["dispatch"].append(dict(kind="service_request", value=value))
+    if context and (context['values'] or context['limited']):
+        result['request_context'] = context
     return result
 
 
@@ -464,6 +487,9 @@ class Extractor:
         self.missing_request_ids = 0
         self.state_bytes = 0
         self.sizes = {}
+        self.contexts = {}
+        self.context_sizes = {}
+        self.context_bytes = 0
 
     def add(self, row):
         self.records += 1
@@ -472,21 +498,33 @@ class Extractor:
             self.missing_request_ids += 1
             return
         key = item["request_id"]
+        # Keep metadata outside repeated state serialization in the hot loop.
+        metadata = item.pop('request_context', {})
+        prior_metadata = self.contexts.get(key, {})
+        merged_metadata = request_context.combine(prior_metadata, metadata)
+        if merged_metadata and merged_metadata != prior_metadata:
+            metadata_size = len(canonical(merged_metadata).encode())
+            self.context_bytes += metadata_size - self.context_sizes.get(key, 0)
+            self.contexts[key] = merged_metadata
+            self.context_sizes[key] = metadata_size
         if key not in self.states and len(self.states) >= self.limits.requests:
             raise LimitExceeded("window_request_limit")
-        value = merge(self.states.get(key, empty(key)), item, self.limits)
+        value = merge(self.states.get(key, empty(key)), item, self.limits, _check_size=False, _normalized=True)
         size = len(canonical(value).encode())
+        if size + self.context_sizes.get(key, 0) > self.limits.state_bytes:
+            raise LimitExceeded("request_state_bytes_limit")
         self.state_bytes += size - self.sizes.get(key, 0)
-        if self.state_bytes > self.limits.total_state_bytes:
+        if self.state_bytes + self.context_bytes > self.limits.total_state_bytes:
             raise LimitExceeded("window_state_bytes_limit")
         self.states[key] = value
         self.sizes[key] = size
 
     def finish(self):
         size = sum(len(canonical(s).encode()) for s in self.states.values())
-        if size > self.limits.total_state_bytes:
+        if size + self.context_bytes > self.limits.total_state_bytes:
             raise LimitExceeded("window_state_bytes_limit")
-        return self.states
+        return {key: dict(state, request_context=self.contexts[key]) if key in self.contexts else state
+                for key, state in self.states.items()}
 
 
 def selected(state, key, api, service=None):

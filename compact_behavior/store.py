@@ -5,7 +5,8 @@ from collections import Counter
 import re
 import time
 from . import CONTRACT, EXTRACTOR, FEATURES, FIVE
-from .extract import Limits, LimitExceeded, digest, behavior_id, merge, materialize
+from .extract import Limits, LimitExceeded, digest, behavior_id, merge, materialize, canonical
+from .context import combine as combine_context
 
 ALL = "@all"
 PENDING_WAIT_NS = 6 * FIVE
@@ -64,6 +65,7 @@ class Store:
                 f"CREATE INDEX IF NOT EXISTS compact_session_time ON {s}.behaviors(stream_id,session_id,observed_at_ns,behavior_id)",
                 f"CREATE INDEX IF NOT EXISTS compact_time ON {s}.behaviors(stream_id,observed_at_ns,behavior_id)",
                 f"CREATE TABLE IF NOT EXISTS {s}.behavior_payloads(behavior_id TEXT PRIMARY KEY,state JSONB NOT NULL)",
+                f"CREATE TABLE IF NOT EXISTS {s}.request_context(behavior_id TEXT PRIMARY KEY,context JSONB NOT NULL)",
                 f"""CREATE TABLE IF NOT EXISTS {s}.pending_requests(behavior_id TEXT PRIMARY KEY,stream_id TEXT NOT NULL,
                     state JSONB NOT NULL,content_hash TEXT NOT NULL,first_seen_ns BIGINT NOT NULL DEFAULT 0,
                     deadline_ns BIGINT NOT NULL DEFAULT 0,updated_at_ns BIGINT NOT NULL DEFAULT 0,
@@ -184,7 +186,9 @@ class Store:
             self.conn.execute(
                 "CREATE TEMP TABLE compact_keys(behavior_id TEXT PRIMARY KEY) ON COMMIT DROP"
             )
-            keyed = {behavior_id(stream, k): v for k, v in states.items()}
+            contexts = {behavior_id(stream, k): v.get('request_context', {}) for k, v in states.items()}
+            # Metadata does not change feature hashes, revisions or dirty queues.
+            keyed = {behavior_id(stream, k): {n: x for n, x in v.items() if n != 'request_context'} for k, v in states.items()}
             with self.conn.cursor().copy("COPY compact_keys FROM STDIN") as copy:
                 for key in keyed:
                     copy.write_row((key,))
@@ -193,10 +197,12 @@ class Store:
                 r["behavior_id"]: r
                 for r in self.conn.execute(
                     f"""SELECT k.behavior_id,p.state,b.session_id,
-                    b.observed_at_ns,b.content_hash,b.revision,NULL::text AS pending_status FROM compact_keys k
+                    b.observed_at_ns,b.content_hash,b.revision,NULL::text AS pending_status,c.context AS request_context FROM compact_keys k
                     CROSS JOIN LATERAL(SELECT * FROM {s}.behavior_payloads p WHERE p.behavior_id=k.behavior_id LIMIT 1) p JOIN {s}.behaviors b ON b.behavior_id=k.behavior_id
-                    UNION ALL SELECT k.behavior_id,p.state,NULL,NULL,p.content_hash,0::bigint,p.status FROM compact_keys k
-                    CROSS JOIN LATERAL(SELECT * FROM {s}.pending_requests p WHERE p.behavior_id=k.behavior_id LIMIT 1) p"""
+                    LEFT JOIN {s}.request_context c ON c.behavior_id=k.behavior_id
+                    UNION ALL SELECT k.behavior_id,p.state,NULL,NULL,p.content_hash,0::bigint,p.status,c.context FROM compact_keys k
+                    CROSS JOIN LATERAL(SELECT * FROM {s}.pending_requests p WHERE p.behavior_id=k.behavior_id LIMIT 1) p
+                    LEFT JOIN {s}.request_context c ON c.behavior_id=k.behavior_id"""
                 ).fetchall()
             }
             tombstones = {
@@ -210,6 +216,8 @@ class Store:
             phase = time.monotonic()
             window_hash = digest(sorted((k, digest(v)) for k, v in keyed.items()))
             changed = []
+            context_changes = []
+            context_bytes = 0
             pending = []
             dirty = (
                 {(stream, ALL, start)}
@@ -221,6 +229,11 @@ class Store:
             active_delta = expired_delta = 0
             for key, incoming in keyed.items():
                 previous = old.get(key)
+                prior_context = (previous or {}).get('request_context') or {}
+                merged_context = combine_context(prior_context, contexts[key])
+                if merged_context and merged_context != prior_context:
+                    context_changes.append((key, Jsonb(merged_context)))
+                    context_bytes += len(canonical(merged_context).encode())
                 state = (
                     merge(previous["state"], incoming, self.limits)
                     if previous
@@ -316,6 +329,15 @@ class Store:
             ) as copy:
                 for value in changed:
                     copy.write_row(value)
+            # One bounded COPY/upsert for changed metadata; no per-request SQL.
+            if context_changes:
+                self.conn.execute("CREATE TEMP TABLE compact_context(behavior_id TEXT,context JSONB) ON COMMIT DROP")
+                with self.conn.cursor().copy("COPY compact_context FROM STDIN") as copy:
+                    for value in context_changes:
+                        copy.write_row(value)
+                self.conn.execute(f"""INSERT INTO {s}.request_context SELECT * FROM compact_context ORDER BY behavior_id
+                    ON CONFLICT(behavior_id) DO UPDATE SET context=excluded.context
+                    WHERE {s}.request_context.context IS DISTINCT FROM excluded.context""")
             assignment = ",".join(
                 f"{name}=excluded.{name}"
                 for name in cols.split(",")
@@ -358,6 +380,7 @@ class Store:
                 f"""WITH gone AS(DELETE FROM {s}.pending_requests WHERE behavior_id IN
                 (SELECT behavior_id FROM {s}.pending_requests WHERE stream_id=%s AND status='EXPIRED'
                  AND updated_at_ns<%s ORDER BY updated_at_ns LIMIT 1000) RETURNING behavior_id,stream_id)
+                ,removed_context AS(DELETE FROM {s}.request_context c USING gone WHERE c.behavior_id=gone.behavior_id RETURNING 1)
                 ,saved AS(INSERT INTO {s}.expired_fragments SELECT behavior_id,stream_id,%s FROM gone ON CONFLICT DO NOTHING RETURNING 1)
                 SELECT count(*) AS n FROM gone""",
                 (stream, now - EXPIRED_RETENTION_NS, now),
@@ -448,6 +471,8 @@ class Store:
             expired_pending=counts["expired_pending"],
             dirty_windows=dirty_total,
             changed_quality=dict(quality),
+            context_records_updated=len(context_changes),
+            context_bytes_written=context_bytes,
             database_seconds=time.monotonic() - began,
             **times,
         )

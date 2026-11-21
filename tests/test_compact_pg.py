@@ -59,6 +59,43 @@ class CompactPostgresTests(unittest.TestCase):
         self.store.conn.execute('DROP SCHEMA '+self.schema+' CASCADE');self.store.close()
     def rows(self,name):return self.store.conn.execute('SELECT * FROM '+self.schema+'.'+name).fetchall()
     def publish(self,rows,start=T):return self.store.publish('test',start,start+FIVE,extract(rows),len(rows))
+    def test_context_only_update_does_not_rewrite_behavior_or_requeue_ad(self):
+        self.publish([row()])
+        before=self.rows('behaviors'); dirty=self.rows('dirty_windows'); windows=self.rows('windows'); streams=self.rows('streams')
+        r=self.publish([dict(row(),IP='192.0.2.1',UserAgent='Browser')])
+        self.assertEqual(r['context_records_updated'],1)
+        self.assertEqual(self.rows('behaviors'),before)
+        self.assertEqual(self.rows('dirty_windows'),dirty)
+        self.assertEqual(self.rows('windows'),windows)
+        self.assertEqual(self.rows('streams'),streams)
+        context=self.rows('request_context')[0]['context']
+        self.assertEqual(context['values']['ip'][0]['value'],'192.0.2.1')
+        self.assertEqual(self.publish([dict(row(),IP='',UserAgent='')])['context_records_updated'],0)
+        self.assertEqual(self.rows('request_context')[0]['context'],context)
+
+    def test_pending_context_survives_restart_completion_and_replay(self):
+        support=dict(row(path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:[]'),IP='192.0.2.1',UserAgent='Browser')
+        self.publish([support]);self.store.close()
+        self.store=Store(self.config,schema=self.schema);self.store.init()
+        self.publish([row(at='2026-10-20T08:25:01Z')],T+300000000000)
+        self.assertEqual(len(self.rows('behaviors')),1)
+        context=self.rows('request_context')[0]['context']
+        self.assertEqual(context['values']['user_agent'][0]['value'],'Browser')
+        self.assertEqual(context['values']['ip'][0]['value'],'192.0.2.1')
+        self.assertEqual(self.rows('pending_requests'),[])
+        self.assertEqual(self.publish([row(at='2026-10-20T08:25:01Z')],T+300000000000)['context_records_updated'],0)
+
+    def test_context_rollback_and_expired_pending_cleanup(self):
+        def failure(where): raise RuntimeError('rollback')
+        with self.assertRaises(RuntimeError):
+            self.store.publish('test',T,T+300000000000,extract([dict(row(),IP='192.0.2.1')]),1,fault=failure)
+        self.assertEqual(self.rows('request_context'),[])
+        self.publish([dict(row(path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:[]'),IP='192.0.2.1')])
+        self.store.conn.execute(f"UPDATE {self.schema}.pending_requests SET status='EXPIRED',updated_at_ns=0")
+        self.store.conn.execute(f"UPDATE {self.schema}.queue_counts SET active_pending=0,expired_pending=1")
+        self.publish([],T+300000000000)
+        self.assertEqual(self.rows('request_context'),[])
+
     def test_real_copy_replay_is_noop_including_dirty_versions(self):
         a=self.publish([row()]);before=self.rows('behaviors');dirty=self.rows('dirty_windows')
         b=self.publish([row()]*2)
