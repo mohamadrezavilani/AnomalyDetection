@@ -209,8 +209,9 @@ def create_app(config, database, stream, *, secret=None):
     def behavior(bid):
         with connection() as db:
             row = db.execute(
-                f"""SELECT b.*,p.state FROM {config.source_schema}.behaviors b
-                JOIN {config.source_schema}.behavior_payloads p USING(behavior_id) WHERE b.stream_id=%s AND b.behavior_id=%s""",
+                f"""SELECT b.*,p.state,c.context AS collected_context FROM {config.source_schema}.behaviors b
+                JOIN {config.source_schema}.behavior_payloads p USING(behavior_id)
+                LEFT JOIN {config.source_schema}.request_context c USING(behavior_id) WHERE b.stream_id=%s AND b.behavior_id=%s""",
                 (stream, bid),
             ).fetchone()
             code_definitions = definitions(db, config.source_schema, [row["result_code"]]) if row else {}
@@ -218,7 +219,7 @@ def create_app(config, database, stream, *, secret=None):
             abort(404)
         body = materialize(stream, row["state"])
         return render_template(
-            "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"])
+            "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"], row.get("collected_context"))
         )
 
     def publishable():

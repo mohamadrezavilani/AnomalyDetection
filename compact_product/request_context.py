@@ -6,8 +6,21 @@ LABELS = {
 }
 
 
-def observed_context(state):
+def observed_context(state, collected=None):
     result = dict(items=[], scan_complete=True, features_only=False)
+    if collected:
+        from compact_behavior.context import source_label
+        labels = {'ip': 'IP', 'user_agent': 'User-Agent', 'device_id': 'Device ID',
+            'app_version': 'App Version', 'platform': 'Platform', 'application': 'Application', 'http_method': 'HTTP Method'}
+        result['collected'] = True
+        result['limits'] = collected.get('limited', [])
+        for name, values in collected.get('values', {}).items():
+            for entry in values:
+                result['items'].append(dict(label=labels.get(name, name), value=entry['value'], truncated=False,
+                    direction='collected', source=' · '.join(source_label(s) for s in entry['sources']), location='', conflict=len(values)>1, observed_at_ns=entry.get('first_ns'), undated=entry.get('undated', False)))
+        return result
+    result['collected'] = False
+    result['limits'] = []
     visited = 0
 
     def walk(value, path, direction, surface, depth=0):

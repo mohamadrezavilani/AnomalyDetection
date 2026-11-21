@@ -60,6 +60,22 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.conn.execute("DROP SCHEMA " + self.config.source_schema + " CASCADE")
         self.db.close()
 
+    def test_collected_context_is_displayed_and_review_exports_only_counts(self):
+        from tools.Review_Compact_Request_Metadata import sample
+        self.db.publish('test', T, T + FIVE, extract([dict(row(request='context-request'),IP='192.0.2.1',UserAgent='Synthetic Browser')]), 1)
+        bid=self.db.conn.execute(f"SELECT behavior_id FROM {self.config.source_schema}.behaviors LIMIT 1").fetchone()['behavior_id']
+        client=create_app(self.config,self.database,'test',secret='test').test_client()
+        response=client.get('/behaviors/'+bid)
+        self.assertEqual(response.status_code,200)
+        html=response.get_data(as_text=True)
+        self.assertIn('192.0.2.1',html);self.assertIn('Synthetic Browser',html)
+        self.assertIn('log.IP',html);self.assertIn('نخستین شاهد زمان‌دار',html)
+        with self.db.conn.transaction():
+            self.db.conn.execute('SET TRANSACTION READ ONLY')
+            result=sample(self.db.conn,self.config.source_schema,'test')
+        self.assertEqual(result['with_ip'],1);self.assertEqual(result['with_user_agent'],1)
+        self.assertNotIn('192.0.2.1',json.dumps(result));self.assertNotIn('Synthetic Browser',json.dumps(result))
+
     def test_catalog_import_is_atomic_idempotent_and_readable_without_writes(self):
         from compact_product.error_catalog import CATALOG_VERSION, CATALOG_ROW_COUNT, definitions
         s = self.config.source_schema

@@ -41,7 +41,7 @@ class CompactUiBrowserTests(unittest.TestCase):
                         self.assertIn('امکان برقراری ارتباط', page.locator('body').inner_text())
                         self.assertNotIn('نکتهٔ کیفیت', page.locator('body').inner_text())
                         if name == 'behavior':
-                            self.assertIn('مشخصات محیطی موجود در محتوا', page.locator('body').inner_text())
+                            self.assertIn('مشخصات ثبت‌شدهٔ درخواست', page.locator('body').inner_text())
                             self.assertIn('$.UserAgent', page.locator('body').inner_text())
                         if name == 'home':
                             self.assertEqual(page.locator('details[open]').count(), 0)

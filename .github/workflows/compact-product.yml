@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements-compact.txt
-      - run: python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_trial tests.test_compact_web_presentation tests.test_compact_error_catalog tests.test_compact_request_context tests.test_compact_nullable_content tests.test_compact_history_task_repair tests.test_compact_operations tests.test_compact_history
+      - run: python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_trial tests.test_compact_web_presentation tests.test_compact_error_catalog tests.test_compact_request_context tests.test_compact_context tests.test_compact_context_upgrade tests.test_compact_nullable_content tests.test_compact_history_task_repair tests.test_compact_operations tests.test_compact_history
       - run: python -B -m compact_product version
       - name: Parse native PowerShell entry
         if: runner.os == 'Windows'
@@ -75,10 +75,20 @@ jobs:
           export P24_COMPACT_BROWSER=$(command -v google-chrome)
           test -n "$P24_COMPACT_BROWSER"
           python -B -m unittest -v tests.test_compact_pg tests.test_compact_product_pg tests.test_compact_product_runtime tests.test_compact_history_pg tests.test_compact_ui_browser
+      - name: Compare metadata write path with installed build 10
+        env:
+          P24_DELTA_PG_HOST: 127.0.0.1
+          P24_DELTA_PG_PORT: '5432'
+          P24_DELTA_PG_USER: postgres
+          PGPASSWORD: disposable-compact-test
+        run: |
+          git fetch --no-tags --depth=1 origin 3bffd33583d5194f685d1f683bb1286b10873cb1
+          git worktree add --detach /tmp/compact-installed-10 3bffd33583d5194f685d1f683bb1286b10873cb1
+          python tools/Benchmark_Compact_Context.py --baseline /tmp/compact-installed-10 --candidate . --output compact-ui-screenshots/context-benchmark.json
       - name: Upload synthetic UI previews
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: compact-ui-synthetic
-          path: compact-ui-screenshots/*.png
+          path: compact-ui-screenshots/*
           if-no-files-found: ignore
