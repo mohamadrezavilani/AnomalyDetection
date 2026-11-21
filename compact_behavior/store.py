@@ -186,9 +186,12 @@ class Store:
             self.conn.execute(
                 "CREATE TEMP TABLE compact_keys(behavior_id TEXT PRIMARY KEY) ON COMMIT DROP"
             )
-            contexts = {behavior_id(stream, k): v.get('request_context', {}) for k, v in states.items()}
-            # Metadata does not change feature hashes, revisions or dirty queues.
-            keyed = {behavior_id(stream, k): {n: x for n, x in v.items() if n != 'request_context'} for k, v in states.items()}
+            contexts, keyed = {}, {}
+            # One identity hash per request; metadata stays outside feature hashes.
+            for request_id, value in states.items():
+                key = behavior_id(stream, request_id)
+                contexts[key] = value.get('request_context', {})
+                keyed[key] = {n: x for n, x in value.items() if n != 'request_context'}
             with self.conn.cursor().copy("COPY compact_keys FROM STDIN") as copy:
                 for key in keyed:
                     copy.write_row((key,))
@@ -232,8 +235,10 @@ class Store:
                 prior_context = (previous or {}).get('request_context') or {}
                 merged_context = combine_context(prior_context, contexts[key])
                 if merged_context and merged_context != prior_context:
-                    context_changes.append((key, Jsonb(merged_context)))
-                    context_bytes += len(canonical(merged_context).encode())
+                    encoded_context = canonical(merged_context)
+                    # Serialize once for both the bounded byte counter and COPY.
+                    context_changes.append((key, Jsonb(encoded_context, dumps=str)))
+                    context_bytes += len(encoded_context.encode())
                 state = (
                     merge(previous["state"], incoming, self.limits)
                     if previous

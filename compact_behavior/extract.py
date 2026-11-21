@@ -14,6 +14,7 @@ from .services import operation_role, operation_catalog, meaningful, operation_l
 from . import context as request_context
 
 CONTROL = re.compile(r"[\x00-\x1f]")
+GUID = re.compile(r"[0-9a-fA-F]{32}")
 API = re.compile(r"^(?:Core|Services)\.v\d+/[A-Za-z][A-Za-z0-9_]*$")
 LINE = re.compile(r"\s+Line:\d+.*$")
 STATUS = re.compile(r"\(([A-Z]{1,3}\d{4,6})\s*\|\s*([A-Za-z_]+)\)")
@@ -112,7 +113,7 @@ def identity(value):
         return None
     # GUID representations compare canonically; other opaque identifiers retain case.
     compact = value.replace("-", "")
-    return compact.lower() if re.fullmatch(r"[0-9a-fA-F]{32}", compact) else value
+    return compact.lower() if GUID.fullmatch(compact) else value
 
 
 def behavior_id(stream, request):
@@ -353,9 +354,11 @@ def facts(row):
     session, status = field(row, "Session")
     if status == "conflicting":
         result["issues"].append("session_field_conflict")
-    elif identity(session):
-        result["sessions"] = [identity(session)]
-        result["raw_session_ids"] = [session]
+    else:
+        session_id = identity(session)
+        if session_id:
+            result["sessions"] = [session_id]
+            result["raw_session_ids"] = [session]
     raw_time, status = field(row, "@timestamp")
     try:
         if status != "present":

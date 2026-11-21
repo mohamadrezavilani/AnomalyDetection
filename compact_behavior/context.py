@@ -81,10 +81,12 @@ def from_log(row, observed_at_ns=None):
     result = empty()
     source = row.get('_source', row if 'fields' not in row else {})
     for data in (source, row.get('fields', {})):
-        if not isinstance(data, dict):
+        if not isinstance(data, dict) or not data:
             continue
         for name, target in LOG_FIELDS.items():
-            value = data.get(name)
+            if name not in data:
+                continue
+            value = data[name]
             for item in value if isinstance(value, list) else [value]:
                 observe(result, target, item, 'log.' + name, observed_at_ns)
     return result if result['values'] or result['limited'] else {}
@@ -110,6 +112,11 @@ def combine(a, b):
                 entries[entry['value']] = entry
                 field_changed = True
             else:
+                old_time, new_time = old.get('first_ns'), entry.get('first_ns')
+                no_earlier_time = new_time is None or old_time is not None and old_time <= new_time
+                if (no_earlier_time and (not entry.get('undated') or old.get('undated'))
+                    and all(source in old['sources'] for source in entry['sources'])):
+                    continue
                 sources = sorted(set(old['sources'] + entry['sources']))[:MAX_SOURCES]
                 times = [v for v in (old.get('first_ns'), entry.get('first_ns')) if v is not None]
                 merged = {'value': entry['value'], 'sources': sources,
