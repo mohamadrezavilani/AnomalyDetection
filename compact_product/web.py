@@ -23,6 +23,8 @@ from compact_behavior import FIVE, FEATURES
 from compact_behavior.extract import identity, materialize
 from .health import health
 from . import BUILD
+from .error_catalog import definitions
+from .presentation import ROLES, data_note
 from compact_ad.methods import METHODS
 from compact_ad import MODEL
 from compact_behavior.services import meaningful_apis, operation_catalog, operation_label, operation_role
@@ -96,6 +98,8 @@ def create_app(config, database, stream, *, secret=None):
 
     app.add_template_filter(operation_label, "operation_label")
     app.add_template_filter(operation_role, "operation_role")
+    app.add_template_filter(data_note, "data_note")
+    app.add_template_filter(lambda role: ROLES.get(role, "نقش مشخص نشده"), "role_label")
 
     def behavior_scope():
         scope = request.args.get("scope", "meaningful")
@@ -147,6 +151,7 @@ def create_app(config, database, stream, *, secret=None):
                 quality FROM {config.source_schema}.behaviors WHERE stream_id=%s {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 30""",
                 (stream, *args),
             ).fetchall()
+            code_definitions = definitions(db, config.source_schema, [r["result_code"] for r in rows])
             coverage = db.execute(
                 f"""SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s""",
                 (stream, value["latest_analyzed_end_ns"] - FIVE if value["latest_analyzed_end_ns"] is not None else None),
@@ -155,6 +160,7 @@ def create_app(config, database, stream, *, secret=None):
             "status.html" if request.path == "/status" else "home.html",
             title="وضعیت پردازش" if request.path == "/status" else "رفتارهای مشاهده‌شده",
             health=value,
+            code_definitions=code_definitions,
             rows=rows,
             coverage=coverage["summary"] if coverage else {},
             scope=scope,
@@ -186,11 +192,13 @@ def create_app(config, database, stream, *, secret=None):
                 WHERE stream_id=%s AND session_id=%s {scope_clause} {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 51""",
                 args,
             ).fetchall()
+            code_definitions = definitions(db, config.source_schema, [r["result_code"] for r in rows[:50]])
         nxt = rows[49] if len(rows) > 50 else None
         return render_template(
             "sessions.html",
             title="رفتارهای نشست",
             key=key,
+            code_definitions=code_definitions,
             rows=rows[:50],
             next_cursor=nxt,
             scope=scope,
@@ -204,11 +212,12 @@ def create_app(config, database, stream, *, secret=None):
                 JOIN {config.source_schema}.behavior_payloads p USING(behavior_id) WHERE b.stream_id=%s AND b.behavior_id=%s""",
                 (stream, bid),
             ).fetchone()
+            code_definitions = definitions(db, config.source_schema, [row["result_code"]]) if row else {}
         if not row:
             abort(404)
         body = materialize(stream, row["state"])
         return render_template(
-            "behavior.html", title="جزئیات رفتار", row=row, body=body
+            "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions
         )
 
     def publishable():

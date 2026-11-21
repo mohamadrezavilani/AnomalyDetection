@@ -49,6 +49,10 @@ def runtime_init(db, s):
             target_ns BIGINT NOT NULL,overlap_next_ns BIGINT,overlap_target_ns BIGINT,last_recheck_ns BIGINT NOT NULL DEFAULT 0)"""
         )
 
+        from .error_catalog import ensure_catalog
+
+        ensure_catalog(db, s)
+
 
 class Lease:
     def __init__(self, project, role, token):
