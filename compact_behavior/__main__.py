@@ -10,7 +10,7 @@ import time
 import tracemalloc
 from . import CONTRACT,EXTRACTOR,FEATURES,FIVE
 from .extract import Extractor,Limits,instant,iso,digest
-from .source import settings,WindowFile,ElasticWindow
+from .source import settings,WindowFile,ElasticWindow,retryable_source_failure
 from .store import Store
 
 
@@ -53,14 +53,32 @@ def notice(status,**kwargs):print(json.dumps(dict(status=status,**kwargs),ensure
 
 
 def measure_window(store,stream,source,*,progress=None):
-    extractor=Extractor(store.limits);began=time.monotonic();cpu=time.process_time();last=began
-    iterator=source.records()
-    try:
-        for record in iterator:
-            extractor.add(record)
-            if progress and time.monotonic()-last>5:
-                progress(records=extractor.records,requests=len(extractor.states),elapsed_seconds=round(time.monotonic()-began,2));last=time.monotonic()
-    finally:iterator.close()
+    began=time.monotonic();cpu=time.process_time();last=began;attempts=[]
+    source_deadline=began+source.budget if isinstance(source,ElasticWindow) else None
+    while True:
+        extractor=Extractor(store.limits);iterator=source.records();attempt_started=time.monotonic()
+        if source_deadline is not None:source.budget=max(.1,source_deadline-time.monotonic())
+        try:
+            for record in iterator:
+                extractor.add(record)
+                if progress and time.monotonic()-last>5:
+                    progress(records=extractor.records,requests=len(extractor.states),elapsed_seconds=round(time.monotonic()-began,2));last=time.monotonic()
+        except Exception as exc:
+            attempts.append(dict(status='DISCARDED_INCOMPLETE_ATTEMPT',page_size=getattr(source,'page_size',None),
+                source_records_discarded=extractor.records,seconds=time.monotonic()-attempt_started,
+                failure={'type':type(exc).__name__,'code':str(exc) if isinstance(exc,(ValueError,TimeoutError)) else None,
+                    'http_status':getattr(exc,'code',None),'details':getattr(exc,'details',None)}))
+            exc.source_attempts=attempts
+            if source_deadline is None or not retryable_source_failure(exc) or len(attempts)>=3 or time.monotonic()>=source_deadline:
+                raise
+            source.page_size=max(64,source.page_size//4)
+            notice('COMPACT_SOURCE_RETRY',attempt=len(attempts)+1,page_size=source.page_size,
+                   discarded_records=extractor.records,reason=attempts[-1]['failure'])
+            time.sleep(.2*len(attempts))
+        else:
+            attempts.append(dict(status='COMPLETE',page_size=getattr(source,'page_size',None),
+                source_records=extractor.records,seconds=time.monotonic()-attempt_started));break
+        finally:iterator.close()
     states=extractor.finish();read_extract=time.monotonic()-began
     begin=instant(source.metadata['window_start']);end=instant(source.metadata['window_end'])
     if begin%FIVE or end-begin!=FIVE:raise ValueError('aligned_window_required')
@@ -78,6 +96,7 @@ def measure_window(store,stream,source,*,progress=None):
             output_eligible+=body['features']['output_eligible']
     elapsed=time.monotonic()-began
     result.update(read_extract_seconds=read_extract,source_request_decode_seconds=getattr(source,'network_seconds',None),
+        source_attempts=attempts,source_page_size=getattr(source,'page_size',None),
         source_timer_scope='HTTP_REQUEST_BODY_READ_AND_JSON_DECODE_INCLUDING_CURSOR_CLEANUP',
         read_decode_extract_seconds_includes_network=True,total_seconds=elapsed,client_cpu_seconds=time.process_time()-cpu,
         extraction_state_bytes=extractor.state_bytes,missing_request_ids=extractor.missing_request_ids,
@@ -122,7 +141,7 @@ def run(args):
                 begin=instant(args.start) if args.start else finish-args.windows*FIVE
             elif args.start and instant(args.start)!=begin:raise ValueError('existing_compact_stream_resumes_own_checkpoint')
             if begin+args.windows*FIVE>finish:raise ValueError('not_enough_closed_source_windows_yet')
-            sources=[ElasticWindow(elastic,begin+i*FIVE,begin+(i+1)*FIVE,page_size=elastic.get('compact_page_size',2000)) for i in range(args.windows)]
+            sources=[ElasticWindow(elastic,begin+i*FIVE,begin+(i+1)*FIVE,page_size=elastic.get('compact_page_size',500)) for i in range(args.windows)]
         report['stream_id']=stream;report['storage_before']=store.measure();save(args.output,report)
         def progress(**values):
             if getattr(args,'stop_file',None) and args.stop_file.exists():raise InterruptedError('prototype_stop_requested')
@@ -144,7 +163,8 @@ def run(args):
         report['status']='COMPACT_PROTOTYPE_INCOMPLETE'
         # Do not put source message bodies, credentials, URLs or arbitrary SQL exceptions in receipts.
         report['failure']=dict(type=type(exc).__name__,code=str(exc) if isinstance(exc,(ValueError,TimeoutError)) else None,
-                               sqlstate=getattr(exc,'sqlstate',None),details=getattr(exc,'details',None))
+                               sqlstate=getattr(exc,'sqlstate',None),details=getattr(exc,'details',None),
+                               source_attempts=getattr(exc,'source_attempts',[]))
         if active_source is not None:report['source_response_diagnostics']=getattr(active_source,'response_diagnostics',[])
     finally:
         if store:store.close()

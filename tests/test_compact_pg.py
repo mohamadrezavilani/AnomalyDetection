@@ -12,7 +12,7 @@ import uuid
 from compact_behavior import FIVE
 from compact_behavior.extract import Limits,LimitExceeded,behavior_id
 from compact_behavior.store import Store
-from tests.test_compact_extract import row,extract,T
+from tests.test_compact_extract import row,extract,T,FlakyWindow
 
 
 def crash(config,schema,point):
@@ -86,6 +86,19 @@ class CompactPostgresTests(unittest.TestCase):
     def test_same_target_different_requests_remain_distinct(self):
         self.publish([row('r1'),row('r2')]);self.assertEqual(len(self.rows('behaviors')),2)
         self.assertEqual(self.rows('dirty_windows')[0]['version'],1)
+    def test_retry_publishes_only_complete_snapshot_into_real_postgres(self):
+        from compact_behavior.__main__ import measure_window
+        result=measure_window(self.store,'test',FlakyWindow())
+        self.assertEqual({r['request_id'] for r in self.rows('behaviors')},{'r1','r2'})
+        self.assertEqual(result['source_records'],2);self.assertEqual(len(self.rows('windows')),1)
+        self.assertEqual(self.store.cursor('test'),T+FIVE)
+    def test_retry_exhaustion_keeps_database_and_checkpoint_unchanged(self):
+        from compact_behavior.__main__ import measure_window
+        from compact_behavior.source import ElasticPageError
+        source=FlakyWindow(always_fail=True)
+        with self.assertRaises(ElasticPageError):measure_window(self.store,'test',source)
+        self.assertEqual(source.attempts,3);self.assertEqual(self.rows('behaviors'),[])
+        self.assertEqual(self.rows('dirty_windows'),[]);self.assertIsNone(self.store.cursor('test'))
     def test_actual_cli_complete_and_incomplete_file_with_postgres_receipt(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);config=root/'config.py';config.write_text('DATABASE = '+repr(self.config),encoding='utf-8')

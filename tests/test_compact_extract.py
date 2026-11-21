@@ -3,8 +3,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock
 from compact_behavior.extract import Extractor,Limits,LimitExceeded,behavior_id,facts,merge,materialize,instant,scrub,sql_parameters
-from compact_behavior.source import WindowFile,ElasticWindow,settings,ElasticPageError,response_summary
+from compact_behavior.source import WindowFile,ElasticWindow,settings,ElasticPageError,response_summary,retryable_source_failure
 
 T=instant('2026-10-20T08:20:00Z')
 def row(request='req-1',session='session-1',path='Services.v1/WaterBills',message=None,at='2026-10-20T08:20:10Z'):
@@ -16,6 +17,20 @@ def extract(rows):
     e=Extractor()
     for r in rows:e.add(r)
     return e.finish()
+
+
+class FlakyWindow(ElasticWindow):
+    """The failed snapshot contains a row absent from the successful snapshot."""
+    def __init__(self,*,always_fail=False):
+        super().__init__({'host':'http://example.test','index_pattern':'logs-*'},T,T+300000000000)
+        self.attempts=0;self.always_fail=always_fail
+    def records(self):
+        self.attempts+=1
+        if self.attempts==1 or self.always_fail:
+            yield row('discarded-only')
+            raise ElasticPageError('elastic_partial_page',{'timed_out':True,'shards':{'failed':0}})
+        yield row('r1');yield row('r2')
+        self.metadata={'window_start':'2026-10-20T08:20:00Z','window_end':'2026-10-20T08:25:00Z','complete':True,'count':2}
 
 
 class CompactExtractionTests(unittest.TestCase):
@@ -94,6 +109,55 @@ class CompactExtractionTests(unittest.TestCase):
 
 
 class SourceTests(unittest.TestCase):
+    def test_transient_failure_discards_entire_attempt_before_one_publication(self):
+        from compact_behavior.__main__ import measure_window
+        db=Mock();db.limits=Limits();db.publish.return_value={}
+        source=FlakyWindow();result=measure_window(db,'stream',source)
+        self.assertEqual(source.attempts,2);db.publish.assert_called_once()
+        self.assertEqual(set(db.publish.call_args.args[3]),{'r1','r2'})
+        self.assertEqual(db.publish.call_args.args[4],2)
+        self.assertEqual(result['source_attempts'][0]['source_records_discarded'],1)
+        self.assertEqual([x['status'] for x in result['source_attempts']],['DISCARDED_INCOMPLETE_ATTEMPT','COMPLETE'])
+        self.assertEqual(source.page_size,125)
+    def test_invalid_protocol_is_not_retried_or_published(self):
+        from compact_behavior.__main__ import measure_window
+        class Corrupt(FlakyWindow):
+            def records(self):
+                self.attempts+=1
+                raise ElasticPageError('elastic_partial_page',{'timed_out':None,'rejected_checks':['timed_out_not_explicit_false']})
+                yield
+        db=Mock();db.limits=Limits();source=Corrupt()
+        with self.assertRaises(ElasticPageError):measure_window(db,'stream',source)
+        self.assertEqual(source.attempts,1);db.publish.assert_not_called()
+    def test_only_transient_protocol_errors_are_retryable(self):
+        from urllib.error import HTTPError
+        self.assertTrue(retryable_source_failure(HTTPError('http://example.test',429,'rate',None,None)))
+        self.assertFalse(retryable_source_failure(HTTPError('http://example.test',403,'denied',None,None)))
+        self.assertTrue(retryable_source_failure(LimitExceeded('elastic_page_bytes_limit')))
+        self.assertFalse(retryable_source_failure(LimitExceeded('request_state_bytes_limit')))
+    def test_scroll_retry_reopens_snapshot_and_closes_latest_failed_handle(self):
+        from urllib.error import HTTPError
+        from compact_behavior.__main__ import measure_window
+        class Scroll(ElasticWindow):
+            def __init__(self):
+                super().__init__({'host':'http://example.test','index_pattern':'logs-*'},T,T+300000000000)
+                self.attempts=0;self.deleted=[];self.initial=[]
+            def packet(self,sid,records,timeout=False):
+                return {'_scroll_id':sid,'timed_out':timeout,'_shards':{'total':40,'successful':40,'failed':0,'skipped':39},
+                    'hits':{'total':{'relation':'eq','value':2},'hits':[{'_source':r} for r in records]}}
+            def request(self,path,body=None,method='POST'):
+                if '_pit?' in path:raise HTTPError('http://example.test',400,'PIT unsupported',None,None)
+                if method=='DELETE':self.deleted.extend(body['scroll_id']);return {}
+                if '/_search?' in path:
+                    self.attempts+=1;self.initial.append((path,body))
+                    return self.packet('bad1' if self.attempts==1 else 'good1',[row('discarded-only' if self.attempts==1 else 'r1')])
+                return self.packet('bad2',[],True) if self.attempts==1 else self.packet('good2',[row('r2')])
+        source=Scroll();db=Mock();db.limits=Limits();db.publish.return_value={}
+        result=measure_window(db,'stream',source)
+        self.assertEqual(source.deleted,['bad2','good2']);self.assertEqual([v[1]['size'] for v in source.initial],[500,125])
+        self.assertTrue(all('allow_partial_search_results=false' in v[0] for v in source.initial))
+        self.assertEqual(set(db.publish.call_args.args[3]),{'r1','r2'});self.assertEqual(db.publish.call_args.args[4],2)
+        self.assertEqual(len(result['source_attempts']),2)
     def test_rejection_retains_exact_protocol_reason_without_documents(self):
         response={'timed_out':True,'_shards':{'total':3,'successful':2,'failed':1},
             'hits':{'total':{'relation':'eq','value':9},'hits':[{'_source':{'password':'PRIVATE'}}]},'pit_id':'PRIVATE_PIT'}
@@ -173,6 +237,7 @@ class SourceTests(unittest.TestCase):
         s=Fake({'host':'http://example.test','index_pattern':'logs-*'},T,T+300000000000);s.calls=[]
         self.assertEqual(len(list(s.records())),2);self.assertEqual(s.metadata['count'],2)
         self.assertNotIn('CallPath.keyword',json.dumps(s.calls));self.assertEqual(s.calls[2][1]['search_after'],[2])
+        self.assertEqual(s.page_size,500);self.assertEqual(s.calls[1][1]['timeout'],'30s');self.assertEqual(s.calls[1][1]['terminate_after'],0)
 
 
 if __name__=='__main__':unittest.main()

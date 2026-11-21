@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import ssl
 import time
-from urllib.error import HTTPError
+from urllib.error import HTTPError,URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 from .extract import instant, iso, LimitExceeded
@@ -17,6 +17,16 @@ from .extract import instant, iso, LimitExceeded
 class ElasticPageError(ValueError):
     def __init__(self,code,details):
         super().__init__(code);self.details=details
+
+
+def retryable_source_failure(exc):
+    if isinstance(exc,ElasticPageError):
+        details=exc.details;shards=details.get('shards') or {}
+        return str(exc)=='elastic_partial_page' and (details.get('timed_out') is True or
+            type(shards.get('failed')) is int and shards['failed']>0)
+    if isinstance(exc,HTTPError):return exc.code in (408,429,502,503,504)
+    if isinstance(exc,URLError):return isinstance(exc.reason,(TimeoutError,ConnectionError))
+    return isinstance(exc,(TimeoutError,ConnectionError)) or isinstance(exc,LimitExceeded) and str(exc)=='elastic_page_bytes_limit'
 
 
 def response_summary(response):
@@ -120,7 +130,7 @@ class WindowFile:
 
 
 class ElasticWindow:
-    def __init__(self,config,start_ns,end_ns,*,page_size=5000,budget=180):
+    def __init__(self,config,start_ns,end_ns,*,page_size=500,budget=180):
         self.config=config;self.start=start_ns;self.end=end_ns;self.page_size=page_size;self.budget=budget
         self.metadata={};self.count=0;self.network_seconds=0.;self.pages=0
         self.response_diagnostics=[]
@@ -145,6 +155,11 @@ class ElasticWindow:
                 data=response.read(33_554_433)
                 if len(data)>33_554_432:raise LimitExceeded('elastic_page_bytes_limit')
                 return json.loads(data)
+        except HTTPError as exc:
+            try:error=json.loads(exc.read(8192))
+            except (ValueError,OSError):error={}
+            exc.details={'http_status':exc.code,'response':response_summary(error)}
+            raise
         finally:self.network_seconds+=time.monotonic()-started
     @staticmethod
     def checked(response,expected=None):
@@ -168,9 +183,13 @@ class ElasticWindow:
         if not isinstance(hits.get('hits'),list):raise ElasticPageError('elastic_hits_required',details)
         return hits['hits'],total
     def records(self):
+        # A retry opens a new snapshot and starts its counts from zero. The
+        # caller discards all extracted rows from the unsuccessful traversal.
+        self.metadata={};self.count=0;self.pages=0;self.response_diagnostics=[]
         self.deadline=time.monotonic()+self.budget;pit=sid=None;expected=None;last=None;use_pit=True
         index=quote(self.index,safe='*,_-:.')
         body=dict(size=self.page_size,track_total_hits=True,query={'range':{'@timestamp':{'gte':iso(self.start),'lt':iso(self.end)}}},
+                  timeout='30s',terminate_after=0,
                   _source=['@timestamp','CallPath','RequestID','Session','message','ExecutionTime'])
         try:
             try:opened=self.request('/'+index+'/_pit?keep_alive=3m&allow_partial_search_results=false');pit=opened.get('id')
@@ -184,7 +203,7 @@ class ElasticWindow:
                     if last is not None:query.update(search_after=last,track_total_hits=False)
                     response=self.request('/_search?allow_partial_search_results=false',query)
                     pit=response.get('pit_id',pit)
-                elif sid is None:response=self.request('/'+index+'/_search?scroll=3m',dict(body,sort=['_doc']))
+                elif sid is None:response=self.request('/'+index+'/_search?scroll=3m&allow_partial_search_results=false',dict(body,sort=['_doc']))
                 else:response=self.request('/_search/scroll',{'scroll':'3m','scroll_id':sid})
                 if not use_pit:sid=response.get('_scroll_id',sid)
                 self.response_diagnostics.append(dict(method='pit_search_after' if use_pit else 'scroll',
