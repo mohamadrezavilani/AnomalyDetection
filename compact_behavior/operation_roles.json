@@ -1,0 +1,1031 @@
+{
+  "policy_version": "meaningful-api-roles-1",
+  "source_catalog_sha256": "05ebff4db5829cc2f72a73e2813dce3002f7afd26793c9efd61947d246005d92",
+  "unknown_policy": "UNCLASSIFIED_NOT_NORMAL_NOT_A_MEANINGFUL_ACTION",
+  "routes": {
+    "Core.v1/AutoPayAddOrUpdateFreewayToll": {
+      "role": "user_management",
+      "family_label_fa": "عوارض آزادراهی"
+    },
+    "Core.v1/AutoPayDelete": {
+      "role": "user_management",
+      "family_label_fa": null
+    },
+    "Core.v1/AutoPayGet": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/AutoPayUpdateStatus": {
+      "role": "user_management",
+      "family_label_fa": null
+    },
+    "Core.v1/BillsInfo": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/BillsPayment": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Core.v1/BillsPaymentChannels": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/Cities": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/CnpgGetCardList": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/CnpgPayment": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Core.v1/CnpgRemoveCard": {
+      "role": "user_management",
+      "family_label_fa": null
+    },
+    "Core.v1/CnpgRequestOtp": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/ConfigBasic": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/ConfigBusinessInfo": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/ConfigSearch": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/ConfigService": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/DeviceRegister": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/GetBillServiceName": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/GetServiceNameListByFeature": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/InvoiceDiscounts": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/InvoiceInfo": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/InvoicePayment": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Core.v1/LoginByGoogle": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/LoginByOTP": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/LoginByUserCredential": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/MetricsSearch": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/MetricsSurvey": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/NotifyMeAdd": {
+      "role": "user_management",
+      "family_label_fa": null
+    },
+    "Core.v1/Ocr": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/PaymentInfo": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/PhoneNumberValidator": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/ShaparakBankListService": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserBasketAddBills": {
+      "role": "user_management",
+      "family_label_fa": null
+    },
+    "Core.v1/UserBasketDelete": {
+      "role": "user_management",
+      "family_label_fa": null
+    },
+    "Core.v1/UserBasketDeleteItems": {
+      "role": "user_management",
+      "family_label_fa": null
+    },
+    "Core.v1/UserBasketGet": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserBasketGetItemCount": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserBasketPayment": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Core.v1/UserBillsPaymentSummary": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserCredentialAdd": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserCredentialChangePassword": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserCredentialClearPassword": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserCredentialInfo": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserDelete": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserInvoicePaymentSummary": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserLogOut": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserMessageRead": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserMessageRemove": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserMessages": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserProfile": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserProfileUpdateFinancialInfo": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserProfileUpdateLocation": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserProfileUpdatePersonalInfo": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserPublicKey": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserQuickAccessItems": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserQuickAccessItemsUpdate": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserServiceQueries": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserServiceQueryBookmark": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserServiceQueryDelete": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserServiceQueryNote": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserServicesRecentlyUsed": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserSessionInfo": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserSessionUpdateInfo": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserSessions": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserSessionsTerminate": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserSessionsTerminateAllOthers": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserSurvey": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserTransactions": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v1/UserVouchers": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/UserWalletBalance": {
+      "role": "support",
+      "family_label_fa": "کیف پول"
+    },
+    "Core.v1/UserWalletCharge": {
+      "role": "business",
+      "family_label_fa": "کیف پول"
+    },
+    "Core.v1/UserWalletChargeChannels": {
+      "role": "support",
+      "family_label_fa": "کیف پول"
+    },
+    "Core.v1/UserWallets": {
+      "role": "support",
+      "family_label_fa": "کیف پول"
+    },
+    "Core.v1/UserWidgetsSetDefault": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v1/WalletPayment": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Core.v2/AutoPayGet": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Core.v2/DeviceRegister": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Core.v2/UserSessionUpdateInfo": {
+      "role": "support",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Ewano.v1/EwanoBillPayment": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Ewano.v1/EwanoCreateOrder": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Ewano.v1/EwanoLogin": {
+      "role": "user_management",
+      "family_label_fa": "حساب کاربری"
+    },
+    "Ewano.v1/EwanoPayment": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Ewano.v1/EwanoUserBillsPaymentSummary": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Files.Download": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Job.DoJob": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "PaymentCallback.PaymentCallback": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "PaymentRedirect.PaymentRedirect": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "Proxy.CarAnnualTaxGetFixedParametersConfig": {
+      "role": "support",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Proxy.CarTaxCheckUserRegistrationStatus": {
+      "role": "support",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+    },
+    "Proxy.CarTaxForgetPassword": {
+      "role": "support",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+    },
+    "Proxy.CarTaxInquiry": {
+      "role": "unknown",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+    },
+    "Proxy.CarTaxRegistration": {
+      "role": "unknown",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+    },
+    "Proxy.CarTaxRequestOtp": {
+      "role": "support",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+    },
+    "Proxy.GetCardOcrResult": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Proxy.MotorTaxInquiry": {
+      "role": "unknown",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+    },
+    "Proxy.SettlementCertificateCarAnnualTax": {
+      "role": "unknown",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Proxy.TechnicalExaminationCertificateCheckUserRegistrationStatus": {
+      "role": "support",
+      "family_label_fa": "معاینه فنی"
+    },
+    "Proxy.TechnicalExaminationCertificateInquiry": {
+      "role": "unknown",
+      "family_label_fa": "معاینه فنی"
+    },
+    "Proxy.TechnicalExaminationCertificateRegistration": {
+      "role": "unknown",
+      "family_label_fa": "معاینه فنی"
+    },
+    "Proxy.TechnicalExaminationCertificateRequestOtp": {
+      "role": "support",
+      "family_label_fa": "معاینه فنی"
+    },
+    "Proxy.UploadNewCardOcrImage": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Public.v1/AirPollution": {
+      "role": "support",
+      "family_label_fa": "کیفیت هوا"
+    },
+    "Public.v1/CalendarMonth": {
+      "role": "support",
+      "family_label_fa": "تقویم"
+    },
+    "Public.v1/CalendarReligiousTimes": {
+      "role": "support",
+      "family_label_fa": "اوقات شرعی"
+    },
+    "Public.v1/CalendarToday": {
+      "role": "support",
+      "family_label_fa": "تقویم"
+    },
+    "Public.v1/ExchangeCrypto": {
+      "role": "business",
+      "family_label_fa": "نرخ رمزارز"
+    },
+    "Public.v1/ExchangeCurrency": {
+      "role": "business",
+      "family_label_fa": "نرخ ارز"
+    },
+    "Public.v1/ExchangeGold": {
+      "role": "business",
+      "family_label_fa": "نرخ طلا"
+    },
+    "Public.v1/ServiceIconUrls": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Public.v1/Weather": {
+      "role": "support",
+      "family_label_fa": "آب‌وهوا"
+    },
+    "Services.v1/AddUserData": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Services.v1/BankChequeStatusSayad": {
+      "role": "business",
+      "family_label_fa": "وضعیت چک صیادی"
+    },
+    "Services.v1/BankIbanInfo": {
+      "role": "business",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی"
+    },
+    "Services.v1/BankIbanInfoPrerequisites": {
+      "role": "support",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی"
+    },
+    "Services.v1/CarAnnualTaxBills": {
+      "role": "business",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Services.v1/CarAnnualTaxFileRegistration": {
+      "role": "business",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Services.v1/CarAnnualTaxFileRegistrationRequest": {
+      "role": "business",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Services.v1/CarAnnualTaxGetSettlementCertificate": {
+      "role": "business",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Services.v1/CellPhoneBills": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن همراه"
+    },
+    "Services.v1/CellPhoneBillsDetails": {
+      "role": "business",
+      "family_label_fa": null
+    },
+    "Services.v1/CellPhoneMciBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن همراه"
+    },
+    "Services.v1/DrivingAccidents": {
+      "role": "business",
+      "family_label_fa": "سوابق تصادفات"
+    },
+    "Services.v1/DrivingLicenseNegativePoint": {
+      "role": "business",
+      "family_label_fa": "گواهینامه و نمره منفی"
+    },
+    "Services.v1/DrivingLicenseStatus": {
+      "role": "business",
+      "family_label_fa": "گواهینامه و نمره منفی"
+    },
+    "Services.v1/EducationalExemption": {
+      "role": "business",
+      "family_label_fa": "معافیت تحصیلی"
+    },
+    "Services.v1/ElectricBills": {
+      "role": "business",
+      "family_label_fa": "قبض برق"
+    },
+    "Services.v1/ElectricBillsDetails": {
+      "role": "business",
+      "family_label_fa": "قبض برق"
+    },
+    "Services.v1/ElectricBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض برق"
+    },
+    "Services.v1/ExitBanStatus": {
+      "role": "business",
+      "family_label_fa": "ممنوع‌الخروجی"
+    },
+    "Services.v1/Facility": {
+      "role": "business",
+      "family_label_fa": "تسهیلات و تعهدات بانکی"
+    },
+    "Services.v1/FreewayTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض آزادراهی"
+    },
+    "Services.v1/FreewayTollBillsDetailed": {
+      "role": "business",
+      "family_label_fa": "عوارض آزادراهی"
+    },
+    "Services.v1/GasBills": {
+      "role": "business",
+      "family_label_fa": "قبض گاز"
+    },
+    "Services.v1/GasBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض گاز"
+    },
+    "Services.v1/GetUserData": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Services.v1/GovernmentRetirement": {
+      "role": "business",
+      "family_label_fa": "بازنشستگی کشوری"
+    },
+    "Services.v1/GovernmentRetirementReceipt": {
+      "role": "business",
+      "family_label_fa": "بازنشستگی کشوری"
+    },
+    "Services.v1/GovernmentSubventionHistory": {
+      "role": "business",
+      "family_label_fa": "سوابق یارانه"
+    },
+    "Services.v1/HusbandOrGuardianConsent": {
+      "role": "business",
+      "family_label_fa": "رضایت همسر یا ولی"
+    },
+    "Services.v1/IdentificationDocumentsStatusCar": {
+      "role": "business",
+      "family_label_fa": "وضعیت مدارک خودرو و موتور"
+    },
+    "Services.v1/IdentificationDocumentsStatusMotorcycle": {
+      "role": "business",
+      "family_label_fa": "وضعیت مدارک خودرو و موتور"
+    },
+    "Services.v1/InsurancePolicies": {
+      "role": "business",
+      "family_label_fa": "بیمه‌نامه‌ها"
+    },
+    "Services.v1/InvoiceRegister": {
+      "role": "support",
+      "family_label_fa": null
+    },
+    "Services.v1/JudicialTransactionCredit": {
+      "role": "business",
+      "family_label_fa": "اعتبار معاملاتی قضایی"
+    },
+    "Services.v1/JusticeSharesPortfolio": {
+      "role": "business",
+      "family_label_fa": "سهام عدالت"
+    },
+    "Services.v1/LandLinePhoneBills": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن ثابت"
+    },
+    "Services.v1/LandLinePhoneBillsDetails": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن ثابت"
+    },
+    "Services.v1/LandLinePhoneBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن ثابت"
+    },
+    "Services.v1/LivelihoodInformation": {
+      "role": "business",
+      "family_label_fa": "اطلاعات معیشتی"
+    },
+    "Services.v1/MilitaryCardIssuanceStatus": {
+      "role": "business",
+      "family_label_fa": "وضعیت کارت نظام وظیفه"
+    },
+    "Services.v1/MunicipalityCarAnnualTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Services.v1/MunicipalityCarParkTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض پارک خودرو"
+    },
+    "Services.v1/MunicipalityCarTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض شهری خودرو"
+    },
+    "Services.v1/MunicipalityPropertySafetyTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض ایمنی ملک"
+    },
+    "Services.v1/MunicipalityPropertyTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض ملک"
+    },
+    "Services.v1/MunicipalityPropertyTollBillsBarcodeInfo": {
+      "role": "business",
+      "family_label_fa": "عوارض ملک"
+    },
+    "Services.v1/MunicipalityTaxiFaresBills": {
+      "role": "business",
+      "family_label_fa": "کرایه تاکسی"
+    },
+    "Services.v1/MunicipalityTaxiFaresBillsBarcodeInfo": {
+      "role": "business",
+      "family_label_fa": "کرایه تاکسی"
+    },
+    "Services.v1/MyGovRegister": {
+      "role": "business",
+      "family_label_fa": "ثبت‌نام پنجره ملی دولت"
+    },
+    "Services.v1/NationalCardReceiveTracking": {
+      "role": "business",
+      "family_label_fa": "پیگیری کارت ملی"
+    },
+    "Services.v1/NationalInfo": {
+      "role": "business",
+      "family_label_fa": "اطلاعات هویتی"
+    },
+    "Services.v1/PassportStatus": {
+      "role": "business",
+      "family_label_fa": "وضعیت گذرنامه"
+    },
+    "Services.v1/PassportStatusExport": {
+      "role": "business",
+      "family_label_fa": "وضعیت گذرنامه"
+    },
+    "Services.v1/PersonStatus": {
+      "role": "business",
+      "family_label_fa": "وضعیت شخص"
+    },
+    "Services.v1/PlateNumberHistory": {
+      "role": "business",
+      "family_label_fa": "پلاک‌های خودرو و سابقه پلاک"
+    },
+    "Services.v1/PostPackagesStatus": {
+      "role": "business",
+      "family_label_fa": "رهگیری مرسوله پستی"
+    },
+    "Services.v1/PostTrackingExtended": {
+      "role": "business",
+      "family_label_fa": "رهگیری مرسوله پستی"
+    },
+    "Services.v1/PostalCodeToAddress": {
+      "role": "business",
+      "family_label_fa": "نشانی از کد پستی"
+    },
+    "Services.v1/RealEstateContract": {
+      "role": "business",
+      "family_label_fa": "قرارداد املاک"
+    },
+    "Services.v1/SettlementCertificateRequest": {
+      "role": "business",
+      "family_label_fa": "مفاصاحساب شهرداری"
+    },
+    "Services.v1/SfaraCoupon": {
+      "role": "business",
+      "family_label_fa": "کالابرگ و خدمات سفرا"
+    },
+    "Services.v1/SfaraCouponGetOrderDetail": {
+      "role": "support",
+      "family_label_fa": "کالابرگ و خدمات سفرا"
+    },
+    "Services.v1/SfaraCouponGetOrderOtp": {
+      "role": "support",
+      "family_label_fa": "کالابرگ و خدمات سفرا"
+    },
+    "Services.v1/SocialSecurityInsuranceElectronicPrescription": {
+      "role": "business",
+      "family_label_fa": "نسخه الکترونیکی تأمین اجتماعی"
+    },
+    "Services.v1/SocialSecurityInsuranceElectronicPrescriptionDetails": {
+      "role": "support",
+      "family_label_fa": "نسخه الکترونیکی تأمین اجتماعی"
+    },
+    "Services.v1/SocialSecurityInsuranceHistory": {
+      "role": "business",
+      "family_label_fa": "سوابق بیمه تأمین اجتماعی"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalCredit": {
+      "role": "business",
+      "family_label_fa": "اعتبار درمانی تأمین اجتماعی"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalPrescription": {
+      "role": "business",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی"
+    },
+    "Services.v1/SocialSecurityInsuranceMedicalPrescriptionDetails": {
+      "role": "support",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی"
+    },
+    "Services.v1/SocialSecurityInsuranceRetirement": {
+      "role": "business",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی"
+    },
+    "Services.v1/SocialSecurityInsuranceRetirementReceipt": {
+      "role": "business",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی"
+    },
+    "Services.v1/TechnicalExaminationCertificate": {
+      "role": "business",
+      "family_label_fa": "معاینه فنی"
+    },
+    "Services.v1/TechnicalExaminationCertificateByVin": {
+      "role": "business",
+      "family_label_fa": "معاینه فنی"
+    },
+    "Services.v1/TelecomRegisteredLines": {
+      "role": "business",
+      "family_label_fa": "خطوط ارتباطی ثبت‌شده"
+    },
+    "Services.v1/TopUpChargeCustomConfig": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpOperators": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpOperatorsCharge": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpOperatorsInternetPackage": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpProductPurchase": {
+      "role": "business",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpProducts": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpProductsCharge": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpProductsInternetPackage": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpPurchaseInfo": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TopUpRoamingInternetPackageProducts": {
+      "role": "support",
+      "family_label_fa": "خرید شارژ و بسته"
+    },
+    "Services.v1/TrafficFinesCar": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesCarNoDetails": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesCarTotalDebt": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesCarWithImage": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesImages": {
+      "role": "support",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesMotorcycle": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesMotorcycleNoDetails": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesMotorcycleWithImage": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TrafficFinesWithImageInquiryGetImage": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v1/TransferTax": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v1/TransferTaxCar": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v1/TransferTaxGetSettlementCertificate": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v1/TransferTaxMotorcycle": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v1/VehicleAuthenticity": {
+      "role": "business",
+      "family_label_fa": "اصالت خودرو"
+    },
+    "Services.v1/VehicleLeaseStatus": {
+      "role": "business",
+      "family_label_fa": "وضعیت لیزینگ خودرو"
+    },
+    "Services.v1/VehiclePlateNumbers": {
+      "role": "business",
+      "family_label_fa": "پلاک‌های خودرو و سابقه پلاک"
+    },
+    "Services.v1/VehicleTheftStatus": {
+      "role": "business",
+      "family_label_fa": "وضعیت سرقت خودرو"
+    },
+    "Services.v1/VehicleThirdPartyInsurance": {
+      "role": "business",
+      "family_label_fa": "بیمه شخص ثالث خودرو"
+    },
+    "Services.v1/VehicleThirdPartyInsuranceStatus": {
+      "role": "business",
+      "family_label_fa": "بیمه شخص ثالث خودرو"
+    },
+    "Services.v1/WaterBills": {
+      "role": "business",
+      "family_label_fa": "قبض آب"
+    },
+    "Services.v1/WaterBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض آب"
+    },
+    "Services.v2/BankIbanInfo": {
+      "role": "business",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی"
+    },
+    "Services.v2/CellPhoneMciBillsDetails": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن همراه"
+    },
+    "Services.v2/ElectricBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض برق"
+    },
+    "Services.v2/ExitBanStatus": {
+      "role": "business",
+      "family_label_fa": "ممنوع‌الخروجی"
+    },
+    "Services.v2/FreewayTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض آزادراهی"
+    },
+    "Services.v2/GasBills": {
+      "role": "business",
+      "family_label_fa": "قبض گاز"
+    },
+    "Services.v2/GasBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض گاز"
+    },
+    "Services.v2/GovernmentSubventionHistory": {
+      "role": "business",
+      "family_label_fa": "سوابق یارانه"
+    },
+    "Services.v2/JudicialTransactionCredit": {
+      "role": "business",
+      "family_label_fa": "اعتبار معاملاتی قضایی"
+    },
+    "Services.v2/LandLinePhoneBillsDetails": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن ثابت"
+    },
+    "Services.v2/LandLinePhoneBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن ثابت"
+    },
+    "Services.v2/MunicipalityCarAnnualTollBills": {
+      "role": "business",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+    },
+    "Services.v2/PassportStatus": {
+      "role": "business",
+      "family_label_fa": "وضعیت گذرنامه"
+    },
+    "Services.v2/RealEstateContract": {
+      "role": "business",
+      "family_label_fa": "قرارداد املاک"
+    },
+    "Services.v2/SfaraCouponGetOrderOtp": {
+      "role": "support",
+      "family_label_fa": "کالابرگ و خدمات سفرا"
+    },
+    "Services.v2/SocialSecurityInsuranceHistory": {
+      "role": "business",
+      "family_label_fa": "سوابق بیمه تأمین اجتماعی"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalCredit": {
+      "role": "business",
+      "family_label_fa": "اعتبار درمانی تأمین اجتماعی"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalPrescription": {
+      "role": "business",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی"
+    },
+    "Services.v2/SocialSecurityInsuranceMedicalPrescriptionDetails": {
+      "role": "support",
+      "family_label_fa": "نسخه پزشکی تأمین اجتماعی"
+    },
+    "Services.v2/SocialSecurityInsuranceRetirement": {
+      "role": "business",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی"
+    },
+    "Services.v2/SocialSecurityInsuranceRetirementReceipt": {
+      "role": "business",
+      "family_label_fa": "مستمری و فیش بازنشستگی تأمین اجتماعی"
+    },
+    "Services.v2/TrafficFinesImages": {
+      "role": "business",
+      "family_label_fa": "خلافی خودرو و موتور"
+    },
+    "Services.v2/TransferTaxCar": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v2/TransferTaxMotorcycle": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v2/VehicleAuthenticity": {
+      "role": "business",
+      "family_label_fa": "اصالت خودرو"
+    },
+    "Services.v2/WaterBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض آب"
+    },
+    "Services.v3/BankIbanInfo": {
+      "role": "business",
+      "family_label_fa": "اطلاعات شبا و حساب بانکی"
+    },
+    "Services.v3/ElectricBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض برق"
+    },
+    "Services.v3/JudicialTransactionCredit": {
+      "role": "business",
+      "family_label_fa": "اعتبار معاملاتی قضایی"
+    },
+    "Services.v3/LandLinePhoneBillsDetails": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن ثابت"
+    },
+    "Services.v3/LandLinePhoneBillsExport": {
+      "role": "business",
+      "family_label_fa": "قبض تلفن ثابت"
+    },
+    "Services.v3/SocialSecurityInsuranceMedicalCredit": {
+      "role": "business",
+      "family_label_fa": "اعتبار درمانی تأمین اجتماعی"
+    },
+    "Services.v3/TransferTaxCar": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v3/TransferTaxMotorcycle": {
+      "role": "business",
+      "family_label_fa": "مالیات نقل و انتقال خودرو و موتور"
+    },
+    "Services.v3/VehicleAuthenticity": {
+      "role": "business",
+      "family_label_fa": "اصالت خودرو"
+    },
+    "Webhook.v1/InformBillsPaymentStatus": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "Webhook.v1/InformCarAnnualTaxFileRegistrationRequest": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "Webhook.v1/InformCarAnnualTaxStatus": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "Webhook.v1/InformPurchaseStatus": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "Webhook.v1/InformTransferTaxStatus": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "Webhook.v2/InformBillsPaymentStatus": {
+      "role": "system",
+      "family_label_fa": null
+    }
+  }
+}

@@ -11,7 +11,7 @@ import unittest
 import zipfile
 from unittest.mock import Mock, patch
 from compact_product.config import Config
-from compact_product.operations import execute, legacy_receipt, short_gate_checks, wait_for_supervisor, task, collect_role_diagnostics, bundle
+from compact_product.operations import execute, legacy_receipt, short_gate_checks, wait_for_supervisor, task, collect_role_diagnostics, bundle, observe
 from compact_product.runtime import start
 
 
@@ -34,6 +34,27 @@ def healthy_observation():
 
 
 class CompactOperationTests(unittest.TestCase):
+    def test_deterministic_source_limit_exports_failure_without_waiting_fifteen_minutes(self):
+        roles = {r: dict(running=True,state="RUNNING",command_token=r,process_pid=os.getpid(),package={"source_sha256":"expected"}) for r in ("ingest","analysis","web")}
+        roles["ingest"].update(state="RETRYING",failure=dict(type="LimitExceeded",code="request_state_bytes_limit"))
+        with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+            root = Path(directory)
+            stack.enter_context(patch("compact_product.operations.load", return_value=(Config(), {"DATABASE":{}}, "test")))
+            stack.enter_context(patch("compact_product.operations.status", return_value=roles))
+            stack.enter_context(patch("compact_product.version.verify", return_value={"source_sha256":"expected"}))
+            stack.enter_context(patch("compact_product.operations.health", return_value=healthy_observation()["samples"][0]["health"]))
+            stack.enter_context(patch("compact_product.operations.probe", return_value=[dict(seconds=.01)]))
+            db = stack.enter_context(patch("compact_product.operations.Store")).return_value
+            db.conn.execute.return_value.fetchall.return_value = []
+            sleep = stack.enter_context(patch("compact_product.operations.time.sleep"))
+            with self.assertRaisesRegex(ValueError, "compact_ingest_blocked_by_source_limit") as raised:
+                observe(root, 900, root)
+            self.assertEqual(raised.exception.details["code"], "request_state_bytes_limit")
+            value = json.loads((root / "observation.json").read_text())
+            self.assertEqual(value["status"], "COMPACT_OBSERVATION_INVALID")
+            self.assertEqual(len(value["samples"]), 1)
+            sleep.assert_not_called()
+
     @unittest.skipUnless(os.name == "nt", "native Windows PowerShell required")
     def test_native_installer_imports_release_with_separate_data_and_calling_directories(self):
         from compact_product import BUILD

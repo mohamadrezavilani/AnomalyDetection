@@ -65,6 +65,20 @@ class AnalysisStore(Store):
         self.iteration += 1
         s = self.schema
         a = self.ad_schema
+        # Rebuild old model references from compact facts, at most one new job
+        # per iteration and only within the current 24h reference horizon.
+        # Existing results/history/feedback remain available as old revisions.
+        self.conn.execute(
+            f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns)
+            SELECT r.stream_id,r.start_ns,%s FROM {a}.window_results r
+            WHERE r.stream_id=%s AND (r.feature_version<>%s OR r.model_version<>%s)
+            AND r.start_ns>=(SELECT max(start_ns) FROM {self.schema}.windows WHERE stream_id=%s)-%s
+            AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=r.stream_id
+                AND j.start_ns=r.start_ns AND j.processed_version<j.version)
+            ORDER BY r.start_ns DESC LIMIT 1
+            ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns""",
+            (time.time_ns(), stream, FEATURES, MODEL, stream, REFERENCE_WINDOWS * FIVE),
+        )
         # Live freshness gets four slots; one slot guarantees old/reference work.
         direction = "ASC" if self.iteration % 5 == 0 else "DESC"
         row = self.conn.execute(
@@ -124,7 +138,7 @@ class AnalysisStore(Store):
             with self.conn.cursor(name="compact_analysis_input") as cur:
                 cur.itersize = 1000
                 cur.execute(
-                    f"""SELECT behavior_id,session_id,result_code,features,kind FROM {s}.behaviors
+                    f"""SELECT behavior_id,session_id,result_code,features,kind,api FROM {s}.behaviors
                     WHERE stream_id=%s AND observed_at_ns>=%s AND observed_at_ns<%s ORDER BY observed_at_ns,behavior_id""",
                     (stream, start, start + FIVE),
                 )
@@ -195,7 +209,7 @@ class AnalysisStore(Store):
             if job != work["job"]:
                 raise ChangedDuringAnalysis("reference_revision_changed")
             before = self.conn.execute(
-                f"SELECT summary_hash FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
+                f"SELECT summary_hash,feature_version,model_version FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
                 (stream, start),
             ).fetchone()
             committed_revision = self.conn.execute(
@@ -298,7 +312,7 @@ class AnalysisStore(Store):
                 f"UPDATE {a}.reanalysis SET processed_version=version WHERE stream_id=%s AND start_ns=%s",
                 (stream, start),
             )
-            if not before or before["summary_hash"] != signature:
+            if not before or (before["summary_hash"], before["feature_version"], before["model_version"]) != (signature, FEATURES, MODEL):
                 self.conn.execute(
                     f"INSERT INTO {a}.reference_epochs VALUES(%s,1) ON CONFLICT(stream_id) DO UPDATE SET epoch={a}.reference_epochs.epoch+1",
                     (stream,),

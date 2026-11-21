@@ -433,6 +433,61 @@ class CompactProductPostgresTests(unittest.TestCase):
             result = list(pool.map(initialize, range(6)))
         self.assertTrue(all(name for name in result))
 
+    def test_large_content_does_not_block_three_commits_or_duplicate_a_replay(self):
+        for index in range(3):
+            start = T + index * FIVE
+            key = "large-" + str(index)
+            records = [row(key, at=iso(start + 10**9)), row(key, message='Input:{"BillID":"W","Amount":1,"Description":"' + 'x' * 400000 + '"}', at=iso(start + 10**9))]
+            states = extract(records)
+            self.db.publish("test", start, start + FIVE, states, len(records))
+            self.analyze_at(start)
+            replay = self.db.publish("test", start, start + FIVE, states, len(records))
+            self.assertEqual((replay["inserted"], replay["updated"]), (0, 0))
+        self.assertEqual(self.db.cursor("test"), T + 3 * FIVE)
+        self.assertEqual(self.count("behaviors", True), 3)
+        self.assertEqual(self.count("window_results"), 3)
+        self.assertEqual(self.db.conn.execute(f"SELECT dirty_keys FROM {self.config.source_schema}.queue_counts WHERE stream_id='test'").fetchone()["dirty_keys"], 0)
+
+    def test_default_web_shows_actions_and_keeps_auxiliary_and_unknown_views_separate(self):
+        records = [row("water-inquiry", "s0"), row("support-config", "s0", path="Core.v1/ConfigBasic"), row("support-list", "s0", path="Core.v1/UserServiceQueries"), row("unknown-route", "s0", path="Services.v99/NewUnknown")]
+        records += [row("dispatch-water", "s0", path="Services.v1/InvoiceRegister"), row("dispatch-water", "s0", path="DBPath.pishkhan24.application.ud_prc_userSessionHasAccess", message="(SQL Parameters: @action=v1/WaterBills)"), row("dispatch-water", "s0", path="DBPath.pishkhan24.application.ud_prc_invoiceRequest", message="(SQL Parameters: @serviceID=7)")]
+        records += [row("unresolved-dispatch", "s0", path="Services.v1/InvoiceRegister")]
+        self.db.publish("test", T, T + FIVE, extract(records), len(records))
+        app = create_app(self.config, self.database, "test")
+        client = app.test_client()
+        for url in ("/", "/sessions?q=s0"):
+            default = client.get(url).get_data(as_text=True)
+            self.assertIn("water-inquiry", default)
+            self.assertIn("dispatch-water", default)
+            self.assertIn("استعلام قبض آب", default)
+            self.assertNotIn("support-config", default)
+            self.assertNotIn("support-list", default)
+            self.assertNotIn("unknown-route", default)
+            self.assertNotIn("unresolved-dispatch", default)
+            all_rows = client.get(url + ("&" if "?" in url else "?") + "scope=all").get_data(as_text=True)
+            self.assertTrue(all(key in all_rows for key in ("support-config", "support-list", "unknown-route")))
+        unknown = client.get("/?scope=unknown").get_data(as_text=True)
+        self.assertIn("unknown-route", unknown)
+        self.assertIn("unresolved-dispatch", unknown)
+        self.assertNotIn("water-inquiry", unknown)
+        self.assertNotIn("dispatch-water", unknown)
+
+    def test_old_model_is_rebuilt_from_facts_and_not_reused_as_a_current_reference(self):
+        from compact_ad import MODEL
+        self.publish()
+        self.analyze_at(T)
+        self.db.conn.execute(f"UPDATE {self.config.ad_schema}.window_results SET model_version='previous-model' WHERE stream_id='test'")
+        previous_epoch = self.db.conn.execute(f"SELECT epoch FROM {self.config.ad_schema}.reference_epochs WHERE stream_id='test'").fetchone()["epoch"]
+        self.assertEqual(self.db.select_work("test"), T)
+        work = self.db.snapshot("test", T)
+        self.assertEqual(work["references"], [])
+        self.assertIsNotNone(work["job"])
+        self.db.step("test")
+        current = self.db.conn.execute(f"SELECT model_version FROM {self.config.ad_schema}.window_results WHERE stream_id='test'").fetchone()
+        self.assertEqual(current["model_version"], MODEL)
+        self.assertGreater(self.db.conn.execute(f"SELECT epoch FROM {self.config.ad_schema}.reference_epochs WHERE stream_id='test'").fetchone()["epoch"], previous_epoch)
+        self.assertGreater(self.count("summary_history"), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

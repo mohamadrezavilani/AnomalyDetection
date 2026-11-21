@@ -148,3 +148,5 @@ R4 این پرچم را فقط در **ادامهٔ همان scroll پس از ا�
 شاهد خصوصی: `Compact_Prototype_20261121_091243_9db83e7f.zip`، SHA256 برابر `9752c1ef53a88327bcb9d311f890db5257c0b7ea4d9c59d05cb0844512df5cb0`. SHA256 فایل `prototype.json` داخل آن: `d957bc3abd61c20ba8477d8fad8036d2a2e5327953118144b6ac4a38348b14fc`. ZIP و snapshotهای عملیاتی در Git قرار نمی‌گیرند؛ مدیر برای بررسی مستقل همان ZIP مالک را دریافت کند.
 
 CI کد آزموده‌شده: [آزمون‌های compact، Windows/Linux/PostgreSQL](https://github.com/mohamadrezavilani/AnomalyDetection/actions/runs/44888329034) و [رگرسیون Viewer و AD قدیمی](https://github.com/mohamadrezavilani/AnomalyDetection/actions/runs/44888329025) همگی موفق‌اند. مرج این مرحله به معنی جایگزینی خودکار workerها یا خاتمهٔ بازنویسی محصول نیست.
+
+راهنمای محصول جاری در `compact_product/README_FA.md` است. از build استخراج ۷، نقش API از کاتالوگ قبلی بازاستفاده می‌شود و payload حجیم با ویژگی/hash جایگزین می‌شود. اعداد پروتوتایپ این سند مربوط به نسخه و آزمون قبلی‌اند و ظرفیت محصول جدید نیستند.

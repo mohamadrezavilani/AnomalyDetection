@@ -330,13 +330,15 @@ def ingest(lease, source, logger):
                         type=type(exc).__name__,
                         code=str(exc) if isinstance(exc, ValueError) else None,
                         sqlstate=getattr(exc, "sqlstate", None),
+                        details=getattr(exc, "details", None),
                     ),
                     retry=retry,
                 )
                 logger.error(
-                    "ingest retry type=%s sqlstate=%s",
+                    "ingest retry type=%s sqlstate=%s code=%s",
                     type(exc).__name__,
                     getattr(exc, "sqlstate", None),
+                    str(exc) if isinstance(exc, ValueError) else None,
                 )
                 if db.conn.closed:
                     db.close()

@@ -31,11 +31,11 @@ def verify(root=None):
 if __name__ == "__main__":
     root = Path(__file__).resolve().parent
     value = dict(
-        build_id="COMPACT-BEHAVIOR-20261121-6",
+        build_id="COMPACT-BEHAVIOR-20261121-7",
         contract="compact-behavior-1",
         files_sha256={
             p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in sorted(list(root.glob("*.py")) + [root / "dispatch_routes.json"])
+            for p in sorted(list(root.glob("*.py")) + [p for p in root.glob("*.json") if p.name != "MANIFEST.json"])
         },
     )
     (root / "MANIFEST.json").write_text(
