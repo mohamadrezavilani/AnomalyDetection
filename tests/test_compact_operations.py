@@ -3,6 +3,9 @@ from pathlib import Path
 from types import SimpleNamespace
 import json
 import copy
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -29,6 +32,26 @@ def healthy_observation():
 
 
 class CompactOperationTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "native Windows PowerShell required")
+    def test_native_installer_imports_release_with_separate_data_and_calling_directories(self):
+        from compact_product import BUILD
+        with tempfile.TemporaryDirectory(prefix="compact installer ") as directory:
+            root = Path(directory)
+            data = root / "installed data without module"
+            caller = root / "unrelated caller"
+            data.mkdir(); caller.mkdir()
+            script = Path(__file__).resolve().parents[1] / "compact_product/Install_Compact_Product.ps1"
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+                 "-Action", "Version", "-Project", str(data), "-Python", sys.executable],
+                cwd=caller, capture_output=True, text=True, timeout=45,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            identity = json.loads(result.stdout)
+            self.assertEqual(identity["build_id"], BUILD)
+            self.assertTrue(identity["source_sha256"])
+            self.assertEqual(list(data.iterdir()), [])
+
     def exercise(self, action, *, fail=None, task_failure=False, supervisor_failure=False, health_override=None):
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
             project = Path(directory)

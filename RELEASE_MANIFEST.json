@@ -136,8 +136,8 @@
     "AnomalyDetection/tests/test_window_stamp.py": "fa06f2bd314ddd0ab045f6bcc0b856c8371f6505e6bab259c9a411ff68ae432a",
     "BEHAVIOR_SCOPE_HANDOFF_FA.md": "b5ba45ba5d675346aabb8f4b10e5726deeace920928e5175bbc62e407a0cca7c",
     "FINANCIAL_SCOPE_FA.md": "3cbf36223f0de85c9cca4721f00b6051669e6d281bf7c5b4b2d53d87f9bae61a",
-    "Pishkhan24_Project_Roadmap.md": "e951d6085c7871cfe1fe9acb68e6b69b392890862b6177a2847eb32d2c30cc11",
-    "README.md": "1e38a7fd937a653003ea67902148d365fd12073c2ff23123bed006e92a156e6d",
+    "Pishkhan24_Project_Roadmap.md": "b22371a42f39669be7463cae083a0752d20ba02ba86a038070384fcf37d99bce",
+    "README.md": "b0a3d4884ecd7bebc5d20746f1278028c2e37b6cdb4c73f4f8e251771f59c3d1",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
     "VIEWER_README_FA.md": "71fc04cbc8474e80aa7d3ce993304d792d180b3bdda7a928bceb097afe40ca7f",
@@ -174,10 +174,10 @@
     "compact_behavior/source.py": "806992dc9a04e07469e803109efdb01b8516a33644ad54e92212746f8287e43b",
     "compact_behavior/store.py": "3db0eec10aec969cb0a85f08d59f51ba328499b726baedefa0fbd043e1182610",
     "compact_behavior/version.py": "cf1a1cca513898cca6b1f6a020f7ee4a2f1b925545a76d7b7d27b70b07a41c1a",
-    "compact_product/Install_Compact_Product.ps1": "9e1644cac10a66f333a8b77d9702ac23cfdd2f9de19f39151423f4c33536fa03",
-    "compact_product/MANIFEST.json": "eb0b6af36a5de3f82a4a95de098c07de0263583c5a94ab94f1751470c2cb4a03",
-    "compact_product/README_FA.md": "1548e4505f31bf9e53693294d881387b1b5356b465194975a871615026c29d73",
-    "compact_product/__init__.py": "ccba4ee0915d76b97074ece6d959bf3d943604ed448267c304c64f8b7868f3fa",
+    "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
+    "compact_product/MANIFEST.json": "e575a21fd63bcd8fb6809f2edea3684c9bda03a96a2f008857c6b711d4e0c9e3",
+    "compact_product/README_FA.md": "80e4934cd8d10470a2e34bb3c0fd315456f3cdaceea27f5a22c38a7d2b6c3b05",
+    "compact_product/__init__.py": "fe09c1d828e3d19b7e7f724c316e6cf16c91af56094f93cabcb8e1a6f98cb4e0",
     "compact_product/__main__.py": "b2f021c873608c0c9b97fd9799a8fd1c00c22ab6bc6564e217697ab9ee625bc3",
     "compact_product/config.py": "25e4efba2dcea98280c69678cf9a5934f3474f5c6be28f5b679d977d7286b168",
     "compact_product/health.py": "5125e91d63cd3321d11e6bf98a1588a533bcd2f7775d0080db82eca5cd864684",
@@ -361,7 +361,7 @@
     "tests/test_compact_ad.py": "eac83c896e02d8d14458bf90f79e417afb8926a222b36108d1738f814b6b611e",
     "tests/test_compact_extract.py": "3c43f5f469b9bee6057844290abb28f9d568a29ac0003d6c50684022f9b5d9a3",
     "tests/test_compact_features_v2.py": "a9212ae1cb8ee5db3e5cf6260305aa82cad1216dde925514e781993e5ba663ae",
-    "tests/test_compact_operations.py": "bb41ca3961d76e560cd0037f8504e5b6f129119f9e60174cd473b4cae6d09322",
+    "tests/test_compact_operations.py": "316709e7415e676e65ce930493694fdc918fd626f71e2ffdb7fecacbd5d8cbfa",
     "tests/test_compact_pg.py": "87ceb078da093bddfd186acfcd1664a3800f081bbaa06ef014be280ae279f412",
     "tests/test_compact_product_pg.py": "b27d4c1e956b0a4578e0c7275ba302c3bc401685b47645e3035c04be90859b0d",
     "tests/test_compact_product_runtime.py": "4556b9b07c1fcddd80aeedd213290c4cd4c3a512e7c038e4d35fd33e2047c78e",
@@ -729,7 +729,7 @@
       "production_capacity_acceptance": "NOT_ASSIGNED"
     }
   },
-  "compact_product_build": "COMPACT-PRODUCT-20261121-2",
+  "compact_product_build": "COMPACT-PRODUCT-20261121-3",
   "compact_operational_acceptance": "PENDING_OWNER_JOINT_AND_SUSTAINED_TRIAL",
-  "compact_product_package_sha256": "09ee75d90172fa8f9371fbe8efcd0b7b2228c83ad8f638081b2f14ea9c1a4f5c"
+  "compact_product_package_sha256": "d0277b2e49b72533bed7404616d88bf45944aedfbd331e70dfb63c5d6d90d9a4"
 }
