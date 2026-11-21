@@ -263,19 +263,51 @@ def union(before, after, limit, issues, label):
     return [unique[k] for k in sorted(unique)]
 
 
+def timed_union(before, after, limit, label):
+    # Repeated equal content is one version. Keep its earliest known evidence
+    # time, so a later duplicate neither exhausts variants nor erases past
+    # eligibility. The overall state still records first/last observation.
+    unique = {}
+    for value in before + after:
+        data = {k: v for k, v in value.items() if k != "observed_at_ns"}
+        key = canonical(data)
+        previous = unique.get(key)
+        times = [
+            v
+            for v in (
+                value.get("observed_at_ns"),
+                previous.get("observed_at_ns") if previous else None,
+            )
+            if v is not None
+        ]
+        unique[key] = dict(data, observed_at_ns=min(times) if times else None)
+    if len(unique) > limit:
+        raise LimitExceeded(label + "_limit")
+    return [unique[k] for k in sorted(unique)]
+
+
 def merge(a, b, limits=Limits()):
     if a["request_id"] != b["request_id"]:
         raise ValueError("request_identity_changed")
     c = empty(a["request_id"])
     c["issues"] = sorted(set(a["issues"] + b["issues"]))
-    for key in ("parse_errors", "dispatch"):
-        c[key] = union(
-            a.get(key, []), b.get(key, []), limits.surfaces, c["issues"], key
-        )
+    c["dispatch"] = union(
+        a.get("dispatch", []),
+        b.get("dispatch", []),
+        limits.surfaces,
+        c["issues"],
+        "dispatch",
+    )
+    c["parse_errors"] = timed_union(
+        a.get("parse_errors", []),
+        b.get("parse_errors", []),
+        limits.surfaces,
+        "parse_errors",
+    )
     for key in ("sessions", "apis", "roots", "raw_request_ids", "raw_session_ids"):
         c[key] = union(a[key], b[key], limits.variants, c["issues"], key)
     for key in ("inputs", "outputs"):
-        c[key] = union(a[key], b[key], limits.surfaces, c["issues"], key)
+        c[key] = timed_union(a[key], b[key], limits.surfaces, key)
     for key, fn in [("first_ns", min), ("last_ns", max)]:
         values = [v for v in (a[key], b[key]) if v is not None]
         c[key] = fn(values) if values else None
@@ -444,7 +476,7 @@ class Extractor:
         return self.states
 
 
-def selected(state, key, api):
+def selected(state, key, api, service=None):
     values = state[key]
     errors = [x for x in state.get("parse_errors", []) if x["direction"] == key]
     for basis in ("business_parameters", "public_api"):
@@ -460,9 +492,10 @@ def selected(state, key, api):
         ]
         if found or bad:
             return found, basis
-    if api in PROVIDERS:
-        found = [x for x in values if x["path"] == PROVIDERS[api]]
-        bad = [x for x in errors if x["path"] == PROVIDERS[api]]
+    provider = PROVIDERS.get(service or api)
+    if provider:
+        found = [x for x in values if x["path"] == provider]
+        bad = [x for x in errors if x["path"] == provider]
         if found or bad:
             return found, "reviewed_same_request_provider"
     candidates = [x for x in values if x["basis"] == "supporting"]
@@ -500,8 +533,9 @@ def materialize(stream, state):
     code = codes[0] if len(codes) == 1 else None
     if len(codes) > 1:
         issues.add("result_conflict")
-    chosen_input, input_basis = selected(state, "inputs", api)
-    chosen_output, output_basis = selected(state, "outputs", api)
+    service, binding = resolve_service(state, api)
+    chosen_input, input_basis = selected(state, "inputs", api, service)
+    chosen_output, output_basis = selected(state, "outputs", api, service)
     iv = {canonical(x["value"]): x["value"] for x in chosen_input}
     ov = {canonical(x["value"]): x["value"] for x in chosen_output}
     if len(iv) > 1:
@@ -554,7 +588,7 @@ def materialize(stream, state):
         if basis == "public_api":
             paths.add(api)
         if basis == "reviewed_same_request_provider":
-            paths.add(PROVIDERS.get(api))
+            paths.add(PROVIDERS.get(service or api))
         return any(
             e["direction"] == direction
             and (
@@ -585,7 +619,6 @@ def materialize(stream, state):
         and output_basis != "unconfirmed_same_request_provider"
         and not selected_error("outputs", output_basis, chosen_output)
     )
-    service, binding = resolve_service(state, api)
     if service is None:
         issues.add(binding.lower())
     body = dict(

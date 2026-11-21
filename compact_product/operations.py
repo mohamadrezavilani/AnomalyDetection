@@ -224,6 +224,9 @@ def observe(project, seconds, folder, *, check_exclusive=None):
             fresh_windows_analyzed=sum(
                 r["first_analyzed_ns"] is not None for r in commits
             ),
+            fresh_windows_timing_confirmed=sum(
+                bool(r["first_analyzed_ns"]) for r in commits
+            ),
             latest_revisions_consumed=sum(
                 bool(r["latest_revision_consumed"]) for r in commits
             ),
@@ -600,6 +603,7 @@ def execute(project, args):
                 )
                 and m["fresh_windows_analyzed"] == m["fresh_windows"]
                 and m["latest_revisions_consumed"] == m["fresh_windows"]
+                and m["fresh_windows_timing_confirmed"] == m["fresh_windows"]
                 and observed["web_p95_seconds"] < 5
                 and latest["analysis_latency_p95_seconds"] is not None
                 and latest["analysis_latency_p95_seconds"] < 300

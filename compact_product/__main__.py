@@ -54,9 +54,14 @@ def main(argv=None):
         elif a.action == "status":
             result = status(project)
         elif a.action in ("start", "stop"):
-            result = (start if a.action == "start" else stop)(
-                project, roles=(a.role,) if a.role else ROLES
-            )
+            if a.action == "start":
+                result = start(
+                    project,
+                    roles=(a.role,) if a.role else ROLES,
+                    with_supervisor=a.role is None,
+                )
+            else:
+                result = stop(project, roles=(a.role,) if a.role else ROLES)
         else:
             from .health import health
             from compact_ad.store import AnalysisStore

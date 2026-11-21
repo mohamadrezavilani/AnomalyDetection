@@ -196,6 +196,12 @@ class CompactProductPostgresTests(unittest.TestCase):
             self.assertEqual(p.exitcode, 73)
             self.assertEqual(self.count("window_results"), int(point == "after_commit"))
         self.assertEqual(self.db.step("test")["status"], "ANALYSIS_IDLE")
+        row = self.db.conn.execute(
+            "SELECT first_analyzed_ns FROM " + self.config.ad_schema + ".window_results"
+        ).fetchone()
+        self.assertEqual(
+            row["first_analyzed_ns"], 0
+        )  # semantic commit survived; timing has no postcommit confirmation
 
     def test_reference_no_future_and_late_change_requeues_future_and_preserves_feedback(
         self,

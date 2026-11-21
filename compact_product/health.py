@@ -65,9 +65,13 @@ def health(db, config, stream):
     samples = db.execute(
         f"""SELECT publication_to_analysis_seconds FROM(
         SELECT GREATEST(0,(first_analyzed_ns-first_source_ns)/1e9::float) AS publication_to_analysis_seconds
-        FROM {a}.window_results WHERE stream_id=%s ORDER BY first_analyzed_ns DESC LIMIT 288) x""",
+        FROM {a}.window_results WHERE stream_id=%s AND first_analyzed_ns>0 ORDER BY first_analyzed_ns DESC LIMIT 288) x""",
         (stream,),
     ).fetchall()
+    unconfirmed = db.execute(
+        f"SELECT count(*) AS n FROM {a}.window_results WHERE stream_id=%s AND first_analyzed_ns=0",
+        (stream,),
+    ).fetchone()["n"]
     latencies = sorted(r["publication_to_analysis_seconds"] for r in samples)
     p95 = (
         latencies[max(0, __import__("math").ceil(len(latencies) * 0.95) - 1)]
@@ -95,8 +99,9 @@ def health(db, config, stream):
         oldest_unanalyzed_age_seconds=(
             (now - oldest["updated_at_ns"]) / 1e9 if oldest else None
         ),
+        analysis_timing_unconfirmed_windows=unconfirmed,
         analysis_latency_p95_seconds=p95,
-        analysis_latency_scope="FIRST_ANALYSIS_STATUS_INCLUDING_INSUFFICIENT_OR_INVALID; READINESS_REPORTED_SEPARATELY",
+        analysis_latency_scope="SOURCE_PRECOMMIT_TO_ANALYSIS_POSTCOMMIT_ACK_UPPER_BOUND; INCLUDING_INSUFFICIENT_OR_INVALID; UNCONFIRMED_EXCLUDED",
         analysis_latency_samples=len(latencies),
         latest_readiness=analyzed["readiness"] if analyzed else {},
         methods=METHODS,

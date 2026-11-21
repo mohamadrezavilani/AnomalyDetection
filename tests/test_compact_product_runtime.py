@@ -256,7 +256,24 @@ class CompactRuntimeTests(unittest.TestCase):
                 )
                 stop(root)
                 self.assertTrue(all(not v["running"] for v in status(root).values()))
-                start(root)
+                restarted = start(root, with_supervisor=True)
+                self.assertTrue(restarted["supervisor"]["running"])
+                # Kill only our identified synthetic analysis child; supervision
+                # must replace it without losing the source cursor.
+                from compact_product.runtime import _children
+
+                old_token = restarted["analysis"]["command_token"]
+                child = _children[("analysis", old_token)]
+                child.terminate()
+                child.wait(timeout=15)
+                deadline = time.monotonic() + 25
+                while time.monotonic() < deadline:
+                    current = status(root)["analysis"]
+                    if current["running"] and current.get("command_token") != old_token:
+                        break
+                    time.sleep(0.5)
+                self.assertTrue(current["running"])
+                self.assertNotEqual(current.get("command_token"), old_token)
                 self.assertGreaterEqual(
                     self.db.cursor(
                         next(

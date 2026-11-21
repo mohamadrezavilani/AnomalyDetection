@@ -477,7 +477,7 @@ def status(project):
         db.close()
 
 
-def start(project, roles=ROLES):
+def start(project, roles=ROLES, *, with_supervisor=False):
     for key, child in list(_children.items()):
         if child.poll() is not None:
             child.wait()
@@ -498,8 +498,7 @@ def start(project, roles=ROLES):
                     "-B",
                     "-m",
                     "compact_product",
-                    "worker",
-                    role,
+                    *(["supervise"] if role == "supervisor" else ["worker", role]),
                     "--project",
                     str(Path(project).resolve()),
                     "--token",
@@ -521,6 +520,8 @@ def start(project, roles=ROLES):
             value[r]["running"] and value[r].get("command_token") == t
             for r, t in started
         ):
+            if with_supervisor:
+                return start(project, roles=("supervisor",))
             return value
         time.sleep(0.5)
     raise ValueError("COMPACT_START_NOT_CONFIRMED_READ_LAUNCHER_LOG")

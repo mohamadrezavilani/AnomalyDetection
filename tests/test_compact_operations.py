@@ -85,6 +85,7 @@ class CompactOperationTests(unittest.TestCase):
                     fresh_windows_per_hour=60,
                     fresh_windows_analyzed=3,
                     latest_revisions_consumed=3,
+                    fresh_windows_timing_confirmed=3,
                 ),
                 web_p95_seconds=0.2,
                 samples=[

@@ -45,6 +45,7 @@ class AnalysisStore(Store):
                 f"""CREATE TABLE IF NOT EXISTS {s}.reanalysis(stream_id TEXT NOT NULL,start_ns BIGINT NOT NULL,
                     version BIGINT NOT NULL DEFAULT 1,updated_at_ns BIGINT NOT NULL DEFAULT 0,processed_version BIGINT NOT NULL DEFAULT 0,
                     PRIMARY KEY(stream_id,start_ns))""",
+                f"CREATE INDEX IF NOT EXISTS compact_timing_unconfirmed ON {s}.window_results(stream_id,start_ns) WHERE first_analyzed_ns=0",
                 f"CREATE INDEX IF NOT EXISTS compact_reanalysis_ready ON {s}.reanalysis(stream_id,start_ns) WHERE processed_version<version",
                 f"""CREATE TABLE IF NOT EXISTS {s}.findings(finding_id TEXT PRIMARY KEY,stream_id TEXT NOT NULL,
                     start_ns BIGINT NOT NULL,method TEXT NOT NULL,service TEXT NOT NULL,session_id TEXT,
@@ -150,6 +151,7 @@ class AnalysisStore(Store):
     def commit_analysis(self, work, results, seconds, *, fault=None):
         from psycopg.types.json import Jsonb
 
+        commit_began = time.monotonic()
         s = self.schema
         a = self.ad_schema
         stream = work["stream"]
@@ -195,13 +197,13 @@ class AnalysisStore(Store):
                 f"SELECT summary_hash FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
                 (stream, start),
             ).fetchone()
-            self.conn.execute(
+            committed_revision = self.conn.execute(
                 f"""INSERT INTO {a}.window_results(stream_id,start_ns,summary,summary_hash,readiness,feature_version,
                 model_version,source_epoch,source_published_ns,first_source_ns,first_analyzed_ns,work_cause_ns,analyzed_at_ns,analysis_seconds) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(stream_id,start_ns) DO UPDATE SET summary=excluded.summary,summary_hash=excluded.summary_hash,
                 readiness=excluded.readiness,feature_version=excluded.feature_version,model_version=excluded.model_version,
                 source_epoch=excluded.source_epoch,source_published_ns=excluded.source_published_ns,analyzed_at_ns=excluded.analyzed_at_ns,
-                analysis_seconds=excluded.analysis_seconds,work_cause_ns=excluded.work_cause_ns,revision={a}.window_results.revision+1""",
+                analysis_seconds=excluded.analysis_seconds,work_cause_ns=excluded.work_cause_ns,revision={a}.window_results.revision+1 RETURNING revision""",
                 (
                     stream,
                     start,
@@ -213,12 +215,12 @@ class AnalysisStore(Store):
                     work["epoch"],
                     work["published_at_ns"],
                     work["first_published_ns"],
-                    now,
+                    0,
                     work["cause_ns"],
                     now,
                     seconds,
                 ),
-            )
+            ).fetchone()["revision"]
             previous = {
                 r["finding_id"]: r
                 for r in self.conn.execute(
@@ -322,14 +324,29 @@ class AnalysisStore(Store):
                 fault("before_commit")
         if fault:
             fault("after_commit")
+        # Semantic result + ACK are already durable. Timing is confirmed only
+        # after that commit; a crash here leaves 0 (unknown), never a fast SLA.
+        confirmed_ns = time.time_ns()
+        self.conn.execute(
+            f"""UPDATE {a}.window_results SET first_analyzed_ns=CASE WHEN first_analyzed_ns=0 THEN %s ELSE first_analyzed_ns END,
+            analyzed_at_ns=%s,analysis_seconds=%s WHERE stream_id=%s AND start_ns=%s AND revision=%s""",
+            (
+                confirmed_ns,
+                confirmed_ns,
+                seconds + time.monotonic() - commit_began,
+                stream,
+                start,
+                committed_revision,
+            ),
+        )
         return dict(
             status="ANALYSIS_COMMITTED",
             start_ns=start,
             counts=counts,
             anomalies=sum(r["status"] == "ANOMALY" for r in results),
             source_epoch=work["epoch"],
-            analysis_seconds=seconds,
-            publication_to_analysis_seconds=(now - work["cause_ns"]) / 1e9,
+            analysis_seconds=seconds + time.monotonic() - commit_began,
+            publication_to_analysis_seconds=(confirmed_ns - work["cause_ns"]) / 1e9,
             reference_windows=len(work["references"]),
         )
 

@@ -1,7 +1,7 @@
 import unittest
 from compact_behavior.extract import features, materialize, facts, merge, behavior_id
 from compact_behavior.feature_contract import extract_features
-from tests.test_compact_extract import row, extract
+from tests.test_compact_extract import row, extract, T
 
 
 class FeatureContractTests(unittest.TestCase):
@@ -135,6 +135,61 @@ class FeatureContractTests(unittest.TestCase):
                 "complete"
             ]
         )
+
+    def test_resolved_dispatch_uses_only_exact_reviewed_provider_pair(self):
+        records = [
+            row(path="Services.v1/InvoiceRegister"),
+            row(
+                path="DBPath.pishkhan24.application.ud_prc_userSessionHasAccess",
+                message="(SQL Parameters: @action=v1/WaterBills)",
+            ),
+            row(
+                path="DBPath.pishkhan24.application.ud_prc_invoiceRequest",
+                message="(SQL Parameters: @serviceID=7)",
+            ),
+            row(
+                path="ClientAyanCoInquiry.WaterBillInquiry",
+                message='Input:{"BillID":"one"} Output:{"Amount":10}',
+            ),
+        ]
+        body = materialize("s", extract(records)["req-1"])
+        self.assertTrue(body["features"]["output_eligible"])
+        self.assertEqual(
+            body["features"]["output_basis"], "reviewed_same_request_provider"
+        )
+        records.append(
+            row(path="ClientAyanCoInquiry.WaterBillInquiry", message="Output:[broken")
+        )
+        self.assertFalse(
+            materialize("s", extract(records)["req-1"])["features"]["output_eligible"]
+        )
+
+    def test_later_identical_payload_keeps_first_known_time_and_one_variant(self):
+        from compact_behavior.extract import iso
+        from compact_behavior import FIVE
+
+        records = [row()] + [
+            row(
+                path="ClientAyanCoInquiry.WaterBillInquiry",
+                message='Input:{"BillID":"same"} Output:[]',
+                at=iso(T + 20 * 10**9 + i),
+            )
+            for i in range(70)
+        ]
+        state = extract(records)["req-1"]
+        self.assertEqual(len(state["inputs"]), 1)
+        late = extract(
+            [
+                row(
+                    path="ClientAyanCoInquiry.WaterBillInquiry",
+                    message='Input:{"BillID":"same"} Output:[]',
+                    at=iso(T + FIVE + 10**9),
+                )
+            ]
+        )["req-1"]
+        body = materialize("s", merge(state, late))
+        self.assertTrue(body["features"]["input_eligible"])
+        self.assertEqual(body["features"]["input_asof_ns"], T + 20 * 10**9)
 
     def test_revision_contract_does_not_rekey_behavior(self):
         a = materialize("s", extract([row()])["req-1"])
