@@ -8,9 +8,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import Mock, patch
 from compact_product.config import Config
-from compact_product.operations import execute, legacy_receipt, short_gate_checks, wait_for_supervisor, task
+from compact_product.operations import execute, legacy_receipt, short_gate_checks, wait_for_supervisor, task, collect_role_diagnostics, bundle
+from compact_product.runtime import start
 
 
 def healthy_observation():
@@ -52,7 +54,7 @@ class CompactOperationTests(unittest.TestCase):
             self.assertTrue(identity["source_sha256"])
             self.assertEqual(list(data.iterdir()), [])
 
-    def exercise(self, action, *, fail=None, task_failure=False, supervisor_failure=False, health_override=None):
+    def exercise(self, action, *, fail=None, task_failure=False, supervisor_failure=False, health_override=None, start_failure=None, events=None):
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
             project = Path(directory)
             old = project / "release.json"
@@ -75,10 +77,19 @@ class CompactOperationTests(unittest.TestCase):
                 ("probe", []),
                 ("assert_legacy_frozen", None),
             ]:
-                stack.enter_context(
+                mocked = stack.enter_context(
                     patch("compact_product.operations." + name, return_value=value)
                 )
+                if name == "start" and start_failure:
+                    def failed_start(project):
+                        runtime = project / "compact_runtime"
+                        runtime.mkdir(exist_ok=True)
+                        (runtime / "analysis-launcher.log").write_text("original startup failure")
+                        raise start_failure
+                    mocked.side_effect = failed_start
             stop = stack.enter_context(patch("compact_product.operations.stop"))
+            if events is not None:
+                stop.side_effect = lambda project: events.append("stop")
             task = stack.enter_context(
                 patch(
                     "compact_product.operations.task",
@@ -151,6 +162,61 @@ class CompactOperationTests(unittest.TestCase):
         self.assertEqual(value["status"], "COMPACT_TRIAL_INCOMPLETE")
         self.assertEqual(restored, 1)
         self.assertEqual(value["failure"]["code"], "synthetic_capture_failure")
+
+    def test_failed_start_bundles_diagnostics_before_stop_and_preserves_role_details(self):
+        events = []
+        contents = {}
+        error = ValueError("COMPACT_ROLE_EXITED_DURING_START")
+        error.details = {"roles": {"analysis": {"exit_code": 1}}}
+        def collect(project, folder):
+            events.append("collect")
+            return collect_role_diagnostics(project, folder)
+        def archive(folder):
+            path = bundle(folder)
+            with zipfile.ZipFile(path) as zipped:
+                contents.update({name: zipped.read(name) for name in zipped.namelist()})
+            return path
+        with patch("compact_product.operations.collect_role_diagnostics", side_effect=collect), patch("compact_product.operations.bundle", side_effect=archive):
+            value, restored, stopped, tasks = self.exercise("install", start_failure=error, events=events)
+        self.assertEqual(value["status"], "COMPACT_INSTALL_ROLLED_BACK")
+        self.assertEqual(value["failure"]["details"], error.details)
+        self.assertEqual(restored, 1)
+        self.assertEqual(events, ["collect", "stop"])
+        self.assertEqual(contents["compact_runtime/analysis-launcher.log"], b"original startup failure")
+
+    def test_role_diagnostics_are_bounded_and_exclude_settings_and_keys(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            runtime = project / "compact_runtime"
+            runtime.mkdir()
+            (runtime / "web.log").write_bytes(b"old" * 70000 + b"latest traceback")
+            (runtime / "web-secret.local.key").write_text("private key")
+            (runtime / "viewer_config.local.py").write_text("private settings")
+            (runtime / "startup-failure.local.json").write_text('{"status":"FAILED"}')
+            folder = project / "report"
+            self.assertEqual(collect_role_diagnostics(project, folder), [])
+            self.assertEqual((folder / "compact_runtime/web.log").stat().st_size, 131072)
+            self.assertTrue((folder / "compact_runtime/web.log").read_bytes().endswith(b"latest traceback"))
+            self.assertEqual({p.name for p in (folder / "compact_runtime").iterdir()}, {"web.log", "startup-failure.local.json"})
+            with patch.object(Path, "is_file", side_effect=PermissionError("unreadable")):
+                failures = collect_role_diagnostics(project, folder)
+            self.assertEqual(len(failures), 13)
+            self.assertTrue(all(f["type"] == "PermissionError" for f in failures))
+
+    def test_dead_child_reports_role_and_exit_code_without_waiting_for_start_deadline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            child = Mock(pid=1234)
+            child.poll.return_value = 7
+            observed = {r: dict(running=False, state="NOT_STARTED") for r in ("ingest", "analysis", "web")}
+            with patch("compact_product.runtime._children", {}), patch("compact_product.runtime.status", return_value=observed), patch("compact_product.runtime.subprocess.Popen", return_value=child), patch("compact_product.runtime.time.sleep") as sleep:
+                with self.assertRaisesRegex(ValueError, "COMPACT_ROLE_EXITED_DURING_START") as raised:
+                    start(project, roles=("analysis",))
+            self.assertEqual(raised.exception.details["roles"]["analysis"]["exit_code"], 7)
+            self.assertEqual(raised.exception.details["roles"]["analysis"]["launcher_pid"], 1234)
+            record = json.loads((project / "compact_runtime/startup-failure.local.json").read_text())
+            self.assertEqual(record["roles"]["analysis"]["exit_code"], 7)
+            sleep.assert_not_called()
 
     def test_install_keeps_new_roles_only_after_gate(self):
         value, restored, stopped, tasks = self.exercise("install")

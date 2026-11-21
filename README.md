@@ -4,7 +4,7 @@ The owner and manager changed the product scope on 21 November 2026: extract obs
 
 Start with the [current Persian roadmap](Pishkhan24_Project_Roadmap.md) and [product contract, Windows deployment and rollback runbook](compact_product/README_FA.md).
 
-The current candidate is `COMPACT-PRODUCT-20261121-3`: independent ingestion, eight explainable compact AD methods, version-fenced dirty consumption, pending lifecycle, manual-refresh web and supervised roles. It uses fresh `p24_compact_v2` / `p24_compact_ad_v2` schemas and fresh model references; legacy tables and feedback are retained.
+The current candidate is `COMPACT-PRODUCT-20261121-4`: independent ingestion, eight explainable compact AD methods, version-fenced dirty consumption, pending lifecycle, manual-refresh web and supervised roles. It uses fresh `p24_compact_v2` / `p24_compact_ad_v2` schemas and fresh model references; legacy tables and feedback are retained.
 
 Features preserve typed array multiplicity, explicit per-component completeness and selected-evidence parse validity. Nested duplicate JSON keys cannot silently overwrite targets. Empty object structure is represented. Both Core and Services AddUserData/GetUserData are automatic support observations, excluded from business-rate methods. InvoiceRegister dispatch requires reviewed same-request evidence.
 
@@ -12,7 +12,9 @@ Results and exact-version acknowledgements commit together. Timing confirmation 
 
 Run the code from a fixed release worktree and pass the installed project's data/config path with `--project`. The Windows Task uses that same release code directory. The installer first checks and measures all three roles; it keeps the candidate only after its short gate and otherwise restores the previous roles. Defaults bind the manual-refresh UI to `0.0.0.0` on ports 5021 and 5022.
 
-The existing 99 tests passed independently against PostgreSQL18.6 and actual ingestion/analysis/web processes. The final regression set contains 113 tests. GitHub Actions also exercise real Chromium and native Windows PowerShell parsing. Owner-server joint throughput, reboot, eight-hour stability, representative history and labeled precision/recall require the corresponding server receipts and are not accepted from development tests.
+Cold concurrent role startup serializes runtime-table creation with the source schema advisory lock. A PostgreSQL18.6 test reproduced the previous `pg_type_typname_nsp_index` / SQLSTATE `23505` failure before the fix. Failed startup now records the exited role and process status immediately; the cutover ZIP includes bounded role/launcher logs captured before cleanup. Local settings and keys are excluded.
+
+The existing 99 tests passed independently against PostgreSQL18.6 and actual ingestion/analysis/web processes. The final regression set contains 117 tests. GitHub Actions also exercise real Chromium and native Windows PowerShell parsing. Owner-server joint throughput, reboot, eight-hour stability, representative history and labeled precision/recall require the corresponding server receipts and are not accepted from development tests.
 
 PR44's earlier owner trial processed three fresh ES windows in about 22 seconds each for extraction/storage only. That fresh-schema prototype result is not the capacity of this full product. Its original evidence is retained in [the prototype guide](compact_behavior/README_FA.md).
 

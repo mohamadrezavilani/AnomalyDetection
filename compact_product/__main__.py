@@ -99,6 +99,7 @@ def main(argv=None):
                             else None
                         ),
                         sqlstate=getattr(exc, "sqlstate", None),
+                        details=getattr(exc, "details", None),
                     ),
                 ),
                 ensure_ascii=True,

@@ -433,6 +433,29 @@ def observe(project, seconds, folder, *, check_exclusive=None):
         db.close()
 
 
+def collect_role_diagnostics(project, folder):
+    """Only known role files; never local settings, keys or credentials."""
+    source = Path(project) / "compact_runtime"
+    destination = Path(folder) / "compact_runtime"
+    failures = []
+    names = [role + suffix for role in (*ROLES, "supervisor") for suffix in ("-launcher.log", ".log", ".json")]
+    names.append("startup-failure.local.json")
+    for name in names:
+        path = source / name
+        try:
+            if not path.is_file():
+                continue
+            with path.open("rb") as file:
+                size = file.seek(0, 2)
+                file.seek(max(0, size - 131072))
+                data = file.read(131072)
+            destination.mkdir(parents=True, exist_ok=True)
+            (destination / name).write_bytes(data)
+        except OSError as exc:
+            failures.append(dict(file=name, type=type(exc).__name__))
+    return failures
+
+
 def bundle(folder):
     out = folder.with_suffix(".zip")
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as z:
@@ -680,8 +703,11 @@ def execute(project, args):
                 type=type(exc).__name__,
                 code=str(exc) if isinstance(exc, (ValueError, TimeoutError)) else None,
                 sqlstate=getattr(exc, "sqlstate", None),
+                details=getattr(exc, "details", None),
             )
         finally:
+            if state.get("compact_started"):
+                state["startup_diagnostic_failures"] = collect_role_diagnostics(project, folder)
             if not keep and state.get("task_registration_attempted"):
                 try:
                     task(project, "disable")
