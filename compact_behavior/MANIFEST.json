@@ -1,0 +1,13 @@
+{
+  "build_id": "COMPACT-PROTOTYPE-20261121-1",
+  "contract": "compact-behavior-1",
+  "files_sha256": {
+    "__init__.py": "0f0e26e523fe54b2f4fa9ff2a31baf4ad952bb04fd7037b014d5dcf6946f0c9e",
+    "__main__.py": "61cd7e218f87edb4279c64a0c3c95133011fb146c97b820069704ace3f299238",
+    "extract.py": "68c83b20ef5474cf2e29d2cb1d3b996dc45d830ad77fc3da22b1e0c290ea176f",
+    "server_trial.py": "c30296416b6def1b6c079d951b33bcd7de6602845dfd076a0a5b3d7a6522bb67",
+    "source.py": "3f3409edead7e09a81b1ff499c98efda011e788aa2cc228135e67aba239f9f9b",
+    "store.py": "c12dd2e7eecf048eacd1a08db9ee04e1252146d292339af04179c16eb521776f",
+    "version.py": "2a23065cb8c7a8a6449cf158e2a7d64ac820de5c17d63770e1d164395c78d626"
+  }
+}
