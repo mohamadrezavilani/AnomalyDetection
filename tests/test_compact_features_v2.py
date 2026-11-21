@@ -88,6 +88,21 @@ class FeatureContractTests(unittest.TestCase):
         state = extract([row(), row(message='Output:{"Amount":1,"Amount":2}')])["req-1"]
         self.assertFalse(materialize("s", state)["features"]["output_eligible"])
 
+    def test_json_encoded_duplicate_keys_never_overwrite_a_target_silently(self):
+        import json
+        payload = {"Parameters": '{"WaterBillID":"A","WaterBillID":"B"}'}
+        state = extract([row(), row(message="Input:" + json.dumps(payload))])["req-1"]
+        body = materialize("s", state)
+        self.assertFalse(body["features"]["input_eligible"])
+        self.assertFalse(any(body["features"]["input_feature_eligibility"].values()))
+        self.assertTrue(body["features"]["rate_eligible"])
+        self.assertIn("ENCODED_JSON_PARSE_ERROR", body["features"]["input"]["completeness"]["targets"]["reasons"])
+
+    def test_empty_object_paths_are_part_of_the_response_shape(self):
+        signatures = {features(value)["shape_hash"] for value in ({}, {"a": {}}, {"b": {}}, {"a": []})}
+        self.assertEqual(len(signatures), 4)
+        self.assertEqual(features({"a": {}, "b": 1}), features({"b": 1, "a": {}}))
+
     def test_exact_same_request_dispatch_and_no_name_guess(self):
         records = [
             row(path="Services.v1/InvoiceRegister"),
@@ -127,6 +142,15 @@ class FeatureContractTests(unittest.TestCase):
         self.assertTrue(b["features"]["service_rate_eligible"])
         self.assertFalse(b["features"]["session_eligible"])
         self.assertFalse(b["features"]["rate_eligible"])
+
+    def test_observed_services_automatic_endpoints_are_excluded_from_business_rates(self):
+        for path in ("Services.v1/AddUserData", "Services.v1/GetUserData", "Core.v1/AddUserData", "Core.v1/GetUserData"):
+            with self.subTest(path=path):
+                body = materialize("s", extract([row(path=path)])["req-1"])
+                self.assertEqual(body["kind"], "automatic_support")
+                self.assertFalse(body["features"]["rate_eligible"])
+                self.assertFalse(body["features"]["service_rate_eligible"])
+                self.assertFalse(body["features"]["result_eligible"])
 
     def test_nested_malformed_json_and_omitted_binary_are_incomplete(self):
         self.assertFalse(features({"Parameters": "[broken"})["complete"])

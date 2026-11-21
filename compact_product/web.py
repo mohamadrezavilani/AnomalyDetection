@@ -19,6 +19,7 @@ from flask import (
     session,
 )
 from compact_behavior.store import Store
+from compact_behavior import FIVE
 from compact_behavior.extract import identity, materialize
 from .health import health
 from . import BUILD
@@ -123,8 +124,8 @@ def create_app(config, database, stream, *, secret=None):
                 (stream,),
             ).fetchall()
             coverage = db.execute(
-                f"""SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s ORDER BY start_ns DESC LIMIT 1""",
-                (stream,),
+                f"""SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s""",
+                (stream, value["latest_analyzed_end_ns"] - FIVE if value["latest_analyzed_end_ns"] is not None else None),
             ).fetchone()
         return render_template(
             "home.html",

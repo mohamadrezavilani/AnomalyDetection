@@ -86,6 +86,53 @@ def probe(config):
     return values
 
 
+def short_gate_checks(observed):
+    """A current analyzed revision and drained work, not just three live PIDs."""
+    m = observed.get("measurement", {})
+    samples = observed.get("samples", [])
+    latest = samples[-1].get("health", {}) if samples else {}
+    roles = latest.get("roles", {})
+    def below(value, limit):
+        return isinstance(value, (int, float)) and 0 <= value < limit
+    n = m.get("fresh_windows", 0)
+    return dict(
+        three_fresh_windows=n >= 3 and m.get("new_source_records", 0) > 0,
+        measured_rate_or_no_backlog=(
+            m.get("fresh_windows_per_hour", 0) > 12
+            or bool(samples) and all(
+                sample["health"].get("source_backlog_windows") == 0
+                and sample["health"].get("reference_pending_windows") == 0
+                for sample in samples
+            )
+        ),
+        fresh_windows_analyzed=n > 0 and m.get("fresh_windows_analyzed") == n,
+        latest_revisions_consumed=n > 0 and m.get("latest_revisions_consumed") == n,
+        latest_revision_timings_confirmed=n > 0 and m.get("fresh_windows_timing_confirmed") == n,
+        source_caught_up=latest.get("source_backlog_windows") == 0,
+        reference_warmup_complete=latest.get("reference_pending_windows") == 0,
+        no_pending_analysis=latest.get("analysis_pending_windows") == 0
+            and latest.get("dirty_keys") == 0 and latest.get("reanalysis_windows") == 0,
+        latest_source_analyzed=latest.get("latest_received_end_ns") is not None
+            and latest.get("latest_analyzed_end_ns") == latest.get("latest_received_end_ns"),
+        no_unconfirmed_timings=latest.get("analysis_timing_unconfirmed_windows") == 0
+            and latest.get("latest_analysis_timing_confirmed") is True,
+        some_methods_ready=any(
+            counts.get("NORMAL", 0) + counts.get("ANOMALY", 0) > 0
+            for counts in latest.get("latest_readiness", {}).values()
+        ),
+        current_analysis_latency=below(latest.get("analysis_latency_p95_seconds"), 300),
+        first_analysis_latency=below(latest.get("first_analysis_latency_p95_seconds"), 300),
+        web_responsive=below(observed.get("web_p95_seconds"), 5),
+        roles_healthy=all(
+            roles.get(role, {}).get("running") is True
+            and below(roles[role].get("heartbeat_age_seconds"), 15)
+            and not roles[role].get("failure")
+            and roles[role].get("state") not in ("STARTING", "STOPPED", "RETRYING")
+            for role in ROLES
+        ),
+    )
+
+
 def assert_legacy_frozen(host, project, state, *, allow_compact=True):
     from compact_behavior.server_trial import verify_frozen
 
@@ -211,7 +258,12 @@ def observe(project, seconds, folder, *, check_exclusive=None):
         a = cfg.ad_schema
         commits = db.conn.execute(
             f"""SELECT w.start_ns,w.first_published_ns,w.source_records,r.first_analyzed_ns,
-            r.source_published_ns=w.published_at_ns AS latest_revision_consumed
+            r.timing_confirmed_revision=r.revision AS revision_timing_confirmed,
+            (r.source_published_ns=w.published_at_ns AND
+             NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=w.stream_id
+                AND d.start_ns=w.start_ns AND d.session_id='@all' AND d.processed_version<d.version) AND
+             NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=w.stream_id
+                AND j.start_ns=w.start_ns AND j.processed_version<j.version)) AS latest_revision_consumed
             FROM {s}.windows w LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
             WHERE w.stream_id=%s AND w.first_published_ns>=%s ORDER BY w.start_ns""",
             (stream, begin_ns),
@@ -225,7 +277,7 @@ def observe(project, seconds, folder, *, check_exclusive=None):
                 r["first_analyzed_ns"] is not None for r in commits
             ),
             fresh_windows_timing_confirmed=sum(
-                bool(r["first_analyzed_ns"]) for r in commits
+                bool(r["first_analyzed_ns"]) and bool(r["revision_timing_confirmed"]) for r in commits
             ),
             latest_revisions_consumed=sum(
                 bool(r["latest_revision_consumed"]) for r in commits
@@ -408,6 +460,7 @@ def task(project, operation):
     environment = dict(
         P24_COMPACT_PYTHON=sys.executable,
         P24_COMPACT_ROOT=str(project),
+        P24_COMPACT_CODE_ROOT=str(Path(__file__).resolve().parents[1]),
         P24_COMPACT_ARGS=args,
     )
     script = r"""
@@ -421,7 +474,7 @@ if($old){
 """
     if operation == "register":
         script += r"""
-$action=New-ScheduledTaskAction -Execute $env:P24_COMPACT_PYTHON -Argument $env:P24_COMPACT_ARGS -WorkingDirectory $env:P24_COMPACT_ROOT
+$action=New-ScheduledTaskAction -Execute $env:P24_COMPACT_PYTHON -Argument $env:P24_COMPACT_ARGS -WorkingDirectory $env:P24_COMPACT_CODE_ROOT
 $trigger=New-ScheduledTaskTrigger -AtStartup
 $principal=New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 $settings=New-ScheduledTaskSettingsSet -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -StartWhenAvailable -MultipleInstances IgnoreNew
@@ -440,6 +493,22 @@ if($old -and $old.State -eq 'Running'){Stop-ScheduledTask -TaskName $name}
 @{status='COMPACT_AUTOSTART_STOPPED'} | ConvertTo-Json -Compress
 """
     return powershell(script, environment)
+
+
+def wait_for_supervisor(project, *, timeout=45):
+    deadline = time.monotonic() + timeout
+    from .version import verify
+    package = verify()["source_sha256"]
+    while True:
+        supervisor = status(project).get("supervisor", {})
+        if (supervisor.get("running") and supervisor.get("state") == "SUPERVISING"
+            and supervisor.get("package", {}).get("source_sha256") == package
+            and isinstance(supervisor.get("heartbeat_age_seconds"), (int, float))
+            and supervisor["heartbeat_age_seconds"] < 15):
+            return supervisor
+        if time.monotonic() >= deadline:
+            raise TimeoutError("COMPACT_AUTOSTART_SUPERVISOR_NOT_CONFIRMED")
+        time.sleep(.5)
 
 
 def require_windows_admin():
@@ -529,6 +598,7 @@ def execute(project, args):
         receipt = folder / "cutover.json"
         state = dict(
             project=str(project),
+            code_root=str(Path(__file__).resolve().parents[1]),
             build=BUILD,
             package=package,
             legacy_receipt=str(old_path),
@@ -584,30 +654,8 @@ def execute(project, args):
                     raise ValueError("legacy_cursors_changed_during_compact_trial")
             state["observation"] = observed["measurement"]
             state["status"] = "COMPACT_TRIAL_MEASURED"
-            m = observed["measurement"]
-            latest = observed["samples"][-1]["health"]
-            state["short_operational_gate"] = bool(
-                m["fresh_windows"] >= 3
-                and m["new_source_records"] > 0
-                and (
-                    m["fresh_windows_per_hour"] > 12
-                    or not any(
-                        (sample["health"].get("source_backlog_windows") or 0) > 0
-                        or (sample["health"].get("reference_pending_windows") or 0) > 0
-                        for sample in observed["samples"]
-                    )
-                )
-                and any(
-                    counts.get("NORMAL", 0) + counts.get("ANOMALY", 0) > 0
-                    for counts in latest["latest_readiness"].values()
-                )
-                and m["fresh_windows_analyzed"] == m["fresh_windows"]
-                and m["latest_revisions_consumed"] == m["fresh_windows"]
-                and m["fresh_windows_timing_confirmed"] == m["fresh_windows"]
-                and observed["web_p95_seconds"] < 5
-                and latest["analysis_latency_p95_seconds"] is not None
-                and latest["analysis_latency_p95_seconds"] < 300
-            )
+            state["short_gate_checks"] = short_gate_checks(observed)
+            state["short_operational_gate"] = all(state["short_gate_checks"].values())
             if args.action == "install":
                 if not state["short_operational_gate"]:
                     raise ValueError(
@@ -618,6 +666,8 @@ def execute(project, args):
                 state["task_registration_attempted"] = True
                 save(receipt, state)
                 state["autostart"] = task(project, "register")
+                state["supervisor"] = wait_for_supervisor(project)
+                state["installed_web"] = probe(cfg)
                 keep = True
                 state["status"] = "COMPACT_CANDIDATE_INSTALLED_LONG_RUN_PENDING"
         except BaseException as exc:

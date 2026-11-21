@@ -41,42 +41,41 @@ AD snapshot می‌گیرد و پس از محاسبه، epoch منبع، نسخ�
 
 ## نصب و آزمون روی Windows Server
 
-ابتدا در PowerShell معمولی، سورس و وابستگی را دریافت کنید. این مرحله Worker قدیمی را تغییر نمی‌دهد؛ فایل‌های محاسباتی قدیمی این بسته تغییر نکرده‌اند.
+نسخهٔ نامزد نهایی `COMPACT-PRODUCT-20261121-2` است. کد از پوشهٔ انتشار مستقل اجرا می‌شود؛ `-Project` مسیر داده، تنظیمات و اجرای قدیمی است. Workerهای جدید و Task Scheduler از همان پوشهٔ انتشار استفاده می‌کنند. کد آن پوشه در حال اجرا تغییر نکند. این روش به checkout یا پاک‌کردن تغییرات محلی پروژهٔ نصب‌شده نیاز ندارد.
+
+در PowerShell ادمین، revision تأییدشده را در یک worktree مستقل دریافت کنید؛ سپس از ریشهٔ آن worktree اجرا کنید:
 
 ```powershell
-cd E:\P24\pishkhan24
-git pull --ff-only origin main
-if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
-.\.venv\Scripts\python.exe -m pip install -r requirements-compact.txt
+$project = 'E:\P24\pishkhan24'
+$python = "$project\.venv\Scripts\python.exe"
+& $python -m pip install -r .\requirements-compact.txt
 if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
-.\.venv\Scripts\python.exe -B -m compact_product version
+& $python -B -m compact_product version --project $project
+if ($LASTEXITCODE -ne 0) { throw 'Package verification failed.' }
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\compact_product\Install_Compact_Product.ps1 `
+  -Project $project -Python $python -Action Install -Seconds 900
 ```
 
-سپس **PowerShell با Run as Administrator**:
-
-```powershell
-cd E:\P24\pishkhan24
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\compact_product\Install_Compact_Product.ps1 -Action Trial -Seconds 900
-```
+فرمان `Install` خود آزمون مشترک کوتاه را اجرا می‌کند و فقط پس از قبولی آن، نسخهٔ جدید را نگه می‌دارد. اگر صرفاً آزمون و بازگشت خودکار لازم است، `-Action Trial` انتخاب شود. تنظیمات وب به‌صورت پیش‌فرض `0.0.0.0` روی پورت‌های ۵۰۲۱ و ۵۰۲۲ است؛ پنل‌ها در همان شبکه با IP سرور قابل دسترسی‌اند.
 
 اسکریپت جدید به `viewer_config.local.py` موجود و DATABASE/ELASTICSEARCH literal آن متکی است. Credential جدید در سورس وارد نکنید. پیش از توقف، اولین صفحهٔ منبع با سرویس‌های قبلی روشن بررسی می‌شود. آخرین رسید معتبرِ دارای `before.restore_plan` از گزارش‌های قبلی انتخاب و هویت‌های جاری دوباره بررسی می‌شوند. اگر پیدا نشد، همین فرمان را با `-LegacyReceipt 'مسیر واقعی release.json یا trial.json قبلی'` اجرا کنید. هیچ فرمان توقف یا restart برای پردازهٔ ناشناخته حدس زده نمی‌شود.
 
 Trial پردازه‌ها و autostart قدیمیِ پروژه را کنترل‌شده متوقف می‌کند، cursorهای قبلی را نگه می‌دارد، نسخهٔ جدید را با هر سه نقش می‌سنجد و **در پایان یا خطا، نقش‌های قبلی را برمی‌گرداند**. PostgreSQL روشن می‌ماند؛ تنظیمات دوام تضعیف نمی‌شود. نسخهٔ آزمایشی روی namespace جدید داده می‌نویسد و دادهٔ آن پس از Trial نگه داشته می‌شود. هویت مستقل PID/token/اتصال Writer در مشاهده ثبت می‌شود؛ تعویض آن، مشاهده را نامعتبر می‌کند. روی همان پورت‌های ۵۰۲۱ و ۵۰۲۲ وب فشرده، نشست و آنومالی در دسترس‌اند. تازه‌سازی خودکار وجود ندارد.
 
-خروجی `Compact_Product_*.zip` و `cutover.json` چاپ می‌شود؛ ZIP را برای بررسی ارسال کنید. این گزارش محلی و حاوی وضعیت عملیاتی سرور است؛ خودکار به Git ارسال نمی‌شود. زمان اختصاصی، سربار مشاهده را هم شامل می‌شود. فقط پنجرهٔ تازه با commit معتبر در نرخ حساب می‌شود؛ recheck، skip، staging و بازاجرای دادهٔ قبلی امتیاز نمی‌گیرند. نرخ ورودی تازه، تکمیل مرجع، عقب‌ماندگی AD و تأخیر تحلیل جدا گزارش می‌شوند. زمان تأخیر از timestamp پیش از commit ورودی تا تأیید پس از commit تحلیل، کران بالای محافظه‌کارانه است. نتیجه و ACK همچنان یک تراکنش‌اند؛ تأیید زمان‌سنجی مرحلهٔ بعدی است. قطع میان آن‌ها، زمان نامعلوم می‌دهد و SLA سریع ثبت نمی‌کند. اندازه‌گیری کوتاه با نبود backlog، آزمون ظرفیت اشباع نیست.
+خروجی `Compact_Product_*.zip` و `cutover.json` چاپ می‌شود؛ ZIP را برای بررسی ارسال کنید. این گزارش محلی و حاوی وضعیت عملیاتی سرور است؛ خودکار به Git ارسال نمی‌شود. زمان اختصاصی، سربار مشاهده را هم شامل می‌شود. فقط پنجرهٔ تازه با commit معتبر در نرخ حساب می‌شود؛ recheck، skip، staging و بازاجرای دادهٔ قبلی امتیاز نمی‌گیرند. نرخ ورودی تازه، تکمیل مرجع، عقب‌ماندگی AD و تأخیر تحلیل جدا گزارش می‌شوند. زمان تأخیر از timestamp پیش از commit ورودی تا تأیید پس از commit تحلیل، کران بالای محافظه‌کارانه است. نتیجه و ACK همچنان یک تراکنش‌اند؛ تأیید زمان‌سنجی مرحلهٔ بعدی است. برای هر revision، تأیید زمان‌سنجی مستقل ثبت می‌شود؛ قطع پس از commit اصلاح جدید، زمان‌سنجی موفق revision قبلی را به آن نسبت نمی‌دهد. صدک نخستین تحلیل و صدک آخرین نسخه جدا هستند و هر دو در پذیرش کنترل می‌شوند. قطع میان commit و تأیید، زمان نامعلوم می‌دهد و SLA سریع ثبت نمی‌کند. اندازه‌گیری کوتاه با نبود backlog، آزمون ظرفیت اشباع نیست.
 
-پس از تأیید رسید کوتاه، جایگزینی صریح:
+برای نصب از همان پوشهٔ انتشار با مسیر دادهٔ صریح:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\compact_product\Install_Compact_Product.ps1 -Action Install -Seconds 900
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\compact_product\Install_Compact_Product.ps1 -Project $project -Python $python -Action Install -Seconds 900
 ```
 
-Install هم ابتدا همان آزمون را اجرا می‌کند. فقط اگر حداقل سه پنجرهٔ تازه با رکورد واقعی تحلیل شده، حداقل یک روش از انتظار مرجع خارج شده، نسخهٔ تازه مصرف شده، پاسخ وب زیر پنج ثانیه و صدک۹۵ تأخیر تحلیل زیر ۳۰۰ثانیه باشد، نسخهٔ جدید را نگه می‌دارد. یک Task به نام `P24-CompactProduct` با SYSTEM برای شروع پس از boot و supervisor برای restart نقش معیوب ایجاد می‌شود؛ Taskهای قدیمی خاموش می‌مانند. نام «نصب نامزد» به معنای قبولی آزمون هشت‌ساعته یا اثبات دقت نیست.
+Install هم ابتدا همان آزمون را اجرا می‌کند. فقط اگر حداقل سه پنجرهٔ تازه با رکورد واقعی تحلیل شده، حداقل یک روش از انتظار مرجع خارج شده، نسخهٔ تازه و اصلاح مرجع مصرف شده، warmup و صف تحلیل تخلیه شده، source عقب نباشد، زمان‌سنجی آخرین revisionها تأیید شده، پاسخ وب زیر پنج ثانیه و هر دو صدک۹۵ نخستین/آخرین تحلیل زیر ۳۰۰ثانیه باشند، نسخهٔ جدید را نگه می‌دارد. یک Task به نام `P24-CompactProduct` با SYSTEM برای شروع پس از boot و supervisor برای restart نقش معیوب ایجاد می‌شود؛ Taskهای قدیمی خاموش می‌مانند. پیش از اعلام نصب، قفل، هویت package و heartbeat ناظر واقعاً مشاهده و وب دوباره بررسی می‌شود؛ صرف Start-ScheduledTask موفقیت نصب نیست. نام «نصب نامزد» به معنای قبولی آزمون هشت‌ساعته یا اثبات دقت نیست.
 
 ```powershell
-.\.venv\Scripts\python.exe -B -m compact_product status
-.\.venv\Scripts\python.exe -B -m compact_product health
-.\.venv\Scripts\python.exe -B -m compact_product observe --seconds 28800
+& $python -B -m compact_product status --project $project
+& $python -B -m compact_product health --project $project
+& $python -B -m compact_product observe --project $project --seconds 28800
 ```
 
 هدف پایدار بیش از ۱۲ پنجره در ساعت همراه AD/وب، صدک۹۵ تأخیر زیر پنج دقیقه، صف بدون رشد و هدف جبران ۶۰–۱۲۰ است. قبولی به این تعریف تغییر نمی‌کند. برای آزمون تاریخچهٔ بزرگ و بار پرترافیک، همان namespace باید در ادامهٔ اجرای واقعی سنجیده شود؛ دادهٔ مصنوعی یا دیتابیس تازه این gate را نمی‌بندد. ارزیابی با دادهٔ واقعیِ برچسب‌خورده و مثبت/منفی کاذب نیز جدا باز است.
@@ -84,8 +83,8 @@ Install هم ابتدا همان آزمون را اجرا می‌کند. فقط 
 توقف و ادامهٔ دستی:
 
 ```powershell
-.\.venv\Scripts\python.exe -B -m compact_product stop
-.\.venv\Scripts\python.exe -B -m compact_product start
+& $python -B -m compact_product stop --project $project
+& $python -B -m compact_product start --project $project
 ```
 
 توقف، supervisor را پیش از نقش‌ها متوقف می‌کند. هنگام بستن فقط یک نقش نیز supervisor متوقف می‌شود تا نقش دوباره ناخواسته ساخته نشود. توقف با تکمیل دریافت/تراکنش انجام می‌شود؛ STOP_PENDING مجوز شروع نسخهٔ دیگر نیست. برای نگهداری، Task جدید را نیز Disable کنید تا reboot آن را برنگرداند. قبل از pull بعدی روی اجرای فشرده، نقش‌های فشرده را متوقف کنید؛ تغییر Manifest در حین اجرا موجب توقف و نیاز به restart است.
@@ -93,7 +92,7 @@ Install هم ابتدا همان آزمون را اجرا می‌کند. فقط 
 بازگشت داده‌نگهدار، حتی پس از قطع سخت نصب:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\compact_product\Install_Compact_Product.ps1 -Action Rollback
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\compact_product\Install_Compact_Product.ps1 -Project $project -Python $python -Action Rollback
 ```
 
 آخرین رسید در `compact_runtime/latest-cutover.local.json` نگه داشته می‌شود. برای انتخاب صریح، `-Receipt 'مسیر واقعی cutover.json'` اضافه کنید. ابتدا Task جدید خاموش و نقش‌های فشرده متوقف می‌شوند؛ بعد همان نقش‌ها و Taskهای قبلی از رسید معتبر بازیابی می‌شوند. داده و مدل فشرده باقی می‌مانند. `git checkout` بازگشت داده نیست و لازم نیست. اگر توقف یا restore کامل تأیید نشود، رسید وضعیت ناقص می‌دهد و شروع کورکورانهٔ نقش‌های قبلی انجام نمی‌شود.
@@ -103,3 +102,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\compact_product\Instal
 آزمون‌های مصنوعی منطق، تراکنش، اصلاح دیررس، بازاجرا، قطع واقعی قبل/بعد از commit و وب در بسته وجود دارند. اجرای سه پردازهٔ واقعی با HTTP منبع ساختگی و PostgreSQL18 در محیط توسعه آزموده شده است. چهار Capture واقعی موجود برای استخراج و پوشش بررسی شدند؛ مرجع کافی برای ارزیابی دقت محصول نیستند. اجرای Chromium محلی با محدودیت socket محیط روبه‌رو شد؛ **آزمون Chromium واقعی در CI موفق شد**، شامل جست‌وجوی نشست، مشاهدهٔ شاهد و ثبت نظر. قراردادها و parse فایل PowerShell نیز روی Windows در CI موفق شدند. این‌ها آزمون استقرار و Task Scheduler روی سرور کاربر نیستند. نتیجهٔ workflow نهایی و سرور باید از رسید همان اجرا خوانده شود.
 
 روی سرور کاربر، اجرای مشترک، ادامه پس از reboot، تاریخچهٔ نماینده، سنجش هشت‌ساعته و ارزیابی برچسب‌خورده تا دریافت رسید **تأیید نشده‌اند**. نرخ کوتاه PR44، نرخ این محصول کامل محسوب نمی‌شود.
+
+
+## اصلاحات تکمیل تحویل
+
+سه اصلاح قرارداد آرایه/محدودیت/parse پیش از AD حفظ شده‌اند. JSON تو‌در‌توی encode‌شده نیز اکنون کلید تکراری را معتبر اعلام نمی‌کند؛ مسیر و کلیدهای آبجکت خالی در ساختار پاسخ حضور دارند. `Services.v1/AddUserData` و `Services.v1/GetUserData` مانند شکل Core خودکارند و در روش‌های تجاری شمارش نمی‌شوند؛ رفتار مشاهده‌شدهٔ آن‌ها حذف نمی‌شود.
+
+صف بازتحلیل در محاسبهٔ تازگی وارد می‌شود. آخرین نتیجهٔ ذخیره‌شده‌ای که ورودی یا مرجعش dirty است، «آخرین تحلیل جاری» نمایش داده نمی‌شود. نصب با سه انتشار سریع ولی warmup، reanalysis، خطای نقش یا زمان‌سنجی نامعلوم قبول نمی‌شود. آزمون‌های منفیِ همین حالت‌ها و بازیابی پس از تأییدنشدن ناظر اضافه شده‌اند.
+
+بررسی مستقل اولیه، ۹۹ تست موجود را با PostgreSQL18.6 و سه پردازهٔ واقعی موفق اجرا کرد. مجموعهٔ نهایی ۱۱۲ تست دارد؛ صحت PostgreSQL، قطع واقعی، نسخهٔ ACK، اصلاح دیررس، نقش‌ها، وب و نصب/بازگشت را پوشش می‌دهد. مرورگر واقعی و PowerShell توسط workflow همان revision بررسی شوند. این‌ها همچنان جای رسید اجرای Windows Server مالک و آزمون پایداری/دقت واقعی نیستند. رسید نصب کوتاه `Compact_Product_*.zip` باید بررسی شود؛ پس از آن مشاهدهٔ هشت‌ساعته با سرویس‌های روشن اجرا شود، بدون توقف کاربر در تمام مدت.

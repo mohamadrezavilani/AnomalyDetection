@@ -8,6 +8,7 @@ import json
 import math
 import re
 from . import CONTRACT, EXTRACTOR, FEATURES
+from .json_value import unique_object
 
 API = re.compile(r"^(?:Core|Services)\.v\d+/[A-Za-z][A-Za-z0-9_]*$")
 LINE = re.compile(r"\s+Line:\d+.*$")
@@ -16,7 +17,10 @@ SECRET = re.compile(
     r"password|passwd|secret|token|authorization|api[_-]?key|signature|^sign$|^otp(?:code)?$|verificationcode",
     re.I,
 )
-AUTOMATIC = {"Core.v1/AddUserData", "Core.v1/GetUserData"}
+AUTOMATIC = {
+    "Core.v1/AddUserData", "Core.v1/GetUserData",
+    "Services.v1/AddUserData", "Services.v1/GetUserData",
+}
 BUSINESS_SQL = {
     "DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2",
     "DBPath.pishkhan24.application.ud_prc_invoiceRegister",
@@ -149,7 +153,7 @@ def scrub(value, depth=0):
         return [scrub(v, depth + 1) for v in value]
     if isinstance(value, str) and value.lstrip().startswith(("{", "[")):
         try:
-            decoded = json.loads(value)
+            decoded = json.loads(value, object_pairs_hook=unique_object)
         except (ValueError, RecursionError):
             return value
         return scrub(decoded, depth + 1)
@@ -202,15 +206,6 @@ def sql_fields(message):
         except (ValueError, RecursionError):
             errors.add(name)
     return values, errors
-
-
-def unique_object(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError("duplicate_json_key")
-        result[key] = value
-    return result
 
 
 def sql_parameters(message):

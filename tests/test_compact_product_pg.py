@@ -203,6 +203,57 @@ class CompactProductPostgresTests(unittest.TestCase):
             row["first_analyzed_ns"], 0
         )  # semantic commit survived; timing has no postcommit confirmation
 
+    def test_later_analysis_crash_cannot_reuse_an_older_confirmed_timing(self):
+        from compact_product.health import health
+        self.publish()
+        self.analyze_at(T)
+        self.db.publish("test", T, T + FIVE, extract([row("r" + str(T) + "-0", message="Output:[broken")]), 1)
+        work = self.db.snapshot("test", T)
+        results = evaluate(T, work["summary"], work["services"], work["actors"], work["references"])
+        def fail(point):
+            if point == "after_commit":
+                raise RuntimeError("crashed_before_revision_timing_confirmation")
+        with self.assertRaises(RuntimeError):
+            self.db.commit_analysis(work, results, .01, fault=fail)
+        saved = self.db.conn.execute(f"SELECT * FROM {self.config.ad_schema}.window_results").fetchone()
+        self.assertGreater(saved["first_analyzed_ns"], 0)
+        self.assertLess(saved["timing_confirmed_revision"], saved["revision"])
+        state = health(self.db.conn, self.config, "test")
+        self.assertEqual(state["analysis_timing_unconfirmed_windows"], 1)
+        self.assertFalse(state["latest_analysis_timing_confirmed"])
+        self.assertEqual(state["analysis_latency_samples"], 0)
+
+    def test_pending_reanalysis_is_not_reported_as_current_analysis(self):
+        from compact_product.health import health
+        self.publish()
+        self.analyze_at(T)
+        state = health(self.db.conn, self.config, "test")
+        self.assertEqual(state["latest_analyzed_end_ns"], T + FIVE)
+        self.db.conn.execute(f"INSERT INTO {self.config.ad_schema}.reanalysis(stream_id,start_ns,updated_at_ns) VALUES(%s,%s,%s)", ("test", T, time.time_ns()))
+        state = health(self.db.conn, self.config, "test")
+        self.assertIsNone(state["latest_analyzed_end_ns"])
+        self.assertEqual(state["analysis_pending_windows"], 1)
+        self.assertEqual(state["oldest_dirty_start_ns"], T)
+        self.db.step("test")
+        state = health(self.db.conn, self.config, "test")
+        self.assertEqual(state["analysis_pending_windows"], 0)
+        self.assertEqual(state["latest_analyzed_end_ns"], T + FIVE)
+        self.assertTrue(state["latest_analysis_timing_confirmed"])
+
+    def test_timing_confirmation_follows_semantic_commit_for_each_revision(self):
+        self.publish()
+        work = self.db.snapshot("test", T)
+        results = evaluate(T, work["summary"], work["services"], work["actors"], [])
+        after = []
+        def pause(point):
+            if point == "after_commit":
+                time.sleep(.05)
+                after.append(time.time_ns())
+        self.db.commit_analysis(work, results, .01, fault=pause)
+        saved = self.db.conn.execute(f"SELECT * FROM {self.config.ad_schema}.window_results").fetchone()
+        self.assertGreaterEqual(saved["analyzed_at_ns"], after[0])
+        self.assertEqual(saved["timing_confirmed_revision"], saved["revision"])
+
     def test_reference_no_future_and_late_change_requeues_future_and_preserves_feedback(
         self,
     ):

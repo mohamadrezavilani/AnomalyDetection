@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import re
+from .json_value import unique_object
 
 TARGET = re.compile(
     r"(?:billid|participatecode|nationalcode|nationalid|platenumber|iban|phonenumber|mobilenumber|telephone|accountnumber)$",
@@ -60,6 +61,7 @@ def extract_features(
             if node.get("binary_content_omitted") is True:
                 limited("BINARY_CONTENT_OMITTED")
                 return
+            shape([path, "object", sorted(node)])
             for key, child in sorted(node.items()):
                 here = path + "." + key if path else key
                 if (
@@ -87,7 +89,7 @@ def extract_features(
         else:
             if isinstance(node, str) and node.lstrip().startswith(("{", "[")):
                 try:
-                    json.loads(node)
+                    json.loads(node, object_pairs_hook=unique_object)
                 except (ValueError, RecursionError):
                     limited("ENCODED_JSON_PARSE_ERROR")
             shape([path, type(node).__name__])

@@ -44,8 +44,16 @@ def health(db, config, stream):
         (stream,),
     ).fetchone()
     analyzed = db.execute(
-        f"SELECT start_ns,analyzed_at_ns,readiness FROM {a}.window_results WHERE stream_id=%s ORDER BY start_ns DESC LIMIT 1",
-        (stream,),
+        f"""SELECT r.start_ns,r.analyzed_at_ns,r.readiness,r.revision,r.timing_confirmed_revision
+        FROM {a}.window_results r JOIN {s}.windows w USING(stream_id,start_ns)
+        WHERE r.stream_id=%s AND r.feature_version=%s AND r.model_version=%s
+        AND r.source_published_ns=w.published_at_ns
+        AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=r.stream_id
+          AND d.start_ns=r.start_ns AND d.session_id='@all' AND d.processed_version<d.version)
+        AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=r.stream_id
+          AND j.start_ns=r.start_ns AND j.processed_version<j.version)
+        ORDER BY r.start_ns DESC LIMIT 1""",
+        (stream, FEATURES, MODEL),
     ).fetchone()
     queue = (
         db.execute(
@@ -53,31 +61,35 @@ def health(db, config, stream):
         ).fetchone()
         or {}
     )
+    pending_sql = f"""SELECT start_ns,updated_at_ns FROM {s}.dirty_windows WHERE stream_id=%s
+        AND session_id='@all' AND processed_version<version UNION ALL
+        SELECT start_ns,updated_at_ns FROM {a}.reanalysis WHERE stream_id=%s AND processed_version<version"""
     oldest = db.execute(
-        f"""SELECT start_ns,updated_at_ns FROM {s}.dirty_windows WHERE stream_id=%s AND session_id='@all'
-        AND processed_version<version ORDER BY start_ns LIMIT 1""",
-        (stream,),
+        f"SELECT * FROM ({pending_sql}) pending ORDER BY start_ns LIMIT 1",
+        (stream, stream),
     ).fetchone()
+    pending_windows = db.execute(
+        f"SELECT count(DISTINCT start_ns) AS n FROM ({pending_sql}) pending",
+        (stream, stream),
+    ).fetchone()["n"]
     jobs = db.execute(
         f"SELECT count(*) AS n FROM {a}.reanalysis WHERE stream_id=%s AND processed_version<version",
         (stream,),
     ).fetchone()["n"]
     samples = db.execute(
-        f"""SELECT publication_to_analysis_seconds FROM(
-        SELECT GREATEST(0,(first_analyzed_ns-first_source_ns)/1e9::float) AS publication_to_analysis_seconds
-        FROM {a}.window_results WHERE stream_id=%s AND first_analyzed_ns>0 ORDER BY first_analyzed_ns DESC LIMIT 288) x""",
+        f"""SELECT GREATEST(0,(first_analyzed_ns-first_source_ns)/1e9::float) AS first_analysis_seconds,
+        GREATEST(0,(analyzed_at_ns-work_cause_ns)/1e9::float) AS revision_analysis_seconds
+        FROM {a}.window_results WHERE stream_id=%s AND first_analyzed_ns>0
+        AND timing_confirmed_revision=revision ORDER BY analyzed_at_ns DESC LIMIT 288""",
         (stream,),
     ).fetchall()
     unconfirmed = db.execute(
-        f"SELECT count(*) AS n FROM {a}.window_results WHERE stream_id=%s AND first_analyzed_ns=0",
+        f"SELECT count(*) AS n FROM {a}.window_results WHERE stream_id=%s AND timing_confirmed_revision<>revision",
         (stream,),
     ).fetchone()["n"]
-    latencies = sorted(r["publication_to_analysis_seconds"] for r in samples)
-    p95 = (
-        latencies[max(0, __import__("math").ceil(len(latencies) * 0.95) - 1)]
-        if latencies
-        else None
-    )
+    def p95(field):
+        values = sorted(r[field] for r in samples)
+        return values[max(0, __import__("math").ceil(len(values) * 0.95) - 1)] if values else None
     closed = (now - config.source_lag_seconds * 10**9) // FIVE * FIVE
     return dict(
         roles=roles,
@@ -87,12 +99,14 @@ def health(db, config, stream):
         stream_id=stream,
         latest_received_end_ns=latest["start_ns"] + FIVE if latest else None,
         latest_analyzed_end_ns=analyzed["start_ns"] + FIVE if analyzed else None,
+        latest_analysis_timing_confirmed=bool(analyzed and analyzed["timing_confirmed_revision"] == analyzed["revision"]),
         source_backlog_windows=(
             max(0, (closed - source["next_ns"]) // FIVE) if source else None
         ),
         reference_pending_windows=reference_pending,
         dirty_keys=queue.get("dirty_keys", 0),
         reanalysis_windows=jobs,
+        analysis_pending_windows=pending_windows,
         active_pending=queue.get("active_pending", 0),
         expired_pending=queue.get("expired_pending", 0),
         oldest_dirty_start_ns=oldest["start_ns"] if oldest else None,
@@ -100,9 +114,10 @@ def health(db, config, stream):
             (now - oldest["updated_at_ns"]) / 1e9 if oldest else None
         ),
         analysis_timing_unconfirmed_windows=unconfirmed,
-        analysis_latency_p95_seconds=p95,
-        analysis_latency_scope="SOURCE_PRECOMMIT_TO_ANALYSIS_POSTCOMMIT_ACK_UPPER_BOUND; INCLUDING_INSUFFICIENT_OR_INVALID; UNCONFIRMED_EXCLUDED",
-        analysis_latency_samples=len(latencies),
+        analysis_latency_p95_seconds=p95("revision_analysis_seconds"),
+        first_analysis_latency_p95_seconds=p95("first_analysis_seconds"),
+        analysis_latency_scope="LATEST_REVISION_CAUSE_PRECOMMIT_TO_ANALYSIS_POSTCOMMIT; FIRST_ANALYSIS_REPORTED_SEPARATELY; INCLUDING_INSUFFICIENT_OR_INVALID; UNCONFIRMED_EXCLUDED",
+        analysis_latency_samples=len(samples),
         latest_readiness=analyzed["readiness"] if analyzed else {},
         methods=METHODS,
         out_of_scope=OUT_OF_SCOPE,
