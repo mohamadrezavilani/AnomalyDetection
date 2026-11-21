@@ -136,8 +136,8 @@ def create_app(config, database, stream, *, secret=None):
             value = health(db, config, stream)
         return jsonify(value)
 
-    @app.get("/")
     @app.get("/status")
+    @app.get("/")
     def home():
         scope, clause, args = behavior_scope()
         with connection() as db:
