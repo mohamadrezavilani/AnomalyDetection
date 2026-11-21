@@ -135,8 +135,8 @@
     "AnomalyDetection/tests/test_window_stamp.py": "fa06f2bd314ddd0ab045f6bcc0b856c8371f6505e6bab259c9a411ff68ae432a",
     "BEHAVIOR_SCOPE_HANDOFF_FA.md": "b5ba45ba5d675346aabb8f4b10e5726deeace920928e5175bbc62e407a0cca7c",
     "FINANCIAL_SCOPE_FA.md": "3cbf36223f0de85c9cca4721f00b6051669e6d281bf7c5b4b2d53d87f9bae61a",
-    "Pishkhan24_Project_Roadmap.md": "faf0f12fc2e54ff8179767939d6b39cffb45fd87ca5146a4a26d511b7af2134c",
-    "README.md": "8c47a6e97b0cd06f5b056450ec5f432d53de01c576c04e8b4f6d367c5159e792",
+    "Pishkhan24_Project_Roadmap.md": "a51a4befa191afb52b12dd5b02d9878d4e15fdcc5695cc6843085b9be662556b",
+    "README.md": "b5b94e6d8f52d329abfe6ae5e26bca89b35808ddf8dd0715d86e478f302f4f06",
     "Start_Viewer.cmd": "fd05b8753dce52cfdab389c35d5bd7747d6afb72df774f2c338fa8ec958f3e76",
     "Start_Viewer_Standard.cmd": "daf8a0f2053ad1519b3d826056ead89797b5d1030c67fb21f12c8979ff93b12d",
     "VIEWER_README_FA.md": "e9bb130cad671daa838611c9fb4bf706388df5a9efe9c34491b4c96f81f369b3",
@@ -156,7 +156,7 @@
     "catalogs/viewer_dispatch_routes.json": "28c6b01bd67acef278d30059f74baeb0b56112be3662bb8e62762231dd051ab0",
     "catalogs/viewer_service_roles.json": "05ebff4db5829cc2f72a73e2813dce3002f7afd26793c9efd61947d246005d92",
     "compact_behavior/MANIFEST.json": "686cd9a74e16e71648e5104bcfaafeac2abc5051f37b1818fdd9e37e1bd547df",
-    "compact_behavior/README_FA.md": "71f1f487012c609e50775b1ac9add1b6121fef2c0ef807686ba242236f248891",
+    "compact_behavior/README_FA.md": "3a697d182935c2bb87ea496d69191453fd1d81b0abe6e27e7f51dc53d38e7d71",
     "compact_behavior/__init__.py": "0f0e26e523fe54b2f4fa9ff2a31baf4ad952bb04fd7037b014d5dcf6946f0c9e",
     "compact_behavior/__main__.py": "8481ae5cee88325f1ba8ccb32ff85f4c7ceefc805b56453f1fe0500c012f0322",
     "compact_behavior/extract.py": "68c83b20ef5474cf2e29d2cb1d3b996dc45d830ad77fc3da22b1e0c290ea176f",
@@ -659,8 +659,40 @@
   "compact_behavior_prototype": {
     "path": "compact_behavior",
     "contract": "compact-behavior-1",
-    "stage": "MEASURE_SMALL_PROTOTYPE_BEFORE_FULL_UI_AD",
+    "stage": "OWNER_THREE_WINDOW_EXTRACTION_STORAGE_GATE_PASSED",
     "legacy_runtime_changed": false,
-    "production_capacity_acceptance": "NOT_ASSIGNED"
+    "production_capacity_acceptance": "NOT_ASSIGNED",
+    "owner_gate": {
+      "status": "PASS_THREE_FRESH_WINDOWS_ONLY",
+      "tested_commit": "5c4adc8ec77ba741340f296a0d7724dedbb00d02",
+      "build_id": "COMPACT-PROTOTYPE-20261121-4",
+      "package_sha256": "4970eb9a4dfcdeeded2f77b306d57085370714eb4ebeb5fa3014b2e537c9f294",
+      "evidence_bundle": "Compact_Prototype_20261121_091243_9db83e7f.zip",
+      "evidence_bundle_sha256": "9752c1ef53a88327bcb9d311f890db5257c0b7ea4d9c59d05cb0844512df5cb0",
+      "prototype_json_sha256": "d957bc3abd61c20ba8477d8fad8036d2a2e5327953118144b6ac4a38348b14fc",
+      "source_records": 214911,
+      "inserted_behaviors": 45051,
+      "window_seconds": [
+        22.25,
+        22.921,
+        21.547
+      ],
+      "cycle_seconds": 66.718,
+      "process_seconds": 67.11,
+      "process_peak_rss_bytes": 132435968,
+      "initial_compact_behavior_rows": 0,
+      "exact_unique_documents_and_empty_terminal": true,
+      "legacy_cursors_unchanged_during_trial": true,
+      "original_roles_restored": true,
+      "restored_legacy_ad_health": "WAITING_FOR_VIEWER_PUBLICATION",
+      "ad_executed": false,
+      "web_executed": false,
+      "pending_requests_end": 2759,
+      "dirty_windows_end": 4073,
+      "semantic_service_coverage": "PARTIAL_NOT_FINAL_ACCEPTANCE",
+      "large_history_qualified": false,
+      "owner_replay_qualified": false,
+      "production_capacity_acceptance": "NOT_ASSIGNED"
+    }
   }
 }
