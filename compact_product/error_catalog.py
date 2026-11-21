@@ -6,7 +6,8 @@ from pathlib import Path
 from psycopg.types.json import Jsonb
 
 BASE_SHA256 = "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e"
-CATALOG_VERSION = "p24-compact-error-catalog-20261121-1"
+CATALOG_VERSION = "p24-compact-error-catalog-20261121-2"
+CATALOG_ROW_COUNT = 1926
 # Current owner-supplied workbooks: all 1,925 code rows were compared with
 # the archived catalog. Only GD2148 gains a definition; other cells match.
 SOURCE_UPDATES = {
@@ -29,6 +30,12 @@ def catalog_records(root=None):
                 log_symbol="FixedLineExtendedBillInquiryFailedDueToDisconnectedStatus",
                 definition_state="complete_definition",
             )
+    # Explicit owner definition, 2026-11-21. It is not attributed to Excel.
+    records.append(dict(entry_id="owner:G00000:20261121", code_system="Pishkhan24-owner",
+        code="G00000", user_message_fa="موفقیت سرویس", log_symbol=None,
+        definition_state="owner_confirmed_definition",
+        source=dict(kind="owner_definition", confirmed_on="2026-11-21",
+            description="تعریف صریح مالک پروژه", scope="all_services")))
     return records
 
 
@@ -53,7 +60,7 @@ def ensure_catalog(db, schema):
         for row in records:
             copy.write_row((CATALOG_VERSION, row["entry_id"], row["code"], row["code_system"],
                 row["user_message_fa"], row["log_symbol"], row["definition_state"],
-                Jsonb(dict(file=row["source_file"], sheet=row["source_sheet"], row=row["source_row"], sha256=row["source_sha256"])) ))
+                Jsonb(row["source"] if "source" in row else dict(file=row["source_file"], sheet=row["source_sheet"], row=row["source_row"], sha256=row["source_sha256"])) ))
     db.execute(f"INSERT INTO {schema}.error_catalog_imports(version,row_count) VALUES(%s,%s)", (CATALOG_VERSION,len(records)))
     return True
 

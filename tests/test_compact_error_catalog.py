@@ -12,7 +12,7 @@ from compact_product.config import Config
 
 class ErrorCatalogTests(unittest.TestCase):
     def test_all_supplied_rows_and_updated_definition(self):
-        rows = catalog_records()
+        rows = [r for r in catalog_records() if "source_file" in r]
         self.assertEqual(len(rows), 1925)
         self.assertEqual(len({r['source_file'] for r in rows}), 8)
         self.assertEqual(len({r['entry_id'] for r in rows}), len(rows))
@@ -26,6 +26,20 @@ class ErrorCatalogTests(unittest.TestCase):
         self.assertIn('یکطرفه', by_code['GD2148']['user_message_fa'])
         self.assertEqual(sum(bool(r['user_message_fa']) for r in rows), 905)
         self.assertNotIn('G00000', by_code)  # no fabricated workbook description
+
+    def test_owner_success_definition_has_honest_provenance(self):
+        rows = [r for r in catalog_records() if r['code'] == 'G00000']
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['user_message_fa'], 'موفقیت سرویس')
+        self.assertEqual(rows[0]['source']['kind'], 'owner_definition')
+        self.assertNotIn('source_file', rows[0])
+        app = create_app(Config(), {}, 'test', secret='test')
+        with app.test_request_context('/'):
+            template = app.jinja_env.from_string("{% from 'result.html' import result %}{{ result('G00000', entries, true) }}")
+            html = template.render(entries={'G00000': [dict(message_fa=rows[0]['user_message_fa'], log_symbol=None, source=rows[0]['source'])]})
+        self.assertIn('موفقیت سرویس', html)
+        self.assertIn('تعریف صریح مالک پروژه', html)
+        self.assertNotIn('برگهٔ', html)
 
     def test_changed_source_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -6,6 +6,7 @@ from flask import render_template
 from compact_product.web import create_app
 from compact_product.config import Config
 from compact_product.error_catalog import catalog_records
+from compact_product.request_context import observed_context
 
 
 @unittest.skipUnless(os.environ.get('P24_COMPACT_BROWSER'), 'native browser required')
@@ -19,11 +20,11 @@ class CompactUiBrowserTests(unittest.TestCase):
         row = dict(api='Services.v1/InvoiceRegister', request_id='demo-request-001', session_id='demo-session-001',
             service_key=None, behavior_id='demo', observed_at_ns=0, result_code='GR0010', revision=1,
             quality=['output_binding_unconfirmed', 'unresolved_dispatch'],
-            state=dict(inputs=[dict(path='Services.v1/InvoiceRegister', basis='public_api', value={'Count': 1})],
+            state=dict(inputs=[dict(path='Services.v1/InvoiceRegister', basis='public_api', value={'Count': 1, 'UserAgent': 'Synthetic browser', 'IP': '192.0.2.1'})],
                 outputs=[dict(path='ExampleProvider', basis='supporting', value={'Code': 'GR0010', 'Result': None})]))
         with app.test_request_context('/behaviors/demo'):
             detail = render_template('behavior.html', title='جزئیات رفتار', row=row,
-                body=dict(operation_role='unknown', service_key=None, features={}), code_definitions=codes)
+                body=dict(operation_role='unknown', service_key=None, features={}), code_definitions=codes, request_context=observed_context(row['state']))
         with app.test_request_context('/?scope=unknown'):
             home = render_template('home.html', title='رفتارهای مشاهده‌شده', rows=[row]*3, scope='unknown', code_definitions=codes)
         with sync_playwright() as p:
@@ -39,6 +40,9 @@ class CompactUiBrowserTests(unittest.TestCase):
                         self.assertTrue(page.get_by_role('heading', level=1).is_visible())
                         self.assertIn('امکان برقراری ارتباط', page.locator('body').inner_text())
                         self.assertNotIn('نکتهٔ کیفیت', page.locator('body').inner_text())
+                        if name == 'behavior':
+                            self.assertIn('مشخصات محیطی موجود در محتوا', page.locator('body').inner_text())
+                            self.assertIn('$.UserAgent', page.locator('body').inner_text())
                         if name == 'home':
                             self.assertEqual(page.locator('details[open]').count(), 0)
                             page.locator('.notes summary').first.click()
