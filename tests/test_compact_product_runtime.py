@@ -225,7 +225,7 @@ class CompactRuntimeTests(unittest.TestCase):
                         self.assertIn("Amount", page.locator("body").inner_text())
                         page.goto(f"http://127.0.0.1:{port}/incidents")
                         self.assertIn("آنومالی‌های آمادهٔ بررسی", page.title())
-                        page.get_by_role("link", name="مشاهدهٔ همهٔ هشدارها و شواهد ←").first.click()
+                        page.locator("a[href^='/incident-groups/']").first.click()
                         page.get_by_role("link", name="شواهد و ثبت نتیجهٔ بررسی ←").first.click()
                         page.locator("select[name=verdict]").select_option("CONFIRMED")
                         page.locator("textarea[name=note]").fill(

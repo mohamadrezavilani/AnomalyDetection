@@ -252,17 +252,16 @@ def create_app(config, database, stream, *, secret=None):
         with connection() as db:
             rows = db.execute(f"""
                 WITH eligible AS (
-                    SELECT f.*,md5(jsonb_build_array(f.method,f.service,f.session_id,
-                        f.result->>'numeric_path',
+                    SELECT f.*,md5(jsonb_build_array(f.service,f.session_id,
                         (f.start_ns+12600000000000)/86400000000000)::text) AS group_id
                     FROM {config.ad_schema}.findings f
                     WHERE f.stream_id=%s AND {publishable()}
                 ), grouped AS (
-                    SELECT group_id,method,service,session_id,min(start_ns) AS first_ns,
+                    SELECT group_id,service,session_id,array_agg(DISTINCT method) AS methods,min(start_ns) AS first_ns,
                         max(start_ns) AS last_ns,count(*) AS signal_count,
                         (array_agg(finding_id ORDER BY start_ns DESC,finding_id DESC))[1] AS finding_id,
                         (array_agg(result ORDER BY start_ns DESC,finding_id DESC))[1] AS result
-                    FROM eligible GROUP BY group_id,method,service,session_id
+                    FROM eligible GROUP BY group_id,service,session_id
                 ) SELECT * FROM grouped {clause}
                 ORDER BY last_ns DESC,group_id DESC LIMIT 31""", args).fetchall()
         return render_template("incidents.html", title="آنومالی‌های آمادهٔ بررسی",
@@ -275,8 +274,7 @@ def create_app(config, database, stream, *, secret=None):
         with connection() as db:
             rows = db.execute(f"""SELECT f.* FROM {config.ad_schema}.findings f
                 WHERE f.stream_id=%s AND {publishable()}
-                AND md5(jsonb_build_array(f.method,f.service,f.session_id,
-                    f.result->>'numeric_path',
+                AND md5(jsonb_build_array(f.service,f.session_id,
                     (f.start_ns+12600000000000)/86400000000000)::text)=%s
                 ORDER BY f.start_ns DESC,f.finding_id DESC LIMIT 289""",
                 [stream,*eligible_args(),gid]).fetchall()
