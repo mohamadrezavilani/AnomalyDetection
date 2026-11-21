@@ -126,6 +126,7 @@ class Store:
         *,
         fault=None,
         allow_history=False,
+        history_job=None,
     ):
         from psycopg.types.json import Jsonb
 
@@ -148,6 +149,11 @@ class Store:
             row = self.conn.execute(
                 f"SELECT * FROM {s}.streams WHERE stream_id=%s FOR UPDATE", (stream,)
             ).fetchone()
+            if history_job is not None:
+                from .history import validate_publication
+                if not row or not allow_history:
+                    raise ValueError("history_job_requires_existing_stream_and_history_mode")
+                validate_publication(self, stream, history_job, start, end)
             if row:
                 if (row["contract"], row["extractor"], row["feature_version"]) != (
                     CONTRACT,
@@ -173,7 +179,7 @@ class Store:
             if row and start < row["next_ns"] and not existed:
                 if not allow_history:
                     raise ValueError("window_before_stream_start")
-                if start < row["next_ns"] - 288 * FIVE:
+                if start < row["next_ns"] - 288 * FIVE and history_job is None:
                     raise ValueError("reference_backfill_exceeds_24_hours")
             self.conn.execute(
                 "CREATE TEMP TABLE compact_keys(behavior_id TEXT PRIMARY KEY) ON COMMIT DROP"
@@ -413,6 +419,9 @@ class Store:
                 (stream, now - NOTICE_RETENTION_NS),
             )
             times["write_seconds"] = time.monotonic() - phase
+            if history_job is not None:
+                from .history import advance_publication
+                advance_publication(self, history_job, end, source_records, not bool(existed), now)
             if fault:
                 fault("before_commit")
             phase = time.monotonic()

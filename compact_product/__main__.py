@@ -24,17 +24,29 @@ def main(argv=None):
             "rollback",
             "observe",
             "supervise",
+            "history-install",
+            "history-status",
+            "history-stop",
+            "history-worker",
         ),
     )
     p.add_argument("role", nargs="?", choices=ROLES)
     p.add_argument("--project", type=Path, default=Path.cwd())
     p.add_argument("--token")
+    p.add_argument("--history-from")
     p.add_argument("--legacy-receipt", type=Path)
     p.add_argument("--receipt", type=Path)
     p.add_argument("--seconds", type=int, default=600)
     a = p.parse_args(argv)
     project = a.project.resolve()
     try:
+        if a.action.startswith("history-"):
+            from .history import control, worker as history_worker
+            if a.action == "history-worker":
+                return history_worker(project,a.token or __import__("uuid").uuid4().hex)
+            result = control(project,a.action.removeprefix("history-"),from_value=a.history_from)
+            print(json.dumps(result,ensure_ascii=True,default=str),flush=True)
+            return 0
         if a.action == "supervise":
             from .runtime import supervise
 
