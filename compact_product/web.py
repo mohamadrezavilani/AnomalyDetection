@@ -238,7 +238,7 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.get("/incidents")
     def incidents():
-        # One card per Tehran day, method, service, session and numeric feature.
+        # One overview row per Tehran day and service; retain individual findings.
         # Group before pagination: never split a group across pages.
         before = request.args.get("before")
         args = [stream, *eligible_args()]
@@ -252,16 +252,16 @@ def create_app(config, database, stream, *, secret=None):
         with connection() as db:
             rows = db.execute(f"""
                 WITH eligible AS (
-                    SELECT f.*,md5(jsonb_build_array(f.service,f.session_id,
+                    SELECT f.*,md5(jsonb_build_array(f.service,
                         (f.start_ns+12600000000000)/86400000000000)::text) AS group_id
                     FROM {config.ad_schema}.findings f
                     WHERE f.stream_id=%s AND {publishable()}
                 ), grouped AS (
-                    SELECT group_id,service,session_id,array_agg(DISTINCT method) AS methods,min(start_ns) AS first_ns,
+                    SELECT group_id,service,count(DISTINCT session_id) AS session_count, bool_or(session_id IS NULL) AS has_service_scope,array_agg(DISTINCT method) AS methods,min(start_ns) AS first_ns,
                         max(start_ns) AS last_ns,count(*) AS signal_count,
                         (array_agg(finding_id ORDER BY start_ns DESC,finding_id DESC))[1] AS finding_id,
                         (array_agg(result ORDER BY start_ns DESC,finding_id DESC))[1] AS result
-                    FROM eligible GROUP BY group_id,service,session_id
+                    FROM eligible GROUP BY group_id,service
                 ) SELECT * FROM grouped {clause}
                 ORDER BY last_ns DESC,group_id DESC LIMIT 31""", args).fetchall()
         return render_template("incidents.html", title="آنومالی‌های آمادهٔ بررسی",
@@ -271,14 +271,23 @@ def create_app(config, database, stream, *, secret=None):
     def incident_group(gid):
         if len(gid) != 32 or any(c not in "0123456789abcdef" for c in gid):
             abort(404)
+        args = [stream,*eligible_args(),gid]
+        clause = ""
+        if request.args.get("before"):
+            try:
+                args.extend([int(request.args["before"]),request.args["id"]])
+            except (ValueError,KeyError):
+                abort(400)
+            clause = "AND (f.start_ns,f.finding_id)<(%s,%s)"
         with connection() as db:
             rows = db.execute(f"""SELECT f.* FROM {config.ad_schema}.findings f
                 WHERE f.stream_id=%s AND {publishable()}
-                AND md5(jsonb_build_array(f.service,f.session_id,
+                AND md5(jsonb_build_array(f.service,
                     (f.start_ns+12600000000000)/86400000000000)::text)=%s
-                ORDER BY f.start_ns DESC,f.finding_id DESC LIMIT 289""",
-                [stream,*eligible_args(),gid]).fetchall()
-        return render_template("incident_group.html", title="هشدارهای مرتبط", rows=rows)
+                {clause} ORDER BY f.start_ns DESC,f.finding_id DESC LIMIT 51""",
+                args).fetchall()
+        return render_template("incident_group.html", title="هشدارهای خدمت", rows=rows[:50],gid=gid,
+            next_cursor=rows[49] if len(rows)>50 else None)
 
     @app.get("/incidents/<fid>")
     def incident(fid):
