@@ -33,6 +33,33 @@ class FlakyWindow(ElasticWindow):
         self.metadata={'window_start':'2026-10-20T08:20:00Z','window_end':'2026-10-20T08:25:00Z','complete':True,'count':2}
 
 
+def es_document(key,*,request=None,index='logs-2026.11.21'):
+    return {'_index':index,'_id':str(key),'_source':row(request or str(key))}
+
+
+def scroll_packet(sid,documents,total,*,early=False,initial=False):
+    shards=40 if initial else 1
+    result={'_scroll_id':sid,'timed_out':False,'took':12 if initial else 9,
+        '_shards':{'total':shards,'successful':shards,'failed':0,'skipped':39 if initial else 0},
+        'hits':{'total':{'relation':'eq','value':total},'hits':documents}}
+    if early:result['terminated_early']=True
+    return result
+
+
+class ScriptedScroll(ElasticWindow):
+    """Real owner's protocol shape: exact first count, then _doc page flags."""
+    def __init__(self,packets,**kwargs):
+        super().__init__({'host':'http://example.test','index_pattern':'logs-*'},T,T+300000000000,**kwargs)
+        self.packets=list(packets);self.calls=[];self.deleted=[]
+    def request(self,path,body=None,method='POST'):
+        from urllib.error import HTTPError
+        self.calls.append((path,body,method))
+        if '_pit?' in path:raise HTTPError('http://example.test',400,'PIT unsupported',None,None)
+        if method=='DELETE':self.deleted.extend(body['scroll_id']);return {}
+        if not self.packets:raise AssertionError('unexpected_extra_scroll_request')
+        return self.packets.pop(0)
+
+
 class CompactExtractionTests(unittest.TestCase):
     def test_identical_input_in_different_requests_is_two_behaviors(self):
         rows=[]
@@ -144,20 +171,88 @@ class SourceTests(unittest.TestCase):
                 self.attempts=0;self.deleted=[];self.initial=[]
             def packet(self,sid,records,timeout=False):
                 return {'_scroll_id':sid,'timed_out':timeout,'_shards':{'total':40,'successful':40,'failed':0,'skipped':39},
-                    'hits':{'total':{'relation':'eq','value':2},'hits':[{'_source':r} for r in records]}}
+                    'hits':{'total':{'relation':'eq','value':2},'hits':[{'_index':'logs','_id':r['RequestID'],'_source':r} for r in records]}}
             def request(self,path,body=None,method='POST'):
                 if '_pit?' in path:raise HTTPError('http://example.test',400,'PIT unsupported',None,None)
                 if method=='DELETE':self.deleted.extend(body['scroll_id']);return {}
                 if '/_search?' in path:
                     self.attempts+=1;self.initial.append((path,body))
                     return self.packet('bad1' if self.attempts==1 else 'good1',[row('discarded-only' if self.attempts==1 else 'r1')])
-                return self.packet('bad2',[],True) if self.attempts==1 else self.packet('good2',[row('r2')])
+                if self.attempts==1:return self.packet('bad2',[],True)
+                return self.packet('good3',[]) if body['scroll_id']=='good2' else self.packet('good2',[row('r2')])
         source=Scroll();db=Mock();db.limits=Limits();db.publish.return_value={}
         result=measure_window(db,'stream',source)
-        self.assertEqual(source.deleted,['bad2','good2']);self.assertEqual([v[1]['size'] for v in source.initial],[500,125])
+        self.assertEqual(source.deleted,['bad2','good3']);self.assertEqual([v[1]['size'] for v in source.initial],[500,125])
         self.assertTrue(all('allow_partial_search_results=false' in v[0] for v in source.initial))
         self.assertEqual(set(db.publish.call_args.args[3]),{'r1','r2'});self.assertEqual(db.publish.call_args.args[4],2)
         self.assertEqual(len(result['source_attempts']),2)
+    def test_doc_scroll_early_continuation_requires_unique_total_and_empty_terminal(self):
+        packets=[scroll_packet('p1',[es_document(i) for i in range(500)],1002,initial=True),
+            scroll_packet('p2',[es_document(i) for i in range(500,1000)],1002,early=True),
+            scroll_packet('p3',[es_document(i) for i in range(1000,1002)],1002,early=True),
+            scroll_packet('p4',[],1002)]
+        source=ScriptedScroll(packets)
+        self.assertEqual(len(list(source.records())),1002)
+        self.assertEqual(source.metadata['expected_count'],1002)
+        self.assertEqual(source.metadata['unique_documents'],1002)
+        self.assertEqual(source.metadata['scroll_early_terminated_pages'],2)
+        self.assertTrue(source.metadata['terminal_empty_page']);self.assertTrue(source.metadata['complete'])
+        self.assertEqual(source.deleted,['p4']);self.assertFalse(source.packets)
+        self.assertEqual([c[1]['scroll_id'] for c in source.calls if c[0]=='/_search/scroll' and c[2]=='POST'],['p1','p2','p3'])
+    def test_early_flag_on_initial_search_or_pit_is_still_rejected(self):
+        packet=scroll_packet('p1',[es_document(1)],1,early=True,initial=True)
+        source=ScriptedScroll([packet])
+        with self.assertRaises(ElasticPageError) as caught:list(source.records())
+        self.assertIn('terminated_early',caught.exception.details['rejected_checks']);self.assertEqual(source.metadata,{})
+        with self.assertRaises(ElasticPageError):ElasticWindow.checked(packet,1)
+        with self.assertRaises(ElasticPageError):ElasticWindow.checked(packet,scroll_continuation=True)
+    def test_short_scroll_is_not_complete_even_with_early_flag_and_exact_total(self):
+        source=ScriptedScroll([scroll_packet('p1',[es_document(1)],2,initial=True),scroll_packet('p2',[],2,early=True)])
+        with self.assertRaisesRegex(ValueError,'elastic_incomplete_window'):list(source.records())
+        self.assertEqual(source.metadata,{});self.assertEqual(source.deleted,['p2'])
+    def test_scroll_duplicate_cannot_fill_the_expected_document_count(self):
+        source=ScriptedScroll([scroll_packet('p1',[es_document(1)],2,initial=True),
+            scroll_packet('p2',[es_document(1)],2,early=True),scroll_packet('p3',[],2)])
+        with self.assertRaisesRegex(ValueError,'elastic_duplicate_document'):list(source.records())
+        self.assertEqual(source.metadata,{});self.assertEqual(source.deleted,['p2'])
+    def test_scroll_reads_after_total_and_rejects_surplus_document(self):
+        source=ScriptedScroll([scroll_packet('p1',[es_document(1)],1,initial=True),
+            scroll_packet('p2',[es_document(2)],1,early=True),scroll_packet('p3',[],1)])
+        with self.assertRaisesRegex(ValueError,'elastic_count_exceeded'):list(source.records())
+        self.assertEqual(source.metadata,{});self.assertEqual(source.deleted,['p2'])
+    def test_scroll_same_id_in_different_indices_and_same_request_are_not_deduplicated(self):
+        source=ScriptedScroll([scroll_packet('p1',[es_document(1,request='r1',index='a')],2,initial=True),
+            scroll_packet('p2',[es_document(1,request='r1',index='b')],2,early=True),scroll_packet('p3',[],2)])
+        records=list(source.records());self.assertEqual(len(records),2);self.assertEqual(len(extract(records)),1)
+        self.assertEqual(source.metadata['unique_documents'],2)
+    def test_early_continuation_never_excuses_timeout_shard_failure_or_changed_total(self):
+        for mode in ['timeout','failed_shard','missing_shard','changed_total','inexact_total']:
+            with self.subTest(mode=mode):
+                packet=scroll_packet('bad',[es_document(2)],2,early=True)
+                if mode=='timeout':packet['timed_out']=True
+                elif mode=='failed_shard':packet['_shards'].update(successful=0,failed=1)
+                elif mode=='missing_shard':packet['_shards'].update(successful=0)
+                elif mode=='changed_total':packet['hits']['total']['value']=3
+                else:packet['hits']['total']['relation']='gte'
+                source=ScriptedScroll([scroll_packet('p1',[es_document(1)],2,initial=True),packet])
+                with self.assertRaises(ElasticPageError):list(source.records())
+                self.assertEqual(source.metadata,{});self.assertEqual(source.deleted,['bad'])
+    def test_scroll_identity_missing_cursor_and_resource_limits_are_explicit(self):
+        for mode in ['missing_id','missing_index','missing_cursor','document_limit','identity_bytes_limit']:
+            with self.subTest(mode=mode):
+                packet=scroll_packet('p1',[es_document(1)],1,initial=True);options={}
+                if mode=='missing_id':del packet['hits']['hits'][0]['_id']
+                elif mode=='missing_index':del packet['hits']['hits'][0]['_index']
+                elif mode=='missing_cursor':del packet['_scroll_id']
+                elif mode=='document_limit':options['max_documents']=0
+                else:options['max_identity_bytes']=1
+                source=ScriptedScroll([packet],**options)
+                with self.assertRaises(ValueError):list(source.records())
+                self.assertEqual(source.metadata,{})
+    def test_empty_initial_scroll_is_complete_with_exact_zero(self):
+        source=ScriptedScroll([scroll_packet('p1',[],0,initial=True)])
+        self.assertEqual(list(source.records()),[]);self.assertTrue(source.metadata['terminal_empty_page'])
+        self.assertEqual(source.metadata['unique_documents'],0);self.assertEqual(source.deleted,['p1'])
     def test_rejection_retains_exact_protocol_reason_without_documents(self):
         response={'timed_out':True,'_shards':{'total':3,'successful':2,'failed':1},
             'hits':{'total':{'relation':'eq','value':9},'hits':[{'_source':{'password':'PRIVATE'}}]},'pit_id':'PRIVATE_PIT'}

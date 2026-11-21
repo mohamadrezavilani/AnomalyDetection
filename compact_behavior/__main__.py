@@ -97,6 +97,9 @@ def measure_window(store,stream,source,*,progress=None):
     elapsed=time.monotonic()-began
     result.update(read_extract_seconds=read_extract,source_request_decode_seconds=getattr(source,'network_seconds',None),
         source_attempts=attempts,source_page_size=getattr(source,'page_size',None),
+        source_completeness={k:source.metadata[k] for k in ('complete','count','expected_count','method','pages',
+            'completeness_basis','terminal_empty_page','unique_documents','identity_bytes','scroll_early_terminated_pages') if k in source.metadata},
+        source_response_diagnostics=getattr(source,'response_diagnostics',[]),
         source_timer_scope='HTTP_REQUEST_BODY_READ_AND_JSON_DECODE_INCLUDING_CURSOR_CLEANUP',
         read_decode_extract_seconds_includes_network=True,total_seconds=elapsed,client_cpu_seconds=time.process_time()-cpu,
         extraction_state_bytes=extractor.state_bytes,missing_request_ids=extractor.missing_request_ids,

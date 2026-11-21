@@ -130,8 +130,10 @@ class WindowFile:
 
 
 class ElasticWindow:
-    def __init__(self,config,start_ns,end_ns,*,page_size=500,budget=180):
+    def __init__(self,config,start_ns,end_ns,*,page_size=500,budget=180,
+                 max_documents=1_000_000,max_identity_bytes=134_217_728):
         self.config=config;self.start=start_ns;self.end=end_ns;self.page_size=page_size;self.budget=budget
+        self.max_documents=max_documents;self.max_identity_bytes=max_identity_bytes
         self.metadata={};self.count=0;self.network_seconds=0.;self.pages=0
         self.response_diagnostics=[]
         root=str(config.get('host','')).rstrip('/');parts=urlsplit(root)
@@ -162,13 +164,18 @@ class ElasticWindow:
             raise
         finally:self.network_seconds+=time.monotonic()-started
     @staticmethod
-    def checked(response,expected=None):
+    def checked(response,expected=None,*,scroll_continuation=False):
         details=response_summary(response)
         if not isinstance(response,dict):raise ElasticPageError('elastic_partial_page',dict(details,rejected_checks=['response_not_object']))
         shards=response.get('_shards',{})
         rejected=[]
         if response.get('timed_out') is not False:rejected.append('timed_out_not_explicit_false')
-        if response.get('terminated_early') is True:rejected.append('terminated_early')
+        # _doc scroll continuations can stop collection at the requested page
+        # size and report terminated_early (ES QueryPhase's scroll optimization).
+        # This is not a completed window: records() still requires every unique
+        # document from the exact initial total and an empty terminal page.
+        if response.get('terminated_early') is True and not (
+            scroll_continuation and type(expected) is int and expected>=0):rejected.append('terminated_early')
         if not isinstance(shards,dict):rejected.append('shards_not_object');shards={}
         if any(type(shards.get(k)) is not int or shards[k]<0 for k in ['total','successful']):rejected.append('invalid_shard_counts')
         if type(shards.get('failed')) is not int or shards['failed']!=0:rejected.append('failed_shards_not_zero_integer')
@@ -187,6 +194,7 @@ class ElasticWindow:
         # caller discards all extracted rows from the unsuccessful traversal.
         self.metadata={};self.count=0;self.pages=0;self.response_diagnostics=[]
         self.deadline=time.monotonic()+self.budget;pit=sid=None;expected=None;last=None;use_pit=True
+        seen=set();identity_bytes=0;early_pages=0;terminal=False
         index=quote(self.index,safe='*,_-:.')
         body=dict(size=self.page_size,track_total_hits=True,query={'range':{'@timestamp':{'gte':iso(self.start),'lt':iso(self.end)}}},
                   timeout='30s',terminate_after=0,
@@ -198,34 +206,52 @@ class ElasticWindow:
                 exc.close();use_pit=False
             if use_pit and not isinstance(pit,str):raise ValueError('elastic_pit_id_required')
             while True:
+                continuation=not use_pit and sid is not None
                 if use_pit:
                     query=dict(body,pit={'id':pit,'keep_alive':'3m'},sort=['_shard_doc'])
                     if last is not None:query.update(search_after=last,track_total_hits=False)
                     response=self.request('/_search?allow_partial_search_results=false',query)
-                    pit=response.get('pit_id',pit)
+                    if isinstance(response,dict):pit=response.get('pit_id',pit)
                 elif sid is None:response=self.request('/'+index+'/_search?scroll=3m&allow_partial_search_results=false',dict(body,sort=['_doc']))
                 else:response=self.request('/_search/scroll',{'scroll':'3m','scroll_id':sid})
-                if not use_pit:sid=response.get('_scroll_id',sid)
+                if not use_pit and isinstance(response,dict):sid=response.get('_scroll_id',sid)
                 self.response_diagnostics.append(dict(method='pit_search_after' if use_pit else 'scroll',
                     page=self.pages+1,summary=response_summary(response)))
                 self.response_diagnostics=self.response_diagnostics[-4:]
-                hits,total=self.checked(response,expected);expected=total;self.pages+=1
-                if not hits:break
+                hits,total=self.checked(response,expected,scroll_continuation=continuation);expected=total;self.pages+=1
+                if expected>self.max_documents:raise LimitExceeded('elastic_snapshot_documents_limit')
+                if not use_pit:
+                    if not isinstance(sid,str) or not sid:raise ValueError('elastic_scroll_missing')
+                    early_pages+=response.get('terminated_early') is True
+                if not hits:terminal=True;break
                 for hit in hits:
+                    if not isinstance(hit,dict):raise ValueError('elastic_hit_not_object')
                     if use_pit:
                         cursor=hit.get('sort')
                         if not isinstance(cursor,list) or len(cursor)!=1 or type(cursor[0]) is not int or (last is not None and cursor<=last):
                             raise ValueError('elastic_nonmonotonic_cursor')
                         last=cursor
+                    else:
+                        identity=(hit.get('_index'),hit.get('_id'))
+                        if any(not isinstance(value,str) or not value for value in identity):raise ValueError('elastic_document_identity_missing')
+                        if identity in seen:raise ValueError('elastic_duplicate_document')
+                        identity_bytes+=sum(len(value.encode('utf-8')) for value in identity)
+                        if identity_bytes>self.max_identity_bytes:raise LimitExceeded('elastic_snapshot_identity_bytes_limit')
+                        seen.add(identity)
                     if not isinstance(hit.get('_source'),dict):raise ValueError('elastic_source_missing')
                     self.count+=1
                     if self.count>expected:raise ValueError('elastic_count_exceeded')
                     yield hit
-                if self.count==expected:break
-                if not use_pit and not sid:raise ValueError('elastic_scroll_missing')
+                # Scroll must be exhausted, including an extra empty page after
+                # reaching total, so surplus hits cannot be silently skipped.
+                if use_pit and self.count==expected:break
             if self.count!=expected:raise ValueError('elastic_incomplete_window')
             self.metadata=dict(window_start=iso(self.start),window_end=iso(self.end),complete=True,count=self.count,
-                               method='pit_search_after' if use_pit else 'scroll',pages=self.pages)
+                               expected_count=expected,method='pit_search_after' if use_pit else 'scroll',pages=self.pages,
+                               completeness_basis='EXACT_TOTAL_AND_MONOTONIC_PIT_CURSOR' if use_pit else 'EXACT_TOTAL_UNIQUE_DOCUMENTS_AND_EMPTY_TERMINAL',
+                               terminal_empty_page=terminal)
+            if not use_pit:self.metadata.update(unique_documents=len(seen),identity_bytes=identity_bytes,
+                                               scroll_early_terminated_pages=early_pages)
         finally:
             # Close the most recently returned handle even when a page failed.
             previous=self.deadline;self.deadline=max(previous,time.monotonic()+5)

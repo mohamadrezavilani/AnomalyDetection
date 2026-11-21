@@ -1,4 +1,6 @@
 import concurrent.futures
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler,HTTPServer
 import multiprocessing
 import os
 from pathlib import Path
@@ -7,12 +9,36 @@ import gzip
 import json
 import subprocess
 import sys
+import threading
 import unittest
 import uuid
 from compact_behavior import FIVE
 from compact_behavior.extract import Limits,LimitExceeded,behavior_id
 from compact_behavior.store import Store
-from tests.test_compact_extract import row,extract,T,FlakyWindow
+from tests.test_compact_extract import row,extract,T,FlakyWindow,ScriptedScroll,es_document,scroll_packet
+
+
+@contextmanager
+def scroll_http_server(packets):
+    state={'packets':list(packets),'calls':[],'deleted':[]}
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self,*args):pass
+        def respond(self,status,value):
+            data=json.dumps(value).encode();self.send_response(status)
+            self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)))
+            self.end_headers();self.wfile.write(data)
+        def do_POST(self):
+            length=int(self.headers.get('Content-Length',0));body=json.loads(self.rfile.read(length) or b'null')
+            state['calls'].append((self.path,body))
+            if '/_pit?' in self.path:self.respond(400,{'error':{'type':'illegal_argument_exception'}})
+            elif state['packets']:self.respond(200,state['packets'].pop(0))
+            else:self.respond(500,{'error':{'type':'unexpected_extra_scroll_request'}})
+        def do_DELETE(self):
+            body=json.loads(self.rfile.read(int(self.headers.get('Content-Length',0))))
+            state['deleted'].extend(body['scroll_id']);self.respond(200,{'succeeded':True})
+    server=HTTPServer(('127.0.0.1',0),Handler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    try:yield 'http://127.0.0.1:'+str(server.server_port),state
+    finally:server.shutdown();server.server_close();thread.join(5)
 
 
 def crash(config,schema,point):
@@ -99,6 +125,34 @@ class CompactPostgresTests(unittest.TestCase):
         with self.assertRaises(ElasticPageError):measure_window(self.store,'test',source)
         self.assertEqual(source.attempts,3);self.assertEqual(self.rows('behaviors'),[])
         self.assertEqual(self.rows('dirty_windows'),[]);self.assertIsNone(self.store.cursor('test'))
+    def test_owner_scroll_protocol_over_http_through_real_postgres_commit(self):
+        from compact_behavior.__main__ import measure_window
+        from compact_behavior.source import ElasticWindow
+        packets=[scroll_packet('p1',[es_document(i) for i in range(500)],1002,initial=True),
+            scroll_packet('p2',[es_document(i) for i in range(500,1000)],1002,early=True),
+            scroll_packet('p3',[es_document(i) for i in range(1000,1002)],1002,early=True),scroll_packet('p4',[],1002)]
+        with scroll_http_server(packets) as (url,server):
+            source=ElasticWindow({'host':url,'index_pattern':'logs-*'},T,T+FIVE)
+            result=measure_window(self.store,'test',source)
+            self.assertFalse(server['packets']);self.assertEqual(server['deleted'],['p4'])
+            self.assertEqual(len(server['calls']),5) # unsupported PIT, then four scroll pages
+        self.assertEqual({r['request_id'] for r in self.rows('behaviors')},{str(i) for i in range(1002)})
+        self.assertEqual(result['source_records'],1002);self.assertEqual(result['inserted'],1002)
+        self.assertEqual(result['source_completeness']['unique_documents'],1002)
+        self.assertEqual(result['source_completeness']['scroll_early_terminated_pages'],2)
+        self.assertTrue(result['source_completeness']['terminal_empty_page'])
+        self.assertEqual(len(result['source_attempts']),1);self.assertEqual(self.store.cursor('test'),T+FIVE)
+    def test_unproven_scroll_never_writes_behavior_or_checkpoint(self):
+        from compact_behavior.__main__ import measure_window
+        for mode in ['short','duplicate','surplus']:
+            with self.subTest(mode=mode):
+                total=1 if mode=='surplus' else 2
+                final=scroll_packet('p2',[],total,early=True) if mode=='short' else scroll_packet('p2',[es_document(1 if mode=='duplicate' else 2)],total,early=True)
+                source=ScriptedScroll([scroll_packet('p1',[es_document(1)],total,initial=True),final])
+                with self.assertRaises(ValueError):measure_window(self.store,mode,source)
+                self.assertEqual(self.rows('behaviors'),[]);self.assertEqual(self.rows('pending_requests'),[])
+                self.assertEqual(self.rows('dirty_windows'),[]);self.assertEqual(self.rows('windows'),[])
+                self.assertIsNone(self.store.cursor(mode));self.assertEqual(source.deleted,['p2'])
     def test_actual_cli_complete_and_incomplete_file_with_postgres_receipt(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);config=root/'config.py';config.write_text('DATABASE = '+repr(self.config),encoding='utf-8')
