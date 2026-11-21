@@ -183,13 +183,25 @@ def observe(project, seconds, folder, *, check_exclusive=None):
     began = time.monotonic()
     begin_ns = time.time_ns()
     base = status(project)
+    from .version import verify
+
+    expected_package = verify()["source_sha256"]
     samples = []
     web_times = []
     backend_ids = {}
     active_ids = {
-        r: (base[r].get("command_token"), base[r].get("process_pid")) for r in ROLES
+        r: (
+            base[r].get("command_token"),
+            base[r].get("process_pid"),
+            base[r].get("package", {}).get("source_sha256"),
+        )
+        for r in ROLES
     }
-    if not all(base[r]["running"] for r in ROLES):
+    if not all(
+        base[r]["running"]
+        and base[r].get("package", {}).get("source_sha256") == expected_package
+        for r in ROLES
+    ):
         db.close()
         raise ValueError("all_three_compact_roles_required")
 
@@ -250,7 +262,11 @@ def observe(project, seconds, folder, *, check_exclusive=None):
             current = status(project)
             if any(
                 not current[r]["running"]
-                or (current[r].get("command_token"), current[r].get("process_pid"))
+                or (
+                    current[r].get("command_token"),
+                    current[r].get("process_pid"),
+                    current[r].get("package", {}).get("source_sha256"),
+                )
                 != active_ids[r]
                 for r in ROLES
             ):
@@ -335,8 +351,17 @@ def observe(project, seconds, folder, *, check_exclusive=None):
             )
             remaining = seconds - (time.monotonic() - began)
             if remaining <= 0:
-                break
-            time.sleep(min(15, remaining))
+                m = value["measurement"]
+                drained = (
+                    m["fresh_windows"]
+                    == m["fresh_windows_analyzed"]
+                    == m["latest_revisions_consumed"]
+                )
+                if drained or time.monotonic() - began >= seconds + 30:
+                    break
+                time.sleep(1)
+            else:
+                time.sleep(min(15, remaining))
         return report(final=True)
     except BaseException as exc:
         value = report(final=True)
@@ -540,12 +565,20 @@ def execute(project, args):
                 folder,
                 check_exclusive=lambda: assert_legacy_frozen(host, project, state),
             )
+            with host.reader() as control:
+                if host.h.cursors(control) != state["frozen_cursors"]:
+                    raise ValueError("legacy_cursors_changed_during_compact_trial")
             state["observation"] = observed["measurement"]
             state["status"] = "COMPACT_TRIAL_MEASURED"
             m = observed["measurement"]
             latest = observed["samples"][-1]["health"]
             state["short_operational_gate"] = bool(
                 m["fresh_windows"] >= 3
+                and m["new_source_records"] > 0
+                and any(
+                    counts.get("NORMAL", 0) + counts.get("ANOMALY", 0) > 0
+                    for counts in latest["latest_readiness"].values()
+                )
                 and m["fresh_windows_analyzed"] == m["fresh_windows"]
                 and m["latest_revisions_consumed"] == m["fresh_windows"]
                 and observed["web_p95_seconds"] < 5

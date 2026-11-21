@@ -87,6 +87,7 @@ def health(db, config, stream):
             (now - oldest["updated_at_ns"]) / 1e9 if oldest else None
         ),
         analysis_latency_p95_seconds=p95,
+        analysis_latency_scope="FIRST_ANALYSIS_STATUS_INCLUDING_INSUFFICIENT_OR_INVALID; READINESS_REPORTED_SEPARATELY",
         analysis_latency_samples=len(latencies),
         latest_readiness=analyzed["readiness"] if analyzed else {},
         methods=METHODS,

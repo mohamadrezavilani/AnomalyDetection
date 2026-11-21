@@ -190,6 +190,11 @@ def summarize(
         s["numeric_invalid"] += not ne
         if ne:
             for path, values in out.get("numeric", {}).items():
+                if (
+                    path.rsplit(".", 1)[-1].replace("[]", "").casefold()
+                    == "executiontime"
+                ):
+                    continue
                 numeric_used += 1
                 if (
                     numeric_used > max_numeric_values

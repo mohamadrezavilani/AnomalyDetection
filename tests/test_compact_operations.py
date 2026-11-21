@@ -50,9 +50,11 @@ class CompactOperationTests(unittest.TestCase):
                     return_value=nullcontext(),
                 )
             )
-            stack.enter_context(
+            factory = stack.enter_context(
                 patch("viewer_performance.Diagnose_Three_Modes.ProductionHost")
             )
+            factory.return_value.reader.return_value = nullcontext(None)
+            factory.return_value.h.cursors.return_value = {}
             stack.enter_context(
                 patch(
                     "compact_behavior.probe_elastic.probe",
@@ -63,6 +65,7 @@ class CompactOperationTests(unittest.TestCase):
 
             def freeze(project, state, receipt, host):
                 state["stopping_started"] = True
+                state["frozen_cursors"] = {}
 
             def restore(project, receipt, state):
                 state["status"] = "PREVIOUS_ROLES_RESTORED"
@@ -78,11 +81,19 @@ class CompactOperationTests(unittest.TestCase):
             observation = dict(
                 measurement=dict(
                     fresh_windows=3,
+                    new_source_records=100,
                     fresh_windows_analyzed=3,
                     latest_revisions_consumed=3,
                 ),
                 web_p95_seconds=0.2,
-                samples=[dict(health=dict(analysis_latency_p95_seconds=1))],
+                samples=[
+                    dict(
+                        health=dict(
+                            analysis_latency_p95_seconds=1,
+                            latest_readiness={"service_rate": {"NORMAL": 1}},
+                        )
+                    )
+                ],
             )
             stack.enter_context(
                 patch(

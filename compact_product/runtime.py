@@ -478,6 +478,10 @@ def status(project):
 
 
 def start(project, roles=ROLES):
+    for key, child in list(_children.items()):
+        if child.poll() is not None:
+            child.wait()
+            del _children[key]
     previous = status(project)
     started = []
     for role in roles:

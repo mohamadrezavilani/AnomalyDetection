@@ -119,6 +119,64 @@ class CompactProductPostgresTests(unittest.TestCase):
             0,
         )
 
+    def test_reference_change_during_first_target_analysis_is_fenced(self):
+        self.publish(T)
+        self.publish(T + FIVE)
+        work = self.db.snapshot("test", T + FIVE)
+        self.analyze_at(T)
+        results = evaluate(
+            T + FIVE,
+            work["summary"],
+            work["services"],
+            work["actors"],
+            work["references"],
+        )
+        with self.assertRaises(ChangedDuringAnalysis):
+            self.db.commit_analysis(work, results, 0.01)
+        self.assertEqual(self.count("window_results"), 1)
+        self.analyze_at(T + FIVE)
+        self.assertEqual(self.count("window_results"), 2)
+
+    def test_second_expiry_preserves_counter_and_marks_lost_fragments(self):
+        schema = self.config.source_schema
+        for wave in range(2):
+            begin = T + wave * 9 * FIVE
+            records = extract(
+                [
+                    row(
+                        "pending",
+                        path="ClientAyanCoInquiry.WaterBillInquiry",
+                        message='Input:{"BillID":"' + str(wave) + '"}',
+                        at=iso(begin + 10**9),
+                    )
+                ]
+            )
+            self.db.publish("test", begin, begin + FIVE, records, 1)
+            for i in range(1, 8):
+                self.db.publish("test", begin + i * FIVE, begin + (i + 1) * FIVE, {}, 0)
+            self.db.conn.execute(
+                "UPDATE " + schema + ".pending_requests SET updated_at_ns=0"
+            )
+            self.db.publish("test", begin + 8 * FIVE, begin + 9 * FIVE, {}, 0)
+            counts = self.db.conn.execute(
+                "SELECT active_pending,expired_pending FROM " + schema + ".queue_counts"
+            ).fetchone()
+            self.assertEqual(
+                (counts["active_pending"], counts["expired_pending"]), (0, 0)
+            )
+            self.assertEqual(self.count("pending_requests", True), 0)
+            self.assertEqual(self.count("expired_fragments", True), 1)
+        self.db.publish(
+            "test",
+            T + 18 * FIVE,
+            T + 19 * FIVE,
+            extract([row("pending", at=iso(T + 18 * FIVE + 10**9))]),
+            1,
+        )
+        core = self.db.conn.execute("SELECT * FROM " + schema + ".behaviors").fetchone()
+        self.assertIn("prior_fragments_expired", core["quality"])
+        self.assertFalse(core["features"]["input_eligible"])
+
     def test_actual_analysis_crash_before_and_after_commit(self):
         self.publish()
         ctx = multiprocessing.get_context("spawn")
