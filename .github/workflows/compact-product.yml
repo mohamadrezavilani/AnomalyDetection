@@ -1,0 +1,72 @@
+name: Compact behavior product
+on:
+  pull_request:
+    paths:
+      - 'compact_behavior/**'
+      - 'compact_ad/**'
+      - 'compact_product/**'
+      - 'tests/test_compact*'
+      - 'requirements-compact.txt'
+      - '.github/workflows/compact-product.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'compact_behavior/**'
+      - 'compact_ad/**'
+      - 'compact_product/**'
+      - 'tests/test_compact*'
+      - '.github/workflows/compact-product.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-compact.txt
+      - run: python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_trial tests.test_compact_operations
+      - run: python -B -m compact_product version
+      - name: Parse native PowerShell entry
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path compact_product/Install_Compact_Product.ps1),[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count){$errors | Format-List; throw 'PowerShell parse failed'}
+          Get-Command ./compact_product/Install_Compact_Product.ps1 -Syntax
+  postgres-and-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: disposable-compact-test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-compact.txt playwright==1.62.0
+      - name: PostgreSQL, three processes, crash recovery and actual browser
+        env:
+          P24_DELTA_PG_HOST: 127.0.0.1
+          P24_DELTA_PG_PORT: '5432'
+          P24_DELTA_PG_USER: postgres
+          PGPASSWORD: disposable-compact-test
+        run: |
+          export P24_COMPACT_BROWSER=$(command -v google-chrome)
+          test -n "$P24_COMPACT_BROWSER"
+          python -B -m unittest -v tests.test_compact_pg tests.test_compact_product_pg tests.test_compact_product_runtime

@@ -1,0 +1,175 @@
+import unittest
+from compact_behavior import FIVE
+from compact_behavior.extract import materialize, iso
+from compact_ad.engine import summarize, evaluate
+from tests.test_compact_extract import row, extract, T
+
+
+def behavior(
+    key,
+    session,
+    *,
+    amount=10,
+    code="G00000",
+    target=None,
+    shape=False,
+    broken=False,
+    start=T
+):
+    records = [
+        row(
+            key,
+            session,
+            message="POST https://example.test/test HTTP/1.1 ("
+            + code
+            + " | "
+            + ("successful" if code == "G00000" else "other")
+            + ")",
+            at=iso(start + 10**9),
+        ),
+        row(
+            key,
+            session,
+            message='Input:{"BillID":"'
+            + str(target or key)
+            + '"} Output:'
+            + ('{"new_field":10}' if shape else '{"Amount":' + str(amount) + "}"),
+            at=iso(start + 10**9),
+        ),
+    ]
+    if broken:
+        records.append(
+            row(key, session, message="Output:[broken", at=iso(start + 10**9))
+        )
+    b = materialize("test", extract(records)[key])
+    b["kind"] = "observed_api_operation"
+    return b
+
+
+def window(start=T, *, n=20, actor_size=2, **kw):
+    rows = [
+        behavior(str(i), "s" + str(i // actor_size), start=start, **kw)
+        for i in range(n)
+    ]
+    return summarize(rows)
+
+
+def reference():
+    return [
+        dict(start_ns=T + i * FIVE, summary=window(T + i * FIVE)[0]) for i in range(12)
+    ]
+
+
+class CompactADTests(unittest.TestCase):
+    def result(self, method, **kw):
+        summary, services, actors = window(T + 12 * FIVE, **kw)
+        return [
+            r
+            for r in evaluate(T + 12 * FIVE, summary, services, actors, reference())
+            if r["method"] == method
+        ]
+
+    def test_normal_and_insufficient_are_distinct(self):
+        for method in [
+            "service_rate",
+            "actor_rate",
+            "reported_result",
+            "response_shape",
+            "response_numeric",
+            "repeated_target",
+            "target_diversity",
+        ]:
+            self.assertTrue(
+                all(r["status"] == "NORMAL" for r in self.result(method)), method
+            )
+        s, a, b = window()
+        r = evaluate(T, s, a, b, [])
+        self.assertEqual({v["status"] for v in r}, {"INSUFFICIENT_DATA"})
+
+    def test_rate_spike_and_peer_actor_spike(self):
+        self.assertEqual(self.result("service_rate", n=100)[0]["status"], "ANOMALY")
+        self.assertTrue(
+            any(
+                r["status"] == "ANOMALY"
+                for r in self.result("actor_rate", n=50, actor_size=50)
+            )
+        )
+
+    def test_target_repeat_and_diversity_are_request_based(self):
+        self.assertTrue(
+            any(
+                r["status"] == "ANOMALY"
+                for r in self.result(
+                    "repeated_target", n=50, actor_size=50, target="same"
+                )
+            )
+        )
+        self.assertTrue(
+            any(
+                r["status"] == "ANOMALY"
+                for r in self.result("target_diversity", n=50, actor_size=50)
+            )
+        )
+
+    def test_response_shape_numeric_and_reported_result_change(self):
+        for method, kw in [
+            ("response_shape", dict(shape=True)),
+            ("response_numeric", dict(amount=1000)),
+            ("reported_result", dict(code="F99999")),
+        ]:
+            self.assertEqual(self.result(method, **kw)[0]["status"], "ANOMALY")
+
+    def test_invalid_output_cannot_suppress_valid_rate(self):
+        self.assertEqual(
+            self.result("response_shape", broken=True)[0]["status"], "INVALID_INPUT"
+        )
+        self.assertEqual(
+            self.result("service_rate", broken=True)[0]["status"], "NORMAL"
+        )
+
+    def test_future_reference_is_rejected_by_cutoff(self):
+        s, a, b = window(T + 12 * FIVE, n=100)
+        refs = reference()
+        before = evaluate(T + 12 * FIVE, s, a, b, refs)
+        refs.append(dict(start_ns=T + 13 * FIVE, summary=window(n=10000)[0]))
+        self.assertEqual(before, evaluate(T + 12 * FIVE, s, a, b, refs))
+        self.assertTrue(all(r["reference_cutoff_ns"] <= T + 12 * FIVE for r in before))
+
+    def test_old_feature_version_is_invalid_not_healthy(self):
+        b = behavior("r", "s")
+        b["features"]["version"] = "compact-features-1"
+        s, a, c = summarize([b])
+        results = evaluate(T + 12 * FIVE, s, a, c, reference())
+        self.assertEqual({r["status"] for r in results}, {"INVALID_INPUT"})
+
+    def test_future_content_is_not_used_in_past_window(self):
+        b = behavior("a", "s")
+        b["features"]["output_asof_ns"] = T + FIVE + 1
+        s, a, c = summarize([b], cutoff_ns=T + FIVE)
+        results = evaluate(T, s, a, c, [])
+        self.assertEqual(
+            next(r for r in results if r["method"] == "response_shape")["status"],
+            "INVALID_INPUT",
+        )
+        self.assertEqual(
+            next(r for r in results if r["method"] == "service_rate")["status"],
+            "INSUFFICIENT_DATA",
+        )
+
+    def test_resource_limit_invalidates_content_without_truncating_rate(self):
+        s, a, c = summarize(
+            [behavior("a", "s"), behavior("b", "s")], max_feature_bytes=1
+        )
+        results = evaluate(T + 12 * FIVE, s, a, c, reference())
+        self.assertEqual(
+            next(r for r in results if r["method"] == "service_rate")["status"],
+            "NORMAL",
+        )
+        self.assertEqual(
+            next(r for r in results if r["method"] == "response_shape")["status"],
+            "INVALID_INPUT",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

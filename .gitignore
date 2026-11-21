@@ -71,3 +71,5 @@ id_ed25519*
 
 # Runtime identities, observations and private operator reports.
 /AnomalyDetection/reports/
+
+/compact_runtime/

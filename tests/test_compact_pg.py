@@ -70,7 +70,7 @@ class CompactPostgresTests(unittest.TestCase):
         b=self.publish([row(at='2026-10-20T08:25:01Z')],T+FIVE)
         self.assertEqual(b['inserted'],1);self.assertEqual(b['pending_requests'],0)
         core=self.rows('behaviors')[0];self.assertTrue(core['features']['input_eligible'])
-        self.assertEqual(core['features']['input']['targets']['[].WaterBillID'],'001')
+        self.assertEqual(core['features']['input']['targets']['[].WaterBillID'],[{'type':'string','value':'001'}])
     def test_session_correction_invalidates_old_window_without_duplicate(self):
         self.publish([row()])
         self.publish([row(session='session-2',path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:[] Output:[]',at='2026-10-20T08:25:01Z')],T+FIVE)
