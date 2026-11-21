@@ -431,6 +431,11 @@ Start-ScheduledTask -TaskName $name
 if($old){Disable-ScheduledTask -TaskName $name | Out-Null}
 @{status='COMPACT_AUTOSTART_DISABLED'} | ConvertTo-Json -Compress
 """
+    elif operation == "stop":
+        script += r"""
+if($old -and $old.State -eq 'Running'){Stop-ScheduledTask -TaskName $name}
+@{status='COMPACT_AUTOSTART_STOPPED'} | ConvertTo-Json -Compress
+"""
     return powershell(script, environment)
 
 
@@ -481,7 +486,13 @@ def execute(project, args):
             state = read(args.receipt)
             if not state or Path(state["project"]).resolve() != project:
                 raise ValueError("rollback_project_mismatch")
+            if not state.get("stopping_started"):
+                raise ValueError(
+                    "receipt_has_no_started_cutover_existing_roles_preserved"
+                )
             task(project, "disable")
+            stop(project)
+            task(project, "stop")
             stop(project)
             restore(project, args.receipt, state)
             return dict(
@@ -527,10 +538,6 @@ def execute(project, args):
         )
         save(receipt, state)
         save(folder / "source-preflight.json", preflight)
-        save(
-            project / "compact_runtime/latest-cutover.local.json",
-            dict(receipt=str(receipt)),
-        )
         notice("COMPACT_CUTOVER_PREPARED", receipt=str(receipt), action=args.action)
         keep = False
         host = ProductionHost(project)
@@ -538,6 +545,10 @@ def execute(project, args):
             existing = status(project)
             if any(v["running"] for v in existing.values()):
                 raise ValueError("stop_existing_compact_roles_before_trial")
+            save(
+                project / "compact_runtime/latest-cutover.local.json",
+                dict(receipt=str(receipt)),
+            )
             freeze(project, state, receipt, host)
             assert_legacy_frozen(host, project, state, allow_compact=False)
             db = AnalysisStore(
@@ -575,6 +586,14 @@ def execute(project, args):
             state["short_operational_gate"] = bool(
                 m["fresh_windows"] >= 3
                 and m["new_source_records"] > 0
+                and (
+                    m["fresh_windows_per_hour"] > 12
+                    or not any(
+                        (sample["health"].get("source_backlog_windows") or 0) > 0
+                        or (sample["health"].get("reference_pending_windows") or 0) > 0
+                        for sample in observed["samples"]
+                    )
+                )
                 and any(
                     counts.get("NORMAL", 0) + counts.get("ANOMALY", 0) > 0
                     for counts in latest["latest_readiness"].values()
@@ -623,6 +642,9 @@ def execute(project, args):
             ):
                 try:
                     stop(project)
+                    if state.get("task_registration_attempted"):
+                        task(project, "stop")
+                        stop(project)
                 except Exception as exc:
                     state["compact_stop_failure"] = type(exc).__name__
             if (

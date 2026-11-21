@@ -82,6 +82,7 @@ class CompactOperationTests(unittest.TestCase):
                 measurement=dict(
                     fresh_windows=3,
                     new_source_records=100,
+                    fresh_windows_per_hour=60,
                     fresh_windows_analyzed=3,
                     latest_revisions_consumed=3,
                 ),

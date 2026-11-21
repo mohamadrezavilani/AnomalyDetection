@@ -12,6 +12,7 @@ def health(db, config, stream):
     a = config.ad_schema
     now = time.time_ns()
     roles = {}
+    reference_pending = None
     if db.execute("SELECT to_regclass(%s) AS name", (s + ".runtime_roles",)).fetchone()[
         "name"
     ]:
@@ -28,6 +29,13 @@ def health(db, config, stream):
                 heartbeat_age_seconds=(now - row["heartbeat_ns"]) / 1e9,
                 **row["info"],
             )
+    if roles:
+        ref = db.execute(
+            f"SELECT next_ns,target_ns FROM {s}.reference_cursor WHERE stream_id=%s",
+            (stream,),
+        ).fetchone()
+        if ref:
+            reference_pending = max(0, (ref["target_ns"] - ref["next_ns"]) // FIVE)
     source = db.execute(
         f"SELECT * FROM {s}.streams WHERE stream_id=%s", (stream,)
     ).fetchone()
@@ -78,6 +86,7 @@ def health(db, config, stream):
         source_backlog_windows=(
             max(0, (closed - source["next_ns"]) // FIVE) if source else None
         ),
+        reference_pending_windows=reference_pending,
         dirty_keys=queue.get("dirty_keys", 0),
         reanalysis_windows=jobs,
         active_pending=queue.get("active_pending", 0),
