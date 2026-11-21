@@ -11,6 +11,7 @@ from compact_behavior import FEATURES, FIVE
 from compact_behavior.extract import digest, canonical
 from . import MODEL, MIN_REFERENCE_WINDOWS
 from .methods import METHODS
+from compact_behavior.services import operation_role
 
 
 def percentile(values, q=0.95):
@@ -77,13 +78,14 @@ def summarize(
         return services[key]
 
     for row in rows:
-        if row.get("kind") == "automatic_support":
+        f = row["features"]
+        role = operation_role(row.get("api") or f.get("service_key"), f.get("service_key"), f.get("service_binding"))
+        if row.get("kind") == "automatic_support" or role in ("support", "system"):
             continue
         total += 1
         if total > max_rows:
             raise ValueError("analysis_window_row_limit")
-        f = row["features"]
-        key = f.get("service_key") or "<unresolved>"
+        key = (f.get("service_key") if role in ("business", "user_management") else None) or "<unresolved>"
         s = service(key)
         s["count"] += 1
         if key == "<unresolved>":

@@ -1,7 +1,111 @@
 import unittest
+import json
+import hashlib
+from pathlib import Path
 from compact_behavior.extract import features, materialize, facts, merge, behavior_id
 from compact_behavior.feature_contract import extract_features
 from tests.test_compact_extract import row, extract, T
+
+
+class PayloadAndScopeTests(unittest.TestCase):
+    def test_large_payload_keeps_exact_features_without_retaining_the_large_value(self):
+        value = {"WaterBillID": "001", "Amount": 42, "Description": "x" * 400000}
+        records = [row(), row(message="Input:" + json.dumps(value))]
+        state = extract(records)["req-1"]
+        self.assertLess(len(json.dumps(state)), 10000)
+        self.assertEqual(state["inputs"][0]["representation"], "FEATURES_ONLY_V1")
+        body = materialize("s", state)
+        self.assertEqual(body["features"]["input"], features(value))
+        self.assertTrue(body["features"]["input_eligible"])
+        self.assertTrue(body["features"]["rate_eligible"])
+        self.assertEqual(extract(records), extract(list(reversed(records)) * 2))
+
+    def test_omitted_text_change_is_still_a_conflict_even_with_identical_features(self):
+        a = {"BillID": "A", "Description": "x" * 400000}
+        b = dict(a, Description="y" * 400000)
+        state = extract([row(), row(message="Output:" + json.dumps(a)), row(message="Output:" + json.dumps(b))])["req-1"]
+        body = materialize("s", state)
+        self.assertIn("output_conflict", body["quality"])
+        self.assertFalse(body["features"]["output_eligible"])
+        self.assertTrue(body["features"]["rate_eligible"])
+
+    def test_excessive_payload_depth_invalidates_its_direction_without_blocking_rate(self):
+        value = {"BillID":"W"}
+        for _ in range(25):
+            value = {"nested":value}
+        state = extract([row(), row(message="Input:" + json.dumps(value) + ' Output:{"Amount":42}')])["req-1"]
+        body = materialize("s", state)
+        self.assertIn("inputs_content_limit", body["quality"])
+        self.assertFalse(body["features"]["input_eligible"])
+        self.assertTrue(body["features"]["output_eligible"])
+        self.assertTrue(body["features"]["rate_eligible"])
+
+    def test_feature_storage_limit_is_per_component_and_does_not_stop_rate(self):
+        value = [{"BillID": str(i) + "x" * 512, "Amount": i} for i in range(512)]
+        body = materialize("s", extract([row(), row(message="Input:" + json.dumps(value))])["req-1"])
+        feature = body["features"]["input"]
+        self.assertFalse(body["features"]["input_feature_eligibility"]["targets"])
+        self.assertIn("FEATURE_STORAGE_LIMIT", feature["completeness"]["targets"]["reasons"])
+        self.assertTrue(body["features"]["input_feature_eligibility"]["numeric"])
+        self.assertTrue(body["features"]["rate_eligible"])
+
+    def test_existing_unpacked_state_is_compacted_without_changing_request_identity(self):
+        from compact_behavior.extract import empty
+        value = {"BillID": "A", "Description": "x" * 400000}
+        old = extract([row()])["req-1"]
+        old["inputs"] = [dict(value=value, basis="public_api", path="Services.v1/WaterBills", observed_at_ns=T)]
+        new = merge(old, empty("req-1"))
+        self.assertEqual(materialize("s", old)["behavior_id"], materialize("s", new)["behavior_id"])
+        self.assertEqual(materialize("s", old)["features"]["input"], materialize("s", new)["features"]["input"])
+        self.assertLess(len(json.dumps(new)), 10000)
+
+    def test_source_role_catalog_is_reused_exactly(self):
+        from compact_behavior.services import operation_catalog
+        source = Path(__file__).resolve().parents[1] / "catalogs/viewer_service_roles.json"
+        registered = json.loads(source.read_text(encoding="utf-8"))["routes"]
+        catalog = operation_catalog()
+        self.assertEqual(catalog["source_catalog_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
+        self.assertEqual({k:v["role"] for k,v in catalog["routes"].items()}, {k:v["role"] for k,v in registered.items()})
+
+    def test_auxiliary_calls_do_not_become_meaningful_actions_or_retain_large_content(self):
+        from compact_ad.engine import summarize
+        from compact_behavior.services import meaningful
+        for api in ("Core.v1/ConfigBasic", "Core.v1/UserServiceQueries", "Services.v1/AddUserData"):
+            with self.subTest(api=api):
+                state = extract([row(path=api), row(path=api, message='Output:{"Description":"' + 'x' * 400000 + '"}')])["req-1"]
+                body = materialize("s", state)
+                self.assertFalse(meaningful(api))
+                self.assertFalse(body["features"]["service_rate_eligible"])
+                self.assertEqual(state["outputs"], [])
+                body["kind"] = "observed_api_operation"  # An already persisted old row.
+                self.assertEqual(summarize([body])[0]["services"], {})
+
+    def test_many_internal_rows_still_produce_one_water_inquiry(self):
+        from compact_ad.engine import summarize
+        records = [row(), row(path="ClientAyanCoInquiry.WaterBillInquiry", message='Input:{"WaterBillID":"W"}')]
+        records += [row(path="DBPath.Some.InternalRead", message="SELECT internal") for _ in range(30)]
+        body = materialize("s", extract(records)["req-1"])
+        self.assertEqual(body["label_fa"], "استعلام قبض آب")
+        self.assertEqual(summarize([body])[0]["services"]["Services.v1/WaterBills"]["count"], 1)
+
+    def test_unknown_operation_is_not_assumed_meaningful_or_normal(self):
+        from compact_ad.engine import summarize
+        body = materialize("s", extract([row(path="Services.v99/Unregistered")])["req-1"])
+        self.assertEqual(body["operation_role"], "unknown")
+        self.assertFalse(body["features"]["service_rate_eligible"])
+        self.assertEqual(summarize([body])[0]["services"]["<unresolved>"]["count"], 0)
+
+    def test_dispatcher_preserves_public_input_and_requires_exact_service_binding(self):
+        records = [row(path="Services.v1/InvoiceRegister"), row(path="Services.v1/InvoiceRegister", message='Input:{"WaterBillID":"W"}')]
+        unresolved = materialize("s", extract(records)["req-1"])
+        self.assertEqual(unresolved["operation_role"], "unknown")
+        self.assertFalse(unresolved["features"]["service_rate_eligible"])
+        records += [row(path="DBPath.pishkhan24.application.ud_prc_userSessionHasAccess", message="(SQL Parameters: @action=v1/WaterBills)"), row(path="DBPath.pishkhan24.application.ud_prc_invoiceRequest", message="(SQL Parameters: @serviceID=7)")]
+        body = materialize("s", extract(records)["req-1"])
+        self.assertEqual(body["operation_role"], "business")
+        self.assertTrue(body["features"]["service_rate_eligible"])
+        self.assertTrue(body["features"]["input_eligible"])
+        self.assertEqual(body["features"]["input"]["targets"]["WaterBillID"][0]["value"], "W")
 
 
 class FeatureContractTests(unittest.TestCase):

@@ -397,6 +397,11 @@ def observe(project, seconds, folder, *, check_exclusive=None):
             if len(samples) > 3000:
                 samples.pop(0)
             value = report()
+            failure = current["ingest"].get("failure") or {}
+            if current["ingest"].get("state") == "RETRYING" and failure.get("type") == "LimitExceeded":
+                error = ValueError("compact_ingest_blocked_by_source_limit")
+                error.details = failure
+                raise error
             notice(
                 "COMPACT_PRODUCT_OBSERVING",
                 elapsed_seconds=round(time.monotonic() - began),

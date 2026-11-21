@@ -24,6 +24,8 @@ from compact_behavior.extract import identity, materialize
 from .health import health
 from . import BUILD
 from compact_ad.methods import METHODS
+from compact_ad import MODEL
+from compact_behavior.services import meaningful_apis, operation_catalog, operation_label, operation_role
 
 
 def create_app(config, database, stream, *, secret=None):
@@ -90,7 +92,27 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.context_processor
     def defaults():
-        return dict(build=BUILD)
+        return dict(build=BUILD, model_version=MODEL)
+
+    app.add_template_filter(operation_label, "operation_label")
+    app.add_template_filter(operation_role, "operation_role")
+
+    def behavior_scope():
+        scope = request.args.get("scope", "meaningful")
+        if scope == "all":
+            return scope, "", []
+        # The generic dispatcher is meaningful only after exact same-request
+        # service binding. Existing compact rows retain this binding as well.
+        expression = "(api=ANY(%s) OR (api=%s AND features->>'service_binding'=%s AND features->>'service_key'=ANY(%s)))"
+        dispatch = "Services.v1/InvoiceRegister"
+        binding = "SAME_REQUEST_REVIEWED_DISPATCH"
+        if scope == "unknown":
+            known = sorted(api for api, row in operation_catalog()["routes"].items() if row["role"] != "unknown" and api != dispatch)
+            return scope, "AND NOT COALESCE(" + expression + ",false)", [known, dispatch, binding, known]
+        if scope != "meaningful":
+            abort(400)
+        allowed = meaningful_apis()
+        return scope, "AND " + expression, [allowed, dispatch, binding, allowed]
 
     @app.errorhandler(Exception)
     def failure(exc):
@@ -116,12 +138,13 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.get("/")
     def home():
+        scope, clause, args = behavior_scope()
         with connection() as db:
             value = health(db, config, stream)
             rows = db.execute(
                 f"""SELECT request_id,session_id,observed_at_ns,api,result_code,behavior_id,features->>'service_key' AS service_key,
-                quality FROM {config.source_schema}.behaviors WHERE stream_id=%s ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 30""",
-                (stream,),
+                quality FROM {config.source_schema}.behaviors WHERE stream_id=%s {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 30""",
+                (stream, *args),
             ).fetchall()
             coverage = db.execute(
                 f"""SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s""",
@@ -133,18 +156,20 @@ def create_app(config, database, stream, *, secret=None):
             health=value,
             rows=rows,
             coverage=coverage["summary"] if coverage else {},
+            scope=scope,
         )
 
     @app.get("/sessions")
     def sessions():
         key = identity(request.args.get("q", ""))
+        scope, scope_clause, scope_args = behavior_scope()
         if not key:
             return render_template(
-                "sessions.html", title="جست‌وجوی نشست", key="", rows=[], next_cursor=None
+                "sessions.html", title="جست‌وجوی نشست", key="", rows=[], next_cursor=None, scope=scope
             )
         # Session identifiers are exact canonical IDs; no IP/name inference.
         with connection() as db:
-            args = [stream, key]
+            args = [stream, key, *scope_args]
             clause = ""
             if request.args.get("before"):
                 try:
@@ -157,7 +182,7 @@ def create_app(config, database, stream, *, secret=None):
             rows = db.execute(
                 f"""SELECT behavior_id,request_id,session_id,observed_at_ns,api,result_code,quality,
                 features->>'service_key' AS service_key FROM {config.source_schema}.behaviors
-                WHERE stream_id=%s AND session_id=%s {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 51""",
+                WHERE stream_id=%s AND session_id=%s {scope_clause} {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 51""",
                 args,
             ).fetchall()
         nxt = rows[49] if len(rows) > 50 else None
@@ -167,6 +192,7 @@ def create_app(config, database, stream, *, secret=None):
             key=key,
             rows=rows[:50],
             next_cursor=nxt,
+            scope=scope,
         )
 
     @app.get("/behaviors/<bid>")
@@ -187,8 +213,8 @@ def create_app(config, database, stream, *, secret=None):
     @app.get("/incidents")
     def incidents():
         archive = request.args.get("archive") == "1"
-        where = "status<>'ANOMALY'" if archive else "status='ANOMALY'"
-        args = [stream]
+        where = "(status<>'ANOMALY' OR result->>'model_version'<>%s)" if archive else "status='ANOMALY' AND result->>'model_version'=%s"
+        args = [stream, MODEL]
         clause = ""
         if request.args.get("before"):
             try:

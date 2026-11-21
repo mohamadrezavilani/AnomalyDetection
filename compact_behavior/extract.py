@@ -9,6 +9,8 @@ import math
 import re
 from . import CONTRACT, EXTRACTOR, FEATURES
 from .json_value import unique_object
+from .payload import packed, normalize as normalize_payload, identity as payload_identity, feature as payload_feature
+from .services import operation_role, operation_catalog, meaningful, operation_label
 
 API = re.compile(r"^(?:Core|Services)\.v\d+/[A-Za-z][A-Za-z0-9_]*$")
 LINE = re.compile(r"\s+Line:\d+.*$")
@@ -47,7 +49,9 @@ class LimitExceeded(ValueError):
 @dataclass(frozen=True)
 class Limits:
     requests: int = 60000
-    state_bytes: int = 262144
+    # Values >16KiB become bounded feature snapshots. 64 surfaces can each
+    # retain two <=128KiB components; the whole window remains <=128MiB.
+    state_bytes: int = 20971520
     total_state_bytes: int = 134217728
     variants: int = 4
     surfaces: int = 32
@@ -302,12 +306,14 @@ def merge(a, b, limits=Limits()):
     for key in ("sessions", "apis", "roots", "raw_request_ids", "raw_session_ids"):
         c[key] = union(a[key], b[key], limits.variants, c["issues"], key)
     for key in ("inputs", "outputs"):
-        c[key] = timed_union(a[key], b[key], limits.surfaces, key)
+        c[key] = timed_union([normalize_payload(x) for x in a[key]], [normalize_payload(x) for x in b[key]], limits.surfaces, key)
     for key, fn in [("first_ns", min), ("last_ns", max)]:
         values = [v for v in (a[key], b[key]) if v is not None]
         c[key] = fn(values) if values else None
     if len(canonical(c).encode()) > limits.state_bytes:
-        raise LimitExceeded("request_state_bytes_limit")
+        error = LimitExceeded("request_state_bytes_limit")
+        error.details = dict(limit_bytes=limits.state_bytes, measured_bytes=len(canonical(c).encode()), apis=c["apis"], inputs=len(c["inputs"]), outputs=len(c["outputs"]))
+        raise error
     return c
 
 
@@ -367,6 +373,9 @@ def facts(row):
     for label, section in [("inputs", "Input:"), ("outputs", "Output:")]:
         if section not in message:
             continue
+        if API.fullmatch(path) and operation_role(path) in ("support", "system"):
+            # Auxiliary API payloads are not inputs to behavioral methods.
+            continue
         if API.fullmatch(path):
             basis = "public_api"
         elif path.startswith("ClientAyanCo") and path not in ANCILLARY:
@@ -378,8 +387,10 @@ def facts(row):
                 message.split(section, 1)[1].lstrip()
             )
             value = scrub(value)
-        except LimitExceeded:
-            raise
+        except LimitExceeded as exc:
+            result["issues"].append(label + "_content_limit")
+            result["parse_errors"].append(dict(direction=label, basis=basis, path=path, observed_at_ns=at, reason=str(exc)))
+            continue
         except (ValueError, RecursionError):
             result["issues"].append(label + "_parse_error")
             result["parse_errors"].append(
@@ -387,7 +398,7 @@ def facts(row):
             )
             continue
         result[label].append(
-            dict(basis=basis, path=path, value=value, observed_at_ns=at)
+            dict(basis=basis, path=path, **packed(value), observed_at_ns=at)
         )
     if path in BUSINESS_SQL:
         params, errors = sql_fields(message)
@@ -408,7 +419,7 @@ def facts(row):
                     dict(
                         basis="business_parameters",
                         path=path,
-                        value=params[key],
+                        **packed(params[key]),
                         observed_at_ns=at,
                     )
                 )
@@ -529,10 +540,12 @@ def materialize(stream, state):
     if len(codes) > 1:
         issues.add("result_conflict")
     service, binding = resolve_service(state, api)
+    role = operation_role(api, service, binding)
+    in_scope = meaningful(api, service, binding)
     chosen_input, input_basis = selected(state, "inputs", api, service)
     chosen_output, output_basis = selected(state, "outputs", api, service)
-    iv = {canonical(x["value"]): x["value"] for x in chosen_input}
-    ov = {canonical(x["value"]): x["value"] for x in chosen_output}
+    iv = {payload_identity(x): x for x in chosen_input}
+    ov = {payload_identity(x): x for x in chosen_output}
     if len(iv) > 1:
         issues.add("input_conflict")
     if len(ov) > 1:
@@ -594,10 +607,11 @@ def materialize(stream, state):
             for e in state.get("parse_errors", [])
         )
 
-    input_feature = features(next(iter(iv.values()))) if len(iv) == 1 else None
-    output_feature = features(next(iter(ov.values()))) if len(ov) == 1 else None
+    input_feature = payload_feature(next(iter(iv.values()))) if len(iv) == 1 else None
+    output_feature = payload_feature(next(iter(ov.values()))) if len(ov) == 1 else None
     input_valid = (
-        operation_usable
+        in_scope
+        and operation_usable
         and content_identity_valid
         and all(x.get("observed_at_ns") is not None for x in chosen_input)
         and "prior_fragments_expired" not in issues
@@ -606,7 +620,8 @@ def materialize(stream, state):
         and not selected_error("inputs", input_basis, chosen_input)
     )
     output_valid = (
-        operation_usable
+        in_scope
+        and operation_usable
         and content_identity_valid
         and all(x.get("observed_at_ns") is not None for x in chosen_output)
         and "prior_fragments_expired" not in issues
@@ -616,6 +631,13 @@ def materialize(stream, state):
     )
     if service is None:
         issues.add(binding.lower())
+    if role in ("support", "system"):
+        issues.discard("input_unavailable")
+        issues.discard("output_unavailable")
+        issues.add("auxiliary_content_out_of_scope")
+    for direction, values in (("input", chosen_input), ("output", chosen_output)):
+        if any(x.get("representation") == "FEATURES_ONLY_V1" for x in values):
+            issues.add(direction + "_value_replaced_by_features")
     body = dict(
         contract=CONTRACT,
         extractor=EXTRACTOR,
@@ -630,14 +652,19 @@ def materialize(stream, state):
         duration_unit="UNVERIFIED",
         result_code=code,
         result_kind=outcome,
-        kind="automatic_support" if api in AUTOMATIC else "observed_api_operation",
+        kind=("automatic_support" if api in AUTOMATIC else "support_operation" if role == "support" else "system_operation" if role == "system" else "unclassified_operation" if role == "unknown" else "observed_api_operation"),
+        operation_role=role,
+        label_fa=operation_label(api, service),
         manual_start="UNKNOWN",
         quality=sorted(issues),
         features=dict(
             version=FEATURES,
-            rate_eligible=usable and api not in AUTOMATIC,
-            service_rate_eligible=operation_usable and api not in AUTOMATIC,
-            session_eligible=usable,
+            behavior_policy_version=operation_catalog()["policy_version"],
+            operation_role=role,
+            content_scope="IN_SCOPE" if in_scope else "OUT_OF_SCOPE_AUXILIARY" if role in ("support", "system") else "UNCLASSIFIED",
+            rate_eligible=usable and in_scope,
+            service_rate_eligible=operation_usable and in_scope,
+            session_eligible=usable and in_scope,
             input_eligible=input_valid and input_feature["complete"],
             input_feature_eligibility={
                 k: bool(input_valid and complete(input_feature, k))
@@ -672,7 +699,7 @@ def materialize(stream, state):
             duration_analysis="OUT_OF_SCOPE_UNVERIFIED_UNIT",
             result_eligible=operation_usable
             and code is not None
-            and api not in AUTOMATIC,
+            and in_scope,
             input=input_feature,
             output=output_feature,
         ),

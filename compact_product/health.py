@@ -79,13 +79,13 @@ def health(db, config, stream):
     samples = db.execute(
         f"""SELECT GREATEST(0,(first_analyzed_ns-first_source_ns)/1e9::float) AS first_analysis_seconds,
         GREATEST(0,(analyzed_at_ns-work_cause_ns)/1e9::float) AS revision_analysis_seconds
-        FROM {a}.window_results WHERE stream_id=%s AND first_analyzed_ns>0
+        FROM {a}.window_results WHERE stream_id=%s AND feature_version=%s AND model_version=%s AND first_analyzed_ns>0
         AND timing_confirmed_revision=revision ORDER BY analyzed_at_ns DESC LIMIT 288""",
-        (stream,),
+        (stream, FEATURES, MODEL),
     ).fetchall()
     unconfirmed = db.execute(
-        f"SELECT count(*) AS n FROM {a}.window_results WHERE stream_id=%s AND timing_confirmed_revision<>revision",
-        (stream,),
+        f"SELECT count(*) AS n FROM {a}.window_results WHERE stream_id=%s AND feature_version=%s AND model_version=%s AND timing_confirmed_revision<>revision",
+        (stream, FEATURES, MODEL),
     ).fetchone()["n"]
     def p95(field):
         values = sorted(r[field] for r in samples)
