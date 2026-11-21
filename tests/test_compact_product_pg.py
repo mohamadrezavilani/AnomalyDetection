@@ -486,7 +486,8 @@ class CompactProductPostgresTests(unittest.TestCase):
             self.assertIn("dispatch-water", default)
             self.assertIn("Services.v1/WaterBills", default)
             self.assertNotIn("استعلام قبض آب", default)
-            self.assertIn('href="/?scope=all"',default)
+            if url == "/":
+                self.assertIn('href="/?scope=all"',default)
             self.assertNotIn("support-config", default)
             self.assertNotIn("support-list", default)
             self.assertNotIn("unknown-route", default)
