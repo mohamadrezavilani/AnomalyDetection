@@ -14,12 +14,14 @@ def behavior(
     target=None,
     shape=False,
     broken=False,
+    api="Services.v1/WaterBills",
     start=T
 ):
     records = [
         row(
             key,
             session,
+            path=api,
             message="POST https://example.test/test HTTP/1.1 ("
             + code
             + " | "
@@ -30,6 +32,7 @@ def behavior(
         row(
             key,
             session,
+            path=api,
             message='Input:{"BillID":"'
             + str(target or key)
             + '"} Output:'
@@ -39,7 +42,7 @@ def behavior(
     ]
     if broken:
         records.append(
-            row(key, session, message="Output:[broken", at=iso(start + 10**9))
+            row(key, session, path=api, message="Output:[broken", at=iso(start + 10**9))
         )
     b = materialize("test", extract(records)[key])
     b["kind"] = "observed_api_operation"
@@ -126,6 +129,40 @@ class CompactADTests(unittest.TestCase):
         self.assertEqual(
             self.result("service_rate", broken=True)[0]["status"], "NORMAL"
         )
+
+    def test_service_mix_normal_and_new_rare_service(self):
+        self.assertEqual(
+            self.result("service_mix", n=20, actor_size=20)[0]["status"], "NORMAL"
+        )
+        self.assertEqual(
+            self.result("service_mix", n=20, actor_size=20, api="Services.v1/GasBills")[
+                0
+            ]["status"],
+            "ANOMALY",
+        )
+
+    def test_unassigned_session_is_partial_actor_coverage_not_all_healthy(self):
+        rows = [behavior(str(i), "s0") for i in range(20)] + [
+            behavior("missing", "N/A")
+        ]
+        summary, services, actors = summarize(rows)
+        results = evaluate(T + 12 * FIVE, summary, services, actors, reference())
+        self.assertEqual(
+            next(r for r in results if r["method"] == "service_rate")["status"],
+            "NORMAL",
+        )
+        self.assertTrue(
+            any(
+                r["method"] == "actor_rate" and r["status"] == "INVALID_INPUT"
+                for r in results
+            )
+        )
+
+    def test_unverified_execution_time_is_not_a_response_numeric_model(self):
+        b = behavior("a", "s")
+        b["features"]["output"]["numeric"]["ExecutionTime"] = {"mean": 5000, "count": 1}
+        summary, services, actors = summarize([b])
+        self.assertNotIn("ExecutionTime", services[b["service_key"]]["numeric"])
 
     def test_future_reference_is_rejected_by_cutoff(self):
         s, a, b = window(T + 12 * FIVE, n=100)

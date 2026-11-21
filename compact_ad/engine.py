@@ -641,6 +641,22 @@ def evaluate(start, summary, services, actors, references):
             reason="SHARE_OF_SERVICES_RARE_IN_PAST_POPULATION",
             used=mix_refs,
         )
+    if summary.get("missing_actor"):
+        for method in (
+            "actor_rate",
+            "repeated_target",
+            "target_diversity",
+            "service_mix",
+        ):
+            add(
+                method,
+                "*",
+                None,
+                "INVALID_INPUT",
+                value=summary["missing_actor"],
+                reason="OBSERVATIONS_WITHOUT_A_VALID_SESSION",
+                used=[],
+            )
     # Missing actors/content produce explicit method readiness, not green success.
     present = {r["method"] for r in results}
     for method in METHODS.keys() - present:
