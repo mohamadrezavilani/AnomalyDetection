@@ -19,7 +19,7 @@ from flask import (
     session,
 )
 from compact_behavior.store import Store
-from compact_behavior import FIVE
+from compact_behavior import FIVE, FEATURES
 from compact_behavior.extract import identity, materialize
 from .health import health
 from . import BUILD
@@ -137,6 +137,7 @@ def create_app(config, database, stream, *, secret=None):
         return jsonify(value)
 
     @app.get("/")
+    @app.get("/status")
     def home():
         scope, clause, args = behavior_scope()
         with connection() as db:
@@ -151,8 +152,8 @@ def create_app(config, database, stream, *, secret=None):
                 (stream, value["latest_analyzed_end_ns"] - FIVE if value["latest_analyzed_end_ns"] is not None else None),
             ).fetchone()
         return render_template(
-            "home.html",
-            title="رفتارهای مشاهده‌شده",
+            "status.html" if request.path == "/status" else "home.html",
+            title="وضعیت پردازش" if request.path == "/status" else "رفتارهای مشاهده‌شده",
             health=value,
             rows=rows,
             coverage=coverage["summary"] if coverage else {},
@@ -210,34 +211,76 @@ def create_app(config, database, stream, *, secret=None):
             "behavior.html", title="جزئیات رفتار", row=row, body=body
         )
 
+    def publishable():
+        # Snapshot-local eligibility, including changed reference windows.
+        return f"""f.status='ANOMALY' AND f.result->>'model_version'=%s
+            AND f.result->>'feature_version'=%s
+            AND EXISTS(SELECT 1 FROM {config.ad_schema}.window_results r
+                JOIN {config.source_schema}.windows w USING(stream_id,start_ns)
+                WHERE r.stream_id=f.stream_id AND r.start_ns=f.start_ns
+                AND r.model_version=%s AND r.feature_version=%s
+                AND r.source_published_ns=w.published_at_ns
+                AND r.timing_confirmed_revision=r.revision)
+            AND NOT EXISTS(SELECT 1 FROM {config.source_schema}.dirty_windows d
+                WHERE d.stream_id=f.stream_id AND d.session_id='@all'
+                AND d.start_ns BETWEEN f.start_ns-{288 * FIVE} AND f.start_ns
+                AND d.processed_version<d.version)
+            AND NOT EXISTS(SELECT 1 FROM {config.ad_schema}.reanalysis j
+                WHERE j.stream_id=f.stream_id
+                AND j.start_ns BETWEEN f.start_ns-{288 * FIVE} AND f.start_ns
+                AND j.processed_version<j.version)
+            AND COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
+                WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
+                ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE')<>'FALSE_POSITIVE'"""
+
+    def eligible_args():
+        return [MODEL, FEATURES, MODEL, FEATURES]
+
     @app.get("/incidents")
     def incidents():
-        archive = request.args.get("archive") == "1"
-        where = "(status<>'ANOMALY' OR result->>'model_version'<>%s)" if archive else "status='ANOMALY' AND result->>'model_version'=%s"
-        args = [stream, MODEL]
+        # One card per Tehran day, method, service, session and numeric feature.
+        # Group before pagination: never split a group across pages.
+        before = request.args.get("before")
+        args = [stream, *eligible_args()]
         clause = ""
-        if request.args.get("before"):
+        if before:
             try:
-                before = int(request.args["before"])
-                bid = request.args["id"]
+                args.extend([int(before), request.args["id"]])
             except (ValueError, KeyError):
                 abort(400)
-            clause = "AND (start_ns,finding_id)<(%s,%s)"
-            args.extend([before, bid])
+            clause = "WHERE (last_ns,group_id)<(%s,%s)"
         with connection() as db:
-            rows = db.execute(
-                f"""SELECT * FROM {config.ad_schema}.findings WHERE stream_id=%s AND {where} {clause}
-                ORDER BY start_ns DESC,finding_id DESC LIMIT 51""",
-                args,
-            ).fetchall()
-        nxt = rows[49] if len(rows) > 50 else None
-        return render_template(
-            "incidents.html",
-            title="موارد قابل بررسی",
-            rows=rows[:50],
-            archive=archive,
-            next_cursor=nxt,
-        )
+            rows = db.execute(f"""
+                WITH eligible AS (
+                    SELECT f.*,md5(jsonb_build_array(f.method,f.service,f.session_id,
+                        f.result->>'numeric_path',
+                        (f.start_ns+12600000000000)/86400000000000)::text) AS group_id
+                    FROM {config.ad_schema}.findings f
+                    WHERE f.stream_id=%s AND {publishable()}
+                ), grouped AS (
+                    SELECT group_id,method,service,session_id,min(start_ns) AS first_ns,
+                        max(start_ns) AS last_ns,count(*) AS signal_count,
+                        (array_agg(finding_id ORDER BY start_ns DESC,finding_id DESC))[1] AS finding_id,
+                        (array_agg(result ORDER BY start_ns DESC,finding_id DESC))[1] AS result
+                    FROM eligible GROUP BY group_id,method,service,session_id
+                ) SELECT * FROM grouped {clause}
+                ORDER BY last_ns DESC,group_id DESC LIMIT 31""", args).fetchall()
+        return render_template("incidents.html", title="آنومالی‌های آمادهٔ بررسی",
+            rows=rows[:30],next_cursor=rows[29] if len(rows)>30 else None)
+
+    @app.get("/incident-groups/<gid>")
+    def incident_group(gid):
+        if len(gid) != 32 or any(c not in "0123456789abcdef" for c in gid):
+            abort(404)
+        with connection() as db:
+            rows = db.execute(f"""SELECT f.* FROM {config.ad_schema}.findings f
+                WHERE f.stream_id=%s AND {publishable()}
+                AND md5(jsonb_build_array(f.method,f.service,f.session_id,
+                    f.result->>'numeric_path',
+                    (f.start_ns+12600000000000)/86400000000000)::text)=%s
+                ORDER BY f.start_ns DESC,f.finding_id DESC LIMIT 289""",
+                [stream,*eligible_args(),gid]).fetchall()
+        return render_template("incident_group.html", title="هشدارهای مرتبط", rows=rows)
 
     @app.get("/incidents/<fid>")
     def incident(fid):
@@ -248,6 +291,10 @@ def create_app(config, database, stream, *, secret=None):
             ).fetchone()
             if not finding:
                 abort(404)
+            ready = db.execute(
+                f"SELECT 1 FROM {config.ad_schema}.findings f WHERE f.stream_id=%s AND f.finding_id=%s AND {publishable()}",
+                [stream, fid, *eligible_args()],
+            ).fetchone() is not None
             feedback = db.execute(
                 f"SELECT * FROM {config.ad_schema}.feedback WHERE finding_id=%s ORDER BY feedback_id DESC LIMIT 50",
                 (fid,),
@@ -261,6 +308,7 @@ def create_app(config, database, stream, *, secret=None):
             "incident.html",
             title="بررسی مورد",
             finding=finding,
+            ready=ready,
             feedback=feedback,
             history=history,
             csrf=session["csrf"],
