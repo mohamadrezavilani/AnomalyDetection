@@ -216,7 +216,7 @@ class CompactRuntimeTests(unittest.TestCase):
                         page.on("pageerror", lambda e: errors.append(str(e)))
                         page.goto(f"http://127.0.0.1:{port}/")
                         page.get_by_role(
-                            "link", name="جست‌وجوی نشست", exact=True
+                            "link", name="جست‌وجوی رفتارهای یک نشست ←", exact=True
                         ).click()
                         page.locator("input[name=q]").fill("s0")
                         page.get_by_role("button", name="جست‌وجو", exact=True).click()
@@ -224,8 +224,9 @@ class CompactRuntimeTests(unittest.TestCase):
                         page.goto(f"http://127.0.0.1:{port}/behaviors/{bid}")
                         self.assertIn("Amount", page.locator("body").inner_text())
                         page.goto(f"http://127.0.0.1:{port}/incidents")
-                        self.assertIn("موارد قابل بررسی", page.title())
-                        page.locator("table a").first.click()
+                        self.assertIn("آنومالی‌های آمادهٔ بررسی", page.title())
+                        page.get_by_role("link", name="مشاهدهٔ همهٔ هشدارها و شواهد ←").first.click()
+                        page.get_by_role("link", name="شواهد و ثبت نتیجهٔ بررسی ←").first.click()
                         page.locator("select[name=verdict]").select_option("CONFIRMED")
                         page.locator("textarea[name=note]").fill(
                             "synthetic browser verification"

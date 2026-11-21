@@ -88,6 +88,31 @@ class CompactProductPostgresTests(unittest.TestCase):
         )
         return self.db.commit_analysis(work, results, 0.01)
 
+    def test_incident_publication_hides_dirty_unconfirmed_and_rejected_revision(self):
+        self.publish()
+        work = self.db.snapshot("test", T)
+        results = evaluate(T, work["summary"], work["services"], work["actors"], [])
+        results[0]["status"] = "ANOMALY"  # controlled display fixture, not accuracy evidence
+        self.db.commit_analysis(work, results, .01)
+        client = create_app(self.config, self.database, "test", secret="test").test_client()
+        a, s = self.config.ad_schema, self.config.source_schema
+        def visible():
+            response = client.get("/incidents")
+            self.assertEqual(response.status_code, 200)
+            return "incident-groups/" in response.get_data(as_text=True)
+        self.assertTrue(visible())
+        row = self.db.conn.execute(f"SELECT finding_id,revision FROM {a}.findings WHERE status='ANOMALY'").fetchone()
+        self.db.conn.execute(f"UPDATE {a}.window_results SET timing_confirmed_revision=0")
+        self.assertFalse(visible())
+        self.db.conn.execute(f"UPDATE {a}.window_results SET timing_confirmed_revision=revision")
+        self.db.conn.execute(f"UPDATE {s}.dirty_windows SET version=version+1 WHERE session_id='@all'")
+        self.assertFalse(visible())
+        self.db.conn.execute(f"UPDATE {s}.dirty_windows SET processed_version=version")
+        self.assertTrue(visible())
+        self.db.conn.execute(f"INSERT INTO {a}.feedback(finding_id,finding_revision,verdict,note,recorded_at_ns) VALUES(%s,%s,'FALSE_POSITIVE','test',1)", (row['finding_id'],row['revision']))
+        self.assertFalse(visible())
+        self.assertEqual(client.get("/status").status_code, 200)
+
     def count(self, table, source=False):
         return self.db.conn.execute(
             "SELECT count(*) AS n FROM "
