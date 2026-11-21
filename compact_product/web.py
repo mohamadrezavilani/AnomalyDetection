@@ -25,6 +25,7 @@ from .health import health
 from . import BUILD
 from .error_catalog import definitions
 from .presentation import ROLES, data_note
+from .request_context import observed_context
 from compact_ad.methods import METHODS
 from compact_ad import MODEL
 from compact_behavior.services import meaningful_apis, operation_catalog, operation_label, operation_role
@@ -217,7 +218,7 @@ def create_app(config, database, stream, *, secret=None):
             abort(404)
         body = materialize(stream, row["state"])
         return render_template(
-            "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions
+            "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"])
         )
 
     def publishable():

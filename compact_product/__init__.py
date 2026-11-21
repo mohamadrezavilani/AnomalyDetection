@@ -1,3 +1,3 @@
 """Compact observed-behavior product; independent ingest, analysis and web."""
 
-BUILD = "COMPACT-PRODUCT-20261121-9"
+BUILD = "COMPACT-PRODUCT-20261121-10"

@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements-compact.txt
-      - run: python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_trial tests.test_compact_web_presentation tests.test_compact_error_catalog tests.test_compact_nullable_content tests.test_compact_history_task_repair tests.test_compact_operations tests.test_compact_history
+      - run: python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_trial tests.test_compact_web_presentation tests.test_compact_error_catalog tests.test_compact_request_context tests.test_compact_nullable_content tests.test_compact_history_task_repair tests.test_compact_operations tests.test_compact_history
       - run: python -B -m compact_product version
       - name: Parse native PowerShell entry
         if: runner.os == 'Windows'

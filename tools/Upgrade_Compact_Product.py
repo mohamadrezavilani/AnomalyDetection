@@ -99,13 +99,13 @@ def main():
                             raise RuntimeError('WEB_PAGE_NOT_READY')
             # Verify the versioned definitions are durably installed, without
             # modifying behavior rows or inferring semantics from code text.
-            from compact_product.error_catalog import CATALOG_VERSION
+            from compact_product.error_catalog import CATALOG_VERSION, CATALOG_ROW_COUNT
             db = Store(source['DATABASE'], schema=cfg.source_schema, application='upgrade-catalog-check')
             try:
                 db.conn.execute('SET default_transaction_read_only=on')
                 imported = db.conn.execute(f'SELECT version,row_count,imported_at FROM {cfg.source_schema}.error_catalog_imports WHERE version=%s', (CATALOG_VERSION,)).fetchone()
                 count = db.conn.execute(f'SELECT count(*) AS n FROM {cfg.source_schema}.error_code_definitions WHERE version=%s', (CATALOG_VERSION,)).fetchone()['n']
-                if not imported or imported['row_count'] != count or count != 1925:
+                if not imported or imported['row_count'] != count or count != CATALOG_ROW_COUNT:
                     raise RuntimeError('ERROR_CATALOG_IMPORT_NOT_CONFIRMED')
                 result['error_catalog'] = dict(imported)
             finally:
