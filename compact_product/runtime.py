@@ -37,6 +37,9 @@ def role_key(config, stream, role):
 
 def runtime_init(db, s):
     with db.transaction():
+        # IF NOT EXISTS does not serialize concurrent pg_type/catalog inserts.
+        # Use the same schema lock as Store.init before any runtime DDL.
+        db.execute("SELECT pg_advisory_xact_lock(%s)", (stream_lock("schema:" + s),))
         db.execute(
             f"""CREATE TABLE IF NOT EXISTS {s}.runtime_roles(role TEXT PRIMARY KEY,token TEXT NOT NULL,
             backend_pid INTEGER NOT NULL,backend_start TIMESTAMPTZ NOT NULL,heartbeat_ns BIGINT NOT NULL,info JSONB NOT NULL)"""
@@ -436,6 +439,9 @@ def worker(project, role, token):
 
             serve(lease, source)
         return 1 if lease.fatal else 0
+    except BaseException:
+        logger.exception("compact role initialization or execution failed")
+        raise
     finally:
         if lease:
             lease.close()
@@ -477,6 +483,27 @@ def status(project):
         db.close()
 
 
+def startup_failure(project, code, started, observed):
+    details = dict(code_root=str(Path(__file__).resolve().parents[1]), roles={})
+    for role, token in started:
+        child = _children.get((role, token))
+        current = observed.get(role, {})
+        details["roles"][role] = dict(
+            requested_token=token,
+            launcher_pid=child.pid if child else None,
+            exit_code=child.poll() if child else None,
+            observed={k: current.get(k) for k in ("running", "state", "command_token", "process_pid", "heartbeat_age_seconds", "failure")},
+        )
+    record = dict(status=code, recorded_at_ns=time.time_ns(), **details)
+    try:
+        save(paths(project, "ingest")[0] / "startup-failure.local.json", record)
+    except OSError as exc:
+        details["diagnostic_write_failure"] = type(exc).__name__
+    error = ValueError(code)
+    error.details = details
+    return error
+
+
 def start(project, roles=ROLES, *, with_supervisor=False):
     for key, child in list(_children.items()):
         if child.poll() is not None:
@@ -516,6 +543,8 @@ def start(project, roles=ROLES, *, with_supervisor=False):
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:
         value = status(project)
+        if any(_children[(r, t)].poll() is not None for r, t in started):
+            raise startup_failure(project, "COMPACT_ROLE_EXITED_DURING_START", started, value)
         if all(
             value[r]["running"] and value[r].get("command_token") == t
             for r, t in started
@@ -524,7 +553,7 @@ def start(project, roles=ROLES, *, with_supervisor=False):
                 return start(project, roles=("supervisor",))
             return value
         time.sleep(0.5)
-    raise ValueError("COMPACT_START_NOT_CONFIRMED_READ_LAUNCHER_LOG")
+    raise startup_failure(project, "COMPACT_START_NOT_CONFIRMED_READ_LAUNCHER_LOG", started, value)
 
 
 def stop(project, roles=ROLES, *, timeout=45):

@@ -418,6 +418,21 @@ class CompactProductPostgresTests(unittest.TestCase):
                 lease.close()
             self.assertFalse(status(root)["ingest"]["running"])
 
+    def test_concurrent_runtime_catalog_initialization_is_serialized(self):
+        import threading
+        barrier = threading.Barrier(6)
+        def initialize(_):
+            db = Store(self.database, schema=self.config.source_schema)
+            try:
+                barrier.wait(timeout=10)
+                runtime_init(db.conn, self.config.source_schema)
+                return db.conn.execute("SELECT to_regclass(%s) AS name", (self.config.source_schema + ".runtime_roles",)).fetchone()["name"]
+            finally:
+                db.close()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+            result = list(pool.map(initialize, range(6)))
+        self.assertTrue(all(name for name in result))
+
 
 if __name__ == "__main__":
     unittest.main()
