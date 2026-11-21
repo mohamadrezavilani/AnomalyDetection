@@ -16,9 +16,9 @@ def verify(root=None):
     actual = {}
     for name, expected in files.items():
         path = (root / name).resolve()
-        if not path.is_relative_to(root) or not name.startswith(
+        if not path.is_relative_to(root) or not (name == "catalogs/error_code_catalog.json" or name.startswith(
             ("compact_ad/", "compact_product/", "requirements-compact.txt")
-        ):
+        )):
             raise ValueError("invalid_product_manifest_path")
         actual[name] = hashlib.sha256(path.read_bytes()).hexdigest()
     if not actual or actual != files:
@@ -43,7 +43,7 @@ def write():
             for p in (root / folder).rglob("*")
             if p.is_file() and p.suffix in (".py", ".html", ".ps1")
         ]
-        + [root / "requirements-compact.txt"]
+        + [root / "requirements-compact.txt", root / "catalogs/error_code_catalog.json"]
     )
     manifest = dict(
         build_id=BUILD,

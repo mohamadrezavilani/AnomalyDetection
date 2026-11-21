@@ -60,6 +60,33 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.conn.execute("DROP SCHEMA " + self.config.source_schema + " CASCADE")
         self.db.close()
 
+    def test_catalog_import_is_atomic_idempotent_and_readable_without_writes(self):
+        from compact_product.error_catalog import CATALOG_VERSION, definitions
+        s = self.config.source_schema
+        # A failed startup leaves no partial import/receipt.
+        with self.assertRaisesRegex(RuntimeError, "rollback"):
+            with self.db.conn.transaction():
+                runtime_init(self.db.conn, s)
+                raise RuntimeError("rollback")
+        self.assertIsNone(self.db.conn.execute("SELECT to_regclass(%s) AS name", (s + ".error_catalog_imports",)).fetchone()["name"])
+        runtime_init(self.db.conn, s)
+        before = self.db.conn.execute(f"SELECT * FROM {s}.error_catalog_imports").fetchall()
+        self.assertEqual(before[0]["row_count"], 1925)
+        # A subsequent process startup must not COPY or update the receipt.
+        from unittest.mock import patch
+        with patch("compact_product.error_catalog.catalog_records", side_effect=AssertionError("reimport")):
+            runtime_init(self.db.conn, s)
+        self.assertEqual(self.db.conn.execute(f"SELECT * FROM {s}.error_catalog_imports").fetchall(), before)
+        self.assertEqual(self.db.conn.execute(f"SELECT count(*) AS n FROM {s}.error_code_definitions").fetchone()["n"], 1925)
+        with self.db.conn.transaction():
+            self.db.conn.execute("SET TRANSACTION READ ONLY")
+            r = definitions(self.db.conn, s, ['GR0010', 'GD2148', 'not-a-code'])
+        self.assertEqual(r['GR0010'][0]['log_symbol'], 'ServiceUnavailable')
+        self.assertEqual(r['GR0010'][0]['source']['row'], 11)
+        self.assertIn('یکطرفه', r['GD2148'][0]['message_fa'])
+        self.assertNotIn('not-a-code', r)
+        self.assertEqual(before[0]['version'], CATALOG_VERSION)
+
     def publish(self, start=T, n=10, **kw):
         records = []
         for i in range(n):
