@@ -292,24 +292,35 @@ def create_app(config, database, stream, *, secret=None):
     def case_rows():
         try:
             day,start,end=cases.day_bounds(request.args.get('date'))
-            days=int(request.args.get('days','7'))
+            days=int(request.args.get('days','30'))
             if not 1<=days<=30:raise ValueError('invalid_range')
             start-=(days-1)*longitudinal.DAY
         except (ValueError,OverflowError):abort(400,description='تاریخ میلادی معتبر وارد کنید.')
         with connection() as db:
-            rows=db.execute(f'''WITH candidates AS MATERIALIZED (
+            rows=db.execute(f'''WITH strong_candidates AS MATERIALIZED (
                 SELECT * FROM {config.ad_schema}.findings
                 WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
+                AND (method='long_target_enumeration' OR result->>'single_signal_review_eligible'='true')
+                ORDER BY start_ns DESC,finding_id DESC LIMIT 1001
+            ), ordinary_candidates AS MATERIALIZED (
+                SELECT * FROM {config.ad_schema}.findings
+                WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
+                AND NOT (method='long_target_enumeration' OR COALESCE(result->>'single_signal_review_eligible','false')='true')
                 ORDER BY start_ns DESC,finding_id DESC LIMIT {cases.LIMIT+1}
+            ), candidates AS MATERIALIZED (
+                SELECT * FROM strong_candidates UNION ALL SELECT * FROM ordinary_candidates
             ), eligible AS (
                 SELECT f.*,COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
                     WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
                     ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE') AS verdict
                 FROM candidates f WHERE {publishable()}
-            ) SELECT e.*,c.n AS candidate_count FROM (SELECT count(*) AS n FROM candidates) c
-                LEFT JOIN eligible e ON true ORDER BY e.start_ns DESC,e.finding_id DESC''',
-                [stream,start,end,*eligible_args()]).fetchall()
-        truncated=bool(rows and rows[0]['candidate_count']>cases.LIMIT)
+            ) SELECT e.*,c.n AS candidate_count,c.strong_count FROM
+                (SELECT count(*) AS n,(SELECT count(*) FROM strong_candidates) AS strong_count FROM candidates) c
+                LEFT JOIN eligible e ON true ORDER BY
+                (e.method='long_target_enumeration' OR COALESCE(e.result->>'single_signal_review_eligible','false')='true') DESC,
+                e.start_ns DESC,e.finding_id DESC''',
+                [stream,start,end,stream,start,end,*eligible_args()]).fetchall()
+        truncated=bool(rows and (rows[0]['candidate_count']>cases.LIMIT or rows[0]['strong_count']>1000))
         eligible=[r for r in rows if r.get('finding_id')][:cases.LIMIT]
         selected=cases.select_cases(eligible)
         service=request.args.get('service')

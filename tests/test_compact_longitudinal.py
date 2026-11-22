@@ -198,6 +198,21 @@ class LongitudinalPostgresTests(unittest.TestCase):
         self.ready()
         self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {self.a}.finding_history').fetchone()['n'],1)
 
+    def test_older_strong_case_is_not_hidden_by_a_full_weak_signal_page(self):
+        from compact_product.web import create_app
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        self.seed();self.ready()
+        self.db.conn.execute(f'''INSERT INTO {self.a}.findings
+            SELECT 'weak-'||n,'test',%s,'actor_rate',%s,'noisy','ANOMALY','{{}}'::jsonb,'synthetic',1,1,1
+            FROM generate_series(1,10001) n''',(DAY+4*long.DAY-FIVE,SERVICE))
+        date=datetime.fromtimestamp((DAY+4*long.DAY-FIVE)/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%d')
+        client=create_app(self.cfg,self.database,'test',secret='synthetic').test_client()
+        page=client.get('/incidents?tab=cases&date='+date)
+        self.assertEqual(page.status_code,200)
+        self.assertIn('crawler',page.get_data(as_text=True))
+        self.assertIn('کامل نیستند',page.get_data(as_text=True))
+
     def test_concurrent_source_change_rejects_computation(self):
         from compact_ad.store import AnalysisStore
         self.seed()

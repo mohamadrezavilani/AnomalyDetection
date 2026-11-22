@@ -33,6 +33,8 @@ def initialize(conn, a):
             WHERE processed_version<version''',
         f'''CREATE INDEX IF NOT EXISTS compact_long_run_pending ON {a}.long_runs(stream_id,retry_ns,end_ns)
             WHERE state IN ('PENDING','WAITING')''',
+        f'''CREATE INDEX IF NOT EXISTS compact_strong_review ON {a}.findings(stream_id,start_ns DESC,finding_id)
+            WHERE status='ANOMALY' AND (method='long_target_enumeration' OR result->>'single_signal_review_eligible'='true')''',
     ):
         conn.execute(sql)
 
