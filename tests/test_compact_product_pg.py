@@ -89,6 +89,43 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.conn.execute(f'UPDATE {self.config.source_schema}.streams SET next_ns=%s',(T+600*FIVE,))
         self.assertEqual(self.db.select_work('test'),T)
 
+    def test_model_migration_drains_existing_reference_queue_in_one_chronological_pass(self):
+        from compact_ad import MODEL
+        count=36
+        for i in range(count):
+            at=T+i*FIVE
+            self.db.publish('test',at,at+FIVE,extract([row('r'+str(i),at=iso(at+10**9))]),1)
+            self.db.step('test')
+        a=self.config.ad_schema
+        self.db.conn.execute(f"UPDATE {a}.window_results SET model_version='previous-model'")
+        # Reproduce an already-expanded build-15 queue; do not reset it.
+        self.db.conn.execute(f"INSERT INTO {a}.reanalysis(stream_id,start_ns,version,processed_version) SELECT stream_id,start_ns,5,0 FROM {a}.window_results ON CONFLICT(stream_id,start_ns) DO UPDATE SET version=5,processed_version=0")
+        cursor=self.db.cursor('test');processed=[]
+        for _ in range(count+1):
+            result=self.db.step('test')
+            if result['status']=='ANALYSIS_IDLE':break
+            processed.append(result['start_ns'])
+        self.assertEqual(processed,[T+i*FIVE for i in range(count)])
+        self.assertEqual(result['status'],'ANALYSIS_IDLE')
+        self.assertEqual(self.db.cursor('test'),cursor)
+        self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {a}.reanalysis WHERE processed_version<version').fetchone()['n'],0)
+        self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {a}.window_results WHERE model_version<>%s',(MODEL,)).fetchone()['n'],0)
+        last=self.db.conn.execute(f'SELECT readiness FROM {a}.window_results ORDER BY start_ns DESC LIMIT 1').fetchone()['readiness']
+        self.assertEqual(last['service_rate'].get('NORMAL'),1)
+        work=self.db.snapshot('test',T+(count-1)*FIVE)
+        self.assertEqual(len(work['references']),count-1)
+
+    def test_live_source_priority_does_not_starve_old_reference_work(self):
+        for i in range(3):
+            at=T+i*FIVE
+            self.db.publish('test',at,at+FIVE,extract([row('r'+str(i),at=iso(at+10**9))]),1)
+            self.db.step('test')
+        a=self.config.ad_schema;s=self.config.source_schema
+        self.db.conn.execute(f"INSERT INTO {a}.reanalysis(stream_id,start_ns) VALUES('test',%s) ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1",(T,))
+        self.db.conn.execute(f"UPDATE {s}.dirty_windows SET version=processed_version+1 WHERE stream_id='test' AND start_ns=%s AND session_id='@all'",(T+2*FIVE,))
+        self.db.iteration=0
+        self.assertEqual([self.db.select_work('test') for _ in range(5)],[T+2*FIVE]*4+[T])
+
     def setUp(self):
         self.database = dict(
             host=os.environ["P24_DELTA_PG_HOST"],

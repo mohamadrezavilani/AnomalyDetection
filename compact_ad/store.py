@@ -77,17 +77,27 @@ class AnalysisStore(Store):
             WHERE r.stream_id=%s AND (r.feature_version<>%s OR r.model_version<>%s)
             AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=r.stream_id
                 AND j.start_ns=r.start_ns AND j.processed_version<j.version)
-            ORDER BY r.start_ns DESC LIMIT 1
+            ORDER BY r.start_ns ASC LIMIT 1
             ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns""",
             (time.time_ns(), stream, FEATURES, MODEL),
         )
-        # Live freshness gets four slots; one slot guarantees old/reference work.
-        direction = "ASC" if self.iteration % 5 == 0 else "DESC"
+        # Fresh/changed source has priority on four out of five iterations.
+        # Reference-only work is chronological: processing newer dependants
+        # before their older references repeatedly invalidates the same results.
+        # The fifth iteration guarantees progress even with continuous writes.
+        if self.iteration % 5:
+            fresh = self.conn.execute(
+                f"""SELECT start_ns FROM {s}.dirty_windows WHERE stream_id=%s
+                AND session_id=%s AND processed_version<version
+                ORDER BY start_ns DESC LIMIT 1""", (stream, ALL)
+            ).fetchone()
+            if fresh:
+                return fresh["start_ns"]
         row = self.conn.execute(
             f"""SELECT start_ns FROM(
             SELECT start_ns FROM {s}.dirty_windows WHERE stream_id=%s AND session_id=%s AND processed_version<version
             UNION SELECT start_ns FROM {a}.reanalysis WHERE stream_id=%s AND processed_version<version
-            ) x ORDER BY start_ns {direction} LIMIT 1""",
+            ) x ORDER BY start_ns ASC LIMIT 1""",
             (stream, ALL, stream),
         ).fetchone()
         return row["start_ns"] if row else None
