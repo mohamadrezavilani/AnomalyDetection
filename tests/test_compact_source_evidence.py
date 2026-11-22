@@ -28,6 +28,19 @@ class Source(ElasticWindow):
 
 
 class SourceEvidenceTests(unittest.TestCase):
+    def test_role_repair_requires_matching_package_stream_and_bounded_unique_samples(self):
+        from copy import deepcopy
+        from tools.Repair_Compact_Sample_Roles import sample_keys
+        package={'source_sha256':'tested-package'}
+        report=dict(status='READ_ONLY_SAMPLE_RECONCILIATION',stream={'stream_id':'test'},
+            diagnostic_package=package,samples=[{'request_id':KEY}])
+        self.assertEqual(sample_keys(report,'test',package),[KEY])
+        with self.assertRaises(ValueError):sample_keys(report,'other',package)
+        with self.assertRaises(ValueError):sample_keys(report,'test',{'source_sha256':'other'})
+        for samples in ([],[{'request_id':KEY}]*2,[{'request_id':RAW}], [{'request_id':KEY}]*25):
+            bad=deepcopy(report);bad['samples']=samples
+            with self.assertRaises(ValueError):sample_keys(bad,'test',package)
+
     def test_reconciliation_rejects_cross_stream_duplicate_or_foreign_request_samples(self):
         from tools.Reconcile_Compact_Samples import validate_reports
         from copy import deepcopy

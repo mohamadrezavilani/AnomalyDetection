@@ -124,6 +124,46 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.assertEqual(before,self.db.conn.execute(f'SELECT * FROM {self.config.source_schema}.queue_counts').fetchall())
         with self.assertRaises(ValueError):collect(self.db.conn,self.config.source_schema,'test',limit=101)
 
+    def test_bounded_role_repair_preserves_whole_window_cursor_and_requeues_ad(self):
+        from unittest.mock import patch
+        from compact_behavior.services import operation_catalog
+        from tools.Repair_Compact_Sample_Roles import republish,stale_windows
+        schema=self.config.source_schema
+        states=extract([row('topup',path='Services.v1/InvoiceRegister'),
+            row('topup',path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/TopUpProductReserve)'),
+            row('topup',path='DBPath.pishkhan24.application.ud_prc_invoiceRequest',message='(SQL Parameters: @serviceID=1202)'),row('other')])
+        with patch.dict(operation_catalog()['routes']['Services.v1/TopUpProductReserve'],role='unknown'):
+            self.db.publish('test',T,T+FIVE,states,4)
+        self.db.publish('test',T+FIVE,T+2*FIVE,{},0)
+        before=self.db.conn.execute(f'SELECT * FROM {schema}.windows ORDER BY start_ns').fetchall()
+        before_epoch=self.db.conn.execute(f'SELECT change_epoch FROM {schema}.streams').fetchone()['change_epoch']
+        self.assertEqual(stale_windows(self.db,'test',['topup']),{T:['topup']})
+        result=republish(self.db,'test',T,T+FIVE,states,4,['topup'])
+        self.assertEqual(result['updated'],1)
+        self.assertTrue(result['input_checkpoint_preserved_in_transaction'])
+        self.assertEqual(self.db.cursor('test'),T+2*FIVE)
+        self.assertEqual(before,self.db.conn.execute(f'SELECT * FROM {schema}.windows ORDER BY start_ns').fetchall())
+        self.assertEqual(self.count('behaviors',True),2)
+        self.assertEqual(stale_windows(self.db,'test',['topup']),{})
+        self.assertGreater(self.db.conn.execute(f'SELECT change_epoch FROM {schema}.streams').fetchone()['change_epoch'],before_epoch)
+        dirty=self.db.conn.execute(f'SELECT * FROM {schema}.dirty_windows WHERE start_ns=%s AND session_id=%s',(T,ALL)).fetchone()
+        self.assertGreater(dirty['version'],dirty['processed_version'])
+        repeat=republish(self.db,'test',T,T+FIVE,states,4,['topup'])
+        self.assertEqual(repeat['updated'],0)
+
+    def test_role_repair_rejects_missing_requests_shrunken_or_unpublished_window(self):
+        from tools.Repair_Compact_Sample_Roles import republish
+        states=extract([row('keep'),row('other')])
+        self.db.publish('test',T,T+FIVE,states,2)
+        schema=self.config.source_schema
+        before=self.db.conn.execute(f'SELECT * FROM {schema}.windows').fetchall()
+        for start,packet,count,expected in [(T,states,2,['absent']),
+                (T,extract([row('keep')]),1,['keep']),(T+FIVE,states,2,['keep'])]:
+            with self.assertRaises(ValueError):republish(self.db,'test',start,start+FIVE,packet,count,expected)
+        self.assertEqual(before,self.db.conn.execute(f'SELECT * FROM {schema}.windows').fetchall())
+        self.assertEqual(self.db.cursor('test'),T+FIVE)
+        self.assertEqual(self.count('behaviors',True),2)
+
     def test_source_sample_reconciliation_tracks_cross_window_completion_read_only(self):
         from tools.Reconcile_Compact_Samples import collect
         keys=['1'*32,'2'*32,'3'*32,'4'*32]
