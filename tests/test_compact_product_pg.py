@@ -60,6 +60,23 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.conn.execute("DROP SCHEMA " + self.config.source_schema + " CASCADE")
         self.db.close()
 
+    def test_pending_diagnostic_is_read_only_and_excludes_request_values(self):
+        from tools.Review_Compact_Pending import collect
+        schema=self.config.source_schema
+        runtime_init(self.db.conn,schema)
+        self.db.publish('test',T,T+FIVE,extract([row('private-request',
+            path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:{"BillID":"private-target"}')]),1)
+        before=self.db.conn.execute(f'SELECT * FROM {schema}.queue_counts').fetchall()
+        with self.db.conn.transaction():
+            self.db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+            report=collect(self.db.conn,schema,'test',T+FIVE)
+        self.assertEqual(report['due']['waiting'],1)
+        self.assertEqual(report['due']['due_at_next_window_end'],0)
+        self.assertEqual(report['waiting_deadline_buckets'][0]['requests'],1)
+        self.assertEqual(report['stream']['next_ns'],T+FIVE)
+        self.assertNotIn('private-request',json.dumps(report));self.assertNotIn('private-target',json.dumps(report))
+        self.assertEqual(before,self.db.conn.execute(f'SELECT * FROM {schema}.queue_counts').fetchall())
+
     def test_collected_context_is_displayed_and_review_exports_only_counts(self):
         from tools.Review_Compact_Request_Metadata import sample
         self.db.publish('test', T, T + FIVE, extract([dict(row(request='context-request'),IP='192.0.2.1',UserAgent='Synthetic Browser')]), 1)

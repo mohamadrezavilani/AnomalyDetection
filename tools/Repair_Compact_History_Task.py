@@ -18,7 +18,7 @@ def worker_args(code, project, python):
         '-Action','Worker','-Project',project,'-Python',python])
 
 
-def validate_task(snapshot, project, python):
+def validate_owner(snapshot, project, python):
     actions=snapshot.get('actions') or []
     if len(actions)!=1:
         raise ValueError('HISTORY_TASK_ACTION_COUNT_MISMATCH')
@@ -29,15 +29,58 @@ def validate_task(snapshot, project, python):
     if (action.get('Execute','').lower()!='powershell.exe' or
         action.get('Arguments')!=worker_args(old,project,python)):
         raise ValueError('HISTORY_TASK_OWNERSHIP_MISMATCH')
-    if snapshot.get('enabled') is not False or snapshot.get('state')!='Disabled':
+    return old
+
+
+def state_code(snapshot):
+    # MSFT_ScheduledTask.State is a CIM UInt16 on some Windows hosts,
+    # and an enum with a friendly string on others. Never infer from locale.
+    value = snapshot.get('state_code', snapshot.get('state'))
+    if type(value) is int:
+        return value
+    return {'Disabled': 1, 'Queued': 2, 'Ready': 3, 'Running': 4,
+            '1': 1, '2': 2, '3': 3, '4': 4}.get(value)
+
+
+def validate_task(snapshot, project, python):
+    old = validate_owner(snapshot, project, python)
+    if snapshot.get('enabled') is not False or state_code(snapshot) != 1:
         raise ValueError('HISTORY_TASK_MUST_BE_STOPPED_AND_DISABLED')
     return old
+
+
+def wait_for_stopped_task(read, project, python, *, timeout=30,
+                          clock=time.monotonic, sleep=time.sleep):
+    """Worker lease has stopped; allow its PowerShell launcher to finish too.
+
+    Never stop processes or weaken ownership/disabled checks. Revalidate every
+    snapshot and fail closed if another controller changes the task.
+    """
+    deadline = clock() + timeout
+    first_owner = None
+    while True:
+        snapshot = read()
+        owner = validate_owner(snapshot, project, python)
+        if first_owner is None:
+            first_owner = owner
+        if owner != first_owner:
+            raise ValueError('HISTORY_TASK_OWNER_CHANGED_WHILE_WAITING')
+        if snapshot.get('enabled') is not False:
+            raise ValueError('HISTORY_TASK_MUST_BE_STOPPED_AND_DISABLED')
+        if state_code(snapshot) == 1:
+            validate_task(snapshot, project, python)
+            return snapshot
+        if state_code(snapshot) not in (2, 4):
+            raise ValueError('HISTORY_TASK_MUST_BE_STOPPED_AND_DISABLED')
+        if clock() >= deadline:
+            raise TimeoutError('HISTORY_TASK_LAUNCHER_STILL_RUNNING')
+        sleep(0.5)
 
 
 SNAPSHOT = r'''
 $ErrorActionPreference='Stop'
 $t=Get-ScheduledTask -TaskName 'P24-CompactHistory' -ErrorAction Stop
-@{actions=@($t.Actions | Select-Object Execute,Arguments,WorkingDirectory);enabled=[bool]$t.Settings.Enabled;state=[string]$t.State;xml=(Export-ScheduledTask -TaskName 'P24-CompactHistory')} | ConvertTo-Json -Depth 6 -Compress
+@{actions=@($t.Actions | Select-Object Execute,Arguments,WorkingDirectory);enabled=[bool]$t.Settings.Enabled;state=[string]$t.State;state_code=[int]$t.State;xml=(Export-ScheduledTask -TaskName 'P24-CompactHistory')} | ConvertTo-Json -Depth 6 -Compress
 '''
 
 CHANGE = r'''
@@ -45,7 +88,7 @@ $ErrorActionPreference='Stop'
 $t=Get-ScheduledTask -TaskName 'P24-CompactHistory' -ErrorAction Stop
 $a=@($t.Actions)
 if($a.Count -ne 1 -or $a[0].Execute -ne 'powershell.exe' -or $a[0].Arguments -cne $env:P24_OLD_ARGS -or $a[0].WorkingDirectory -cne $env:P24_OLD_ROOT){throw 'History task changed since inspection'}
-if($t.Settings.Enabled -or [string]$t.State -ne 'Disabled'){throw 'History task must remain disabled'}
+if($t.Settings.Enabled -or [int]$t.State -ne 1){throw 'History task must remain disabled'}
 $new=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $env:P24_NEW_ARGS -WorkingDirectory $env:P24_NEW_ROOT
 Set-ScheduledTask -TaskName 'P24-CompactHistory' -Action $new | Out-Null
 @{status='HISTORY_TASK_ACTION_MIGRATED'} | ConvertTo-Json -Compress
@@ -74,14 +117,18 @@ def main():
     migrated=False
     with controller_lock(project):
         try:
-            snapshot=powershell(SNAPSHOT)
-            old=validate_task(snapshot,str(project),sys.executable)
-            if not (Path(old)/'compact_product/History_Compact_Product.ps1').is_file():
-                raise ValueError('PREVIOUS_HISTORY_SCRIPT_MISSING')
             state=control(project,'status')
             before=json.loads(Path(state['output']).read_text(encoding='utf-8'))
             if before.get('history_role',{}).get('running'):
                 raise ValueError('HISTORY_WORKER_STILL_RUNNING')
+            def read_snapshot():
+                current = powershell(SNAPSHOT)
+                result['task_snapshot'] = {k: v for k, v in current.items() if k != 'xml'}
+                return current
+            snapshot=wait_for_stopped_task(read_snapshot,str(project),sys.executable)
+            old=validate_task(snapshot,str(project),sys.executable)
+            if not (Path(old)/'compact_product/History_Compact_Product.ps1').is_file():
+                raise ValueError('PREVIOUS_HISTORY_SCRIPT_MISSING')
             job=before.get('job')
             if not job or job['state']=='COMPLETE':
                 raise ValueError('ACTIVE_HISTORY_JOB_REQUIRED')
