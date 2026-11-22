@@ -2,6 +2,7 @@
 
 import time
 from compact_behavior import FIVE, FEATURES
+from compact_behavior.extract import Limits
 from compact_behavior.store import stream_lock
 from compact_ad import MODEL
 from compact_ad.methods import METHODS, OUT_OF_SCOPE
@@ -108,6 +109,7 @@ def health(db, config, stream):
         reanalysis_windows=jobs,
         analysis_pending_windows=pending_windows,
         active_pending=queue.get("active_pending", 0),
+        pending_high_water_warning=queue.get("active_pending", 0) > Limits().pending_requests,
         expired_pending=queue.get("expired_pending", 0),
         oldest_dirty_start_ns=oldest["start_ns"] if oldest else None,
         oldest_unanalyzed_age_seconds=(

@@ -13,7 +13,7 @@ import threading
 import unittest
 import uuid
 from compact_behavior import FIVE
-from compact_behavior.extract import Limits,LimitExceeded,behavior_id
+from compact_behavior.extract import Limits,LimitExceeded,behavior_id,iso
 from compact_behavior.store import Store
 from tests.test_compact_extract import row,extract,T,FlakyWindow,ScriptedScroll,es_document,scroll_packet
 
@@ -125,10 +125,75 @@ class CompactPostgresTests(unittest.TestCase):
         p=ctx.Process(target=crash,args=(self.config,self.schema,'after_commit'));p.start();p.join(20)
         self.assertEqual(p.exitcode,73);self.assertEqual(len(self.rows('behaviors')),1);self.assertEqual(self.store.cursor('test'),T+FIVE)
         before=self.rows('behaviors');self.publish([row()]);self.assertEqual(self.rows('behaviors'),before)
-    def test_pending_limit_rolls_back_instead_of_expiring_unknown_requests(self):
+    def test_pending_high_water_does_not_deadlock_or_expire_early(self):
+        self.store.limits=Limits(pending_requests=2)
+        def partial(key,at):
+            return dict(row(key,path='ClientAyanCoInquiry.WaterBillInquiry',
+                message='Input:[{"WaterBillID":"001"}]',at=iso(at)),IP='192.0.2.1')
+        self.publish([partial('a',T+10**9),partial('b',T+10**9)])
+        before={r['behavior_id']:r for r in self.rows('pending_requests')}
+        result=self.publish([partial('c',T+FIVE+10**9)],T+FIVE)
+        self.assertTrue(result['pending_high_water_warning'])
+        self.assertEqual(result['pending_requests'],3)
+        self.assertEqual(result['pending_expired_this_window'],0)
+        self.assertEqual(self.store.cursor('test'),T+2*FIVE)
+        self.assertEqual(self.rows('behaviors'),[])
+        for r in self.rows('pending_requests'):
+            self.assertEqual(r['status'],'WAITING')
+            if r['behavior_id'] in before:self.assertEqual(r,before[r['behavior_id']])
+        # Replay cannot extend deadlines or duplicate queue counts.
+        self.publish([partial('c',T+FIVE+10**9)],T+FIVE)
+        self.assertEqual(self.rows('queue_counts')[0]['active_pending'],3)
+        for i in range(2,7):self.publish([],T+i*FIVE)
+        self.assertEqual(self.rows('queue_counts')[0]['active_pending'],1)
+        self.assertEqual(self.rows('queue_counts')[0]['expired_pending'],2)
+        # Expiry is not evidence deletion: completion still merges old input/IP.
+        self.publish([row('a',at=iso(T+7*FIVE+10**9))],T+7*FIVE)
+        b=self.rows('behaviors')[0]
+        self.assertEqual(b['features']['input']['targets']['[].WaterBillID'][0]['value'],'001')
+        c=next(c for c in self.rows('request_context') if c['behavior_id']==b['behavior_id'])
+        self.assertEqual(c['context']['values']['ip'][0]['value'],'192.0.2.1')
+        self.assertEqual(self.rows('queue_counts')[0]['active_pending'],0)
+        self.assertEqual(self.rows('queue_counts')[0]['expired_pending'],2)
+
+    def test_server_pending_distribution_advances_and_drains_beyond_old_5k_batch(self):
+        # Exact counts from the owner's read-only report, synthetic payloads.
+        counts=[754,848,25797,1048,10582,380]
+        def wave(i,n):
+            return [row('wave-%d-%d'%(i,k),path='ClientAyanCoInquiry.WaterBillInquiry',
+                        message='Input:[]',at=iso(T+i*FIVE+10**9)) for k in range(n)]
+        for i,n in enumerate(counts):self.publish(wave(i,n),T+i*FIVE)
+        self.assertEqual(self.rows('queue_counts')[0]['active_pending'],39409)
+        # New window admits 2k and expires only the actually due 754: >40k.
+        result=self.publish(wave(6,2000),T+6*FIVE)
+        self.assertEqual(result['pending_requests'],40655)
+        self.assertEqual(result['pending_expired_this_window'],754)
+        self.assertTrue(result['pending_high_water_warning'])
+        self.assertEqual(self.store.cursor('test'),T+7*FIVE)
+        self.publish([],T+7*FIVE)
+        result=self.publish([],T+8*FIVE)
+        self.assertEqual(result['pending_expired_this_window'],25797)
+        self.assertEqual(result['pending_requests'],14010)
+        for i in range(9,13):self.publish([],T+i*FIVE)
+        queue=self.rows('queue_counts')[0]
+        self.assertEqual((queue['active_pending'],queue['expired_pending']),(0,41409))
+        self.assertEqual(self.rows('behaviors'),[])
+        self.assertEqual(self.store.conn.execute(f'SELECT count(*) AS n FROM {self.schema}.pending_requests').fetchone()['n'],41409)
+
+    def test_above_warning_publication_and_expiry_remain_atomic(self):
         self.store.limits=Limits(pending_requests=0)
-        with self.assertRaises(LimitExceeded):self.publish([row(path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:[]')])
+        records=extract([row(path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:[]')])
+        def fail(where):raise RuntimeError('injected rollback')
+        with self.assertRaises(RuntimeError):self.store.publish('test',T,T+FIVE,records,1,fault=fail)
         self.assertEqual(self.rows('pending_requests'),[]);self.assertIsNone(self.store.cursor('test'))
+        self.store.publish('test',T,T+FIVE,records,1)
+        for i in range(1,6):self.publish([],T+i*FIVE)
+        with self.assertRaises(RuntimeError):self.store.publish('test',T+6*FIVE,T+7*FIVE,{},0,fault=fail)
+        self.assertEqual(self.rows('pending_requests')[0]['status'],'WAITING')
+        self.assertEqual(self.rows('queue_counts')[0]['active_pending'],1)
+        self.assertEqual(self.store.cursor('test'),T+6*FIVE)
+        self.publish([],T+6*FIVE)
+        self.assertEqual(self.rows('queue_counts')[0]['active_pending'],0)
     def test_gap_and_contract_change_rejected_without_advancing(self):
         self.publish([row()])
         with self.assertRaisesRegex(ValueError,'checkpoint_gap'):self.publish([],T+2*FIVE)
