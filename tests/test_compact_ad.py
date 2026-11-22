@@ -64,6 +64,16 @@ def reference():
 
 
 class CompactADTests(unittest.TestCase):
+    def test_owner_confirmed_auxiliary_roots_do_not_enter_user_models(self):
+        from compact_behavior.services import independent_operations,operation_role
+        auxiliary=[p for p in independent_operations() if operation_role(p) in ('system','support')]
+        rows=[behavior(str(i),'s'+str(i),api=p) for i,p in enumerate(auxiliary)]
+        self.assertEqual(summarize(rows),summarize([]))
+        user_paths=[p for p in independent_operations() if operation_role(p) in ('business','user_management')]
+        summary,services,actors=summarize([behavior(str(i),'s'+str(i),api=p) for i,p in enumerate(user_paths)])
+        self.assertEqual(set(services),set(user_paths))
+        self.assertEqual(len(actors),len(user_paths))
+
     def result(self, method, **kw):
         summary, services, actors = window(T + 12 * FIVE, **kw)
         return [

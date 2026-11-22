@@ -10,7 +10,7 @@ import re
 from . import CONTRACT, EXTRACTOR, FEATURES
 from .json_value import unique_object
 from .payload import packed, normalize as normalize_payload, identity as payload_identity, feature as payload_feature
-from .services import operation_role, operation_catalog, meaningful, operation_label
+from .services import operation_role, operation_catalog, meaningful, operation_label, independent_operations
 from . import context as request_context
 
 CONTROL = re.compile(r"[\x00-\x1f]")
@@ -380,7 +380,8 @@ def facts(row):
         result["issues"].append("operation_field_conflict")
     if message_status == "conflicting":
         result["issues"].append("message_field_conflict")
-    if API.fullmatch(path):
+    operation_path = bool(API.fullmatch(path)) or path in independent_operations()
+    if operation_path:
         result["apis"] = [path]
         # Only the public HTTP completion contributes final outcome/duration.
         if re.match(r"^(?:GET|POST|PUT|DELETE|PATCH|HEAD)\s+https?://", message):
@@ -407,10 +408,10 @@ def facts(row):
     for label, section in [("inputs", "Input:"), ("outputs", "Output:")]:
         if section not in message:
             continue
-        if API.fullmatch(path) and operation_role(path) in ("support", "system"):
+        if operation_path and operation_role(path) in ("support", "system"):
             # Auxiliary API payloads are not inputs to behavioral methods.
             continue
-        if API.fullmatch(path):
+        if operation_path:
             basis = "public_api"
         elif path.startswith("ClientAyanCo") and path not in ANCILLARY:
             basis = "supporting"

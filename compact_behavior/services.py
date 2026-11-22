@@ -17,6 +17,16 @@ def operation_catalog():
     return json.loads(Path(__file__).with_name("operation_roles.json").read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=1)
+def independent_operations():
+    """Exact additional roots confirmed by the owner; no prefix inference."""
+    value = json.loads(Path(__file__).with_name("independent_operations.json").read_text(encoding="utf-8"))
+    for path, entry in value['routes'].items():
+        if operation_catalog()['routes'].get(path, {}).get('role') != entry['role']:
+            raise ValueError('independent_operation_role_mismatch')
+    return frozenset(value['routes'])
+
+
 def operation_role(api, service=None, binding=None):
     if api == "Services.v1/InvoiceRegister":
         if binding == "SAME_REQUEST_REVIEWED_DISPATCH" and service:

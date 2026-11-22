@@ -60,6 +60,25 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.conn.execute("DROP SCHEMA " + self.config.source_schema + " CASCADE")
         self.db.close()
 
+    def test_independent_root_completes_pending_with_metadata_and_replay_is_idempotent(self):
+        schema=self.config.source_schema
+        pending=dict(row('partner-user',path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',
+            message='(SQL Parameters: @userAgent=PartnerBrowser @action=EwanoLogin)'),IP='192.0.2.7')
+        self.db.publish('test',T,T+FIVE,extract([pending]),1)
+        self.assertEqual(self.count('pending_requests',True),1)
+        late=extract([row('partner-user',path='Ewano.v1/EwanoLogin',at=iso(T+FIVE+10**9))])
+        self.db.publish('test',T+FIVE,T+2*FIVE,late,1)
+        self.assertEqual(self.count('pending_requests',True),0)
+        body=self.db.conn.execute(f'SELECT * FROM {schema}.behaviors').fetchone()
+        self.assertEqual(body['api'],'Ewano.v1/EwanoLogin')
+        context=self.db.conn.execute(f'SELECT * FROM {schema}.request_context').fetchone()
+        self.assertIn('192.0.2.7',json.dumps(context,default=str))
+        self.db.publish('test',T+FIVE,T+2*FIVE,late,1)
+        self.assertEqual(self.count('behaviors',True),1)
+        self.assertEqual(body,self.db.conn.execute(f'SELECT * FROM {schema}.behaviors').fetchone())
+        counts=self.db.conn.execute(f'SELECT active_pending FROM {schema}.queue_counts').fetchone()
+        self.assertEqual(counts['active_pending'],0)
+
     def test_unknown_review_separates_pending_and_roles_without_payload_export(self):
         from tools.Review_Compact_Unknowns import collect
         partial=lambda key,at:dict(row(key,path='ClientAyanCoInquiry.WaterBillInquiry',
