@@ -971,6 +971,15 @@
       ],
       "catalog_role": "business"
     },
+    "Services.v3/LandLinePhoneBillsExport": {
+      "service_names": [
+        "v3_InquiryLandlinePhoneBillsExport"
+      ],
+      "handler_methods": [
+        "V3_LandLinePhoneBillsExport"
+      ],
+      "catalog_role": "business"
+    },
     "Services.v3/SocialSecurityInsuranceMedicalCredit": {
       "service_names": [
         "v3_InquirySocialSecurityInsuranceMedicalCredit"
@@ -1008,5 +1017,15 @@
       "catalog_role": "business"
     }
   },
-  "role_review": "TopUpProductReserve business role confirmed by owner 2026-11-22; dispatcher mapping unchanged."
+  "role_review": "TopUpProductReserve business role confirmed by owner 2026-11-22; dispatcher mapping unchanged.",
+  "additional_route_review": {
+    "route": "Services.v3/LandLinePhoneBillsExport",
+    "source_files_sha256": {
+      "Core/Main/Helper/HelperHttpContext.cs": "99bdadeb5f56aff89c1bc7cae1c70dec27866e151c0e3585d6a1994d03e4e378",
+      "Core/Intermediate/Modules/Sales/Commands/Register/InvoiceRegisterHandler.cs": "cbb95e0714a71fac79978e4c25dd1b62f790085cdc5df5476a38ac7cb0b7f28e",
+      "Core/WebServices/Services.svc.cs": "b7a8bd6bccfa71f5cf3510719cb37ec618fb0a11d75c27c7c647e6be26ce0002"
+    },
+    "legacy_routes_retained": true,
+    "basis": "Exact dispatcher and endpoint branch; observed action still requires same-request service_request evidence."
+  }
 }

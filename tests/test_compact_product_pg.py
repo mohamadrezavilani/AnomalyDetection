@@ -37,6 +37,30 @@ def crash_analysis(config, schema, ad_schema, start, point):
 
 @unittest.skipUnless(os.environ.get("P24_DELTA_PG_HOST"), "native PostgreSQL required")
 class CompactProductPostgresTests(unittest.TestCase):
+    def test_dispatch_repair_proves_source_binding_and_preserves_cursor(self):
+        from copy import deepcopy
+        from tests.test_compact_extract import export_dispatch_rows
+        from compact_product.dispatch_review import inspect,DispatchWindowWriter
+        records=export_dispatch_rows();states=extract(records)
+        old=deepcopy(states);old['export-test']['dispatch']=[v for v in old['export-test']['dispatch'] if v['kind']!='action']
+        self.db.publish('test',T,T+FIVE,old,len(records));self.db.step('test')
+        expected='Services.v3/LandLinePhoneBillsExport'
+        self.assertFalse(inspect(self.db,'test','export-test',expected)['ready_for_rate_analysis'])
+        writer=DispatchWindowWriter(self.db,'export-test',expected,T)
+        cursor=self.db.cursor('test')
+        with self.assertRaisesRegex(ValueError,'source_does_not_prove'):
+            writer.publish('test',T,T+FIVE,old,len(records))
+        with self.assertRaisesRegex(ValueError,'source_window_shrank'):
+            writer.publish('test',T,T+FIVE,states,len(records)-1)
+        writer.publish('test',T,T+FIVE,states,len(records))
+        self.assertTrue(inspect(self.db,'test','export-test',expected)['ready_for_rate_analysis'])
+        self.assertEqual(self.db.cursor('test'),cursor)
+        writer.publish('test',T,T+FIVE,states,len(records))
+        self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {self.config.source_schema}.behaviors').fetchone()['n'],1)
+        self.db.step('test')
+        summary=self.db.conn.execute(f'SELECT summary FROM {self.config.ad_schema}.window_results WHERE start_ns=%s',(T,)).fetchone()['summary']
+        self.assertEqual(summary['services'][expected]['count'],1)
+
     def test_service_diagnostic_keeps_codes_and_active_session_counts_separate(self):
         from compact_product.service_review import collect
         records=[dict(row('one','s1',path='Public.v1/ExchangeGold'),ExecutionTime=7),
