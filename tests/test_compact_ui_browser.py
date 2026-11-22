@@ -27,6 +27,13 @@ class CompactUiBrowserTests(unittest.TestCase):
                 body=dict(operation_role='unknown', service_key=None, features={}), code_definitions=codes, request_context=observed_context(row['state']))
         with app.test_request_context('/?scope=unknown'):
             home = render_template('home.html', title='رفتارهای مشاهده‌شده', rows=[row]*3, scope='unknown', code_definitions=codes)
+        from compact_product.cases import select_cases,REASONS
+        signals=[dict(finding_id=m,method=m,session_id='demo',service='Services.v1/WaterBills',start_ns=0,
+            result=dict(reference_windows=24,evidence=['a','b','c'],observed=30,baseline=2,threshold=10))
+            for m in ('actor_rate','target_diversity')]
+        with app.test_request_context('/incidents?date=2026-11-22'):
+            cases=render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',rows=select_cases(signals),
+                date='2026-11-22',page=1,has_next=False,case_count=1,signal_count=2,truncated=False,reasons=REASONS)
         with sync_playwright() as p:
             browser = p.chromium.launch(executable_path=os.environ['P24_COMPACT_BROWSER'], headless=True,
                 args=['--no-sandbox', '--disable-dev-shm-usage'])
@@ -34,11 +41,11 @@ class CompactUiBrowserTests(unittest.TestCase):
                 page = browser.new_page()
                 for width, size in ((1440, 'desktop'), (390, 'mobile')):
                     page.set_viewport_size(dict(width=width, height=1000))
-                    for name, html in (('behavior', detail), ('home', home)):
+                    for name, html in (('behavior', detail), ('home', home), ('cases',cases)):
                         page.set_content(html)
                         self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'), width)
                         self.assertTrue(page.get_by_role('heading', level=1).is_visible())
-                        self.assertIn('امکان برقراری ارتباط', page.locator('body').inner_text())
+                        if name!='cases':self.assertIn('امکان برقراری ارتباط', page.locator('body').inner_text())
                         self.assertNotIn('نکتهٔ کیفیت', page.locator('body').inner_text())
                         if name == 'behavior':
                             self.assertIn('مشخصات ثبت‌شدهٔ درخواست', page.locator('body').inner_text())
@@ -51,6 +58,10 @@ class CompactUiBrowserTests(unittest.TestCase):
                             self.assertEqual(page.locator('details[open]').count(), 0)
                             page.locator('.notes summary').first.click()
                             self.assertIn('خدمت مقصد', page.locator('.notes').first.inner_text())
+                        if name=='cases':
+                            self.assertTrue(page.get_by_label('روز بررسی (میلادی، تهران)').is_visible())
+                            self.assertEqual(page.locator('a[href^="/cases/"]').count(),1)
+                            self.assertTrue(page.get_by_role('link',name='همهٔ سیگنال‌ها — بررسی تخصصی ←').is_visible())
                         folder = os.environ.get('P24_COMPACT_UI_SCREENSHOTS')
                         if folder:
                             Path(folder).mkdir(parents=True, exist_ok=True)

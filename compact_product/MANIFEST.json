@@ -1,5 +1,5 @@
 {
-  "build_id": "COMPACT-PRODUCT-20261122-18",
+  "build_id": "COMPACT-PRODUCT-20261122-19",
   "files_sha256": {
     "catalogs/error_code_catalog.json": "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e",
     "compact_ad/__init__.py": "fe6bb9d00bfe43e3d0789f9ebbd933b0c8268b36bd6e217c3814477090b332c2",
@@ -11,8 +11,10 @@
     "compact_ad/store.py": "2d33c51af842ac153b2115b7d62eeaf033b745e5f4090cb49b18fa47a32bf047",
     "compact_product/History_Compact_Product.ps1": "167ac3ecc3203222f167dcfd1291c4bd4557349a586ded93f5ab6e36a9869827",
     "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
-    "compact_product/__init__.py": "62779006e2b8bcad1ac1c95b66d7b7c1f2b47e24a1e57091ada9002ae2ac610f",
+    "compact_product/__init__.py": "309d7be5196954df6bb39fba610ee7232e2fe457620a8b5ec15667fc13f1a05b",
     "compact_product/__main__.py": "b111f9155355c176f0a7eed2116f6a741cbae574ad415d6856b63f39d30ac8f5",
+    "compact_product/attempt_review.py": "cc5240724f57b7121592b71335dbfb1d8b7859a042c692d75f4fbc10116ef063",
+    "compact_product/cases.py": "3c95a2e41ac24797dab15172b383f0570594183f4aa520c55486daeea5bc525a",
     "compact_product/config.py": "25e4efba2dcea98280c69678cf9a5934f3474f5c6be28f5b679d977d7286b168",
     "compact_product/error_catalog.py": "25335cf6308f11d82578b56aa82367a879ff6d5952936e35fc41680d8fa9de4d",
     "compact_product/health.py": "3f0a1d583e2017fc0eb31d48f350b83d98a69dd48651007a32553f496eed735c",
@@ -26,12 +28,14 @@
     "compact_product/search_maintenance.py": "7af7725009f8305954adc9ae37aecceef25b92904d8fc741d11b40e928c07e3e",
     "compact_product/templates/base.html": "d6d7fa8d1bc267f4ae6f93409af86a9bd230442300d2ae3e972cafb15188e250",
     "compact_product/templates/behavior.html": "1994eaea9fd7e039c10cee9642aa4b5ee74c99dabf296313cbed2d9b6ee54c67",
+    "compact_product/templates/case.html": "abaef96189350ad866e89ad93552dd43f72c06d2c4effb0b21189300fc7f821a",
+    "compact_product/templates/cases.html": "d0f2f6568bdf7a4a6a940e04eb0f22e596d913d32c9b4114ac1661a6e43fbecf",
     "compact_product/templates/data_notes.html": "c2a0cd8faec215cd244d5092c75d5e477a6cb6212e96602696d3171f2e2f94e8",
     "compact_product/templates/error.html": "161e07687634bcad68f579c08d44535c3e5eb26e25e45fdfe6117dfb9e99c2d6",
     "compact_product/templates/home.html": "a1730dd43d65ee344c92e3e99147f62843cb603b0669bedc9451bb642fc7b288",
     "compact_product/templates/incident.html": "1219f1ae435edafd32ccd1ee0a885d79abcc49d6913da1316526862783686a40",
     "compact_product/templates/incident_group.html": "cbe4ab8823f201d6ecb75b85d3a338fed4bfd8c47f74a491f780fb578c4454a2",
-    "compact_product/templates/incidents.html": "4801b96c622a60bdf9966ceff8d1dde89182631ea2bdd53e81a7a22f896a3cc0",
+    "compact_product/templates/incidents.html": "e3a65450d25db248ec1f226b13dd06434d031f6656208f29b0e6ef534380c2fa",
     "compact_product/templates/result.html": "33e171f616fdf9138d9962ae9d85f1cf5319041f3767cb6d76f37f57eabd01a8",
     "compact_product/templates/rows.html": "d1dc18cf1caa8bfbefc3714ba3eacae1a8a1f088dfb0066124189b2e54d30815",
     "compact_product/templates/scope_controls.html": "9f33381bd36f32e3065cd67f2668262f2b3fef573b2dd37cfcc6f51aca36da79",
@@ -39,7 +43,7 @@
     "compact_product/templates/sessions.html": "e42b3375d19f5c31a9b1ac96b36f1d30f479eb9b35b1a777a91a4f6a08087d11",
     "compact_product/templates/status.html": "9ab675c22589b9dc39a5a43a69ded9d231281b69b8089f5ac18ecbdb5a96e63a",
     "compact_product/version.py": "c3989e98b38c56a9a83aae278932c1d738c7f7b06671d0ec21db2efe4bac2a8b",
-    "compact_product/web.py": "96e5929012655dde4c5c6da776c9b30a3ad16172e256a60a2ffd75c453700e6b",
+    "compact_product/web.py": "2734af41a337c2d53a9c90b27f834fc27f95e5b9ffb862ebbb04d762dccddb5a",
     "requirements-compact.txt": "c34eb554e053520137a531ea3e2a30729c6a19e8180d7222f8ab1eb6198cf96e"
   }
 }

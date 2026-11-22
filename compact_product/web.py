@@ -23,6 +23,7 @@ from compact_behavior import FIVE, FEATURES
 from compact_behavior.extract import identity, materialize
 from .health import health
 from . import search
+from . import cases
 from . import BUILD
 from .error_catalog import definitions
 from .presentation import ROLES, data_note
@@ -281,8 +282,46 @@ def create_app(config, database, stream, *, secret=None):
     def eligible_args():
         return [MODEL, FEATURES, MODEL, FEATURES]
 
-    @app.get("/incidents")
+    def case_rows():
+        try:day,start,end=cases.day_bounds(request.args.get('date'))
+        except (ValueError,OverflowError):abort(400,description='تاریخ میلادی معتبر وارد کنید.')
+        with connection() as db:
+            rows=db.execute(f'''WITH candidates AS MATERIALIZED (
+                SELECT * FROM {config.ad_schema}.findings
+                WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
+                ORDER BY start_ns DESC,finding_id DESC LIMIT {cases.LIMIT+1}
+            ), eligible AS (
+                SELECT f.*,COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
+                    WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
+                    ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE') AS verdict
+                FROM candidates f WHERE {publishable()}
+            ) SELECT e.*,c.n AS candidate_count FROM (SELECT count(*) AS n FROM candidates) c
+                LEFT JOIN eligible e ON true ORDER BY e.start_ns DESC,e.finding_id DESC''',
+                [stream,start,end,*eligible_args()]).fetchall()
+        truncated=bool(rows and rows[0]['candidate_count']>cases.LIMIT)
+        eligible=[r for r in rows if r.get('finding_id')][:cases.LIMIT]
+        return day,cases.select_cases(eligible),len(eligible),truncated
+
+    @app.get('/incidents')
     def incidents():
+        day,rows,signals,truncated=case_rows()
+        try:page=int(request.args.get('page','1'))
+        except ValueError:abort(400)
+        if not 1<=page<=1000:abort(400)
+        return render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',
+            rows=rows[(page-1)*30:page*30],date=day,page=page,has_next=len(rows)>page*30,
+            case_count=len(rows),signal_count=signals,truncated=truncated,reasons=cases.REASONS)
+
+    @app.get('/cases/<cid>')
+    def case_detail(cid):
+        if not request.args.get('date'):abort(400)
+        day,rows,signals,truncated=case_rows()
+        selected=next((c for c in rows if c['case_id']==cid),None)
+        return render_template('case.html',title='شواهد مورد',case=selected,date=day,
+            truncated=truncated,reasons=cases.REASONS)
+
+    @app.get("/signals")
+    def signals():
         # One overview row per Tehran day and service; retain individual findings.
         # Group before pagination: never split a group across pages.
         before = request.args.get("before")
@@ -309,7 +348,7 @@ def create_app(config, database, stream, *, secret=None):
                     FROM eligible GROUP BY group_id,service
                 ) SELECT * FROM grouped {clause}
                 ORDER BY last_ns DESC,group_id DESC LIMIT 31""", args).fetchall()
-        return render_template("incidents.html", title="آنومالی‌های آمادهٔ بررسی",
+        return render_template("incidents.html", title="همهٔ سیگنال‌های آماری",
             rows=rows[:30],next_cursor=rows[29] if len(rows)>30 else None)
 
     @app.get("/incident-groups/<gid>")

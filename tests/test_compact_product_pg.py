@@ -37,6 +37,63 @@ def crash_analysis(config, schema, ad_schema, start, point):
 
 @unittest.skipUnless(os.environ.get("P24_DELTA_PG_HOST"), "native PostgreSQL required")
 class CompactProductPostgresTests(unittest.TestCase):
+    def test_evidence_case_page_keeps_revision_fences_and_same_revision_feedback(self):
+        from copy import deepcopy
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        self.publish()
+        work=self.db.snapshot('test',T)
+        base=evaluate(T,work['summary'],work['services'],work['actors'],[])[0]
+        bids=[r['behavior_id'] for r in self.db.conn.execute(f'SELECT behavior_id FROM {self.config.source_schema}.behaviors LIMIT 3').fetchall()]
+        results=[]
+        for method in ('actor_rate','target_diversity'):
+            r=deepcopy(base);r.update(method=method,session_id='s0',service='Services.v1/WaterBills',
+                status='ANOMALY',reference_windows=24,evidence=bids,observed=50,baseline=2,threshold=10)
+            results.append(r)
+        self.db.commit_analysis(work,results,.01)
+        client=create_app(self.config,self.database,'test').test_client()
+        day=datetime.fromtimestamp(T/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%d')
+        def visible():
+            response=client.get('/incidents?date='+day)
+            self.assertEqual(response.status_code,200)
+            return '/cases/' in response.get_data(as_text=True)
+        self.assertTrue(visible())
+        self.db.conn.execute(f'UPDATE {self.config.ad_schema}.window_results SET timing_confirmed_revision=0')
+        self.assertFalse(visible())
+        self.db.conn.execute(f'UPDATE {self.config.ad_schema}.window_results SET timing_confirmed_revision=revision')
+        target=self.db.conn.execute(f"SELECT finding_id,revision FROM {self.config.ad_schema}.findings WHERE method='target_diversity'").fetchone()
+        self.db.conn.execute(f"INSERT INTO {self.config.ad_schema}.feedback(finding_id,finding_revision,verdict,note,recorded_at_ns) VALUES(%s,%s,'FALSE_POSITIVE','fixture',1)",(target['finding_id'],target['revision']))
+        self.assertFalse(visible())
+        self.assertIn('incident-groups/',client.get('/signals').get_data(as_text=True))
+        self.assertEqual(client.get('/incidents?date=wrong').status_code,400)
+
+    def test_targeted_attempt_repair_preserves_cursor_counts_once_and_requeues_analysis(self):
+        from compact_product.attempt_review import inspect,AttemptWindowWriter
+        from compact_behavior.extract import behavior_id
+        key='old-attempt'
+        records=[row(key,'same',path='Services.v1/InvoiceRegister',message='POST https://example.test/api HTTP/1.1 (GR0004 | limited)'),
+                 row(key,'same',path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/PostPackagesStatus)')]
+        states=extract(records);self.db.publish('test',T,T+FIVE,states,2);self.db.step('test')
+        s=self.config.source_schema;a=self.config.ad_schema
+        # Simulate a pre-feature stored record and its different content hash.
+        self.db.conn.execute(f"UPDATE {s}.behaviors SET features=features-'rejected_attempt',content_hash='old-feature-fixture'")
+        before=inspect(self.db,a,'test',key)
+        self.assertTrue(before['needs_feature_repair']);self.assertEqual(before['stored_session_rejections_in_window'],0)
+        cursor=self.db.cursor('test');writer=AttemptWindowWriter(self.db,a,key)
+        writer.publish('test',T,T+FIVE,states,2)
+        waiting=inspect(self.db,a,'test',key)
+        self.assertEqual(self.db.cursor('test'),cursor)
+        self.assertFalse(waiting['needs_feature_repair']);self.assertFalse(waiting['analysis_current'])
+        self.assertEqual(waiting['stored_session_rejections_in_window'],1)
+        self.db.step('test')
+        after=inspect(self.db,a,'test',key)
+        self.assertTrue(after['analysis_current'])
+        self.assertEqual(after['analysis_window']['all_sessions_rejected_count'],1)
+        writer.publish('test',T,T+FIVE,states,2)
+        self.assertEqual(inspect(self.db,a,'test',key)['stored_session_rejections_in_window'],1)
+        with self.assertRaisesRegex(ValueError,'source_window_shrank'):
+            writer.publish('test',T,T+FIVE,states,1)
+
     def test_concurrent_search_index_wait_recovers_invalid_index_without_stopping_writer(self):
         import psycopg
         from compact_product.search import prepare_index,index_state
@@ -515,7 +572,7 @@ class CompactProductPostgresTests(unittest.TestCase):
         client = create_app(self.config, self.database, "test", secret="test").test_client()
         a, s = self.config.ad_schema, self.config.source_schema
         def visible():
-            response = client.get("/incidents")
+            response = client.get("/signals")
             self.assertEqual(response.status_code, 200)
             return "incident-groups/" in response.get_data(as_text=True)
         self.assertTrue(visible())
