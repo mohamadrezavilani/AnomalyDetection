@@ -44,6 +44,7 @@ class CompactUiBrowserTests(unittest.TestCase):
                             self.assertIn('مشخصات ثبت‌شدهٔ درخواست', page.locator('body').inner_text())
                             self.assertIn('$.UserAgent', page.locator('body').inner_text())
                         if name == 'home':
+                            self.assertEqual(page.locator('tbody tr').first.locator('a[href="/behaviors/demo"]').count(), 1)
                             self.assertEqual(page.locator('details[open]').count(), 0)
                             page.locator('.notes summary').first.click()
                             self.assertIn('خدمت مقصد', page.locator('.notes').first.inner_text())

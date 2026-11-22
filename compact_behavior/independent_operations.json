@@ -1,0 +1,65 @@
+{
+  "version": "owner-independent-operations-1",
+  "authority": "owner confirmation 2026-11-22; Ewano endpoint roles also checked against existing source catalog",
+  "identity_policy": "RequestID is stable across layers; Session remains authoritative; partner name does not merge users",
+  "ewano_scope": "Partner customer entry/order/payment channel; not inferred to be a background job or proof of manual initiation",
+  "routes": {
+    "PaymentCallback.PaymentCallback": {
+      "role": "system"
+    },
+    "PaymentRedirect.PaymentRedirect": {
+      "role": "system"
+    },
+    "Webhook.v1/InformBillsPaymentStatus": {
+      "role": "system"
+    },
+    "Webhook.v2/InformBillsPaymentStatus": {
+      "role": "system"
+    },
+    "Webhook.v1/InformPurchaseStatus": {
+      "role": "system"
+    },
+    "Webhook.v1/InformTransferTaxStatus": {
+      "role": "system"
+    },
+    "Files.Download": {
+      "role": "support"
+    },
+    "Public.v1/CalendarToday": {
+      "role": "support"
+    },
+    "Public.v1/CalendarMonth": {
+      "role": "support"
+    },
+    "Public.v1/CalendarReligiousTimes": {
+      "role": "support"
+    },
+    "Public.v1/ServiceIconUrls": {
+      "role": "support"
+    },
+    "Public.v1/Weather": {
+      "role": "support"
+    },
+    "Public.v1/AirPollution": {
+      "role": "support"
+    },
+    "Public.v1/ExchangeGold": {
+      "role": "business"
+    },
+    "Public.v1/ExchangeCurrency": {
+      "role": "business"
+    },
+    "Public.v1/ExchangeCrypto": {
+      "role": "business"
+    },
+    "Ewano.v1/EwanoCreateOrder": {
+      "role": "business"
+    },
+    "Ewano.v1/EwanoPayment": {
+      "role": "business"
+    },
+    "Ewano.v1/EwanoLogin": {
+      "role": "user_management"
+    }
+  }
+}

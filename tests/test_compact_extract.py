@@ -61,6 +61,34 @@ class ScriptedScroll(ElasticWindow):
 
 
 class CompactExtractionTests(unittest.TestCase):
+    def test_owner_confirmed_independent_roots_have_explicit_roles(self):
+        from compact_behavior.services import independent_operations,operation_role
+        for path in independent_operations():
+            with self.subTest(path=path):
+                state=extract([row(path=path),row(path=path,message='Input:{"Count":2} Output:{"Count":3}')])['req-1']
+                body=materialize('stream',state)
+                self.assertIsNotNone(body)
+                self.assertEqual(body['api'],path)
+                role=operation_role(path)
+                if role in ('system','support'):
+                    self.assertFalse(body['features']['service_rate_eligible'])
+                    self.assertFalse(body['features']['session_eligible'])
+                    self.assertEqual(state['inputs'],[]);self.assertEqual(state['outputs'],[])
+                else:
+                    self.assertTrue(body['features']['service_rate_eligible'])
+                    self.assertTrue(body['features']['input_eligible'])
+                    self.assertTrue(body['features']['output_eligible'])
+                self.assertEqual(body['manual_start'],'UNKNOWN')
+
+    def test_independent_root_allowlist_does_not_accept_similar_unconfirmed_paths(self):
+        for path in ['Webhook.v1/OtherEvent','Ewano.v1/UnknownOperation','Proxy.CarTaxInquiry','Files.Upload']:
+            self.assertIsNone(materialize('stream',extract([row(path=path)])['req-1']))
+
+    def test_ewano_sessions_remain_separate_authoritative_identities(self):
+        states=extract([row('a',session='session-a',path='Ewano.v1/EwanoLogin'),
+                        row('b',session='session-b',path='Ewano.v1/EwanoLogin')])
+        self.assertEqual({materialize('stream',s)['session_id'] for s in states.values()},{'session-a','session-b'})
+
     def test_identical_input_in_different_requests_is_two_behaviors(self):
         rows=[]
         for key in ['req-1','req-2']:
