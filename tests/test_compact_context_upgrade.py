@@ -123,6 +123,17 @@ class RecoveryTests(unittest.TestCase):
         self.run_recovery(host)
         self.assertNotIn(('task', 'history', 'register'), host.calls)
 
+    def test_supervisor_reappearing_during_start_blocks_new_launch(self):
+        host = self.host()
+        original = host.guard
+        def restarted(expected):
+            original(expected)
+            host.online('supervisor')
+        host.guard = restarted
+        with self.assertRaisesRegex(ValueError, 'SUPERVISOR_REAPPEARED'):
+            self.run_recovery(host)
+        self.assertFalse(any(c[0] == 'start' for c in host.calls))
+
     def test_preservation_rejects_replacement_range_and_regression(self):
         import copy
         from tools.Recover_Compact_Product import preserved

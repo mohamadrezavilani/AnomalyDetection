@@ -144,6 +144,8 @@ def recover(host, baseline, expected, emit):
     for role in ("web", "ingest", "analysis"):
         emit("STARTING_" + role.upper())
         host.guard(expected)
+        require(not host.roles().get("supervisor", {}).get("running"),
+                "SUPERVISOR_REAPPEARED_DURING_SEQUENTIAL_START")
         if not host.roles().get(role, {}).get("running"):
             host.start(role)
         host.wait(role, expected)
@@ -180,6 +182,7 @@ class WindowsHost:
         from compact_product.config import load
         self.project = project
         self.cfg, self.source, self.stream = load(project)
+        self.supervision_enabled = False
 
     def database(self):
         from compact_behavior.store import Store
@@ -237,6 +240,13 @@ class WindowsHost:
         roles = self.roles()
         validate_roles(roles, expected)
         validate_processes(inventory["processes"], roles, self.project, words)
+        if not self.supervision_enabled:
+            value = powershell(r"""
+$ErrorActionPreference='Stop'
+$t=Get-ScheduledTask -TaskName 'P24-CompactProduct' -ErrorAction SilentlyContinue
+@{enabled=($t -and [bool]$t.Settings.Enabled);active=($t -and ([int]$t.State -in @(2,4)))} | ConvertTo-Json -Compress
+""")
+            require(not value["enabled"] and not value["active"], "SUPERVISOR_TASK_NOT_QUIESCENT")
 
     def task(self, which, operation):
         from viewer_performance.financial_screen.host import powershell
@@ -254,6 +264,8 @@ $t=Get-ScheduledTask -TaskName $env:P24_RECOVERY_TASK -ErrorAction SilentlyConti
         else:
             from compact_product.history import task
         task(self.project, operation)
+        if which == "core" and operation == "register":
+            self.supervision_enabled = True
 
     def stop_supervisor(self):
         from compact_product.runtime import stop
