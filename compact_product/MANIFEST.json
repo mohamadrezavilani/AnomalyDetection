@@ -1,5 +1,5 @@
 {
-  "build_id": "COMPACT-PRODUCT-20261121-11",
+  "build_id": "COMPACT-PRODUCT-20261122-12",
   "files_sha256": {
     "catalogs/error_code_catalog.json": "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e",
     "compact_ad/__init__.py": "ae0fb6a58ce6f21daa1d0e5038b7199334a2e5fc39c473fdfa3f36e4c810c13d",
@@ -8,11 +8,11 @@
     "compact_ad/store.py": "8de0358a8d8391c3c771fcbb65699eb50d1594e58f8d9b0d27ef930a3a330896",
     "compact_product/History_Compact_Product.ps1": "167ac3ecc3203222f167dcfd1291c4bd4557349a586ded93f5ab6e36a9869827",
     "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
-    "compact_product/__init__.py": "8b886290d53680da83160c5901518ed126f3e089e172e3f2f0fdd2f77b535dde",
+    "compact_product/__init__.py": "5ce314edac3398b196af4673af503af898533f2fdf5c1ca57bcdb79b814533e5",
     "compact_product/__main__.py": "b111f9155355c176f0a7eed2116f6a741cbae574ad415d6856b63f39d30ac8f5",
     "compact_product/config.py": "25e4efba2dcea98280c69678cf9a5934f3474f5c6be28f5b679d977d7286b168",
     "compact_product/error_catalog.py": "25335cf6308f11d82578b56aa82367a879ff6d5952936e35fc41680d8fa9de4d",
-    "compact_product/health.py": "53cd78f9fee9838fed87f48b95d1f38278c498e5be2b84e148e56771b651dc05",
+    "compact_product/health.py": "0e48575b08d8bea7d2d41ff645a6c47749fec1e63c4c5c665807116ad2e1a6cb",
     "compact_product/history.py": "407a7b76a2df5b8e7e783e0a7dff652c9d669946d77846207d4dc00155d5b265",
     "compact_product/operations.py": "e75c69d8ba6fa02a8a7e42e710c68c4356438965ff84f1d14e8521d47a6f17bd",
     "compact_product/presentation.py": "88fc0290083ea00cc7176294b1517638d5ebf548f05f8964fa822ba96917826c",
@@ -30,7 +30,7 @@
     "compact_product/templates/rows.html": "82600ac5147a11fffbdd730ffdb56320da09c7d7b19d3867bb4b16bbc652f068",
     "compact_product/templates/scope_controls.html": "3f74162a24d9e69a5d78eda6aec51ffad4e52b16e5b6c53f132a573aab180211",
     "compact_product/templates/sessions.html": "e42b3375d19f5c31a9b1ac96b36f1d30f479eb9b35b1a777a91a4f6a08087d11",
-    "compact_product/templates/status.html": "662412d09774d5ab20093a6ed80a3bb5284718cfccf50f81a6d44c5529a6d251",
+    "compact_product/templates/status.html": "3cdd8042ae1e16665679ccc221d680f0a5deccf367dbf888712bd663665d0a0b",
     "compact_product/version.py": "c3989e98b38c56a9a83aae278932c1d738c7f7b06671d0ec21db2efe4bac2a8b",
     "compact_product/web.py": "31c9d919577574531410d6f58a5023a4e297f48e613cd1119ee1948dab963ba4",
     "requirements-compact.txt": "c34eb554e053520137a531ea3e2a30729c6a19e8180d7222f8ab1eb6198cf96e"

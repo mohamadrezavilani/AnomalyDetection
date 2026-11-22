@@ -60,6 +60,9 @@ class Limits:
     total_state_bytes: int = 134217728
     variants: int = 4
     surfaces: int = 32
+    # Compatibility name: high-water warning for durable DB rows, NOT an
+    # admission limit. Blocking publication here prevents event-time expiry.
+    # RAM is bounded by requests/state_bytes/total_state_bytes for one window.
     pending_requests: int = 40000
     dirty_windows: int = 500000
 

@@ -372,13 +372,25 @@ class Store:
                 ON CONFLICT(behavior_id) DO UPDATE SET state=excluded.state,content_hash=excluded.content_hash,updated_at_ns=excluded.updated_at_ns
                 WHERE {s}.pending_requests.content_hash IS DISTINCT FROM excluded.content_hash"""
             )
-            # Bounded lifecycle; deadline never extends with every repeated fragment.
-            expired = self.conn.execute(
-                f"""WITH due AS(SELECT behavior_id FROM {s}.pending_requests
-                WHERE stream_id=%s AND status='WAITING' AND deadline_ns<=%s ORDER BY deadline_ns LIMIT 5000)
-                UPDATE {s}.pending_requests p SET status='EXPIRED' FROM due WHERE p.behavior_id=due.behavior_id""",
-                (stream, max(end, row["next_ns"] if row else end)),
-            ).rowcount
+            # Bounded lifecycle; deadline never extends with repeated fragments.
+            # Drain at least the maximum new request count admitted per window.
+            # A fixed 5k drain cannot keep up with a valid 60k-request burst.
+            expiry_batch_limit = max(5000, self.limits.requests)
+            expired = expiry_batches = 0
+            while expired < expiry_batch_limit:
+                # Keep each UPDATE at the former indexed 5k scale; do not
+                # materialize the durable queue or issue a 60k-row join at once.
+                batch_size = min(5000, expiry_batch_limit - expired)
+                batch_expired = self.conn.execute(
+                    f"""WITH due AS(SELECT behavior_id FROM {s}.pending_requests
+                    WHERE stream_id=%s AND status='WAITING' AND deadline_ns<=%s ORDER BY deadline_ns LIMIT %s)
+                    UPDATE {s}.pending_requests p SET status='EXPIRED' FROM due WHERE p.behavior_id=due.behavior_id""",
+                    (stream, max(end, row["next_ns"] if row else end), batch_size),
+                ).rowcount
+                expired += batch_expired
+                expiry_batches += 1
+                if batch_expired < batch_size:
+                    break
             active_delta -= expired
             expired_delta += expired
             purged = self.conn.execute(
@@ -414,8 +426,12 @@ class Store:
             ).fetchone()
             pending_total = counts["active_pending"]
             dirty_total = counts["dirty_keys"]
-            if pending_total > self.limits.pending_requests:
-                raise LimitExceeded("pending_request_limit_no_checkpoint_advance")
+            # Pending fragments already reside durably in PostgreSQL; only the
+            # current window's keys are read into Python. A global row-count
+            # rejection rolls back the very cursor/expiry needed to drain it.
+            # Preserve all fragments and their real deadlines, emit a warning,
+            # and keep window memory/size and dirty queue guards unchanged.
+            pending_warning = pending_total > self.limits.pending_requests
             if dirty_total > self.limits.dirty_windows:
                 raise LimitExceeded("dirty_window_limit_no_checkpoint_advance")
             window_change = self.conn.execute(
@@ -473,6 +489,11 @@ class Store:
             updated=int(updated),
             unchanged=unchanged,
             pending_requests=pending_total,
+            pending_high_water_warning=pending_warning,
+            pending_warning_threshold=self.limits.pending_requests,
+            pending_expired_this_window=expired,
+            pending_expiry_batch_limit=expiry_batch_limit,
+            pending_expiry_batches=expiry_batches,
             expired_pending=counts["expired_pending"],
             dirty_windows=dirty_total,
             changed_quality=dict(quality),

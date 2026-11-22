@@ -33,7 +33,9 @@ def collect(db, schema, stream, now_ns):
     return dict(status='READ_ONLY_PENDING_REVIEW',recorded_at_ns=now_ns,
         database_modified=False,workers_restarted=False,stream=row,counters=counts,due=due,
         waiting_deadline_buckets=buckets,latest_windows=recent,roles=roles,
-        pending_limit=Limits().pending_requests,pending_wait_ns=PENDING_WAIT_NS,
+        pending_warning_threshold=Limits().pending_requests,
+        pending_high_water_warning=due['waiting']>Limits().pending_requests,
+        pending_wait_ns=PENDING_WAIT_NS,
         limitation='Failed uncommitted window is not stored; incoming pending count is unknown.')
 
 
