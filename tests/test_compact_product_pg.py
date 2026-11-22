@@ -37,6 +37,58 @@ def crash_analysis(config, schema, ad_schema, start, point):
 
 @unittest.skipUnless(os.environ.get("P24_DELTA_PG_HOST"), "native PostgreSQL required")
 class CompactProductPostgresTests(unittest.TestCase):
+    def test_performance_samples_are_bounded_and_keep_ingest_history_ad_separate(self):
+        from compact_product.performance import initialize,record,recent
+        schema=self.config.source_schema
+        initialize(self.db.conn,schema)
+        sample=dict(start_ns=T,total_seconds=2.,read_extract_seconds=1.,database_seconds=.8,
+            source_records=100,fresh_publication=True)
+        for i in range(270):record(self.db.conn,schema,'test','history',sample,'history')
+        record(self.db.conn,schema,'test','ingest',sample,'forward')
+        record(self.db.conn,schema,'test','analysis',dict(start_ns=T,analysis_seconds=.5,timing_confirmed=False),'analysis')
+        self.assertEqual(recent(self.db.conn,schema,'test')['analysis']['samples'],0)
+        record(self.db.conn,schema,'test','analysis',dict(start_ns=T,analysis_seconds=.5,timing_confirmed=True),'analysis')
+        result=recent(self.db.conn,schema,'test')
+        self.assertEqual(result['history']['samples'],20)
+        self.assertEqual(result['ingest']['samples'],1)
+        self.assertEqual(result['analysis']['median_seconds'],.5)
+        count=self.db.conn.execute(f"SELECT count(*) AS n FROM {schema}.window_performance WHERE role='history'").fetchone()['n']
+        self.assertLessEqual(count,256)
+
+    def test_temporal_projection_is_atomic_and_changes_requeue_distant_same_slot(self):
+        from compact_ad.seasonality import backfill
+        self.db.publish('test',T,T+FIVE,extract([row('old')]),1)
+        self.db.step('test')
+        target=T+2*288*FIVE
+        self.db.conn.execute(f'UPDATE {self.config.source_schema}.streams SET next_ns=%s',(target,))
+        self.db.publish('test',target,target+FIVE,extract([row('later',at=iso(target+10**9))]),1)
+        work=self.db.snapshot('test',target)
+        self.db.commit_analysis(work,evaluate(target,work['summary'],work['services'],work['actors'],work['references']),.01)
+        # A late correction more than 24h old still influences a temporal model.
+        self.db.publish('test',T,T+FIVE,extract([row('old'),row('late')]),2)
+        old=self.db.snapshot('test',T)
+        def fail(point):
+            if point=='before_commit':raise RuntimeError('test rollback')
+        with self.assertRaises(RuntimeError):
+            self.db.commit_analysis(old,evaluate(T,old['summary'],old['services'],old['actors'],old['references']),.01,fault=fail)
+        saved=self.db.conn.execute(f'SELECT rates FROM {self.config.ad_schema}.rate_history WHERE start_ns=%s',(T,)).fetchone()
+        self.assertEqual(saved['rates']['Services.v1/WaterBills'][0],1)
+        self.db.commit_analysis(old,evaluate(T,old['summary'],old['services'],old['actors'],old['references']),.01)
+        queued=self.db.conn.execute(f'SELECT * FROM {self.config.ad_schema}.reanalysis WHERE start_ns=%s',(target,)).fetchone()
+        self.assertGreater(queued['version'],queued['processed_version'])
+        history=self.db.conn.execute(f'SELECT * FROM {self.config.ad_schema}.rate_history WHERE start_ns=%s',(T,)).fetchone()
+        self.assertEqual(history['rates']['Services.v1/WaterBills'][0],2)
+        # Projection may backfill old summaries without source access or cursor rewind.
+        self.db.conn.execute(f'DELETE FROM {self.config.ad_schema}.rate_history')
+        before=self.db.cursor('test');backfill(self.db.conn,self.config.ad_schema,'test')
+        self.assertEqual(self.db.cursor('test'),before)
+
+    def test_model_upgrade_schedules_old_history_outside_the_live_day(self):
+        self.db.publish('test',T,T+FIVE,extract([row()]),1);self.db.step('test')
+        self.db.conn.execute(f"UPDATE {self.config.ad_schema}.window_results SET model_version='old-model'")
+        self.db.conn.execute(f'UPDATE {self.config.source_schema}.streams SET next_ns=%s',(T+600*FIVE,))
+        self.assertEqual(self.db.select_work('test'),T)
+
     def setUp(self):
         self.database = dict(
             host=os.environ["P24_DELTA_PG_HOST"],

@@ -36,13 +36,17 @@ PROVIDERS = {
     "Services.v1/GasBills": "ClientAyanCoInquiry.GasBillInquiry",
     # PostPackagesStatusHandler.CallService invokes exactly this provider.
     "Services.v1/PostPackagesStatus": "ClientAyanCoInquiry.PostTrackingInquiry",
+    # Reviewed CallService methods; OTP/login are prerequisites, not results.
+    "Services.v1/LivelihoodInformation": "ClientAyanCoInquiry.SfaraCouponInquiry",
+    "Services.v1/SfaraCoupon": "ClientAyanCoInquiry.SfaraCouponInquiry",
+    "Services.v1/LandLinePhoneBills": "ClientAyanCoInquiry.FixedLineBillInquiry",
 }
 ANCILLARY = {
     "ClientAyanCoPaymentGateway.PaymentInquiry",
     "ClientAyanCoCarTax.CarTraverseAddToWatch",
 }
 TARGET = re.compile(
-    r"(?:billid|participatecode|nationalcode|nationalid|platenumber|iban|phonenumber|mobilenumber|telephone|accountnumber)$",
+    r"(?:billid|participatecode|nationalcode|nationalid|platenumber|iban|phonenumber|mobilenumber|linenumber|telephone|accountnumber)$",
     re.I,
 )
 
@@ -389,8 +393,10 @@ def facts(row):
                 context = request_context.empty()
             request_context.observe(context, 'http_method', message.split(' ', 1)[0], 'public_http_completion', at)
             code = STATUS.search(message)
-            duration, _ = field(row, "ExecutionTime")
+            duration, duration_status = field(row, "ExecutionTime")
             try:
+                if duration_status != 'present' or isinstance(duration, bool):
+                    raise ValueError('invalid_duration_field')
                 duration = float(duration)
                 if not math.isfinite(duration) or duration < 0:
                     duration = None
@@ -701,7 +707,7 @@ def materialize(stream, state):
         service_binding=binding,
         observed_at_ns=at,
         reported_duration=roots[0]["reported_duration"] if len(roots) == 1 else None,
-        duration_unit="UNVERIFIED",
+        duration_unit="MILLISECONDS_OWNER_CONFIRMED_20261122",
         result_code=code,
         result_kind=outcome,
         kind=("automatic_support" if api in AUTOMATIC else "support_operation" if role == "support" else "system_operation" if role == "system" else "unclassified_operation" if role == "unknown" else "observed_api_operation"),
@@ -748,7 +754,7 @@ def materialize(stream, state):
             service_key=service,
             service_binding=binding,
             financial_chain="OUT_OF_SCOPE",
-            duration_analysis="OUT_OF_SCOPE_UNVERIFIED_UNIT",
+            duration_analysis="PUBLIC_HTTP_MILLISECONDS_OWNER_CONFIRMED_20261122",
             result_eligible=operation_usable
             and code is not None
             and in_scope,
@@ -756,4 +762,13 @@ def materialize(stream, state):
             output=output_feature,
         ),
     )
+    if (api == 'Services.v1/InvoiceRegister' and binding == 'UNRESOLVED_DISPATCH'
+            and code == 'GR0004' and usable):
+        actions = {v['value'] for v in state.get('dispatch', []) if v['kind']=='action'}
+        requests = {v['value'] for v in state.get('dispatch', []) if v['kind']=='service_request'}
+        # Requested destination is evidence of intent, never completed execution.
+        if len(actions)==1 and not requests and operation_role(next(iter(actions))) in ('business','user_management'):
+            action=next(iter(actions))
+            body['features']['rejected_attempt'] = dict(service=action,eligible=True,
+                stage='RATE_LIMITED_BEFORE_CONFIRMED_DISPATCH',result_code=code)
     return body

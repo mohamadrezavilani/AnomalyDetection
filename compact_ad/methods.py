@@ -1,6 +1,11 @@
 """Explicit readiness contract. No financial inference or unverified durations."""
 
 METHODS = {
+    'rate_limit_rejections': dict(label='تکرار درخواست ردشده با محدودیت نرخ',unit='نشست و خدمت درخواستی / پنج دقیقه',features='GR0004 و مقصد درخواستی معتبر؛ مستقل از اجرای خدمت',minimum='۱۲ پنجرهٔ مرجع؛ اجرای موفق یا پرداخت فرض نمی‌شود'),
+    'service_latency': dict(label='افزایش زمان اجرای خدمت',unit='صدک ۹۵ ExecutionTime خدمت / پنج دقیقه',features='زمان پایان درخواست با انتساب معتبر',minimum='۱۲ پنجرهٔ مرجع و ۱۰ زمان معتبر در هر پنجره؛ مقایسهٔ نسبی'),
+    'isolation_forest': dict(label='الگوی چندمتغیرهٔ نشست',unit='نشست / پنج دقیقه',features='حجم، تنوع خدمات، سهم خدمت غالب و آنتروپی',minimum='۱۶۰ بردار گذشته و ۱۰ رفتار فعلی؛ آموزش و کالیبراسیون جدا'),
+    'service_sequence': dict(label='توالی کم‌سابقهٔ خدمات',unit='نشست / پنج دقیقه',features='ترتیب درخواست‌ها با اتصال به پنجرهٔ قبلی',minimum='۳۶ پنجره و ۵۰۰ انتقال گذشته؛ ۱۲ پنجرهٔ کالیبراسیون و تکرار انتقال کم‌سابقه'),
+    'timing_regularization': dict(label='نظم زمانی غیرمعمول',unit='نشست / پنج دقیقه',features='فاصلهٔ زمانی درخواست‌ها',minimum='۲۰ فاصله در حداقل ۶۰ ثانیه و ۳۰ نمونهٔ مرجع در ۱۲ پنجره'),
     "service_rate": dict(
         label="نرخ درخواست خدمت",
         unit="خدمت / پنج دقیقه",
@@ -52,6 +57,5 @@ METHODS = {
 }
 OUT_OF_SCOPE = {
     "financial_chain": "روابط مالی خارج از دامنه است",
-    "execution_duration": "واحد ExecutionTime تأیید نشده است",
 }
 STATUSES = ("NORMAL", "ANOMALY", "INSUFFICIENT_DATA", "INVALID_INPUT")

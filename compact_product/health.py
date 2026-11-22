@@ -92,7 +92,9 @@ def health(db, config, stream):
         values = sorted(r[field] for r in samples)
         return values[max(0, __import__("math").ceil(len(values) * 0.95) - 1)] if values else None
     closed = (now - config.source_lag_seconds * 10**9) // FIVE * FIVE
+    from .performance import recent
     return dict(
+        performance=recent(db, s, stream),
         roles=roles,
         service="compact_product",
         feature_version=FEATURES,
