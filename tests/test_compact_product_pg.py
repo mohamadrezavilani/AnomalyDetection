@@ -60,6 +60,31 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.conn.execute("DROP SCHEMA " + self.config.source_schema + " CASCADE")
         self.db.close()
 
+    def test_unknown_review_separates_pending_and_roles_without_payload_export(self):
+        from tools.Review_Compact_Unknowns import collect
+        partial=lambda key,at:dict(row(key,path='ClientAyanCoInquiry.WaterBillInquiry',
+            message='Input:{"BillID":"DoNotExportPayload"}',at=iso(at)),IP='192.0.2.123',UserAgent='DoNotExportAgent')
+        self.db.publish('test',T,T+FIVE,extract([partial('triage-expired',T+10**9)]),1)
+        for i in range(1,7):self.db.publish('test',T+i*FIVE,T+(i+1)*FIVE,{},0)
+        self.db.publish('test',T+7*FIVE,T+8*FIVE,extract([
+            partial('triage-pending',T+7*FIVE+10**9),
+            row('triage-unknown',path='Services.v1/InvoiceRegister',at=iso(T+7*FIVE+10**9))]),2)
+        before=self.db.conn.execute(f'SELECT * FROM {self.config.source_schema}.queue_counts').fetchall()
+        with self.db.conn.transaction():
+            self.db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+            report=collect(self.db.conn,self.config.source_schema,'test',limit=2,scan=10)
+        for group in ('WAITING','EXPIRED','UNKNOWN_BEHAVIORS'):
+            self.assertEqual(report['groups'][group]['sampled_requests'],1)
+        unknown=report['groups']['UNKNOWN_BEHAVIORS']['samples'][0]
+        self.assertEqual(unknown['api'],'Services.v1/InvoiceRegister')
+        self.assertIn('unresolved_dispatch',unknown['quality'])
+        text=json.dumps(report)
+        for private in ('DoNotExportPayload','192.0.2.123','DoNotExportAgent'):
+            self.assertNotIn(private,text)
+        self.assertIn('triage-pending',text)
+        self.assertEqual(before,self.db.conn.execute(f'SELECT * FROM {self.config.source_schema}.queue_counts').fetchall())
+        with self.assertRaises(ValueError):collect(self.db.conn,self.config.source_schema,'test',limit=101)
+
     def test_pending_diagnostic_is_read_only_and_excludes_request_values(self):
         from tools.Review_Compact_Pending import collect
         schema=self.config.source_schema
