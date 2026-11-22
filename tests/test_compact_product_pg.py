@@ -37,6 +37,50 @@ def crash_analysis(config, schema, ad_schema, start, point):
 
 @unittest.skipUnless(os.environ.get("P24_DELTA_PG_HOST"), "native PostgreSQL required")
 class CompactProductPostgresTests(unittest.TestCase):
+    def test_concurrent_search_index_wait_recovers_invalid_index_without_stopping_writer(self):
+        import psycopg
+        from compact_product.search import prepare_index,index_state
+        from compact_product.search_maintenance import configure_wait,progress_snapshot,ProgressMonitor
+        schema=self.config.source_schema
+        writer=Store(self.database,schema=schema,application='test-index-writer')
+        builder=Store(self.database,schema=schema,application='test-index-builder')
+        pool=concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        messages=[]
+        try:
+            writer.conn.execute('BEGIN')
+            writer.conn.execute(f'LOCK TABLE {schema}.request_context IN ROW EXCLUSIVE MODE')
+            builder.conn.execute('SET lock_timeout=100')
+            with self.assertRaises(psycopg.errors.LockNotAvailable):
+                prepare_index(builder.conn,schema)
+            failed=index_state(self.db.conn,schema)
+            self.assertIsNotNone(failed);self.assertFalse(failed['indisvalid'])
+            configure_wait(builder.conn,30)
+            with ProgressMonitor(lambda: Store(self.database,schema=schema,application='test-index-monitor'),
+                    builder.conn.info.backend_pid,messages.append,interval=.05) as monitor:
+                future=pool.submit(prepare_index,builder.conn,schema,progress=monitor.set_stage)
+                deadline=time.monotonic()+10
+                observed=None
+                while time.monotonic()<deadline:
+                    observed=progress_snapshot(self.db.conn,builder.conn.info.backend_pid)
+                    if observed and writer.conn.info.backend_pid in observed['blocking_pids']:break
+                    time.sleep(.05)
+                self.assertIn(writer.conn.info.backend_pid,observed['blocking_pids'])
+                # Reproduce a live transaction longer than the former 5s budget.
+                time.sleep(5.2)
+                self.assertFalse(future.done())
+                self.assertEqual(writer.conn.execute('SELECT 1 AS alive').fetchone()['alive'],1)
+                writer.conn.execute('COMMIT')
+                self.assertEqual(future.result(timeout=15),'CREATED')
+            self.assertTrue(index_state(self.db.conn,schema)['indisvalid'])
+            self.assertEqual(prepare_index(builder.conn,schema),'ALREADY_READY')
+            samples=[m['database'] for m in messages if m['status']=='COMPACT_SEARCH_INDEX_PROGRESS']
+            self.assertTrue(any(s and s['blocking_pids'] for s in samples))
+            self.assertFalse(any('query' in s for s in samples if s))
+        finally:
+            writer.conn.execute('ROLLBACK')
+            pool.shutdown(wait=True)
+            writer.close();builder.close()
+
     def test_performance_samples_are_bounded_and_keep_ingest_history_ad_separate(self):
         from compact_product.performance import initialize,record,recent
         schema=self.config.source_schema
