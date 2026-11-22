@@ -1,5 +1,5 @@
 {
-  "policy_version": "meaningful-api-roles-1",
+  "policy_version": "meaningful-api-roles-2",
   "source_catalog_sha256": "05ebff4db5829cc2f72a73e2813dce3002f7afd26793c9efd61947d246005d92",
   "unknown_policy": "UNCLASSIFIED_NOT_NORMAL_NOT_A_MEANINGFUL_ACTION",
   "routes": {
@@ -1026,6 +1026,38 @@
     "Webhook.v2/InformBillsPaymentStatus": {
       "role": "system",
       "family_label_fa": null
+    },
+    "JobsQueue.v1/JobEwanoPing": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "JobsQueue.v1/JobPaymentReturn": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "HelperQueue.CleanupOldItems": {
+      "role": "system",
+      "family_label_fa": null
+    },
+    "Services.v1/TopUpProductReserve": {
+      "role": "business",
+      "family_label_fa": null
     }
+  },
+  "owner_additions": {
+    "confirmed_on": "2026-11-22",
+    "roles": {
+      "JobsQueue.v1/JobEwanoPing": "system",
+      "JobsQueue.v1/JobPaymentReturn": "system",
+      "HelperQueue.CleanupOldItems": "system",
+      "Services.v1/TopUpProductReserve": "business"
+    },
+    "source_files_sha256": {
+      "Core/Intermediate/Job/Base/JobsQueue.cs": "992f74a3d591e48dd79b7c8c3f5225c78c1f972fc88b2df4156bdb272e7a0d7a",
+      "Core/Main/Helper/HelperQueue.cs": "d8eb5d6439b735b6a6ffa3527c653ab2d526b2b1b343da63e4aeb10c163526c3",
+      "Core/Main/Helper/HelperHttpContext.cs": "99bdadeb5f56aff89c1bc7cae1c70dec27866e151c0e3585d6a1994d03e4e378",
+      "Core/Intermediate/Modules/Sales/Commands/Register/InvoiceRegisterHandler.cs": "cbb95e0714a71fac79978e4c25dd1b62f790085cdc5df5476a38ac7cb0b7f28e"
+    },
+    "topup_scope": "Reservation/purchase attempt is user behavior independently of payment outcome; provider output binding remains separate."
   }
 }

@@ -582,7 +582,7 @@
         "V1_TopUpReserve",
         "V1_TopUpChargeCustom"
       ],
-      "catalog_role": "unknown"
+      "catalog_role": "business"
     },
     "Services.v1/TrafficFinesCar": {
       "service_names": [
@@ -1007,5 +1007,6 @@
       ],
       "catalog_role": "business"
     }
-  }
+  },
+  "role_review": "TopUpProductReserve business role confirmed by owner 2026-11-22; dispatcher mapping unchanged."
 }
