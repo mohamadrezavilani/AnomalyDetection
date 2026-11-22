@@ -8,7 +8,7 @@ from compact_behavior.store import Store, stream_lock, ALL
 from compact_behavior.extract import digest
 from . import MODEL, REFERENCE_WINDOWS
 from .engine import summarize, evaluate
-from . import seasonality
+from . import seasonality, long_store, longitudinal
 
 
 class ChangedDuringAnalysis(Exception):
@@ -63,6 +63,7 @@ class AnalysisStore(Store):
             ]:
                 self.conn.execute(sql)
             seasonality.initialize(self.conn, s)
+            long_store.initialize(self.conn, s)
 
     def select_work(self, stream):
         self.iteration += 1
@@ -136,6 +137,9 @@ class AnalysisStore(Store):
             ).fetchone()
             if not published:
                 raise ValueError("target_window_not_published")
+            long_needed = self.conn.execute(f'''SELECT 1 FROM {a}.long_manifest
+                WHERE stream_id=%s AND start_ns=%s AND published_ns=%s AND version=%s''',
+                (stream,start,published['published_at_ns'],longitudinal.VERSION)).fetchone() is None
             # Only already analyzed, strictly prior event windows, bounded to 24h.
             # A missing/dirty reference never becomes a silent zero observation.
             refs = self.conn.execute(
@@ -164,7 +168,7 @@ class AnalysisStore(Store):
                     WHERE stream_id=%s AND observed_at_ns>=%s AND observed_at_ns<%s ORDER BY observed_at_ns,behavior_id""",
                     (stream, start, start + FIVE),
                 )
-                summary, services, actors = summarize(cur, cutoff_ns=start + FIVE)
+                summary, services, actors = summarize(cur, cutoff_ns=start + FIVE, collect_longitudinal=long_needed)
             active_sessions = Counter()
             for (session,_),actor in actors.items():active_sessions[session] += actor['count']
             candidates = [session for session,count in active_sessions.items() if count>=10]
@@ -213,6 +217,7 @@ class AnalysisStore(Store):
             references=refs,
             previous_events=previous_events,
             temporal_references=temporal_refs,
+            long_needed=long_needed,
         )
 
     def commit_analysis(self, work, results, seconds, *, fault=None):
@@ -226,6 +231,7 @@ class AnalysisStore(Store):
         now = time.time_ns()
         summary = work["summary"]
         signature = digest(summary)
+        long_prepared = long_store.prepare(summary, work['actors']) if work.get('long_needed',True) else None
         counts = {}
         for method in sorted({r["method"] for r in results}):
             counts[method] = dict(
@@ -289,11 +295,13 @@ class AnalysisStore(Store):
                 ),
             ).fetchone()["revision"]
             seasonality.save_rates(self.conn,a,stream,start,summary,signature)
+            if long_prepared is not None:
+                long_store.save(self.conn,a,stream,start,work['published_at_ns'],long_prepared)
             previous = {
                 r["finding_id"]: r
                 for r in self.conn.execute(
-                    f"SELECT * FROM {a}.findings WHERE stream_id=%s AND start_ns=%s",
-                    (stream, start),
+                    f"SELECT * FROM {a}.findings WHERE stream_id=%s AND start_ns=%s AND method<>%s",
+                    (stream, start, longitudinal.METHOD),
                 )
             }
             next_results = {
@@ -427,6 +435,14 @@ class AnalysisStore(Store):
         began = time.monotonic()
         seasonality.backfill(self.conn,self.ad_schema,stream)
         start = self.select_work(stream)
+        # A bounded background unit every tenth iteration (or idle). It never
+        # rewrites base results/ACKs, so extension warm-up cannot hold history.
+        if start is None or self.iteration % 10 == 0:
+            background = long_store.step(self, stream, allow_backfill=start is None)
+            if background:
+                background['analysis_seconds'] = time.monotonic() - began
+                background['total_seconds'] = background['analysis_seconds']
+                return background
         if start is None:
             return dict(status="ANALYSIS_IDLE")
         work = self.snapshot(stream, start)
