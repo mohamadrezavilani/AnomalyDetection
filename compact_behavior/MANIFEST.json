@@ -1,12 +1,12 @@
 {
-  "build_id": "COMPACT-BEHAVIOR-20261122-14",
+  "build_id": "COMPACT-BEHAVIOR-20261122-15",
   "contract": "compact-behavior-1",
   "files_sha256": {
     "__init__.py": "7a8bdf1c0a54dec96e1886b1004a662ef0d98d3693f08c31cb042624fd413dd5",
     "__main__.py": "8481ae5cee88325f1ba8ccb32ff85f4c7ceefc805b56453f1fe0500c012f0322",
     "context.py": "5478a97908ad345196bbf52ee942df0dccfdefeddf4515f52170b0c0eee8b162",
-    "dispatch_routes.json": "6314b7c75453ff435a5fd84edf9d71aa185ae4d90874a9e2b2dd641c26cbcab3",
-    "extract.py": "a5c09bdaeff118f930174461a39ac1f611a4c62f5c075713a3d055c8b9f62a8a",
+    "dispatch_routes.json": "ce4364996c98d298c3d3f4950fed487702d07b3a794a34194be6ce9da526ce37",
+    "extract.py": "ac994288793eb39cbd24a724cc72c63522dc3a94c6a2010562bfad2eb2dd227a",
     "feature_contract.py": "f6d41e472da74e364a78ce6aeb7f69b62ea02066601ca084999a9fe715196c12",
     "history.py": "67243f67fddd42aed2390d04d01bfcad38b5f96fda9caa27507ccab65df7be5c",
     "independent_operations.json": "990398f0ad658b812ae01c1377543e76f184e247a2f7f7b7dafb20875f799e59",
@@ -18,6 +18,6 @@
     "services.py": "d7feeb5d4596b7589808fb6679fab6a829e71f155cdc177a38613d6d2e02b22d",
     "source.py": "5b1b3479171e470191b00932ac1ff8f2df8dbb2bfc8a5646771aed80424dd860",
     "store.py": "9181cbafb8aae4b588a3276441ae2905a03e4ed319f03274ec23dca56e4a8f42",
-    "version.py": "8c0e887ee0ab96935eaaf8bd3a282202e24a325375d065e8cd92603009bba250"
+    "version.py": "c16f88735cc7b0a796f7fc122ae09e942e782151dc3a8359cb486169ec362cc6"
   }
 }

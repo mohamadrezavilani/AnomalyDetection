@@ -40,6 +40,9 @@ PROVIDERS = {
     "Services.v1/LivelihoodInformation": "ClientAyanCoInquiry.SfaraCouponInquiry",
     "Services.v1/SfaraCoupon": "ClientAyanCoInquiry.SfaraCouponInquiry",
     "Services.v1/LandLinePhoneBills": "ClientAyanCoInquiry.FixedLineBillInquiry",
+    # Reviewed v3 export handler returns the uploaded URL after fetching the PDF.
+    # This is the observed upload response, not the public API response envelope.
+    "Services.v3/LandLinePhoneBillsExport": "ClientAyanCoS3.Upload",
 }
 ANCILLARY = {
     "ClientAyanCoPaymentGateway.PaymentInquiry",

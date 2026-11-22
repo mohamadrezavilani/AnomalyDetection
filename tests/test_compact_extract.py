@@ -19,6 +19,52 @@ def extract(rows):
     return e.finish()
 
 
+def export_dispatch_rows():
+    return [row('export-test', path='Services.v1/InvoiceRegister'),
+        row('export-test', path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',
+            message='(SQL Parameters: @action=v3/LandLinePhoneBillsExport)'),
+        row('export-test', path='DBPath.pishkhan24.application.ud_prc_invoiceRequest',
+            message='(SQL Parameters: @serviceID=7001)'),
+        row('export-test', path='DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2',
+            message='(SQL Parameters: @queryParameters={"FixedLineNumber":"line-fixture","Final":false} @queryResult=)'),
+        row('export-test', path='ClientAyanCoInquiry.FixedLineBillInquiryGetBillImage',
+            message='Output:{"Parameters":{"BillPdfUrl":"https://provider.example.test/file.pdf"}}'),
+        row('export-test', path='ClientAyanCoS3.Upload',
+            message='Output:{"Parameters":{"Url":"https://storage.example.test/result.pdf"},"Status":{"Code":"G00000"}}'),
+        row('export-test', path='CacheCoreApi.HandleRequest',
+            message='Output:{"Parameters":{"CacheKey":"fixture"}}')]
+
+
+class ReviewedExportDispatchTests(unittest.TestCase):
+    def test_v3_export_uses_explicit_dispatch_and_reviewed_upload_response(self):
+        body = materialize('test', extract(export_dispatch_rows())['export-test'])
+        f = body['features']
+        self.assertEqual(f['service_key'], 'Services.v3/LandLinePhoneBillsExport')
+        self.assertEqual(f['operation_role'], 'business')
+        self.assertTrue(f['service_rate_eligible'])
+        self.assertTrue(f['input_feature_eligibility']['targets'])
+        self.assertTrue(f['output_feature_eligibility']['shape'])
+        self.assertNotIn('output_conflict', body['quality'])
+        self.assertNotIn('unresolved_dispatch', body['quality'])
+        self.assertEqual(body['reported_duration'], 12.5)
+
+    def test_export_provider_cannot_invent_dispatch_and_new_versions_are_not_assumed(self):
+        records = export_dispatch_rows()
+        for changed in (records[:2]+records[3:], records[:1]+records[2:],
+                [dict(r, message=r['message'].replace('v3/LandLinePhoneBillsExport','v4/LandLinePhoneBillsExport')) for r in records]):
+            f = materialize('test', extract(changed)['export-test'])['features']
+            self.assertFalse(f['service_rate_eligible'])
+            self.assertEqual(f['operation_role'], 'unknown')
+
+    def test_multiple_uploads_keep_output_conflicted_without_losing_request_count(self):
+        records = export_dispatch_rows()+[row('export-test',path='ClientAyanCoS3.Upload',
+            message='Output:{"Parameters":{"Url":"https://storage.example.test/different.pdf"}}')]
+        body = materialize('test', extract(records)['export-test'])
+        self.assertTrue(body['features']['service_rate_eligible'])
+        self.assertFalse(body['features']['output_feature_eligibility']['shape'])
+        self.assertIn('output_conflict',body['quality'])
+
+
 class FlakyWindow(ElasticWindow):
     """The failed snapshot contains a row absent from the successful snapshot."""
     def __init__(self,*,always_fail=False):
