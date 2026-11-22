@@ -46,8 +46,9 @@ def inspect(store, ad_schema, stream, request_id):
     return dict(request_id=key,original_request_ids=row['state'].get('raw_request_ids',[]),
         session_id=row['session_id'],requested_service=service,start_ns=start,
         observed_rate_limited_attempt=valid,stored_attempt_feature=stored,
-        needs_feature_repair=valid and stored!=expected,
-        this_request_counted_in_stored_attempts=valid and stored==expected and bool(row['session_id']),
+        needs_feature_repair=valid and (stored!=expected or row['features'].get('version')!=FEATURES),
+        this_request_counted_in_stored_attempts=valid and stored==expected
+            and row['features'].get('version')==FEATURES and bool(row['session_id']),
         stored_session_rejections_in_window=count,analysis_current=current,
         analysis_window=window,reference_work_pending=pending,
         target_values_available=bool(row['features'].get('input_feature_eligibility',{}).get('targets')

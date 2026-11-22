@@ -75,6 +75,10 @@ class CompactProductPostgresTests(unittest.TestCase):
                  row(key,'same',path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/PostPackagesStatus)')]
         states=extract(records);self.db.publish('test',T,T+FIVE,states,2);self.db.step('test')
         s=self.config.source_schema;a=self.config.ad_schema
+        self.db.conn.execute(f'''UPDATE {s}.behaviors SET features=jsonb_set(features,'{{version}}','"old-contract"'::jsonb)''')
+        incompatible=inspect(self.db,a,'test',key)
+        self.assertFalse(incompatible['this_request_counted_in_stored_attempts'])
+        self.assertTrue(incompatible['needs_feature_repair'])
         # Simulate a pre-feature stored record and its different content hash.
         self.db.conn.execute(f"UPDATE {s}.behaviors SET features=features-'rejected_attempt',content_hash='old-feature-fixture'")
         before=inspect(self.db,a,'test',key)
