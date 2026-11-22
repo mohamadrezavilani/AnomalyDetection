@@ -35,6 +35,50 @@ def export_dispatch_rows():
             message='Output:{"Parameters":{"CacheKey":"fixture"}}')]
 
 
+def access_denied_rows():
+    return [row('access-fixture', path='Services.v1/InvoiceRegister',
+                message='POST https://example.test/api HTTP/1.1 (G00010 | UserAccessObjectsDoesNotContainAccessObject)'),
+            row('access-fixture', path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',
+                message='(SQL Parameters: @action=v1/LandLinePhoneBills)')]
+
+
+class AccessDeniedDispatchTests(unittest.TestCase):
+    def test_exact_refusal_is_intent_only_and_does_not_change_ad_summary(self):
+        from copy import deepcopy
+        from compact_ad.engine import summarize
+        body = materialize('test', extract(access_denied_rows())['access-fixture'])
+        f = body['features']
+        self.assertEqual(f['access_denied_attempt']['service'], 'Services.v1/LandLinePhoneBills')
+        self.assertTrue(f['access_denied_attempt']['verified'])
+        self.assertIsNone(f['service_key'])
+        self.assertFalse(f['service_rate_eligible'])
+        self.assertNotIn('rejected_attempt', f)
+        previous = deepcopy(body)
+        del previous['features']['access_denied_attempt']
+        current_summary = summarize([body])
+        old_summary = summarize([previous])
+        # The new bounded diagnostic field adds bytes, not detector inputs.
+        current_summary[0].pop('feature_bytes')
+        old_summary[0].pop('feature_bytes')
+        self.assertEqual(current_summary, old_summary)
+
+    def test_code_alone_missing_conflicting_or_executed_dispatch_is_not_reclassified(self):
+        records = access_denied_rows()
+        variants = [
+            records[:1],
+            [dict(records[0], message=records[0]['message'].replace('UserAccessObjectsDoesNotContainAccessObject', 'Forbidden')), records[1]],
+            [dict(records[0], message=records[0]['message'].replace('G00010', 'GR0004')), records[1]],
+            [records[0], dict(records[1], message='(SQL Parameters: @action=v99/NotReviewed)')],
+            records + [row('access-fixture', path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess', message='(SQL Parameters: @action=v1/WaterBills)')],
+            records + [row('access-fixture', path='DBPath.pishkhan24.application.ud_prc_invoiceRequest', message='(SQL Parameters: @serviceID=7001)')],
+            records + [row('access-fixture', session='different-session')],
+            [dict(records[0], Session=''), dict(records[1], Session='')],
+        ]
+        for variant in variants:
+            with self.subTest(variant=variants.index(variant)):
+                self.assertNotIn('access_denied_attempt', materialize('test', extract(variant)['access-fixture'])['features'])
+
+
 class ReviewedExportDispatchTests(unittest.TestCase):
     def test_v3_export_uses_explicit_dispatch_and_reviewed_upload_response(self):
         body = materialize('test', extract(export_dispatch_rows())['export-test'])

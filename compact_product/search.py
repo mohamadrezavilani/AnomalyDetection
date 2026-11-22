@@ -60,7 +60,9 @@ def source_ids(state, canonical, name):
 
 def decorate(row, state):
     row['rate_limited_attempt'] = row.get('api')=='Services.v1/InvoiceRegister' and row.get('result_code')=='GR0004'
-    attempt=row.get('rejected_attempt') or {}
+    access = row.get('access_denied_attempt') or {}
+    row['access_denied'] = (row.get('api') == 'Services.v1/InvoiceRegister' and row.get('result_code') == 'G00010' and access.get('verified') is True)
+    attempt=(access if row['access_denied'] else row.get('rejected_attempt')) or {}
     row['requested_service']=attempt.get('service')
     if row['rate_limited_attempt'] and not row['requested_service']:
         from compact_behavior.services import operation_role

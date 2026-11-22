@@ -13,6 +13,7 @@ def main():
     p.add_argument('--request-id', required=True)
     p.add_argument('--service', required=True)
     p.add_argument('--apply', action='store_true')
+    p.add_argument('--access-denied', action='store_true', help='Verify requested destination for exact pre-dispatch access refusal, not service execution')
     a = p.parse_args(); sys.path.insert(0, str(a.code_root.resolve()))
     from compact_product.version import verify
     from compact_product.config import load
@@ -34,21 +35,21 @@ def main():
         db = Store(settings['DATABASE'], schema=cfg.source_schema, application='dispatch-review')
         with db.conn.transaction():
             db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
-            report['before'] = inspect(db, stream, a.request_id, a.service)
-        if a.apply and not report['before']['ready_for_rate_analysis']:
+            report['before'] = inspect(db, stream, a.request_id, a.service, access_denied=a.access_denied)
+        if a.apply and not report['before']['ready_for_requested_repair']:
             start = report['before']['start_ns']; report['source_contacted'] = True
             save(output, report)
             source = ElasticWindow(settings['ELASTICSEARCH'], start, start+FIVE,
                 page_size=settings['ELASTICSEARCH'].get('compact_page_size',500), budget=cfg.ingest_budget_seconds)
-            report['repair'] = measure_window(DispatchWindowWriter(db,a.request_id,a.service,start),
+            report['repair'] = measure_window(DispatchWindowWriter(db,a.request_id,a.service,start,access_denied=a.access_denied),
                 stream, source, progress=lambda **kw: notice('COMPACT_DISPATCH_WINDOW_READING',**kw))
             report['database_modified'] = True
         with db.conn.transaction():
             db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
-            report['after'] = inspect(db, stream, a.request_id, a.service)
+            report['after'] = inspect(db, stream, a.request_id, a.service, access_denied=a.access_denied)
         report['status'] = ('COMPACT_DISPATCH_REPAIRED_ANALYSIS_REFRESH_REQUESTED'
             if report['database_modified'] else 'COMPACT_DISPATCH_ALREADY_READY'
-            if report['after']['ready_for_rate_analysis'] else 'COMPACT_DISPATCH_REPAIR_REQUIRED')
+            if report['after']['ready_for_requested_repair'] else 'COMPACT_DISPATCH_REPAIR_REQUIRED')
     except Exception as exc:
         report['status'] = 'COMPACT_DISPATCH_REPAIR_INCOMPLETE'
         report['failure'] = dict(type=type(exc).__name__,sqlstate=getattr(exc,'sqlstate',None),

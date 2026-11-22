@@ -774,4 +774,16 @@ def materialize(stream, state):
             action=next(iter(actions))
             body['features']['rejected_attempt'] = dict(service=action,eligible=True,
                 stage='RATE_LIMITED_BEFORE_CONFIRMED_DISPATCH',result_code=code)
+    # This exact code/symbol pair identifies a pre-dispatch access refusal.
+    # G00010 alone is generic and must never imply this classification.
+    if (api == 'Services.v1/InvoiceRegister' and binding == 'UNRESOLVED_DISPATCH'
+            and usable and code == 'G00010'
+            and roots[0]['symbol'] == 'UserAccessObjectsDoesNotContainAccessObject'):
+        actions = {v['value'] for v in state.get('dispatch', []) if v['kind'] == 'action'}
+        requests = {v['value'] for v in state.get('dispatch', []) if v['kind'] == 'service_request'}
+        if len(actions) == 1 and not requests and operation_role(next(iter(actions))) in ('business', 'user_management'):
+            body['features']['access_denied_attempt'] = dict(
+                service=next(iter(actions)), verified=True, result_code=code,
+                stage='ACCESS_DENIED_BEFORE_CONFIRMED_DISPATCH',
+                dedicated_ad='NOT_IMPLEMENTED')
     return body
