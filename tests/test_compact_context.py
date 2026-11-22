@@ -7,6 +7,33 @@ SQL='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess'
 
 
 class CompactContextTests(unittest.TestCase):
+    def test_benchmark_policy_exception_never_hides_content_changes(self):
+        from copy import deepcopy
+        from compact_behavior.extract import digest
+        from tools.Benchmark_Compact_Context import signature_without_policy_stamp
+        state=extract([row()])['req-1'];body=materialize('test',state)
+        old=deepcopy(body);old['features']['behavior_policy_version']='meaningful-api-roles-1'
+        a,_=signature_without_policy_stamp(old,state,digest)
+        b,_=signature_without_policy_stamp(body,state,digest)
+        self.assertEqual(a,b)
+        changed=deepcopy(body);changed['features']['service_rate_eligible']=False
+        self.assertNotEqual(a,signature_without_policy_stamp(changed,state,digest)[0])
+        self.assertEqual(body['features']['behavior_policy_version'],'meaningful-api-roles-2')
+        changed['features']['behavior_policy_version']='unreviewed-version'
+        with self.assertRaises(ValueError):signature_without_policy_stamp(changed,state,digest)
+
+    def test_benchmark_accepts_only_exact_hash_or_explicit_v1_v2_stamp_transition(self):
+        from copy import deepcopy
+        from tools.Benchmark_Compact_Context import parity
+        data=dict(baseline=dict(behavior_hash='a',behavior_hash_without_policy_stamp='same',behavior_policies=['meaningful-api-roles-1']),
+            candidate=dict(behavior_hash='b',behavior_hash_without_policy_stamp='same',behavior_policies=['meaningful-api-roles-2']))
+        self.assertFalse(parity(data)['same_behavior_hash'])
+        self.assertTrue(parity(data)['behavior_parity_accepted'])
+        changed=deepcopy(data);changed['candidate']['behavior_hash_without_policy_stamp']='different'
+        self.assertFalse(parity(changed)['behavior_parity_accepted'])
+        changed=deepcopy(data);changed['candidate']['behavior_policies']=['meaningful-api-roles-3']
+        self.assertFalse(parity(changed)['behavior_parity_accepted'])
+
     def test_blank_fragments_never_erase_one_observed_value(self):
         records=[dict(row(),IP=''),dict(row(path=SQL,message='(SQL Parameters: @session=s @userAgent=Example Browser @ipAddress=192.0.2.8 @action=v1/WaterBills)'),IP='N/A'),dict(row(),IP='192.0.2.8'),dict(row(),IP=None)]
         state=extract(records)['req-1']; context=state['request_context']['values']
