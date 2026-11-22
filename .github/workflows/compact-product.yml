@@ -77,16 +77,16 @@ jobs:
           export P24_COMPACT_BROWSER=$(command -v google-chrome)
           test -n "$P24_COMPACT_BROWSER"
           python -B -m unittest -v tests.test_compact_pg tests.test_compact_product_pg tests.test_compact_product_runtime tests.test_compact_history_pg tests.test_compact_ui_browser
-      - name: Compare metadata write path with installed build 10
+      - name: Compare indexed metadata write path with installed build 16
         env:
           P24_DELTA_PG_HOST: 127.0.0.1
           P24_DELTA_PG_PORT: '5432'
           P24_DELTA_PG_USER: postgres
           PGPASSWORD: disposable-compact-test
         run: |
-          git fetch --no-tags --depth=1 origin 3bffd33583d5194f685d1f683bb1286b10873cb1
-          git worktree add --detach /tmp/compact-installed-10 3bffd33583d5194f685d1f683bb1286b10873cb1
-          python tools/Benchmark_Compact_Context.py --baseline /tmp/compact-installed-10 --candidate . --output compact-ui-screenshots/context-benchmark.json
+          git fetch --no-tags --depth=1 origin c4f5ccd72b642a267a97843b4dc9ed66957c7c74
+          git worktree add --detach /tmp/compact-installed-16 c4f5ccd72b642a267a97843b4dc9ed66957c7c74
+          python tools/Benchmark_Compact_Context.py --baseline /tmp/compact-installed-16 --candidate . --output compact-ui-screenshots/context-benchmark.json
       - name: Bounded adaptive AD CPU and memory comparison
         run: |
           git fetch --no-tags --depth=1 origin 3c01de66f715a5af8c2d5b9e0aafa9717932c596
