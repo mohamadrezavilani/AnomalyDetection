@@ -81,8 +81,14 @@ class CompactExtractionTests(unittest.TestCase):
                 self.assertEqual(body['manual_start'],'UNKNOWN')
 
     def test_independent_root_allowlist_does_not_accept_similar_unconfirmed_paths(self):
-        for path in ['Webhook.v1/OtherEvent','Ewano.v1/UnknownOperation','Proxy.CarTaxInquiry','Files.Upload']:
+        for path in ['Webhook.v1/OtherEvent','Ewano.v1/UnknownOperation','Proxy.CarTaxInquiry','Files.Upload','JobsQueue.v1/UnknownJob','HelperQueue.UnknownTask']:
             self.assertIsNone(materialize('stream',extract([row(path=path)])['req-1']))
+
+    def test_cleanup_trace_is_system_without_fabricated_http_completion(self):
+        body=materialize('stream',extract([row(path='HelperQueue.CleanupOldItems',message='Remove[1] Current[2] successful')])['req-1'])
+        self.assertEqual(body['kind'],'system_operation')
+        self.assertIn('operation_completion_unavailable',body['quality'])
+        self.assertFalse(body['features']['service_rate_eligible'])
 
     def test_ewano_sessions_remain_separate_authoritative_identities(self):
         states=extract([row('a',session='session-a',path='Ewano.v1/EwanoLogin'),

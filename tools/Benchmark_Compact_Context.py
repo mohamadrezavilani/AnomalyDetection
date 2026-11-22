@@ -2,6 +2,7 @@
 Requires explicit P24_DELTA_PG_* test environment, never loads project config.
 """
 import argparse
+import copy
 import json
 import os
 from pathlib import Path
@@ -12,9 +13,28 @@ import time
 import uuid
 
 
+def signature_without_policy_stamp(body,state,digest):
+    normalized=copy.deepcopy(body)
+    policy=normalized['features'].pop('behavior_policy_version')
+    if policy not in ('meaningful-api-roles-1','meaningful-api-roles-2'):
+        raise ValueError('unreviewed_benchmark_policy')
+    return digest([normalized,state]),policy
+
+
+def parity(results):
+    baseline,candidate=results['baseline'],results['candidate']
+    exact=baseline['behavior_hash']==candidate['behavior_hash']
+    except_stamp=baseline['behavior_hash_without_policy_stamp']==candidate['behavior_hash_without_policy_stamp']
+    allowed_transition=(baseline['behavior_policies']==['meaningful-api-roles-1'] and
+                        candidate['behavior_policies']==['meaningful-api-roles-2'])
+    return dict(same_behavior_hash=exact,same_behavior_except_policy_stamp=except_stamp,
+        policy_stamp_transition=allowed_transition,
+        behavior_parity_accepted=exact or except_stamp and allowed_transition)
+
+
 def worker(root, count):
     sys.path.insert(0, str(root))
-    from compact_behavior.extract import Extractor, iso, digest
+    from compact_behavior.extract import Extractor, iso, digest, materialize
     from compact_behavior.store import Store
     from compact_behavior import FIVE
     schema='p24_compact_meta_bench_'+uuid.uuid4().hex[:12]
@@ -38,8 +58,20 @@ def worker(root, count):
             report=store.publish('bench',start,start+FIVE,states,len(logs))
             if w>=2:samples.append(dict(extract_seconds=extract_seconds,write_seconds=report['database_seconds'],total_seconds=extract_seconds+report['database_seconds']))
         hashes=store.conn.execute(f'SELECT content_hash FROM {schema}.behaviors ORDER BY behavior_id').fetchall()
+        comparable=[];policies=set()
+        # Outside timed extraction/write samples: retain the original exact
+        # hash, and separately permit only the reviewed provenance-stamp change.
+        rows=store.conn.execute(f'''SELECT b.content_hash,p.state FROM {schema}.behaviors b
+            JOIN {schema}.behavior_payloads p USING(behavior_id) ORDER BY b.behavior_id''').fetchall()
+        for stored in rows:
+            body=materialize('bench',stored['state'])
+            if digest([body,stored['state']])!=stored['content_hash']:
+                raise RuntimeError('Stored behavior hash does not match materialized state')
+            signature,policy=signature_without_policy_stamp(body,stored['state'],digest)
+            comparable.append(signature);policies.add(policy)
         result=dict(samples=samples,median_seconds={key:statistics.median(r[key] for r in samples) for key in samples[0]},
             behavior_hash=digest(hashes),requests_per_window=count,
+            behavior_hash_without_policy_stamp=digest(comparable),behavior_policies=sorted(policies),
             relations=store.conn.execute('SELECT sum(pg_total_relation_size(c.oid))::bigint AS bytes FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=%s AND c.relkind=%s',(schema,'r')).fetchone())
         print(json.dumps(result))
     finally:
@@ -55,10 +87,10 @@ def main():
     for name,root in [('baseline',a.baseline),('candidate',a.candidate)]:
         completed=subprocess.run([sys.executable,'-B',__file__,'--worker',str(root.resolve()),'--requests',str(a.requests)],capture_output=True,text=True,check=True)
         results[name]=json.loads(completed.stdout)
-    results['same_behavior_hash']=results['baseline']['behavior_hash']==results['candidate']['behavior_hash']
+    results.update(parity(results))
     results['total_ratio']=results['candidate']['median_seconds']['total_seconds']/results['baseline']['median_seconds']['total_seconds']
     a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(results,indent=2))
     print(json.dumps(results))
-    if not results['same_behavior_hash']:raise RuntimeError('Existing behavior content changed')
+    if not results['behavior_parity_accepted']:raise RuntimeError('Existing behavior content changed beyond reviewed policy stamp')
 
 if __name__=='__main__':main()

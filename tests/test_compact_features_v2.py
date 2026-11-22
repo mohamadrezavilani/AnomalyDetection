@@ -59,13 +59,34 @@ class PayloadAndScopeTests(unittest.TestCase):
         self.assertEqual(materialize("s", old)["features"]["input"], materialize("s", new)["features"]["input"])
         self.assertLess(len(json.dumps(new)), 10000)
 
-    def test_source_role_catalog_is_reused_exactly(self):
+    def test_source_role_catalog_is_preserved_with_explicit_owner_additions(self):
         from compact_behavior.services import operation_catalog
         source = Path(__file__).resolve().parents[1] / "catalogs/viewer_service_roles.json"
         registered = json.loads(source.read_text(encoding="utf-8"))["routes"]
         catalog = operation_catalog()
         self.assertEqual(catalog["source_catalog_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
-        self.assertEqual({k:v["role"] for k,v in catalog["routes"].items()}, {k:v["role"] for k,v in registered.items()})
+        added=catalog['owner_additions']['roles']
+        self.assertFalse(set(added)&set(registered))
+        self.assertEqual({k:v["role"] for k,v in catalog["routes"].items()},
+            {**{k:v["role"] for k,v in registered.items()},**added})
+        from compact_behavior.services import routes
+        self.assertFalse(set(routes())-set(catalog['routes']))
+
+    def test_confirmed_topup_role_does_not_invent_provider_output_binding(self):
+        records=[row(path='Services.v1/InvoiceRegister'),
+            row(path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/TopUpProductReserve)'),
+            row(path='DBPath.pishkhan24.application.ud_prc_invoiceRequest',message='(SQL Parameters: @serviceID=1202)'),
+            row(path='DBPath.pishkhan24.application.ud_prc_invoiceRegister',message='(SQL Parameters: @queryParameters={"LineNumber":"example","Amount":100})'),
+            row(path='ClientAyanCoTopUp.TopUpChargeCustom',message='Output:{"Amount":100}')]
+        body=materialize('s',extract(records)['req-1'])
+        self.assertEqual(body['operation_role'],'business')
+        self.assertTrue(body['features']['service_rate_eligible'])
+        self.assertTrue(body['features']['input_eligible'])
+        self.assertFalse(body['features']['output_eligible'])
+        self.assertIn('output_binding_unconfirmed',body['quality'])
+        partial=materialize('s',extract(records[:2])['req-1'])
+        self.assertEqual(partial['operation_role'],'unknown')
+        self.assertIn('unresolved_dispatch',partial['quality'])
 
     def test_auxiliary_calls_do_not_become_meaningful_actions_or_retain_large_content(self):
         from compact_ad.engine import summarize

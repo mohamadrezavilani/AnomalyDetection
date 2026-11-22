@@ -79,6 +79,26 @@ class CompactProductPostgresTests(unittest.TestCase):
         counts=self.db.conn.execute(f'SELECT active_pending FROM {schema}.queue_counts').fetchone()
         self.assertEqual(counts['active_pending'],0)
 
+    def test_topup_republication_updates_old_unknown_features_without_duplicate(self):
+        from unittest.mock import patch
+        from compact_behavior.services import operation_catalog
+        schema=self.config.source_schema
+        states=extract([row('topup',path='Services.v1/InvoiceRegister'),
+            row('topup',path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/TopUpProductReserve)'),
+            row('topup',path='DBPath.pishkhan24.application.ud_prc_invoiceRequest',message='(SQL Parameters: @serviceID=1202)')])
+        with patch.dict(operation_catalog()['routes']['Services.v1/TopUpProductReserve'],role='unknown'):
+            self.db.publish('test',T,T+FIVE,states,3)
+        before=self.db.conn.execute(f'SELECT * FROM {schema}.behaviors').fetchone()
+        self.assertFalse(before['features']['service_rate_eligible'])
+        self.db.publish('test',T,T+FIVE,states,3)
+        after=self.db.conn.execute(f'SELECT * FROM {schema}.behaviors').fetchone()
+        self.assertEqual(before['behavior_id'],after['behavior_id'])
+        self.assertEqual(after['revision'],before['revision']+1)
+        self.assertTrue(after['features']['service_rate_eligible'])
+        self.assertEqual(self.count('behaviors',True),1)
+        self.db.publish('test',T,T+FIVE,states,3)
+        self.assertEqual(after,self.db.conn.execute(f'SELECT * FROM {schema}.behaviors').fetchone())
+
     def test_unknown_review_separates_pending_and_roles_without_payload_export(self):
         from tools.Review_Compact_Unknowns import collect
         partial=lambda key,at:dict(row(key,path='ClientAyanCoInquiry.WaterBillInquiry',
