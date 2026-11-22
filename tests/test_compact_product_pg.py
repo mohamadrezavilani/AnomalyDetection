@@ -37,6 +37,51 @@ def crash_analysis(config, schema, ad_schema, start, point):
 
 @unittest.skipUnless(os.environ.get("P24_DELTA_PG_HOST"), "native PostgreSQL required")
 class CompactProductPostgresTests(unittest.TestCase):
+    def test_access_denial_repair_and_scopes_preserve_execution_counts_and_cursor(self):
+        from tests.test_compact_extract import access_denied_rows
+        from compact_product.dispatch_review import inspect, DispatchWindowWriter
+        from tools.Review_Compact_Unknowns import collect
+        records = access_denied_rows()
+        states = extract(records)
+        self.db.publish('test', T, T+FIVE, states, len(records))
+        s = self.config.source_schema
+        self.db.conn.execute(f"UPDATE {s}.behaviors SET features=features-'access_denied_attempt',content_hash='old-fixture'")
+        saved = self.db.conn.execute(f'SELECT * FROM {s}.behaviors').fetchone()
+        client = create_app(self.config, self.database, 'test').test_client()
+        url = '/behaviors/'+saved['behavior_id']
+        self.assertIn(url, client.get('/?scope=unknown').get_data(as_text=True))
+        expected = 'Services.v1/LandLinePhoneBills'
+        self.assertFalse(inspect(self.db,'test','access-fixture',expected,access_denied=True)['ready_for_requested_repair'])
+        writer = DispatchWindowWriter(self.db,'access-fixture',expected,T,access_denied=True)
+        cursor = self.db.cursor('test')
+        with self.assertRaisesRegex(ValueError, 'source_does_not_prove'):
+            writer.publish('test',T,T+FIVE,extract(records[:1]),len(records))
+        with self.assertRaisesRegex(ValueError, 'source_window_shrank'):
+            writer.publish('test',T,T+FIVE,states,len(records)-1)
+        writer.publish('test',T,T+FIVE,states,len(records))
+        after = inspect(self.db,'test','access-fixture',expected,access_denied=True)
+        self.assertTrue(after['ready_for_requested_repair'])
+        self.assertFalse(after['ready_for_rate_analysis'])
+        self.assertEqual(cursor,self.db.cursor('test'))
+        for path in ('/', '/?scope=all', '/sessions?q=session-1', url):
+            response=client.get(path)
+            self.assertEqual(response.status_code,200)
+            page=response.get_data(as_text=True)
+            self.assertIn(expected,page)
+            self.assertIn('درخواست ردشده در کنترل دسترسی',page)
+        self.assertIn('هنوز فعال نیست', client.get(url).get_data(as_text=True))
+        self.assertNotIn(url,client.get('/?scope=unknown').get_data(as_text=True))
+        self.assertNotIn(url,client.get('/?scope=attempts').get_data(as_text=True))
+        with self.db.conn.transaction():
+            self.db.conn.execute('SET TRANSACTION READ ONLY')
+            review=collect(self.db.conn,s,'test')
+        self.assertEqual(review['groups']['UNKNOWN_BEHAVIORS']['sampled_requests'],0)
+        writer.publish('test',T,T+FIVE,states,len(records))
+        self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {s}.behaviors').fetchone()['n'],1)
+        self.db.step('test')
+        summary=self.db.conn.execute(f'SELECT summary FROM {self.config.ad_schema}.window_results WHERE start_ns=%s',(T,)).fetchone()['summary']
+        self.assertNotIn(expected,summary['services'])
+
     def test_dispatch_repair_proves_source_binding_and_preserves_cursor(self):
         from copy import deepcopy
         from tests.test_compact_extract import export_dispatch_rows

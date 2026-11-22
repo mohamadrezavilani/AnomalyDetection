@@ -121,8 +121,10 @@ def create_app(config, database, stream, *, secret=None):
         dispatch = "Services.v1/InvoiceRegister"
         binding = "SAME_REQUEST_REVIEWED_DISPATCH"
         attempt = "(api='Services.v1/InvoiceRegister' AND result_code='GR0004')"
+        access_attempt = "(api='Services.v1/InvoiceRegister' AND result_code='G00010' AND features->'access_denied_attempt'->>'verified'='true')"
         if scope == 'attempts':
             return scope, 'AND '+attempt, []
+        attempt = "(" + attempt + " OR " + access_attempt + ")"
         if scope == "unknown":
             known = sorted(api for api, row in operation_catalog()["routes"].items() if row["role"] != "unknown" and api != dispatch)
             return scope, "AND NOT COALESCE(" + expression + " OR " + attempt + ",false)", [known, dispatch, binding, known]
@@ -182,7 +184,7 @@ def create_app(config, database, stream, *, secret=None):
                         abort(503,description='جست‌وجوی IP هنوز آماده نیست؛ آماده‌سازی ایندکس جست‌وجو باید کامل شود.')
                     join=f' JOIN {config.source_schema}.request_context c USING(behavior_id)'
                 rows=db.execute(f"""SELECT b.request_id,b.session_id,b.observed_at_ns,b.api,b.result_code,b.behavior_id,
-                    b.features->>'service_key' AS service_key,b.features->'rejected_attempt' AS rejected_attempt,b.quality
+                    b.features->>'service_key' AS service_key,b.features->'rejected_attempt' AS rejected_attempt,b.features->'access_denied_attempt' AS access_denied_attempt,b.quality
                     FROM {config.source_schema}.behaviors b {join} WHERE b.stream_id=%s {clause} {filters_sql} {cursor_sql}
                     ORDER BY b.observed_at_ns DESC,b.behavior_id DESC LIMIT 31""",
                     (stream,*args,*filters_args,*cursor_args)).fetchall()
@@ -219,7 +221,7 @@ def create_app(config, database, stream, *, secret=None):
                 args.extend([before, bid])
             rows = db.execute(
                 f"""SELECT behavior_id,request_id,session_id,observed_at_ns,api,result_code,quality,
-                features->>'service_key' AS service_key,features->'rejected_attempt' AS rejected_attempt FROM {config.source_schema}.behaviors
+                features->>'service_key' AS service_key,features->'rejected_attempt' AS rejected_attempt,features->'access_denied_attempt' AS access_denied_attempt FROM {config.source_schema}.behaviors
                 WHERE stream_id=%s AND session_id=%s {scope_clause} {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 51""",
                 args,
             ).fetchall()
@@ -249,8 +251,9 @@ def create_app(config, database, stream, *, secret=None):
         if not row:
             abort(404)
         body = materialize(stream, row["state"])
-        search.decorate(row,row['state'])
         row['rejected_attempt']=body['features'].get('rejected_attempt')
+        row['access_denied_attempt']=body['features'].get('access_denied_attempt')
+        search.decorate(row,row['state'])
         return render_template(
             "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"], row.get("collected_context"))
         )

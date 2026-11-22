@@ -151,6 +151,9 @@ class Store:
             row = self.conn.execute(
                 f"SELECT * FROM {s}.streams WHERE stream_id=%s FOR UPDATE", (stream,)
             ).fetchone()
+            # Subphase clocks are diagnostic only; no additional SQL or scans.
+            times['stream_lock_acquire_seconds'] = time.monotonic() - phase
+            detail_phase = time.monotonic()
             if history_job is not None:
                 from .history import validate_publication
                 if not row or not allow_history:
@@ -196,6 +199,8 @@ class Store:
                 for key in keyed:
                     copy.write_row((key,))
             self.conn.execute("ANALYZE compact_keys")
+            times['key_preparation_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             old = {
                 r["behavior_id"]: r
                 for r in self.conn.execute(
@@ -208,6 +213,8 @@ class Store:
                     LEFT JOIN {s}.request_context c ON c.behavior_id=k.behavior_id"""
                 ).fetchall()
             }
+            times['existing_lookup_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             tombstones = {
                 r["behavior_id"]
                 for r in self.conn.execute(
@@ -215,6 +222,7 @@ class Store:
                 JOIN compact_keys k USING(behavior_id)"""
                 )
             }
+            times['tombstone_lookup_seconds'] = time.monotonic() - detail_phase
             times["read_existing_seconds"] = time.monotonic() - phase
             phase = time.monotonic()
             window_hash = digest(sorted((k, digest(v)) for k, v in keyed.items()))
@@ -324,6 +332,7 @@ class Store:
                 )
             times["merge_features_seconds"] = time.monotonic() - phase
             phase = time.monotonic()
+            detail_phase = time.monotonic()
             self.conn.execute(
                 f"CREATE TEMP TABLE compact_stage (LIKE {s}.behaviors INCLUDING DEFAULTS) ON COMMIT DROP"
             )
@@ -334,6 +343,8 @@ class Store:
             ) as copy:
                 for value in changed:
                     copy.write_row(value)
+            times['stage_copy_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             # One bounded COPY/upsert for changed metadata; no per-request SQL.
             if context_changes:
                 self.conn.execute("CREATE TEMP TABLE compact_context(behavior_id TEXT,context JSONB) ON COMMIT DROP")
@@ -343,6 +354,8 @@ class Store:
                 self.conn.execute(f"""INSERT INTO {s}.request_context SELECT * FROM compact_context ORDER BY behavior_id
                     ON CONFLICT(behavior_id) DO UPDATE SET context=excluded.context
                     WHERE {s}.request_context.context IS DISTINCT FROM excluded.context""")
+            times['context_upsert_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             assignment = ",".join(
                 f"{name}=excluded.{name}"
                 for name in cols.split(",")
@@ -353,11 +366,15 @@ class Store:
                 ON CONFLICT(behavior_id) DO UPDATE SET {assignment},revision={s}.behaviors.revision+1
                 WHERE {s}.behaviors.content_hash IS DISTINCT FROM excluded.content_hash"""
             )
+            times['behavior_upsert_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             self.conn.execute(
                 f"""INSERT INTO {s}.behavior_payloads SELECT behavior_id,state FROM compact_stage ORDER BY behavior_id
                 ON CONFLICT(behavior_id) DO UPDATE SET state=excluded.state
                 WHERE {s}.behavior_payloads.state IS DISTINCT FROM excluded.state"""
             )
+            times['payload_upsert_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             self.conn.execute(
                 f"DELETE FROM {s}.pending_requests p USING compact_stage x WHERE p.behavior_id=x.behavior_id"
             )
@@ -372,6 +389,8 @@ class Store:
                 ON CONFLICT(behavior_id) DO UPDATE SET state=excluded.state,content_hash=excluded.content_hash,updated_at_ns=excluded.updated_at_ns
                 WHERE {s}.pending_requests.content_hash IS DISTINCT FROM excluded.content_hash"""
             )
+            times['pending_upsert_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             # Bounded lifecycle; deadline never extends with repeated fragments.
             # Drain at least the maximum new request count admitted per window.
             # A fixed 5k drain cannot keep up with a valid 60k-request burst.
@@ -393,6 +412,8 @@ class Store:
                     break
             active_delta -= expired
             expired_delta += expired
+            times['pending_expiry_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             purged = self.conn.execute(
                 f"""WITH gone AS(DELETE FROM {s}.pending_requests WHERE behavior_id IN
                 (SELECT behavior_id FROM {s}.pending_requests WHERE stream_id=%s AND status='EXPIRED'
@@ -402,6 +423,8 @@ class Store:
                 SELECT count(*) AS n FROM gone""",
                 (stream, now - EXPIRED_RETENTION_NS, now),
             ).fetchone()["n"]
+            times['pending_retention_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             expired_delta -= purged
             self.conn.execute(
                 "CREATE TEMP TABLE compact_dirty(stream_id TEXT,session_id TEXT,start_ns BIGINT) ON COMMIT DROP"
@@ -434,6 +457,8 @@ class Store:
             pending_warning = pending_total > self.limits.pending_requests
             if dirty_total > self.limits.dirty_windows:
                 raise LimitExceeded("dirty_window_limit_no_checkpoint_advance")
+            times['dirty_marking_seconds'] = time.monotonic() - detail_phase
+            detail_phase = time.monotonic()
             window_change = self.conn.execute(
                 f"""INSERT INTO {s}.windows(stream_id,start_ns,end_ns,source_records,extracted_requests,content_hash,published_at_ns,first_published_ns)
                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(stream_id,start_ns)
@@ -462,6 +487,7 @@ class Store:
                 WHERE (d.stream_id,d.session_id,d.start_ns)=(old.stream_id,old.session_id,old.start_ns)""",
                 (stream, now - NOTICE_RETENTION_NS),
             )
+            times['publication_bookkeeping_seconds'] = time.monotonic() - detail_phase
             times["write_seconds"] = time.monotonic() - phase
             if history_job is not None:
                 from .history import advance_publication

@@ -47,11 +47,12 @@ def collect(db,schema,stream,*,limit=50,scan=500):
             FROM sample p''',(stream,status,limit)).fetchall()
         groups[status]=summarize(rows)
     latest=db.execute(f'''SELECT behavior_id,api,result_code,quality,observed_at_ns,
-        features->>'service_key' AS service_key,features->>'service_binding' AS service_binding
+        features->>'service_key' AS service_key,features->>'service_binding' AS service_binding,
+        features->'access_denied_attempt' AS access_denied_attempt
         FROM {schema}.behaviors WHERE stream_id=%s
         ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT %s''',(stream,scan)).fetchall()
     unknown=[r for r in latest if operation_role(r['api'],r['service_key'],r['service_binding'])=='unknown'
-        and not (r['api']=='Services.v1/InvoiceRegister' and r.get('result_code')=='GR0004')][:limit]
+        and not (r['api']=='Services.v1/InvoiceRegister' and (r.get('result_code')=='GR0004' or (r.get('result_code')=='G00010' and (r.get('access_denied_attempt') or {}).get('verified') is True)))][:limit]
     if unknown:
         records=db.execute(f'''SELECT p.behavior_id,{projected_state()}
             FROM {schema}.behavior_payloads p WHERE p.behavior_id=ANY(%s)''',([r['behavior_id'] for r in unknown],)).fetchall()
