@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from compact_behavior import FIVE
 from compact_behavior.extract import digest
 
-POLICY = 'corroborated-review-1'
+POLICY = 'corroborated-review-2'
 LIMIT = 10000
 FAMILIES = {'actor_rate':'volume','isolation_forest':'volume',
     'rate_limit_rejections':'volume','repeated_target':'targets',
@@ -43,7 +43,13 @@ def select_cases(rows):
         if not supported(row):continue
         if row.get('session_id') and row['method'] in FAMILIES:
             sessions[(row['session_id'],row['start_ns'])].append(row)
-        if row['method'] in ('service_latency','reported_result') and row.get('session_id') is None:
+        # Persistence cannot validate an inappropriate reference population.
+        # Current latency/result detectors have no validated time-context model;
+        # keep those signals available, but do not promote them automatically.
+        if (row['method'] in ('service_latency','reported_result') and row.get('session_id') is None
+                and row['result'].get('baseline_family') in ('daily','weekly')
+                and row['result'].get('validation_samples',0)>=12
+                and (row['method']!='service_latency' or row['result'].get('duration_valid',0)>=40)):
             persistent[(row['service'],row['method'])].append(row)
     for group in sessions.values():
         services={r['service'] for r in group if r['service']!='*'} or {'*'}
@@ -72,10 +78,14 @@ def select_cases(rows):
     for c in cases.values():
         for k in ('services','methods','reasons'):c[k]=sorted(c[k])
         c['findings'].sort(key=lambda r:(r['start_ns'],r['finding_id']),reverse=True)
+        c['highlights']=[];seen=set()
+        for row in c['findings']:
+            if row['method'] not in seen and len(c['highlights'])<3:
+                c['highlights'].append(row);seen.add(row['method'])
     return sorted(cases.values(),key=lambda c:(c['last_ns'],c['case_id']),reverse=True)
 
 
 REASONS={
  'CORROBORATED_SAME_SESSION_WINDOW':'هم‌زمانی دست‌کم دو بُعد رفتاری در همان نشست و پنجره؛ مانند نرخ غیرعادی همراه الگوی ورودی یا توالی غیرعادی.',
- 'PERSISTENT_SERVICE_HEALTH':'تداوم هشدار سلامت همین خدمت در سه پنجرهٔ متوالی؛ مربوط به عملکرد خدمت، نه اثبات سوءاستفادهٔ کاربر.',
+ 'PERSISTENT_SERVICE_HEALTH':'تداوم هشدار همین خدمت در سه پنجرهٔ متوالی با مرجع زمانی اعتبارسنجی‌شده؛ مربوط به عملکرد خدمت، نه اثبات سوءاستفادهٔ کاربر.',
  'HUMAN_CONFIRMED':'این نسخهٔ نتیجه قبلاً توسط بررسی‌کننده تأیید شده است.'}

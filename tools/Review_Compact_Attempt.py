@@ -18,7 +18,7 @@ def main():
     from compact_behavior import FIVE
     from compact_behavior.source import ElasticWindow
     from compact_behavior.__main__ import measure_window,save,notice
-    from compact_product.attempt_review import inspect,AttemptWindowWriter
+    from compact_product.attempt_review import inspect,AttemptWindowWriter,review_status
     output=a.project/'AnomalyDetection/reports'/('Compact_Attempt_Review_'+time.strftime('%Y%m%d_%H%M%S')+'.json')
     report=dict(status='COMPACT_ATTEMPT_REVIEW_STARTED',workers_restarted=False,data_reset=False,
                 source_contacted=False,database_modified=False)
@@ -42,9 +42,7 @@ def main():
             db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
             report['after']=inspect(db,cfg.ad_schema,stream,a.request_id)
         after=report['after']
-        report['status']=('COMPACT_ATTEMPT_CURRENT' if after['this_request_counted_in_stored_attempts'] and after['analysis_current']
-            else 'COMPACT_ATTEMPT_WAITING_FOR_AD' if after['this_request_counted_in_stored_attempts']
-            else 'COMPACT_ATTEMPT_REPAIR_REQUIRED' if after['needs_feature_repair'] else 'COMPACT_ATTEMPT_NOT_ELIGIBLE')
+        report['status']=review_status(after)
     except Exception as exc:
         report['status']='COMPACT_ATTEMPT_REVIEW_INCOMPLETE'
         report['failure']=dict(type=type(exc).__name__,code=str(exc) if isinstance(exc,ValueError) else None,

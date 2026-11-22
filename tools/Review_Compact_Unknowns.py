@@ -46,11 +46,12 @@ def collect(db,schema,stream,*,limit=50,scan=500):
             SELECT p.behavior_id,p.status,p.first_seen_ns,p.deadline_ns,{projected_state()}
             FROM sample p''',(stream,status,limit)).fetchall()
         groups[status]=summarize(rows)
-    latest=db.execute(f'''SELECT behavior_id,api,quality,observed_at_ns,
+    latest=db.execute(f'''SELECT behavior_id,api,result_code,quality,observed_at_ns,
         features->>'service_key' AS service_key,features->>'service_binding' AS service_binding
         FROM {schema}.behaviors WHERE stream_id=%s
         ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT %s''',(stream,scan)).fetchall()
-    unknown=[r for r in latest if operation_role(r['api'],r['service_key'],r['service_binding'])=='unknown'][:limit]
+    unknown=[r for r in latest if operation_role(r['api'],r['service_key'],r['service_binding'])=='unknown'
+        and not (r['api']=='Services.v1/InvoiceRegister' and r.get('result_code')=='GR0004')][:limit]
     if unknown:
         records=db.execute(f'''SELECT p.behavior_id,{projected_state()}
             FROM {schema}.behavior_payloads p WHERE p.behavior_id=ANY(%s)''',([r['behavior_id'] for r in unknown],)).fetchall()
@@ -74,6 +75,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--project',type=Path,required=True)
     p.add_argument('--code-root',type=Path,required=True)
+    p.add_argument('--limit',type=int,default=50)
+    p.add_argument('--scan',type=int,default=500)
     a=p.parse_args();sys.path.insert(0,str(a.code_root.resolve()))
     from compact_product.config import load
     from compact_behavior.store import Store
@@ -84,7 +87,7 @@ def main():
         db.conn.execute('SET statement_timeout=8000')
         with db.conn.transaction():
             db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
-            report=collect(db.conn,cfg.source_schema,stream)
+            report=collect(db.conn,cfg.source_schema,stream,limit=a.limit,scan=a.scan)
     finally:db.close()
     output=a.project/'AnomalyDetection/reports'/('Compact_Unknown_Review_'+time.strftime('%Y%m%d_%H%M%S')+'.json')
     output.parent.mkdir(parents=True,exist_ok=True)
