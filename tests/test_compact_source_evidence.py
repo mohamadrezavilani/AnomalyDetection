@@ -28,6 +28,20 @@ class Source(ElasticWindow):
 
 
 class SourceEvidenceTests(unittest.TestCase):
+    def test_reconciliation_rejects_cross_stream_duplicate_or_foreign_request_samples(self):
+        from tools.Reconcile_Compact_Samples import validate_reports
+        from copy import deepcopy
+        unknown=dict(status='READ_ONLY_UNKNOWN_REVIEW',counters={'stream_id':'test'},groups={'WAITING':{'samples':[sample()]}})
+        source=dict(status='READ_ONLY_SOURCE_EVIDENCE',samples=[sample()])
+        self.assertEqual(len(validate_reports(unknown,source,'test')[1]),1)
+        with self.assertRaises(ValueError):validate_reports(unknown,source,'other')
+        bad=deepcopy(source);bad['samples']*=2
+        with self.assertRaises(ValueError):validate_reports(unknown,bad,'test')
+        bad=deepcopy(source);bad['samples'][0]['request_id']='f'*32
+        with self.assertRaises(ValueError):validate_reports(unknown,bad,'test')
+        bad=deepcopy(source);bad['samples'][0]['documents']=[{}]*257
+        with self.assertRaises(ValueError):validate_reports(unknown,bad,'test')
+
     def test_query_is_bounded_and_does_not_request_personal_context(self):
         query=request_query(sample())
         self.assertEqual(query['size'],256)

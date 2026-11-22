@@ -124,6 +124,44 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.assertEqual(before,self.db.conn.execute(f'SELECT * FROM {self.config.source_schema}.queue_counts').fetchall())
         with self.assertRaises(ValueError):collect(self.db.conn,self.config.source_schema,'test',limit=101)
 
+    def test_source_sample_reconciliation_tracks_cross_window_completion_read_only(self):
+        from tools.Reconcile_Compact_Samples import collect
+        keys=['1'*32,'2'*32,'3'*32,'4'*32]
+        self.db.publish('test',T,T+FIVE,extract([
+            row(keys[0],path='ClientAyanCoInquiry.WaterBillInquiry',message='Input:{"BillID":"DoNotExportTarget"}'),
+            row(keys[1],path='DBPath.pishkhan24.application.ud_prc_filesInfo',message='metadata'),
+            row(keys[2],path='Services.v1/InvoiceRegister',message='POST https://example.test/InvoiceRegister HTTP/1.1 (GR0004 | RequestRateLimiting)'),
+            row(keys[2],path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/LandLinePhoneBills)')]),4)
+        original=dict(status='READ_ONLY_UNKNOWN_REVIEW',counters={'stream_id':'test'},groups={'sample':{'samples':[
+            dict(request_id=k,first_observed_ns=T+10**9,last_observed_ns=T+10**9) for k in keys]}})
+        evidence=dict(status='READ_ONLY_SOURCE_EVIDENCE',samples=[dict(request_id=k,review_group='WAITING',
+            coverage='COMPLETE_WITHIN_QUERY_RANGE',recognized_apis=['Services.v1/WaterBills'],documents=[
+                dict(http_completion=True,timestamp=iso(T+FIVE+10**9),call_path='Services.v1/WaterBills',logged_result_code='G00000')]) for k in keys[:2]]+
+            [dict(request_id=k,review_group='UNKNOWN_BEHAVIORS',coverage='COMPLETE_WITHIN_QUERY_RANGE',documents=[]) for k in keys[2:]])
+        def inspect():
+            before=self.db.conn.execute(f'SELECT * FROM {self.config.source_schema}.queue_counts').fetchall()
+            with self.db.conn.transaction():
+                self.db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+                r=collect(self.db.conn,self.config.source_schema,self.config.ad_schema,'test',original,evidence)
+            self.assertEqual(before,self.db.conn.execute(f'SELECT * FROM {self.config.source_schema}.queue_counts').fetchall())
+            self.assertNotIn('DoNotExportTarget',json.dumps(r,default=str))
+            self.assertNotIn('session-1',json.dumps(r,default=str))
+            return r
+        before=inspect()
+        self.assertEqual(before['locations'],{'WAITING':2,'BEHAVIOR':1,'NOT_FOUND':1})
+        self.assertEqual(before['unpublished_window_starts_ns'],[T+FIVE])
+        self.db.publish('test',T+FIVE,T+2*FIVE,extract([
+            row(keys[0],at=iso(T+FIVE+10**9)),row(keys[1],path='Files.Download',at=iso(T+FIVE+10**9))]),2)
+        after=inspect()
+        self.assertEqual(after['locations'],{'BEHAVIOR':3,'NOT_FOUND':1})
+        self.assertEqual(after['unpublished_window_starts_ns'],[])
+        self.assertEqual(after['samples'][1]['behavior']['current_rule_role'],'support')
+        rejected=after['samples'][2]['behavior']
+        self.assertEqual(rejected['result_code'],'GR0004')
+        self.assertEqual(rejected['current_rule_role'],'unknown')
+        self.assertFalse(rejected['service_rate_eligible'])
+        self.assertTrue(all(w['analysis_revision'] is None for w in after['windows']))
+
     def test_pending_diagnostic_is_read_only_and_excludes_request_values(self):
         from tools.Review_Compact_Pending import collect
         schema=self.config.source_schema
