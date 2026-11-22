@@ -154,6 +154,17 @@ def evaluate(actors, *, service, end, span, signature, diagnostics=None):
                 left = bisect.bisect_left(values, (a["count"] / 2, "", -1))
                 right = bisect.bisect_right(values, (a["count"] * 2, chr(0x10ffff), 10**20))
                 peers.extend((v,limited) for _, identity, v, limited in values[left:right] if identity != session)
+            basis='VOLUME_AND_ACTIVITY_MATCHED'
+            if len(peers)<100:
+                # Conditioning only on an already-unusual volume/activity can
+                # leave the very crawler of interest without any peers. Fall
+                # back explicitly to the service population, scaling distinct
+                # breadth to the target's active-day exposure. This is a review
+                # model, not an assertion that the peers had identical usage.
+                basis='SERVICE_POPULATION_ACTIVE_DAY_SCALED'
+                peers=[(v*a['days']/days,limited)
+                       for (candidate_path,days),values in indexes.items() if candidate_path==path
+                       for _,identity,v,limited in values if identity!=session]
             if any(limited for _,limited in peers):
                 diagnostics['censored_peer_comparisons']+=1
                 continue
@@ -171,6 +182,7 @@ def evaluate(actors, *, service, end, span, signature, diagnostics=None):
                 observed=observed, observed_is_lower_bound=field["overflow"],
                 baseline=statistics.median(peers), threshold=limit,
                 peer_count=len(peers), peer_max=max(peers), adjusted_tail_rank=rank,
+                peer_basis=basis,
                 comparisons=comparisons, active_days=a["days"], requests=a["count"],
                 numeric_path=path, horizon_days=span, period_start_ns=end-span*DAY,
                 period_end_ns=end, reference_windows=span*288,

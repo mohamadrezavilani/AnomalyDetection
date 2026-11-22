@@ -58,11 +58,15 @@ class LongitudinalTests(unittest.TestCase):
             if change=='days':actors['crawler']['days']=1
             self.assertFalse(self.evaluate(actors),change)
 
-    def test_volume_and_active_days_match_and_actor_excludes_itself(self):
+    def test_rare_activity_uses_explicit_exposure_scaled_population_and_excludes_self(self):
         actors=long.merge((daily(d) for d in range(3)),active_days=True)
         for name,a in actors.items():
-            if name!='crawler':a['count']=1000;a['fields']['$.BillID']['covered']=1000
-        self.assertFalse(self.evaluate(actors))
+            if name!='crawler':a['count']=1;a['days']=1;a['fields']['$.BillID']['covered']=1
+        result=self.evaluate(actors)[0]
+        self.assertEqual(result['peer_basis'],'SERVICE_POPULATION_ACTIVE_DAY_SCALED')
+        self.assertEqual(result['baseline'],3)
+        self.assertEqual(result['peer_count'],110)
+        self.assertEqual(result['session_id'],'crawler')
         actors=long.merge((daily(d) for d in range(3)),active_days=True)
         actors['crawler']['fields']['$.BillID']['tokens']=list(actors['peer-0']['fields']['$.BillID']['tokens'])
         self.assertFalse(self.evaluate(actors))
@@ -143,7 +147,7 @@ class LongitudinalPostgresTests(unittest.TestCase):
             self.db.conn.execute(f'''INSERT INTO {self.s}.windows(stream_id,start_ns,end_ns,source_records,extracted_requests,content_hash,published_at_ns)
                 SELECT 'test',v,v+%s,0,0,'synthetic',1 FROM generate_series(%s::bigint,%s::bigint,%s::bigint) v
                 ON CONFLICT(stream_id,start_ns) DO UPDATE SET published_at_ns=1''',(FIVE,DAY,DAY+3*long.DAY-FIVE,FIVE))
-            self.db.conn.execute(f'''INSERT INTO {self.a}.long_manifest SELECT stream_id,start_ns,published_at_ns,%s
+            self.db.conn.execute(f'''INSERT INTO {self.a}.long_manifest SELECT stream_id,start_ns,published_at_ns,%s,0
                 FROM {self.s}.windows''',(long.VERSION,))
             for day in range(3):
                 profile=daily(day)
@@ -186,6 +190,8 @@ class LongitudinalPostgresTests(unittest.TestCase):
         self.assertNotIn('crawler',client.get('/incidents?tab=cases&date='+date).get_data(as_text=True))
         self.db.conn.execute(f"UPDATE {self.a}.long_runs SET state='PENDING',retry_ns=0")
         self.assertEqual(long_store.run_period(self.db,'test')['state'],'WAITING')
+        preserved=self.db.conn.execute(f'SELECT revision,status FROM {self.a}.findings WHERE method=%s',(long.METHOD,)).fetchone()
+        self.assertEqual(preserved,dict(revision=1,status='ANOMALY'))
 
     def test_actual_crash_before_after_atomic_publish_and_replay(self):
         self.seed()
@@ -239,3 +245,25 @@ class LongitudinalPostgresTests(unittest.TestCase):
         self.assertEqual(cursor,self.db.cursor('test'))
         self.assertIsNone(long_store.backfill(self.db,'test'))
         self.assertIsNone(long_store.build_day(self.db,'test'))
+
+    def test_late_evidence_reprojects_old_window_even_when_publication_time_is_unchanged(self):
+        from tests.test_compact_extract import T,row,extract
+        from compact_behavior.extract import iso
+        from compact_ad.engine import evaluate
+        self.db.publish('test',T,T+FIVE,extract([row('late',path=SERVICE,at=iso(T+10**9))]),1)
+        self.db.step('test')
+        publication=self.db.conn.execute(f'SELECT published_at_ns FROM {self.s}.windows WHERE start_ns=%s',(T,)).fetchone()
+        old=self.db.conn.execute(f'SELECT signature FROM {self.a}.long_windows WHERE start_ns=%s',(T,)).fetchone()
+        late=row('late',path=SERVICE,at=iso(T+2*10**9),message='Input:{"BillID":"synthetic-new"} Output:{"Amount":1}')
+        self.db.publish('test',T+FIVE,T+2*FIVE,extract([late]),1)
+        self.assertEqual(publication,self.db.conn.execute(f'SELECT published_at_ns FROM {self.s}.windows WHERE start_ns=%s',(T,)).fetchone())
+        work=self.db.snapshot('test',T);self.assertTrue(work['long_needed'])
+        self.db.commit_analysis(work,evaluate(T,work['summary'],work['services'],work['actors'],work['references']),.01)
+        new=self.db.conn.execute(f'SELECT signature FROM {self.a}.long_windows WHERE start_ns=%s',(T,)).fetchone()
+        self.assertNotEqual(old,new)
+        # Emulate an older deployed AD acknowledging work without updating this
+        # extension, then pruning its processed dirty notice. Revision detects it.
+        self.db.conn.execute(f'UPDATE {self.a}.window_results SET revision=revision+1 WHERE start_ns=%s',(T,))
+        self.db.conn.execute(f'DELETE FROM {self.s}.dirty_windows WHERE start_ns=%s',(T,))
+        self.assertTrue(self.db.snapshot('test',T)['long_needed'])
+        self.assertEqual(long_store.backfill(self.db,'test')['start_ns'],T)

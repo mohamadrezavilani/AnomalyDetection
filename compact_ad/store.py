@@ -137,8 +137,10 @@ class AnalysisStore(Store):
             ).fetchone()
             if not published:
                 raise ValueError("target_window_not_published")
-            long_needed = self.conn.execute(f'''SELECT 1 FROM {a}.long_manifest
-                WHERE stream_id=%s AND start_ns=%s AND published_ns=%s AND version=%s''',
+            long_needed = bool(dirty) or self.conn.execute(f'''SELECT 1 FROM {a}.long_manifest m
+                LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
+                WHERE m.stream_id=%s AND m.start_ns=%s AND m.published_ns=%s AND m.version=%s
+                AND m.base_revision=COALESCE(r.revision,0)''',
                 (stream,start,published['published_at_ns'],longitudinal.VERSION)).fetchone() is None
             # Only already analyzed, strictly prior event windows, bounded to 24h.
             # A missing/dirty reference never becomes a silent zero observation.
@@ -296,7 +298,10 @@ class AnalysisStore(Store):
             ).fetchone()["revision"]
             seasonality.save_rates(self.conn,a,stream,start,summary,signature)
             if long_prepared is not None:
-                long_store.save(self.conn,a,stream,start,work['published_at_ns'],long_prepared)
+                long_store.save(self.conn,a,stream,start,work['published_at_ns'],long_prepared,committed_revision)
+            else:
+                self.conn.execute(f'''UPDATE {a}.long_manifest SET base_revision=%s
+                    WHERE stream_id=%s AND start_ns=%s''',(committed_revision,stream,start))
             previous = {
                 r["finding_id"]: r
                 for r in self.conn.execute(

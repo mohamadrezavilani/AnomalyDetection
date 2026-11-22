@@ -14,7 +14,8 @@ def initialize(conn, a):
     for sql in (
         f'''CREATE TABLE IF NOT EXISTS {a}.long_manifest(
             stream_id TEXT NOT NULL,start_ns BIGINT NOT NULL,published_ns BIGINT NOT NULL,
-            version TEXT NOT NULL,PRIMARY KEY(stream_id,start_ns))''',
+            version TEXT NOT NULL,base_revision BIGINT NOT NULL DEFAULT 0,PRIMARY KEY(stream_id,start_ns))''',
+        f'ALTER TABLE {a}.long_manifest ADD COLUMN IF NOT EXISTS base_revision BIGINT NOT NULL DEFAULT 0',
         f'''CREATE TABLE IF NOT EXISTS {a}.long_windows(
             stream_id TEXT NOT NULL,service TEXT NOT NULL,start_ns BIGINT NOT NULL,
             signature TEXT NOT NULL,payload BYTEA NOT NULL,PRIMARY KEY(stream_id,service,start_ns))''',
@@ -50,7 +51,7 @@ def prepare(summary, actors):
     return prepared
 
 
-def save(conn, a, stream, start, published, prepared):
+def save(conn, a, stream, start, published, prepared, base_revision=0):
     """Caller holds the source stream lock and has checked publication identity."""
     old = {r['service']: r['signature'] for r in conn.execute(
         f'SELECT service,signature FROM {a}.long_windows WHERE stream_id=%s AND start_ns=%s', (stream,start))}
@@ -71,14 +72,18 @@ def save(conn, a, stream, start, published, prepared):
         conn.execute(f'''UPDATE {a}.long_runs SET state='PENDING',retry_ns=0
             WHERE stream_id=%s AND service=%s AND end_ns>%s AND end_ns-span*%s<=%s''',
             (stream,service,day,long.DAY,day))
-    conn.execute(f'''INSERT INTO {a}.long_manifest VALUES(%s,%s,%s,%s)
-        ON CONFLICT(stream_id,start_ns) DO UPDATE SET published_ns=excluded.published_ns,version=excluded.version''',
-        (stream,start,published,long.VERSION))
+    conn.execute(f'''INSERT INTO {a}.long_manifest VALUES(%s,%s,%s,%s,%s)
+        ON CONFLICT(stream_id,start_ns) DO UPDATE SET published_ns=excluded.published_ns,version=excluded.version,
+        base_revision=excluded.base_revision''',(stream,start,published,long.VERSION,base_revision))
 
 
 def coverage(conn, s, a, stream, start, end):
     row = conn.execute(f'''SELECT count(*) AS n,count(*) FILTER(WHERE m.published_ns=w.published_at_ns
-        AND m.version=%s) AS ready FROM {s}.windows w LEFT JOIN {a}.long_manifest m USING(stream_id,start_ns)
+        AND m.version=%s AND m.base_revision=COALESCE(r.revision,0)
+        AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=w.stream_id AND d.start_ns=w.start_ns
+                       AND d.session_id='@all' AND d.processed_version<d.version)) AS ready
+        FROM {s}.windows w LEFT JOIN {a}.long_manifest m USING(stream_id,start_ns)
+        LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
         WHERE w.stream_id=%s AND w.start_ns>=%s AND w.start_ns<%s''',
         (long.VERSION,stream,start,end)).fetchone()
     return row['n'] == row['ready'] == (end-start)//FIVE
@@ -92,11 +97,14 @@ def build_day(db, stream):
         SELECT DISTINCT day_ns FROM {a}.long_days WHERE stream_id=%s AND processed_version<version
         ), ready AS MATERIALIZED (SELECT day_ns FROM pending_days d WHERE
         (SELECT count(*) FROM {a}.long_manifest m JOIN {s}.windows w USING(stream_id,start_ns)
+         LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
          WHERE m.stream_id=%s AND m.start_ns>=d.day_ns AND m.start_ns<d.day_ns+%s
-         AND m.published_ns=w.published_at_ns AND m.version=%s)=288)
+         AND m.published_ns=w.published_at_ns AND m.version=%s AND m.base_revision=COALESCE(r.revision,0))=288
+         AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows dirty WHERE dirty.stream_id=%s AND dirty.session_id='@all'
+             AND dirty.start_ns>=d.day_ns AND dirty.start_ns<d.day_ns+%s AND dirty.processed_version<dirty.version))
         SELECT p.* FROM {a}.long_days p JOIN ready USING(day_ns)
         WHERE p.stream_id=%s AND p.processed_version<p.version
-        ORDER BY p.day_ns,p.service LIMIT 1''', (stream,stream,long.DAY,long.VERSION,stream)).fetchone()
+        ORDER BY p.day_ns,p.service LIMIT 1''', (stream,stream,long.DAY,long.VERSION,stream,long.DAY,stream)).fetchone()
     if not job:
         return None
     day,service = job['day_ns'],job['service']
@@ -181,7 +189,7 @@ def run_period(db, stream, *, fault=None):
             return dict(status='LONGITUDINAL_RETRY')
         previous={r['finding_id']:r for r in conn.execute(f'''SELECT * FROM {a}.findings
             WHERE stream_id=%s AND service=%s AND start_ns=%s AND method=%s
-            AND (result->>'horizon_days')::int=%s''',(stream,service,end-FIVE,long.METHOD,span))}
+            AND (result->>'horizon_days')::int=%s''',(stream,service,end-FIVE,long.METHOD,span))} if state=='READY' else {}
         next_results={digest([long.VERSION,stream,service,end,span,r['session_id']]):r for r in results}
         for fid,old in previous.items():
             if fid not in next_results:
@@ -211,15 +219,18 @@ def backfill(db, stream):
     """One existing compact window, no Elasticsearch and no base-result rewrite."""
     from .engine import summarize
     conn,s,a=db.conn,db.schema,db.ad_schema
-    row=conn.execute(f'''SELECT w.start_ns,w.published_at_ns FROM {s}.windows w
+    row=conn.execute(f'''SELECT w.start_ns,w.published_at_ns,COALESCE(r.revision,0) AS base_revision FROM {s}.windows w
         LEFT JOIN {a}.long_manifest m USING(stream_id,start_ns)
-        WHERE w.stream_id=%s AND (m.start_ns IS NULL OR m.published_ns<>w.published_at_ns OR m.version<>%s)
+        LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
+        WHERE w.stream_id=%s AND (m.start_ns IS NULL OR m.published_ns<>w.published_at_ns OR m.version<>%s
+            OR m.base_revision<>COALESCE(r.revision,0))
         ORDER BY w.start_ns LIMIT 1''',(stream,long.VERSION)).fetchone()
     if not row:
         return None
     start=row['start_ns']
     with conn.transaction():
         conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+        epoch=conn.execute(f'SELECT change_epoch FROM {s}.streams WHERE stream_id=%s',(stream,)).fetchone()['change_epoch']
         with conn.cursor(name='compact_long_projection') as cur:
             cur.itersize=200
             cur.execute(f'''SELECT behavior_id,session_id,result_code,features,kind,api,observed_at_ns,reported_duration
@@ -229,10 +240,13 @@ def backfill(db, stream):
         prepared=prepare(summary,actors)
     with conn.transaction():
         conn.execute('SELECT pg_advisory_xact_lock(%s)',(stream_lock(stream),))
-        current=conn.execute(f'SELECT published_at_ns FROM {s}.windows WHERE stream_id=%s AND start_ns=%s',(stream,start)).fetchone()
-        if current['published_at_ns']!=row['published_at_ns']:
+        current=conn.execute(f'''SELECT w.published_at_ns,COALESCE(r.revision,0) AS base_revision,t.change_epoch
+            FROM {s}.windows w LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
+            JOIN {s}.streams t USING(stream_id) WHERE w.stream_id=%s AND w.start_ns=%s''',(stream,start)).fetchone()
+        if (current['published_at_ns']!=row['published_at_ns'] or current['base_revision']!=row['base_revision']
+                or current['change_epoch']!=epoch):
             return dict(status='LONGITUDINAL_RETRY')
-        save(conn,a,stream,start,row['published_at_ns'],prepared)
+        save(conn,a,stream,start,row['published_at_ns'],prepared,row['base_revision'])
     return dict(status='LONGITUDINAL_WINDOW_PREPARED',start_ns=start)
 
 
@@ -260,9 +274,11 @@ def eligible_sql(s, a):
             AND lr.end_ns=f.start_ns+{FIVE} AND lr.span=(f.result->>'horizon_days')::int
             AND lr.state='READY' AND lr.signature=f.result->>'reference_signature')
         AND NOT EXISTS(SELECT 1 FROM {s}.windows w LEFT JOIN {a}.long_manifest m USING(stream_id,start_ns)
+            LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
             WHERE w.stream_id=f.stream_id AND w.start_ns>=(f.result->>'period_start_ns')::bigint
             AND w.start_ns<(f.result->>'period_end_ns')::bigint
-            AND (m.start_ns IS NULL OR m.published_ns<>w.published_at_ns OR m.version<>'{long.VERSION}'))
+            AND (m.start_ns IS NULL OR m.published_ns<>w.published_at_ns OR m.version<>'{long.VERSION}'
+                 OR m.base_revision<>COALESCE(r.revision,0)))
         AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=f.stream_id AND d.session_id='@all'
             AND d.start_ns>=(f.result->>'period_start_ns')::bigint AND d.start_ns<(f.result->>'period_end_ns')::bigint
             AND d.processed_version<d.version))'''
@@ -272,8 +288,11 @@ def status(conn, s, a, stream):
     if not conn.execute('SELECT to_regclass(%s) AS name',(a+'.long_manifest',)).fetchone()['name']:
         return dict(version=long.VERSION,installed=False)
     counts=conn.execute(f'''SELECT count(*) AS source_windows,count(*) FILTER(WHERE m.published_ns=w.published_at_ns
-        AND m.version=%s) AS projected_windows FROM {s}.windows w
-        LEFT JOIN {a}.long_manifest m USING(stream_id,start_ns) WHERE w.stream_id=%s''',
+        AND m.version=%s AND m.base_revision=COALESCE(r.revision,0)
+        AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=w.stream_id AND d.start_ns=w.start_ns
+            AND d.session_id='@all' AND d.processed_version<d.version)) AS projected_windows FROM {s}.windows w
+        LEFT JOIN {a}.long_manifest m USING(stream_id,start_ns)
+        LEFT JOIN {a}.window_results r USING(stream_id,start_ns) WHERE w.stream_id=%s''',
         (long.VERSION,stream)).fetchone()
     days=conn.execute(f'''SELECT state,count(*) AS n FROM {a}.long_days WHERE stream_id=%s GROUP BY state''',(stream,)).fetchall()
     runs=conn.execute(f'''SELECT state,span,count(*) AS n FROM {a}.long_runs WHERE stream_id=%s GROUP BY state,span''',(stream,)).fetchall()
