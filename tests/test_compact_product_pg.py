@@ -126,6 +126,82 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.iteration=0
         self.assertEqual([self.db.select_work('test') for _ in range(5)],[T+2*FIVE]*4+[T])
 
+    def test_indexed_behavior_search_original_ids_and_combined_filters(self):
+        from compact_product.search import prepare_index,IP_EXPRESSION
+        from urllib.parse import urlencode
+        raw='AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE'
+        session='11111111-2222-3333-4444-555555555555'
+        records=[dict(row(raw,session,at=iso(T+10**9)),IP='192.0.2.10'),
+            dict(row('another','another-session',at=iso(T+2*10**9)),IP='192.0.2.11')]
+        self.db.publish('test',T,T+FIVE,extract(records),len(records))
+        schema=self.config.source_schema
+        self.assertEqual(prepare_index(self.db.conn,schema),'CREATED')
+        self.assertEqual(prepare_index(self.db.conn,schema),'ALREADY_READY')
+        # Verify the actual expression has an index access path; only this
+        # disposable connection disables sequential scans for the plan check.
+        self.db.conn.execute('SET enable_seqscan=off')
+        plan=self.db.conn.execute(f"EXPLAIN SELECT behavior_id FROM {schema}.request_context WHERE {IP_EXPRESSION} @> %s::jsonb",('["192.0.2.10"]',)).fetchall()
+        self.assertIn('compact_context_ip_values',str(plan))
+        self.db.conn.execute('RESET enable_seqscan')
+        app=create_app(self.config,self.database,'test');client=app.test_client()
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        start=datetime.fromtimestamp(T/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%dT%H:%M:%S')
+        end=datetime.fromtimestamp((T+FIVE)/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%dT%H:%M:%S')
+        query=dict(request_id=raw,session_id=session,ip='192.0.2.10',**{'from':start,'to':end})
+        response=client.get('/?'+urlencode(query));self.assertEqual(response.status_code,200)
+        body=response.get_data(as_text=True)
+        self.assertIn(raw,body);self.assertNotIn('another-session',body)
+        self.assertIn('ip=192.0.2.10',body)
+        for value in (raw,raw.replace('-','').lower()):
+            self.assertIn(raw,client.get('/?'+urlencode({'request_id':value})).get_data(as_text=True))
+        query['ip']='192.0.2.11'
+        self.assertIn('رفتاری در این محدوده موجود نیست',client.get('/?'+urlencode(query)).get_data(as_text=True))
+        bid=self.db.conn.execute(f'SELECT behavior_id FROM {schema}.behaviors WHERE request_id=%s',(raw.replace('-','').lower(),)).fetchone()['behavior_id']
+        detail=client.get('/behaviors/'+bid).get_data(as_text=True)
+        self.assertIn('RequestID اصلی',detail);self.assertIn(raw,detail)
+        self.assertNotEqual(bid,raw.replace('-','').lower())
+        # Search is read-only and never rewrites the original canonical key.
+        self.assertEqual(self.db.conn.execute(f'SELECT request_id FROM {schema}.behaviors WHERE behavior_id=%s',(bid,)).fetchone()['request_id'],raw.replace('-','').lower())
+
+    def test_search_pagination_preserves_filters_and_does_not_duplicate_tied_times(self):
+        from urllib.parse import urlencode
+        import html,re
+        records=[row('page-'+str(i),'same-session',at=iso(T+10**9)) for i in range(35)]
+        self.db.publish('test',T,T+FIVE,extract(records),len(records))
+        client=create_app(self.config,self.database,'test').test_client()
+        first=client.get('/?'+urlencode({'session_id':'same-session','scope':'all'})).get_data(as_text=True)
+        link=html.unescape(re.search(r'href="([^"]+)">نتایج قدیمی‌تر',first).group(1))
+        self.assertIn('session_id=same-session',link);self.assertIn('scope=all',link)
+        second=client.get(link).get_data(as_text=True)
+        ids=lambda page:re.findall(r'/behaviors/([a-f0-9]{64})',page)
+        self.assertEqual(len(ids(first)),30);self.assertEqual(len(ids(second)),5)
+        self.assertFalse(set(ids(first))&set(ids(second)))
+
+    def test_rate_limited_attempt_is_visible_outside_unknown_without_fake_dispatch(self):
+        records=[row('rejected','s',path='Services.v1/InvoiceRegister',message='POST https://example.test/api HTTP/1.1 (GR0004 | RequestRateLimiting)'),
+            row('rejected','s',path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/PostPackagesStatus)')]
+        self.db.publish('test',T,T+FIVE,extract(records),2)
+        schema=self.config.source_schema
+        saved=self.db.conn.execute(f'SELECT * FROM {schema}.behaviors').fetchone()
+        self.assertFalse(saved['features']['service_rate_eligible'])
+        self.assertIsNone(saved['features']['service_key'])
+        client=create_app(self.config,self.database,'test').test_client()
+        for url in ('/','/?scope=attempts','/?scope=all','/sessions?q=s'):
+            page=client.get(url).get_data(as_text=True)
+            self.assertIn('rejected',page);self.assertIn('Services.v1/PostPackagesStatus',page)
+        self.assertNotIn('/behaviors/'+saved['behavior_id'],client.get('/?scope=unknown').get_data(as_text=True))
+        detail=client.get('/behaviors/'+saved['behavior_id']).get_data(as_text=True)
+        self.assertIn('ویژگی این تلاش در دادهٔ AD موجود است',detail)
+        # Earlier records can be categorized for review from their reported
+        # code without pretending an absent stored AD feature has been migrated.
+        self.db.conn.execute(f"UPDATE {schema}.behaviors SET features=features-'rejected_attempt'")
+        page=client.get('/?scope=attempts').get_data(as_text=True)
+        self.assertIn('Services.v1/PostPackagesStatus',page)
+        detail=client.get('/behaviors/'+saved['behavior_id']).get_data(as_text=True)
+        self.assertIn('بازاستخراج لازم است',detail)
+        self.assertNotIn('ویژگی این تلاش در دادهٔ AD موجود است',detail)
+
     def setUp(self):
         self.database = dict(
             host=os.environ["P24_DELTA_PG_HOST"],

@@ -45,3 +45,27 @@ class PresentationTests(unittest.TestCase):
         r=self.client.get('/incident-groups/'+'a'*32)
         self.assertEqual(r.status_code,200)
         self.assertIn('بازتحلیل',r.get_data(as_text=True))
+
+
+class SearchContractTests(unittest.TestCase):
+    def test_exact_ids_and_tehran_bounds_are_parameterized(self):
+        from compact_product.search import filters
+        from compact_behavior.extract import behavior_id,instant
+        raw='AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE'
+        values,sql,args=filters({'request_id':raw,'session_id':raw,'ip':'::ffff:192.0.2.10',
+            'from':'2026-11-22T11:00','to':'2026-11-22T12:00'},'test')
+        self.assertEqual(args[:2],[behavior_id('test',raw),'aaaaaaaabbbbccccddddeeeeeeeeeeee'])
+        self.assertNotIn(raw,sql);self.assertNotIn('192.0.2.10',sql)
+        self.assertEqual(values['ip'],'192.0.2.10')
+        self.assertEqual(args[-2:],[instant('2026-11-22T07:30:00Z'),instant('2026-11-22T08:30:00Z')])
+
+    def test_filter_validation_and_source_spelling_are_not_guessed(self):
+        from compact_product.search import filters,decorate
+        for args in ({'ip':'not-an-ip'},{'from':'2026-13-01T00:00'},
+            {'from':'2026-11-22T12:00','to':'2026-11-22T11:00'},{'request_id':'x'*513}):
+            with self.assertRaises(ValueError):filters(args,'t')
+        row={'request_id':'aaaaaaaabbbbccccddddeeeeeeeeeeee','session_id':None}
+        decorate(row,{'raw_request_ids':['AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE','another-request']})
+        self.assertEqual(row['original_request_ids'],['AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE'])
+        decorate(row,{})
+        self.assertEqual(row['original_request_ids'],[])

@@ -22,6 +22,7 @@ from compact_behavior.store import Store
 from compact_behavior import FIVE, FEATURES
 from compact_behavior.extract import identity, materialize
 from .health import health
+from . import search
 from . import BUILD
 from .error_catalog import definitions
 from .presentation import ROLES, data_note
@@ -96,7 +97,13 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.context_processor
     def defaults():
-        return dict(build=BUILD, model_version=MODEL)
+        return dict(build=BUILD, model_version=MODEL, scope_url=scope_url)
+
+    def scope_url(value):
+        allowed = (*search.FIELDS, 'q')
+        params = {k:request.args[k] for k in allowed if request.args.get(k)}
+        params['scope']=value
+        return url_for('sessions' if request.path=='/sessions' else 'home', **params)
 
     app.add_template_filter(operation_label, "operation_label")
     app.add_template_filter(operation_role, "operation_role")
@@ -104,7 +111,7 @@ def create_app(config, database, stream, *, secret=None):
     app.add_template_filter(lambda role: ROLES.get(role, "نقش مشخص نشده"), "role_label")
 
     def behavior_scope():
-        scope = request.args.get("scope", "meaningful")
+        scope = request.args.get("scope", "all" if request.args.get("request_id") else "meaningful")
         if scope == "all":
             return scope, "", []
         # The generic dispatcher is meaningful only after exact same-request
@@ -112,13 +119,16 @@ def create_app(config, database, stream, *, secret=None):
         expression = "(api=ANY(%s) OR (api=%s AND features->>'service_binding'=%s AND features->>'service_key'=ANY(%s)))"
         dispatch = "Services.v1/InvoiceRegister"
         binding = "SAME_REQUEST_REVIEWED_DISPATCH"
+        attempt = "(api='Services.v1/InvoiceRegister' AND result_code='GR0004')"
+        if scope == 'attempts':
+            return scope, 'AND '+attempt, []
         if scope == "unknown":
             known = sorted(api for api, row in operation_catalog()["routes"].items() if row["role"] != "unknown" and api != dispatch)
-            return scope, "AND NOT COALESCE(" + expression + ",false)", [known, dispatch, binding, known]
+            return scope, "AND NOT COALESCE(" + expression + " OR " + attempt + ",false)", [known, dispatch, binding, known]
         if scope != "meaningful":
             abort(400)
         allowed = meaningful_apis()
-        return scope, "AND " + expression, [allowed, dispatch, binding, allowed]
+        return scope, "AND (" + expression + " OR " + attempt + ")", [allowed, dispatch, binding, allowed]
 
     @app.errorhandler(Exception)
     def failure(exc):
@@ -146,27 +156,45 @@ def create_app(config, database, stream, *, secret=None):
     @app.get("/")
     def home():
         scope, clause, args = behavior_scope()
+        try:
+            values, filters_sql, filters_args = search.filters(request.args,stream)
+        except ValueError as exc:
+            abort(400,description=str(exc))
+        cursor_sql=''; cursor_args=[]
+        if request.args.get('before'):
+            import re
+            if not re.fullmatch(r'\d{1,20}',request.args['before']) or not re.fullmatch(r'[0-9a-f]{64}',request.args.get('id','')):
+                abort(400,description='نشانگر صفحه معتبر نیست.')
+            cursor_sql=' AND (b.observed_at_ns,b.behavior_id)<(%s,%s)'
+            cursor_args=[int(request.args['before']),request.args['id']]
         with connection() as db:
-            value = health(db, config, stream)
-            rows = db.execute(
-                f"""SELECT request_id,session_id,observed_at_ns,api,result_code,behavior_id,features->>'service_key' AS service_key,
-                quality FROM {config.source_schema}.behaviors WHERE stream_id=%s {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 30""",
-                (stream, *args),
-            ).fetchall()
-            code_definitions = definitions(db, config.source_schema, [r["result_code"] for r in rows])
-            coverage = db.execute(
-                f"""SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s""",
-                (stream, value["latest_analyzed_end_ns"] - FIVE if value["latest_analyzed_end_ns"] is not None else None),
-            ).fetchone()
-        return render_template(
-            "status.html" if request.path == "/status" else "home.html",
-            title="وضعیت پردازش" if request.path == "/status" else "رفتارهای مشاهده‌شده",
-            health=value,
-            code_definitions=code_definitions,
-            rows=rows,
-            coverage=coverage["summary"] if coverage else {},
-            scope=scope,
-        )
+            value=health(db,config,stream) if request.path=='/status' else None
+            coverage=None;rows=[];code_definitions={}
+            if request.path=='/status':
+                coverage=db.execute(f"SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s",
+                    (stream,value['latest_analyzed_end_ns']-FIVE if value['latest_analyzed_end_ns'] is not None else None)).fetchone()
+            else:
+                join=''
+                if values['ip']:
+                    index=search.index_state(db,config.source_schema)
+                    if not index or not index['indisvalid'] or not index['indisready']:
+                        abort(503,description='جست‌وجوی IP هنوز آماده نیست؛ آماده‌سازی ایندکس جست‌وجو باید کامل شود.')
+                    join=f' JOIN {config.source_schema}.request_context c USING(behavior_id)'
+                rows=db.execute(f"""SELECT b.request_id,b.session_id,b.observed_at_ns,b.api,b.result_code,b.behavior_id,
+                    b.features->>'service_key' AS service_key,b.features->'rejected_attempt' AS rejected_attempt,b.quality
+                    FROM {config.source_schema}.behaviors b {join} WHERE b.stream_id=%s {clause} {filters_sql} {cursor_sql}
+                    ORDER BY b.observed_at_ns DESC,b.behavior_id DESC LIMIT 31""",
+                    (stream,*args,*filters_args,*cursor_args)).fetchall()
+                search.originals(db,config.source_schema,rows[:30])
+                code_definitions=definitions(db,config.source_schema,[r['result_code'] for r in rows[:30]])
+        nxt=None
+        if len(rows)>30:
+            nxt=url_for('home',**{k:v for k,v in values.items() if v},scope=scope,
+                before=rows[29]['observed_at_ns'],id=rows[29]['behavior_id'])
+        return render_template('status.html' if request.path=='/status' else 'home.html',
+            title='وضعیت پردازش' if request.path=='/status' else 'رفتارهای مشاهده‌شده',
+            health=value,code_definitions=code_definitions,rows=rows[:30],coverage=coverage['summary'] if coverage else {},
+            scope=scope,filters=values,next_page=nxt)
 
     @app.get("/sessions")
     def sessions():
@@ -190,10 +218,11 @@ def create_app(config, database, stream, *, secret=None):
                 args.extend([before, bid])
             rows = db.execute(
                 f"""SELECT behavior_id,request_id,session_id,observed_at_ns,api,result_code,quality,
-                features->>'service_key' AS service_key FROM {config.source_schema}.behaviors
+                features->>'service_key' AS service_key,features->'rejected_attempt' AS rejected_attempt FROM {config.source_schema}.behaviors
                 WHERE stream_id=%s AND session_id=%s {scope_clause} {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 51""",
                 args,
             ).fetchall()
+            search.originals(db,config.source_schema,rows[:50])
             code_definitions = definitions(db, config.source_schema, [r["result_code"] for r in rows[:50]])
         nxt = rows[49] if len(rows) > 50 else None
         return render_template(
@@ -219,6 +248,8 @@ def create_app(config, database, stream, *, secret=None):
         if not row:
             abort(404)
         body = materialize(stream, row["state"])
+        search.decorate(row,row['state'])
+        row['rejected_attempt']=body['features'].get('rejected_attempt')
         return render_template(
             "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"], row.get("collected_context"))
         )

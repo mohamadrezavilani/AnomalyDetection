@@ -51,7 +51,12 @@ def worker(root, count):
         user=os.environ['P24_DELTA_PG_USER'],dbname='postgres')
     store=Store(config,schema=schema); store.init()
     samples=[]
+    search_index=False
     try:
+        if (root/'compact_product/search.py').exists():
+            from compact_product.search import prepare_index
+            prepare_index(store.conn,schema)
+            search_index=True
         for w in range(5):
             start=1792484400000000000+w*FIVE
             logs=[]
@@ -78,7 +83,7 @@ def worker(root, count):
                 raise RuntimeError('Stored behavior hash does not match materialized state')
             signature,policy=signature_without_policy_stamp(body,stored['state'],digest)
             comparable.append(signature);policies.add(policy)
-        result=dict(samples=samples,median_seconds={key:statistics.median(r[key] for r in samples) for key in samples[0]},
+        result=dict(search_index=search_index,samples=samples,median_seconds={key:statistics.median(r[key] for r in samples) for key in samples[0]},
             behavior_hash=digest(hashes),requests_per_window=count,
             behavior_hash_without_policy_stamp=digest(comparable),behavior_policies=sorted(policies),
             relations=store.conn.execute('SELECT sum(pg_total_relation_size(c.oid))::bigint AS bytes FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=%s AND c.relkind=%s',(schema,'r')).fetchone())

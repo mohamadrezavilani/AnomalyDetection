@@ -1,3 +1,3 @@
 {% extends 'base.html' %}{% block content %}
 <div class="toolbar"><p class="section-intro">آخرین اجراهای ثبت‌شده را مرور کنید؛ برای دیدن ورودی، خروجی و توضیح نتیجه، درخواست را باز کنید.</p><a class="button secondary" href="/sessions">جست‌وجوی رفتارهای یک نشست ←</a></div>
-{% include 'scope_controls.html' %}<div class="toolbar"><h2>آخرین رفتارها</h2><span class="badge">حداکثر ۳۰ رفتار اخیر</span></div>{% include 'rows.html' %}{% endblock %}
+{% include 'search_controls.html' %}{% include 'scope_controls.html' %}<div class="toolbar"><h2>آخرین رفتارها</h2><span class="badge">حداکثر ۳۰ رفتار اخیر</span></div>{% include 'rows.html' %}{% if next_page %}<div class="pagination"><a class="button secondary" href="{{ next_page }}">نتایج قدیمی‌تر ←</a></div>{% endif %}{% endblock %}

@@ -44,6 +44,9 @@ class CompactUiBrowserTests(unittest.TestCase):
                             self.assertIn('مشخصات ثبت‌شدهٔ درخواست', page.locator('body').inner_text())
                             self.assertIn('$.UserAgent', page.locator('body').inner_text())
                         if name == 'home':
+                            self.assertTrue(page.get_by_label('RequestID',exact=True).is_visible())
+                            page.get_by_label('RequestID',exact=True).fill('demo-request-001')
+                            self.assertTrue(page.get_by_label('IP',exact=True).is_visible())
                             self.assertEqual(page.locator('tbody tr').first.locator('a[href="/behaviors/demo"]').count(), 1)
                             self.assertEqual(page.locator('details[open]').count(), 0)
                             page.locator('.notes summary').first.click()
