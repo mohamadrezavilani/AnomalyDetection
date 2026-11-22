@@ -138,5 +138,22 @@ class AdaptiveTests(unittest.TestCase):
         self.assertEqual(missing['service_sequence'],'INSUFFICIENT_DATA')
         self.assertEqual(missing['timing_regularization'],'INSUFFICIENT_DATA')
 
+    def test_forest_readiness_does_not_substitute_for_sequence_calibration(self):
+        from compact_ad.patterns import evaluate_patterns
+        from compact_behavior.extract import digest
+        refs=[dict(start_ns=T-(60-i)*FIVE,summary={'patterns':{
+            'complete':i<6,'transitions':{digest(['A','A']):100} if i<6 else {},
+            'peer_vectors':[[math.log1p(10+j),0.,1.,0.] for j in range(4)]}}) for i in range(60)]
+        actors={('s','A'):dict(events=[(T+i*3*10**9,'A' if i%2==0 else 'B',str(i)) for i in range(30)])}
+        results=[]
+        def add(method,service,session,status,*args,**kwargs):
+            r=dict(method=method,status=status);results.append(r);return r
+        evaluate_patterns(T,{}, {},actors,refs,add,{'s':[]})
+        forest=next(r for r in results if r['method']=='isolation_forest')
+        sequence=next(r for r in results if r['method']=='service_sequence')
+        self.assertIn(forest['status'],('NORMAL','ANOMALY'))
+        self.assertEqual(sequence['status'],'INSUFFICIENT_DATA')
+        self.assertEqual(sequence['calibration_windows'],2)
+
 
 if __name__=='__main__':unittest.main()

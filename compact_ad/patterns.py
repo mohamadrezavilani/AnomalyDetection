@@ -114,9 +114,9 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
     denominator=sum(train_pairs.values())+vocabulary
     def surprise(pairs):
         return sum(-math.log((train_pairs.get(pair,0)+1)/denominator)*n for pair,n in pairs.items())/max(1,sum(pairs.values()))
-    calibration=[surprise(r['summary']['patterns']['transitions']) for r in sequence_refs[split:]
+    sequence_calibration=[surprise(r['summary']['patterns']['transitions']) for r in sequence_refs[split:]
         if sum(r['summary']['patterns']['transitions'].values())>=10]
-    sequence_limit=max(calibration)+.5 if calibration else None
+    sequence_limit=max(sequence_calibration)+.5 if sequence_calibration else None
     timing_baseline = statistics.median(r['summary']['patterns']['timing_p05'] for r in timing_refs) if timing_refs else None
     past_gaps=[r['summary']['patterns']['timing_gap_median'] for r in timing_refs if r['summary']['patterns'].get('timing_gap_median') is not None]
     past_gap=statistics.median(past_gaps) if past_gaps else None
@@ -128,19 +128,19 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
             continue
         n = sum(actor['counts'].values())
         if n>=10 and forest:
-            model,calibration,limit=forest
+            model,forest_calibration,limit=forest
             score=model.score(actor['vector'])
-            rank=(1+sum(v>=score for v in calibration))/(len(calibration)+1)
+            rank=(1+sum(v>=score for v in forest_calibration))/(len(forest_calibration)+1)
             result=add('isolation_forest','*',session,'ANOMALY' if score>limit and rank<=.025 else 'NORMAL',
                 score,None,limit,evidence,used=training_refs)
             result.update(model_id=digest(['peer-isolation-1',training,validation]),training_rows=len(training),
-                calibration_rows=len(calibration),comparison='PAST_SESSION_PEERS_NOT_PERSONAL_PROFILE',score_is_probability=False)
+                calibration_rows=len(forest_calibration),comparison='PAST_SESSION_PEERS_NOT_PERSONAL_PROFILE',score_is_probability=False)
         elif n>=10:
             add('isolation_forest','*',session,'INSUFFICIENT_DATA',reason='PEER_MODEL_WARMUP',used=training_refs)
         if n>=10:
             rare=sum(count for pair,count in actor['pairs'].items() if old_pairs.get(pair,0)<3)
             pair_total=sum(actor['pairs'].values())
-            ready=actor['continuity'] and not actor['tied'] and len(calibration)>=12 and old_total>=500
+            ready=actor['continuity'] and not actor['tied'] and len(sequence_calibration)>=12 and old_total>=500
             # Require repeated evidence of a rare transition, not a single new click.
             repeated=max((v for pair,v in actor['pairs'].items() if old_pairs.get(pair,0)<3),default=0)
             score=surprise(actor['pairs'])
@@ -148,7 +148,7 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
                 'ANOMALY' if repeated>=3 and rare>=5 and rare/max(1,pair_total)>.8 and score>sequence_limit else 'NORMAL',
                 score,None,sequence_limit,evidence,
                 reason=None if ready else 'CONTIGUOUS_SEQUENCE_REFERENCE_REQUIRED',used=sequence_refs)
-            sequence_result.update(calibration_windows=len(calibration),rare_transition_fraction=rare/max(1,pair_total),
+            sequence_result.update(calibration_windows=len(sequence_calibration),rare_transition_fraction=rare/max(1,pair_total),
                 comparison='PAST_PEER_TRANSITIONS_WITH_TEMPORAL_HOLDOUT')
         if n>=21 and actor['cv'] is not None:
             limit=min(.05,timing_baseline/3) if timing_baseline is not None else None
