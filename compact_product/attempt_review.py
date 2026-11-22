@@ -6,6 +6,15 @@ from compact_ad import MODEL
 from compact_ad.seasonality import HORIZON
 
 
+def review_status(after):
+    if after['this_request_counted_in_stored_attempts']:
+        if after['analysis_current']:return 'COMPACT_ATTEMPT_CURRENT'
+        if (after.get('analysis_window') or {}).get('revision') is not None:
+            return 'COMPACT_ATTEMPT_RESULT_PRESENT_RECHECK_PENDING'
+        return 'COMPACT_ATTEMPT_WAITING_FOR_AD'
+    return 'COMPACT_ATTEMPT_REPAIR_REQUIRED' if after['needs_feature_repair'] else 'COMPACT_ATTEMPT_NOT_ELIGIBLE'
+
+
 def inspect(store, ad_schema, stream, request_id):
     key=identity(request_id)
     if key is None:raise ValueError('valid_request_id_required')
@@ -43,6 +52,14 @@ def inspect(store, ad_schema, stream, request_id):
     current=bool(window and window['model_version']==MODEL and window['feature_version']==FEATURES
         and window['source_published_ns']==window['published_at_ns']
         and window['revision']==window['timing_confirmed_revision'] and not pending)
+    blockers=store.conn.execute(f'''SELECT start_ns,kind,version,processed_version,updated_at_ns FROM (
+        SELECT start_ns,'SOURCE' AS kind,version,processed_version,updated_at_ns FROM {s}.dirty_windows
+        WHERE stream_id=%s AND session_id=%s AND processed_version<version
+        UNION ALL SELECT start_ns,'REFERENCE' AS kind,version,processed_version,updated_at_ns
+        FROM {ad_schema}.reanalysis WHERE stream_id=%s AND processed_version<version) work
+        WHERE start_ns BETWEEN %s AND %s
+        AND (start_ns>=%s OR (start_ns/{FIVE})%%12=(%s/{FIVE})%%12)
+        ORDER BY start_ns,kind LIMIT 12''',(stream,ALL,stream,start-HORIZON*FIVE,start,start-288*FIVE,start)).fetchall()
     return dict(request_id=key,original_request_ids=row['state'].get('raw_request_ids',[]),
         session_id=row['session_id'],requested_service=service,start_ns=start,
         observed_rate_limited_attempt=valid,stored_attempt_feature=stored,
@@ -50,7 +67,7 @@ def inspect(store, ad_schema, stream, request_id):
         this_request_counted_in_stored_attempts=valid and stored==expected
             and row['features'].get('version')==FEATURES and bool(row['session_id']),
         stored_session_rejections_in_window=count,analysis_current=current,
-        analysis_window=window,reference_work_pending=pending,
+        analysis_window=window,reference_work_pending=pending,pending_work_sample=blockers,
         target_values_available=bool(row['features'].get('input_feature_eligibility',{}).get('targets')
                                      and row['features'].get('input',{}).get('targets')))
 

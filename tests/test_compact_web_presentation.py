@@ -97,7 +97,21 @@ class CasePolicyTests(unittest.TestCase):
         rows=[self.signal('service_latency',session=None,at=i*FIVE) for i in (0,1,3)]
         self.assertFalse(select_cases(rows))
         rows.append(self.signal('service_latency',session=None,at=2*FIVE))
+        self.assertFalse(select_cases(rows))  # Persistence does not validate a pooled reference.
+        for row in rows:row['result'].update(baseline_family='daily',validation_samples=24,duration_valid=10)
+        self.assertFalse(select_cases(rows))  # Ten-sample p95 can be a single maximum.
+        for row in rows:row['result']['duration_valid']=40
         cases=select_cases(rows);self.assertEqual(len(cases),1)
         self.assertEqual(cases[0]['domain'],'service_health')
         row=self.signal();row['verdict']='CONFIRMED';row['result']['reference_windows']=0
         self.assertEqual(select_cases([row])[0]['reasons'],['HUMAN_CONFIRMED'])
+
+    def test_attempt_report_separates_result_present_from_never_analyzed(self):
+        from compact_product.attempt_review import review_status
+        row=dict(this_request_counted_in_stored_attempts=True,analysis_current=False,
+                 analysis_window=None,needs_feature_repair=False)
+        self.assertEqual(review_status(row),'COMPACT_ATTEMPT_WAITING_FOR_AD')
+        row['analysis_window']={'revision':36}
+        self.assertEqual(review_status(row),'COMPACT_ATTEMPT_RESULT_PRESENT_RECHECK_PENDING')
+        row['analysis_current']=True
+        self.assertEqual(review_status(row),'COMPACT_ATTEMPT_CURRENT')

@@ -37,6 +37,23 @@ def crash_analysis(config, schema, ad_schema, start, point):
 
 @unittest.skipUnless(os.environ.get("P24_DELTA_PG_HOST"), "native PostgreSQL required")
 class CompactProductPostgresTests(unittest.TestCase):
+    def test_service_diagnostic_keeps_codes_and_active_session_counts_separate(self):
+        from compact_product.service_review import collect
+        records=[dict(row('one','s1',path='Public.v1/ExchangeGold'),ExecutionTime=7),
+                 dict(row('two','s1',path='Public.v1/ExchangeGold'),ExecutionTime=1600),
+                 dict(row('three','s2',path='Public.v1/ExchangeGold'),ExecutionTime=8)]
+        self.db.publish('test',T,T+FIVE,extract(records),3);self.db.step('test')
+        with self.db.conn.transaction():
+            self.db.conn.execute('SET TRANSACTION READ ONLY')
+            data=collect(self.db.conn,self.config.source_schema,self.config.ad_schema,'test',
+                         'Public.v1/ExchangeGold',T,windows=1)
+        sample=data['windows'][0]
+        self.assertEqual(sample['active_session_peers']['active_sessions'],2)
+        self.assertEqual(float(sample['active_session_peers']['mean_requests_per_active_session']),1.5)
+        self.assertEqual(sample['durations_by_reported_code'][0]['over_1000ms'],1)
+        self.assertEqual(sample['durations_by_reported_code'][0]['min_ms'],7)
+        self.assertNotIn('session_id',str(data))
+
     def test_evidence_case_page_keeps_revision_fences_and_same_revision_feedback(self):
         from copy import deepcopy
         from datetime import datetime
