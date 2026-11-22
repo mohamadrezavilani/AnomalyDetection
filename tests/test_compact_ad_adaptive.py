@@ -12,6 +12,27 @@ from tests.test_compact_ad import behavior
 
 
 class AdaptiveTests(unittest.TestCase):
+    def test_rate_limit_attempts_are_counted_per_session_and_evaluated_without_input(self):
+        from copy import deepcopy
+        def attempt(key,session='same'):
+            source=[row(key,session,path='Services.v1/InvoiceRegister',message='POST https://example.test/api HTTP/1.1 (GR0004 | limited)'),
+                row(key,session,path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/PostPackagesStatus)')]
+            return materialize('t',extract(source)[key])
+        rows=[attempt('r'+str(i)) for i in range(8)]+[attempt('other','another')]
+        summary,services,actors=summarize(rows)
+        service=services['Services.v1/PostPackagesStatus']
+        self.assertEqual(service['rejected_count'],9)
+        self.assertEqual(service['rejected_actors'],{'same':8,'another':1})
+        self.assertEqual(service['count'],0);self.assertFalse(actors)
+        reference=deepcopy(summary)
+        reference['services']['Services.v1/PostPackagesStatus']['rejected_actor_p95']=0
+        refs=[dict(start_ns=T-(i+1)*FIVE,summary=reference) for i in range(24)]
+        results=evaluate(T,summary,services,actors,refs)
+        selected={r['session_id']:r for r in results if r['method']=='rate_limit_rejections'}
+        self.assertEqual(selected['same']['observed'],8)
+        self.assertEqual(selected['same']['status'],'ANOMALY')
+        self.assertEqual(selected['another']['status'],'NORMAL')
+        self.assertFalse(any(r['method']=='target_diversity' and r['session_id']=='same' for r in results))
     def test_rate_limited_dispatch_is_a_separate_attempt_not_a_completed_service(self):
         source=[row(path='Services.v1/InvoiceRegister',message='POST https://example.test/api HTTP/1.1 (GR0004 | limited)'),
             row(path='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @action=v1/LandLinePhoneBills)')]

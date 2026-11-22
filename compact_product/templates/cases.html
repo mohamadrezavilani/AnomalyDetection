@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% block content %}
+<p class="section-intro">فهرست اصلی فقط موارد دارای شواهد تقویتی یا تأیید انسانی را نشان می‌دهد. عبور یک معیار از آستانه به‌تنهایی وارد این فهرست نمی‌شود. این سیاست، احتمال تخلف یا دقت تضمین‌شدهٔ مدل نیست.</p>
+<div class="toolbar"><form class="search-form" method="get"><label>روز بررسی (میلادی، تهران)<input type="date" name="date" value="{{ date }}" required></label><button>نمایش روز</button></form><a href="{{ url_for('signals') }}">همهٔ سیگنال‌ها — بررسی تخصصی ←</a></div>
+<p>{{ case_count }} مورد دارای شواهد تقویتی از {{ signal_count }} سیگنال به‌روز در روز انتخاب‌شده. موارد در انتظار بازتحلیل و مثبت کاذبِ همین نسخه در این محاسبه نیستند.</p>
+{% if truncated %}<p class="notice">سقف خواندن سیگنال‌ها رسیده است؛ این فهرست و اعداد آن پوشش کامل روز را تضمین نمی‌کنند. برای مشاهدهٔ سایر نتایج به بخش همهٔ سیگنال‌ها مراجعه کنید.</p>{% endif %}
+{% for c in rows %}<article class="card"><div class="toolbar"><strong>{{ 'رفتار نشست' if c.domain=='session' else 'سلامت خدمت' }}</strong><span class="ltr">{{ c.last_ns|tehran }}</span></div>
+<p>{% for s in c.services %}{% if s=='*' %}الگوی کل نشست{% else %}<code>{{ s }}</code>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{% for reason in c.reasons %}<p>{{ reasons[reason] }}</p>{% endfor %}
+<p class="muted">{% for m in c.methods %}{{ m|method_label }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+<a href="{{ url_for('case_detail',cid=c.case_id,date=date) }}">مشاهدهٔ شواهد و بررسی مورد ←</a>{% if c.session_id %} · <a href="{{ url_for('sessions',q=c.session_id) }}">رفتارهای همین نشست</a>{% endif %}</article>
+{% else %}<section class="card">در روز انتخاب‌شده موردی با شرایط این فهرست موجود نیست. این نتیجه به معنی نبود همهٔ ناهنجاری‌ها نیست؛ سیگنال‌های ضعیف و کمبود پوشش جدا باقی می‌مانند.</section>{% endfor %}
+<div class="toolbar">{% if page>1 %}<a href="{{ url_for('incidents',date=date,page=page-1) }}">صفحهٔ قبل</a>{% endif %}{% if has_next %}<a href="{{ url_for('incidents',date=date,page=page+1) }}">صفحهٔ بعد</a>{% endif %}</div>
+<details class="card"><summary>شرایط ورود به فهرست</summary><p>برای انتخاب خودکار: حداقل ۲۴ پنجرهٔ مرجع و سه درخواست شاهد برای هر سیگنال؛ سپس دو بُعد رفتاری متفاوت برای همان نشست در همان پنجره. نرخ درخواست، Isolation Forest و تعداد ردشدن یک بُعد محسوب می‌شوند؛ تکرار و تنوع هدف نیز یک بُعد هستند. هشدارهای نشست‌ها یا خدمت‌های متفاوت به‌تنهایی یکدیگر را تقویت نمی‌کنند.</p><p>هشدار کندی یا نتیجهٔ غیرعادی خدمت فقط با تداوم همان روش در سه پنجرهٔ متوالی انتخاب می‌شود و از رفتار کاربر جداست. این شروط سیاست محافظه‌کارانهٔ نمایش‌اند؛ ممکن است بعضی موارد واقعیِ تک‌سیگنالی را کنار بگذارند. آستانه‌های مدل عوض نشده‌اند و همهٔ سیگنال‌ها قابل بررسی‌اند.</p></details>
+{% endblock %}
