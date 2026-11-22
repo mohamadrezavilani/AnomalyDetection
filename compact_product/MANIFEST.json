@@ -1,5 +1,5 @@
 {
-  "build_id": "COMPACT-PRODUCT-20261122-20",
+  "build_id": "COMPACT-PRODUCT-20261122-21",
   "files_sha256": {
     "catalogs/error_code_catalog.json": "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e",
     "compact_ad/__init__.py": "fe6bb9d00bfe43e3d0789f9ebbd933b0c8268b36bd6e217c3814477090b332c2",
@@ -11,10 +11,10 @@
     "compact_ad/store.py": "2d33c51af842ac153b2115b7d62eeaf033b745e5f4090cb49b18fa47a32bf047",
     "compact_product/History_Compact_Product.ps1": "167ac3ecc3203222f167dcfd1291c4bd4557349a586ded93f5ab6e36a9869827",
     "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
-    "compact_product/__init__.py": "17c3135623aaa55c44b09ad04a08f33b8dbcc4a736d048199214ed5524c97fbb",
+    "compact_product/__init__.py": "fa78a1e4613722016bd0c96ac79f862f11b6801df9e859559adbac04996845f6",
     "compact_product/__main__.py": "b111f9155355c176f0a7eed2116f6a741cbae574ad415d6856b63f39d30ac8f5",
     "compact_product/attempt_review.py": "05fbe29847967d1bf03eeb7d0ea8ad2d501e625a50b4ec9ac58d8a9d45373562",
-    "compact_product/cases.py": "9187a74af3209480d913b183ff869d558cf52290a2a96ea8d62b4c94e3d5256f",
+    "compact_product/cases.py": "9bf9b33b239f45a4cc7e5a9d48c0f8930c854cdffaebb5627690f451deda47f0",
     "compact_product/config.py": "25e4efba2dcea98280c69678cf9a5934f3474f5c6be28f5b679d977d7286b168",
     "compact_product/error_catalog.py": "25335cf6308f11d82578b56aa82367a879ff6d5952936e35fc41680d8fa9de4d",
     "compact_product/health.py": "3f0a1d583e2017fc0eb31d48f350b83d98a69dd48651007a32553f496eed735c",
@@ -30,7 +30,7 @@
     "compact_product/templates/base.html": "d6d7fa8d1bc267f4ae6f93409af86a9bd230442300d2ae3e972cafb15188e250",
     "compact_product/templates/behavior.html": "1994eaea9fd7e039c10cee9642aa4b5ee74c99dabf296313cbed2d9b6ee54c67",
     "compact_product/templates/case.html": "abaef96189350ad866e89ad93552dd43f72c06d2c4effb0b21189300fc7f821a",
-    "compact_product/templates/cases.html": "1adcd8f4155bd0c5d91370baf528854fe94f0faf8be1be1d3f686b0625af0258",
+    "compact_product/templates/cases.html": "caccf13937767d73d3782c019938ea16437d9f36b251c8a9afdb7410c819a9eb",
     "compact_product/templates/data_notes.html": "c2a0cd8faec215cd244d5092c75d5e477a6cb6212e96602696d3171f2e2f94e8",
     "compact_product/templates/error.html": "161e07687634bcad68f579c08d44535c3e5eb26e25e45fdfe6117dfb9e99c2d6",
     "compact_product/templates/home.html": "a1730dd43d65ee344c92e3e99147f62843cb603b0669bedc9451bb642fc7b288",

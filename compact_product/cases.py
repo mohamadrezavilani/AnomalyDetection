@@ -5,11 +5,12 @@ from zoneinfo import ZoneInfo
 from compact_behavior import FIVE
 from compact_behavior.extract import digest
 
-POLICY = 'corroborated-review-2'
+POLICY = 'corroborated-review-3'
 LIMIT = 10000
 FAMILIES = {'actor_rate':'volume','isolation_forest':'volume',
     'rate_limit_rejections':'volume','repeated_target':'targets',
     'target_diversity':'targets','service_sequence':'sequence','timing_regularization':'timing'}
+CONTEXT_ONLY = {'repeated_target'}
 
 
 def day_bounds(value=None):
@@ -30,7 +31,11 @@ def select_cases(rows):
 
     Two different behavioral dimensions must refer to the same session and
     five-minute window. Rate, forest and rate-limit counts share one dimension;
-    repeated and diverse targets share another. Service health is kept separate.
+    Repeated-target counts are context only: the same requests can generate both
+    high volume and high repetition, even when every attempt has one target.
+    This does not label retries benign or discard their findings. Distinct target
+    diversity, sequence and timing can still corroborate another dimension.
+    Service health is kept separate.
     No learned precision or statistical independence is claimed by this policy.
     """
     accepted={};reasons=defaultdict(set)
@@ -55,7 +60,8 @@ def select_cases(rows):
         services={r['service'] for r in group if r['service']!='*'} or {'*'}
         for service in services:
             subset=[r for r in group if r['service'] in (service,'*')]
-            if len({FAMILIES[r['method']] for r in subset})>=2:
+            if len({FAMILIES[r['method']] for r in subset
+                    if r['method'] not in CONTEXT_ONLY})>=2:
                 accept(subset,'CORROBORATED_SAME_SESSION_WINDOW')
     for group in persistent.values():
         # Multiple numeric paths in a single window are not persistence.
