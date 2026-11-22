@@ -119,11 +119,13 @@ def save_rates(db, schema, stream, start, summary, signature):
     from psycopg.types.json import Jsonb
     rates={k:[v['count'],v.get('actor_p95',0),not bool(v['invalid_rate'])]
         for k,v in summary['services'].items() if k!='<unresolved>'}
-    db.execute(f'''INSERT INTO {schema}.rate_history VALUES(%s,%s,%s,%s,%s,%s)
+    db.execute(f'''INSERT INTO {schema}.rate_history SELECT %s,%s,%s,%s,%s,%s
+        WHERE EXISTS(SELECT 1 FROM {schema}.window_results WHERE stream_id=%s AND start_ns=%s AND summary_hash=%s)
         ON CONFLICT(stream_id,start_ns) DO UPDATE SET rates=excluded.rates,
         complete=excluded.complete,summary_hash=excluded.summary_hash
         WHERE {schema}.rate_history.summary_hash IS DISTINCT FROM excluded.summary_hash''',
-        (stream,start,(start//FIVE)%12,Jsonb(rates),not(summary['invalid_contract'] or summary['unresolved']),signature))
+        (stream,start,(start//FIVE)%12,Jsonb(rates),not(summary['invalid_contract'] or summary['unresolved']),signature,
+         stream,start,signature))
 
 
 def backfill(db, schema, stream):

@@ -40,6 +40,7 @@ class AnalysisStore(Store):
                     source_published_ns BIGINT NOT NULL,first_source_ns BIGINT NOT NULL,first_analyzed_ns BIGINT NOT NULL,work_cause_ns BIGINT NOT NULL,analyzed_at_ns BIGINT NOT NULL,analysis_seconds DOUBLE PRECISION NOT NULL,
                     revision BIGINT NOT NULL DEFAULT 1,PRIMARY KEY(stream_id,start_ns))""",
                 f"ALTER TABLE {s}.window_results ADD COLUMN IF NOT EXISTS timing_confirmed_revision BIGINT NOT NULL DEFAULT 0",
+                f"CREATE INDEX IF NOT EXISTS compact_analysis_model ON {s}.window_results(stream_id,model_version,feature_version)",
                 f"""CREATE TABLE IF NOT EXISTS {s}.reference_epochs(stream_id TEXT PRIMARY KEY,epoch BIGINT NOT NULL DEFAULT 0)""",
                 f"""CREATE TABLE IF NOT EXISTS {s}.summary_history(stream_id TEXT NOT NULL,start_ns BIGINT NOT NULL,summary_hash TEXT NOT NULL,
                     feature_version TEXT NOT NULL,model_version TEXT NOT NULL,summary JSONB NOT NULL,recorded_at_ns BIGINT NOT NULL,

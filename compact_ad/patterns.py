@@ -72,10 +72,9 @@ def patterns(actors, previous=None, start=None):
 
 
 @lru_cache(maxsize=8)
-def trained_forest(vectors):
-    split = len(vectors)*3//4
-    model = SmallIsolationForest().fit(vectors[:split])
-    calibration = [model.score(v) for v in vectors[split:]]
+def trained_forest(training, validation):
+    model = SmallIsolationForest().fit(training)
+    calibration = [model.score(v) for v in validation]
     return model, calibration, max(.65,max(calibration)+.02)
 
 
@@ -83,12 +82,18 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
     current_summary, sessions = patterns(actors, previous, start)
     training_cutoff = start//(12*FIVE)*(12*FIVE)
     training_refs = [r for r in refs if training_cutoff-276*FIVE<=r['start_ns']<training_cutoff]
-    vectors = []
+    vector_windows = []
     for ref in training_refs:
         # Balanced bounded window contribution, not all users' stored logs.
-        vectors.extend(ref['summary'].get('patterns',{}).get('peer_vectors',[])[:4])
-    vectors = tuple(tuple(v) for v in vectors[-512:])
-    forest = trained_forest(vectors) if len(vectors)>=160 else None
+        values=ref['summary'].get('patterns',{}).get('peer_vectors',[])
+        if values:
+            offset=(ref['start_ns']//FIVE*4)%len(values)
+            vector_windows.append([values[(offset+i)%len(values)] for i in range(min(4,len(values)))])
+    vector_windows=vector_windows[-128:]
+    cut=len(vector_windows)*3//4
+    training=tuple(tuple(v) for window in vector_windows[:cut] for v in window)
+    validation=tuple(tuple(v) for window in vector_windows[cut:] for v in window)
+    forest = trained_forest(training,validation) if len(training)>=120 and len(validation)>=40 else None
     old_pairs = Counter()
     sequence_refs = []
     timing_refs = []
@@ -128,7 +133,7 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
             rank=(1+sum(v>=score for v in calibration))/(len(calibration)+1)
             result=add('isolation_forest','*',session,'ANOMALY' if score>limit and rank<=.025 else 'NORMAL',
                 score,None,limit,evidence,used=training_refs)
-            result.update(model_id=digest(['peer-isolation-1',vectors]),training_rows=len(vectors)*3//4,
+            result.update(model_id=digest(['peer-isolation-1',training,validation]),training_rows=len(training),
                 calibration_rows=len(calibration),comparison='PAST_SESSION_PEERS_NOT_PERSONAL_PROFILE',score_is_probability=False)
         elif n>=10:
             add('isolation_forest','*',session,'INSUFFICIENT_DATA',reason='PEER_MODEL_WARMUP',used=training_refs)
