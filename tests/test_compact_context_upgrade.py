@@ -9,22 +9,34 @@ class ContextUpgradeTests(unittest.TestCase):
             calls.append((args,cwd));return responses[len(calls)-1]
         report=upgrade(Path('project'),Path('new'),Path('old'),Path('history-old'),'sha',execute=execute)
         return report,calls
-    def test_core_failure_never_stops_history(self):
-        result,calls=self.run_steps([(0,{'history_state':'ACTIVE'}),(2,{'status':'RESTORED'})])
-        self.assertEqual(len(calls),2)
+    def test_history_stops_before_core_and_resumes_after_confirmed_restore(self):
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),
+            (0,{}),(0,{}),(0,{}),(2,{'status':'COMPACT_UPGRADE_FAILED_PREVIOUS_RELEASE_RESTORED'}),(0,{})])
+        self.assertIn('history-stop',calls[3][0])
+        self.assertEqual(calls[5][0][0],Path('new/tools/Upgrade_Compact_Product.py'))
+        self.assertIn('resume-history',calls[6][0])
         self.assertEqual(result['status'],'COMPACT_CONTEXT_UPGRADE_INCOMPLETE')
-    def test_owned_history_migrates_only_after_core_and_stop_succeed(self):
-        result,calls=self.run_steps([(0,{'history_state':'ACTIVE'}),(0,{}),(0,{}),(0,{})])
+    def test_owned_history_migrates_only_after_core_succeeds(self):
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),
+            (0,{}),(0,{}),(0,{}),(0,{}),(0,{})])
         self.assertEqual(result['status'],'COMPACT_CONTEXT_CORE_AND_HISTORY_UPGRADED')
-        self.assertEqual(calls[2][1],Path('history-old'))
-        self.assertIn('history-stop',calls[2][0])
-        self.assertEqual(calls[3][0][0],Path('new/tools/Repair_Compact_History_Task.py'))
+        self.assertEqual(calls[3][1],Path('history-old'))
+        self.assertIn('--check-only',calls[4][0])
+        self.assertEqual(calls[6][0][0],Path('new/tools/Repair_Compact_History_Task.py'))
     def test_stop_failure_and_completed_history(self):
-        result,calls=self.run_steps([(0,{'history_state':'ACTIVE'}),(0,{}),(2,{})])
-        self.assertEqual(len(calls),3)
-        result,calls=self.run_steps([(0,{'history_state':'COMPLETE'}),(0,{})])
-        self.assertEqual(len(calls),2)
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),(0,{}),(2,{})])
+        self.assertEqual(len(calls),4)
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'COMPLETE'}),(0,{}),(0,{})])
+        self.assertEqual(len(calls),4)
         self.assertEqual(result['status'],'COMPACT_CONTEXT_CORE_UPGRADED_HISTORY_ALREADY_COMPLETE')
+    def test_unconfirmed_stop_never_resumes_history_or_migrates(self):
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),
+            (0,{}),(0,{}),(0,{}),(2,{'status':'COMPACT_UPGRADE_RESTORE_NEEDS_ATTENTION'})])
+        self.assertEqual(len(calls),6)
+        self.assertEqual(result['status'],'COMPACT_CONTEXT_UPGRADE_INCOMPLETE')
+    def test_failed_candidate_preflight_does_not_stop_history(self):
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),(2,{})])
+        self.assertEqual(len(calls),3)
 
 
 class RecoveryTests(unittest.TestCase):
@@ -191,3 +203,92 @@ class RecoveryTests(unittest.TestCase):
         self.assertGreater(value['commit_limit_bytes'], 0)
         self.assertTrue(any(row['ProcessId'] == os.getpid() for row in value['processes']))
         self.assertLessEqual(len(value['processes']), 512)
+
+
+class SequentialUpgradeTests(unittest.TestCase):
+    baseline = RecoveryTests.baseline
+    host = RecoveryTests.host
+    def upgrade_host(self):
+        host = self.host()
+        for role in ('web', 'ingest', 'analysis', 'supervisor'):
+            host.online(role)
+        def stop_core():
+            host.calls.append(('stop_core',))
+            for value in host.values.values():
+                value['running'] = False
+        host.stop_core = stop_core
+        host.check_children = lambda: host.calls.append(('children_exited',))
+        host.catalog = lambda: host.calls.append(('catalog',))
+        return host
+
+    def test_success_stops_processes_before_sequential_launch(self):
+        from tools.Upgrade_Compact_Product import upgrade_core
+        host = self.upgrade_host()
+        result = upgrade_core(host, 'accepted', 'accepted', lambda before: self.fail('unexpected restore'), lambda s: None, lambda v: None)
+        self.assertEqual(result['status'], 'COMPACT_UPGRADED_HISTORY_PRESERVED')
+        self.assertLess(host.calls.index(('children_exited',)), host.calls.index(('start', 'web')))
+        self.assertLess(host.calls.index(('wait', 'web')), host.calls.index(('start', 'ingest')))
+
+    def test_failed_start_preserves_original_error_and_drains_before_restore(self):
+        from tools.Upgrade_Compact_Product import upgrade_core
+        host = self.upgrade_host()
+        host.fail = 'ingest'
+        saved = []
+        def restore(before):
+            self.assertFalse(any(v.get('running') for v in host.roles().values()))
+            self.assertEqual(host.calls[-1], ('children_exited',))
+            return {'restored': True}
+        result = upgrade_core(host, 'accepted', 'accepted', restore, lambda s: None, lambda v: saved.append(v['failure']))
+        self.assertEqual(result['status'], 'COMPACT_UPGRADE_FAILED_PREVIOUS_RELEASE_RESTORED')
+        self.assertEqual(saved[0]['code'], 'ROLE_NOT_READY:ingest')
+        self.assertNotIn(('start', 'analysis'), host.calls)
+
+    def test_unleased_child_blocks_rollback_even_when_all_leases_are_gone(self):
+        from tools.Upgrade_Compact_Product import upgrade_core, quiesce
+        from unittest.mock import patch
+        host = self.upgrade_host()
+        host.fail = 'ingest'
+        def children():
+            if ('start', 'ingest') in host.calls:
+                raise ValueError('OWNED_CHILD_STILL_STARTING')
+        host.check_children = children
+        def bounded(h, expected, emit):
+            return quiesce(h, expected, emit, timeout=0)
+        with patch('tools.Upgrade_Compact_Product.quiesce', side_effect=bounded):
+            result = upgrade_core(host, 'accepted', 'accepted', lambda v: self.fail('unsafe rollback'), lambda s: None, lambda v: None)
+        self.assertEqual(result['status'], 'COMPACT_UPGRADE_RESTORE_NEEDS_ATTENTION')
+        self.assertEqual(result['restore_failure']['code'], 'CORE_PROCESSES_NOT_DRAINED_NO_ROLLBACK_STARTED')
+
+    def test_running_history_blocks_upgrade_before_stop(self):
+        from tools.Upgrade_Compact_Product import upgrade_core
+        host = self.upgrade_host();host.online('history')
+        result = upgrade_core(host, 'accepted', 'accepted', lambda v: self.fail('restore'), lambda s: None, lambda v: None)
+        self.assertEqual(result['failure']['code'], 'STOP_HISTORY_BEFORE_CORE_UPGRADE')
+        self.assertNotIn(('stop_core',), host.calls)
+
+    def test_transport_relays_bounded_json_and_retains_exit_failure(self):
+        from tools.Upgrade_Compact_Context import run
+        from contextlib import redirect_stdout
+        import io
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code, value = run(['-c', 'print("x"*100000);print(\'{"status":"SYNTHETIC_FAILURE"}\');raise SystemExit(2)'], Path.cwd())
+        self.assertEqual(code, 2)
+        self.assertEqual(value['status'], 'SYNTHETIC_FAILURE')
+        self.assertNotIn('xxxxx', output.getvalue())
+
+    def test_phase_export_bounds_reads_and_excludes_content_and_rechecks(self):
+        import tempfile,json
+        from tools.Review_Compact_Write_Phases import sample
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'history.log'
+            value=dict(event='HISTORY_PUBLICATION',fresh_publication=True,start_ns=1,
+                       stream_lock_acquire_seconds=.2,context_upsert_seconds=1.2,
+                       source_records=10,payload='private-synthetic-content')
+            path.write_bytes(b'x'*10000+b'\n'+json.dumps(value).encode()+b'\n'+
+                json.dumps(dict(value,fresh_publication=False,start_ns=2)).encode()+b'\n')
+            result=sample(path,'history',1024)
+            self.assertLessEqual(result['bytes_read'],1024)
+            self.assertEqual(len(result['rows']),1)
+            self.assertNotIn('private',json.dumps(result))
+            self.assertEqual(result['rows'][0]['context_upsert_seconds'],1.2)

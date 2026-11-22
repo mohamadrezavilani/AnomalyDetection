@@ -122,7 +122,32 @@ class CompactRuntimeTests(unittest.TestCase):
                 encoding="utf-8",
             )
             try:
-                state = start(root)
+                # Exercise the upgrade's actual sequential starter against
+                # real PostgreSQL, source HTTP, worker processes and web ports.
+                from tools.Upgrade_Compact_Product import start_core
+                from tools.Recover_Compact_Product import ready, validate_roles
+                from compact_product.version import verify
+                from compact_product.operations import probe
+                from compact_product.config import load
+                expected = verify()['source_sha256']
+                class SequentialHost:
+                    def roles(self):return status(root)
+                    def guard(self, package):validate_roles(status(root), package)
+                    def start(self, role):start(root, roles=(role,))
+                    def wait(self, role, package):
+                        deadline=time.monotonic()+30
+                        while time.monotonic()<deadline:
+                            values=status(root);validate_roles(values,package)
+                            if ready(values.get(role,{})):return
+                            time.sleep(.1)
+                        raise TimeoutError('NATIVE_SEQUENTIAL_ROLE_NOT_READY:'+role)
+                    def task(self, which, action):
+                        if (which,action)!=('core','register'):raise AssertionError('unexpected task')
+                        start(root,roles=('supervisor',))
+                    def probe(self):probe(load(root)[0])
+                    def catalog(self):pass  # Catalog import is asserted by native product tests.
+                start_core(SequentialHost(),expected,lambda stage:None)
+                state = status(root)
                 self.assertTrue(
                     all(v["running"] for r, v in state.items() if r != "supervisor")
                 )

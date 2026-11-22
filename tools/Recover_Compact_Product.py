@@ -178,11 +178,12 @@ def recover(host, baseline, expected, emit):
 
 
 class WindowsHost:
-    def __init__(self, project):
+    def __init__(self, project, *, allowed_core_task_roots=()):
         from compact_product.config import load
         self.project = project
         self.cfg, self.source, self.stream = load(project)
         self.supervision_enabled = False
+        self.allowed_core_task_roots = tuple(allowed_core_task_roots)
 
     def database(self):
         from compact_behavior.store import Store
@@ -258,7 +259,12 @@ $ErrorActionPreference='Stop'
 $t=Get-ScheduledTask -TaskName $env:P24_RECOVERY_TASK -ErrorAction SilentlyContinue
 @{exists=[bool]$t;actions=@($t.Actions | Select-Object WorkingDirectory)} | ConvertTo-Json -Depth 4 -Compress
 """, {"P24_RECOVERY_TASK": "P24-CompactProduct" if which == "core" else "P24-CompactHistory"})
-        validate_task_root(snapshot, Path(package_file).resolve().parents[1])
+        current_root = Path(package_file).resolve().parents[1]
+        allowed = (current_root, *self.allowed_core_task_roots) if which == 'core' else (current_root,)
+        if snapshot.get('exists'):
+            require(len(snapshot.get('actions', [])) == 1 and
+                    any(norm(snapshot['actions'][0].get('WorkingDirectory', '')) == norm(r) for r in allowed),
+                    'AUTOSTART_RELEASE_PATH_MISMATCH')
         if which == "core":
             from compact_product.operations import task
         else:
