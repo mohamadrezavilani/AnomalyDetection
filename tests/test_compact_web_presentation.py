@@ -82,6 +82,28 @@ class CasePolicyTests(unittest.TestCase):
         self.assertFalse(select_cases([self.signal(m) for m in ('repeated_target','target_diversity')]))
         self.assertEqual(len(select_cases([self.signal(),self.signal('target_diversity')])),1)
 
+    def test_manual_retries_are_not_independent_corroboration_of_volume(self):
+        from compact_product.cases import select_cases
+        rows=[self.signal(m) for m in ('actor_rate','repeated_target','isolation_forest','rate_limit_rejections')]
+        for row in rows:row['result'].update(observed=60,threshold=35)
+        self.assertFalse(select_cases(rows))
+        # The rule is about evidence dependence, not an arbitrary count cutoff.
+        for row in rows:row['result']['observed']=10000
+        self.assertFalse(select_cases(rows))
+        # Keep repetition as context once other dimensions qualify the case.
+        rows.append(self.signal('target_diversity'))
+        selected=select_cases(rows)
+        self.assertEqual(len(selected),1)
+        self.assertIn('repeated_target',selected[0]['methods'])
+        repeated=self.signal('repeated_target');repeated['verdict']='CONFIRMED'
+        self.assertEqual(select_cases([repeated])[0]['reasons'],['HUMAN_CONFIRMED'])
+
+    def test_repetition_alone_cannot_corroborate_timing_or_diversity(self):
+        from compact_product.cases import select_cases
+        for method in ('timing_regularization','service_sequence','target_diversity'):
+            self.assertFalse(select_cases([self.signal('repeated_target'),self.signal(method)]))
+            self.assertEqual(len(select_cases([self.signal(),self.signal(method)])),1)
+
     def test_different_sessions_windows_services_and_thin_evidence_do_not_confirm(self):
         from compact_product.cases import select_cases
         for other in (self.signal('target_diversity',session='other'),self.signal('target_diversity',at=1),
