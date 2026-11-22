@@ -87,10 +87,11 @@ def index_state(db, schema):
         WHERE i.indexrelid=to_regclass(%s)''',(schema+'.'+IP_INDEX,)).fetchone()
 
 
-def prepare_index(db, schema):
+def prepare_index(db, schema, *, progress=lambda stage: None):
     # Dedicated autocommit preparation connection, outside worker startup.
     if not re.fullmatch(r'p24_compact(?:_[a-z0-9_]{1,40})?',schema):
         raise ValueError('compact_schema_required')
+    progress('CHECKING_INDEX')
     state = index_state(db,schema)
     if state:
         if (state['table_name']!='request_context' or state['table_schema']!=schema
@@ -99,7 +100,9 @@ def prepare_index(db, schema):
             raise ValueError('SEARCH_INDEX_NAME_OWNED_BY_DIFFERENT_DEFINITION')
         if state['indisvalid'] and state['indisready']:return 'ALREADY_READY'
         # An interrupted concurrent build may leave only this invalid index.
+        progress('REMOVING_INVALID_INDEX')
         db.execute(f'DROP INDEX CONCURRENTLY {schema}.{IP_INDEX}')
+    progress('BUILDING_INDEX_CONCURRENTLY')
     db.execute(f'CREATE INDEX CONCURRENTLY {IP_INDEX} ON {schema}.request_context USING gin (({IP_EXPRESSION}) jsonb_path_ops)')
     state = index_state(db,schema)
     if not state or not state['indisvalid'] or not state['indisready']:

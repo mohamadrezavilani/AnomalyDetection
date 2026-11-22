@@ -1,5 +1,5 @@
 {
-  "build_id": "COMPACT-PRODUCT-20261122-17",
+  "build_id": "COMPACT-PRODUCT-20261122-18",
   "files_sha256": {
     "catalogs/error_code_catalog.json": "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e",
     "compact_ad/__init__.py": "fe6bb9d00bfe43e3d0789f9ebbd933b0c8268b36bd6e217c3814477090b332c2",
@@ -11,7 +11,7 @@
     "compact_ad/store.py": "2d33c51af842ac153b2115b7d62eeaf033b745e5f4090cb49b18fa47a32bf047",
     "compact_product/History_Compact_Product.ps1": "167ac3ecc3203222f167dcfd1291c4bd4557349a586ded93f5ab6e36a9869827",
     "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
-    "compact_product/__init__.py": "e572c9879c352c22e8b8301cb1d258330873a3d9c771547dc9ff1249c9643f65",
+    "compact_product/__init__.py": "62779006e2b8bcad1ac1c95b66d7b7c1f2b47e24a1e57091ada9002ae2ac610f",
     "compact_product/__main__.py": "b111f9155355c176f0a7eed2116f6a741cbae574ad415d6856b63f39d30ac8f5",
     "compact_product/config.py": "25e4efba2dcea98280c69678cf9a5934f3474f5c6be28f5b679d977d7286b168",
     "compact_product/error_catalog.py": "25335cf6308f11d82578b56aa82367a879ff6d5952936e35fc41680d8fa9de4d",
@@ -22,7 +22,8 @@
     "compact_product/presentation.py": "88fc0290083ea00cc7176294b1517638d5ebf548f05f8964fa822ba96917826c",
     "compact_product/request_context.py": "bd2ce6ae3ff6e9d9066c04f374e6e962b22788a52bbb545cbd99d57e96d13514",
     "compact_product/runtime.py": "7493fc99da47ebd83d047957c941f3600cfbeba5fc93a5ce8f7e67b4b0d58fc4",
-    "compact_product/search.py": "b498522eb9931abf7882b7fdd3a680f8408b8b316ebab9283ede1bfe74b0ed9f",
+    "compact_product/search.py": "14477e50f4032ae1b9e7508fe55e8ff015473ea97f2a3018bcfee575bb5373f3",
+    "compact_product/search_maintenance.py": "7af7725009f8305954adc9ae37aecceef25b92904d8fc741d11b40e928c07e3e",
     "compact_product/templates/base.html": "d6d7fa8d1bc267f4ae6f93409af86a9bd230442300d2ae3e972cafb15188e250",
     "compact_product/templates/behavior.html": "1994eaea9fd7e039c10cee9642aa4b5ee74c99dabf296313cbed2d9b6ee54c67",
     "compact_product/templates/data_notes.html": "c2a0cd8faec215cd244d5092c75d5e477a6cb6212e96602696d3171f2e2f94e8",
