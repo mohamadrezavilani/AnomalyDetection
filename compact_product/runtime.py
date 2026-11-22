@@ -386,6 +386,12 @@ def analyze(lease, source, logger):
                         record(db.conn, cfg.source_schema, lease.stream, 'analysis', result, 'analysis')
                     except Exception:
                         logger.warning('performance_sample_not_recorded')
+                elif result['status'] in ('LONGITUDINAL_WINDOW_PREPARED','LONGITUDINAL_DAY_PREPARED','LONGITUDINAL_PERIOD_REVIEWED'):
+                    try:
+                        from .performance import record
+                        record(db.conn,cfg.source_schema,lease.stream,'longitudinal',result,result['status'])
+                    except Exception:
+                        logger.warning('longitudinal_performance_sample_not_recorded')
                 lease.update(
                     state=result["status"],
                     last_analysis=result,

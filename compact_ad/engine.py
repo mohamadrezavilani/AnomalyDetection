@@ -40,7 +40,8 @@ def summarize(
     max_targets=100000,
     max_numeric_values=100000,
     cutoff_ns=None,
-    previous_events=None
+    previous_events=None,
+    collect_longitudinal=False,
 ):
     services = {}
     actors = {}
@@ -140,6 +141,7 @@ def summarize(
                 dict(
                     count=0,
                     targets=Counter(),
+                    target_fields={},
                     target_witnesses=defaultdict(list),
                     input_valid=0,
                     input_invalid=0,
@@ -189,16 +191,20 @@ def summarize(
             if ie:
                 # One occurrence per logical behavior+typed target. Repeated items
                 # within a single array are not extra requests to that target.
-                tokens = {
-                    digest([path, value])
-                    for path, values in inp.get("targets", {}).items()
-                    for value in values
-                }
+                typed_tokens = {path: {digest([path, value]) for value in values}
+                                for path, values in inp.get("targets", {}).items()}
+                tokens = set().union(*typed_tokens.values())
                 targets_used += len(tokens)
                 if targets_used > max_targets:
                     resource_invalid = True
                 else:
                     actor["targets"].update(tokens)
+                    if collect_longitudinal:
+                        for path, values in typed_tokens.items():
+                            field = actor["target_fields"].setdefault(path, dict(tokens=set(), covered=0))
+                            field["tokens"].update(values)
+                            if values:
+                                field["covered"] += 1
                     for token in tokens:
                         if len(actor["target_witnesses"][token]) < witness_limit:
                             actor["target_witnesses"][token].append(row["behavior_id"])

@@ -35,7 +35,7 @@ def recent(db, schema, stream):
     if not db.execute('SELECT to_regclass(%s) AS name',(schema+'.window_performance',)).fetchone()['name']:
         return {}
     output = {}
-    for role in ('ingest','history','analysis'):
+    for role in ('ingest','history','analysis','longitudinal'):
         rows = db.execute(f'''SELECT * FROM {schema}.window_performance WHERE stream_id=%s AND role=%s
             ORDER BY measured_ns DESC LIMIT 20''',(stream,role)).fetchall()
         values = sorted(r['seconds'] for r in rows)

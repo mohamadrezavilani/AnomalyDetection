@@ -31,6 +31,7 @@ from .request_context import observed_context
 from compact_ad.methods import METHODS
 from compact_ad import MODEL
 from compact_ad.seasonality import HORIZON
+from compact_ad import long_store, longitudinal
 from compact_behavior.services import meaningful_apis, operation_catalog, operation_label, operation_role
 
 
@@ -66,6 +67,8 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.template_filter("method_label")
     def method_label(key):
+        if key == longitudinal.METHOD:
+            return 'تنوع تجمیعی شناسه‌های ورودی در چند روز'
         return METHODS.get(key, {}).get("label", key)
 
     @app.template_filter("status_label")
@@ -98,7 +101,7 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.context_processor
     def defaults():
-        return dict(build=BUILD, model_version=MODEL, scope_url=scope_url)
+        return dict(build=BUILD, model_version=MODEL, long_model_version=longitudinal.VERSION, scope_url=scope_url)
 
     def scope_url(value):
         allowed = (*search.FIELDS, 'q')
@@ -174,6 +177,7 @@ def create_app(config, database, stream, *, secret=None):
             value=health(db,config,stream) if request.path=='/status' else None
             coverage=None;rows=[];code_definitions={}
             if request.path=='/status':
+                value['longitudinal']=long_store.status(db,config.source_schema,config.ad_schema,stream)
                 coverage=db.execute(f"SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s",
                     (stream,value['latest_analyzed_end_ns']-FIVE if value['latest_analyzed_end_ns'] is not None else None)).fetchone()
             else:
@@ -260,7 +264,7 @@ def create_app(config, database, stream, *, secret=None):
 
     def publishable():
         # Snapshot-local eligibility, including changed reference windows.
-        return f"""f.status='ANOMALY' AND f.result->>'model_version'=%s
+        return f"""f.status='ANOMALY' AND ({long_store.eligible_sql(config.source_schema,config.ad_schema)} OR (f.result->>'model_version'=%s
             AND f.result->>'feature_version'=%s
             AND EXISTS(SELECT 1 FROM {config.ad_schema}.window_results r
                 JOIN {config.source_schema}.windows w USING(stream_id,start_ns)
@@ -277,7 +281,7 @@ def create_app(config, database, stream, *, secret=None):
                 WHERE j.stream_id=f.stream_id
                 AND j.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
                 AND (j.start_ns>=f.start_ns-{288 * FIVE} OR (j.start_ns/{FIVE})%%12=(f.start_ns/{FIVE})%%12)
-                AND j.processed_version<j.version)
+                AND j.processed_version<j.version)))
             AND COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
                 WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
                 ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE')<>'FALSE_POSITIVE'"""
@@ -286,41 +290,80 @@ def create_app(config, database, stream, *, secret=None):
         return [MODEL, FEATURES, MODEL, FEATURES]
 
     def case_rows():
-        try:day,start,end=cases.day_bounds(request.args.get('date'))
+        try:
+            day,start,end=cases.day_bounds(request.args.get('date'))
+            days=int(request.args.get('days','30'))
+            if not 1<=days<=30:raise ValueError('invalid_range')
+            start-=(days-1)*longitudinal.DAY
         except (ValueError,OverflowError):abort(400,description='تاریخ میلادی معتبر وارد کنید.')
         with connection() as db:
-            rows=db.execute(f'''WITH candidates AS MATERIALIZED (
+            rows=db.execute(f'''WITH strong_candidates AS MATERIALIZED (
                 SELECT * FROM {config.ad_schema}.findings
                 WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
+                AND (method='long_target_enumeration' OR result->>'single_signal_review_eligible'='true')
+                ORDER BY start_ns DESC,finding_id DESC LIMIT 1001
+            ), ordinary_candidates AS MATERIALIZED (
+                SELECT * FROM {config.ad_schema}.findings
+                WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
+                AND NOT (method='long_target_enumeration' OR COALESCE(result->>'single_signal_review_eligible','false')='true')
                 ORDER BY start_ns DESC,finding_id DESC LIMIT {cases.LIMIT+1}
+            ), candidates AS MATERIALIZED (
+                SELECT * FROM strong_candidates UNION ALL SELECT * FROM ordinary_candidates
             ), eligible AS (
                 SELECT f.*,COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
                     WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
                     ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE') AS verdict
                 FROM candidates f WHERE {publishable()}
-            ) SELECT e.*,c.n AS candidate_count FROM (SELECT count(*) AS n FROM candidates) c
-                LEFT JOIN eligible e ON true ORDER BY e.start_ns DESC,e.finding_id DESC''',
-                [stream,start,end,*eligible_args()]).fetchall()
-        truncated=bool(rows and rows[0]['candidate_count']>cases.LIMIT)
+            ) SELECT e.*,c.n AS candidate_count,c.strong_count FROM
+                (SELECT count(*) AS n,(SELECT count(*) FROM strong_candidates) AS strong_count FROM candidates) c
+                LEFT JOIN eligible e ON true ORDER BY
+                (e.method='long_target_enumeration' OR COALESCE(e.result->>'single_signal_review_eligible','false')='true') DESC,
+                e.start_ns DESC,e.finding_id DESC''',
+                [stream,start,end,stream,start,end,*eligible_args()]).fetchall()
+        truncated=bool(rows and (rows[0]['candidate_count']>cases.LIMIT or rows[0]['strong_count']>1000))
         eligible=[r for r in rows if r.get('finding_id')][:cases.LIMIT]
-        return day,cases.select_cases(eligible),len(eligible),truncated
+        selected=cases.select_cases(eligible)
+        service=request.args.get('service')
+        if service:
+            selected=[c for c in selected if service in c['services']]
+        return day,days,selected,len(eligible),truncated
 
     @app.get('/incidents')
     def incidents():
-        day,rows,signals,truncated=case_rows()
+        day,days,rows,signals,truncated=case_rows()
+        tab=request.args.get('tab','services')
+        if tab not in ('services','sessions','cases'):abort(400)
+        all_count=len(rows)
+        if tab=='sessions':rows=[c for c in rows if c['session_id']]
+        services=cases.service_groups(rows) if tab=='services' else []
+        items=services if tab=='services' else rows
         try:page=int(request.args.get('page','1'))
         except ValueError:abort(400)
         if not 1<=page<=1000:abort(400)
         return render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',
-            rows=rows[(page-1)*30:page*30],date=day,page=page,has_next=len(rows)>page*30,
-            case_count=len(rows),signal_count=signals,truncated=truncated,reasons=cases.REASONS)
+            rows=rows[(page-1)*30:page*30],service_groups=services[(page-1)*30:page*30],
+            date=day,days=days,tab=tab,page=page,has_next=len(items)>page*30,
+            case_count=all_count,signal_count=signals,truncated=truncated,reasons=cases.REASONS,
+            selected_service=request.args.get('service',''))
 
     @app.get('/cases/<cid>')
     def case_detail(cid):
         if not request.args.get('date'):abort(400)
-        day,rows,signals,truncated=case_rows()
+        day,days,rows,signals,truncated=case_rows()
         selected=next((c for c in rows if c['case_id']==cid),None)
-        return render_template('case.html',title='شواهد مورد',case=selected,date=day,
+        ips=[]
+        ip_range={}
+        if selected:
+            first=min(f['result'].get('period_start_ns',f['start_ns']) for f in selected['findings'])
+            last=max(f['result'].get('period_end_ns',f['start_ns']+FIVE) for f in selected['findings'])
+            ip_range={k:datetime.fromtimestamp(v/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%dT%H:%M:%S')
+                      for k,v in [('from',first),('to',last)]}
+            witnesses=list(dict.fromkeys(b for f in selected['findings'][:30] for b in f['result'].get('evidence',[])))[:36]
+            with connection() as db:
+                contexts=db.execute(f'''SELECT context FROM {config.source_schema}.request_context
+                    WHERE behavior_id=ANY(%s) LIMIT 36''',(witnesses,)).fetchall()
+            ips=sorted({v['value'] for c in contexts for v in c['context'].get('values',{}).get('ip',[])})[:8]
+        return render_template('case.html',title='شواهد مورد',case=selected,date=day,days=days,ips=ips,ip_range=ip_range,
             truncated=truncated,reasons=cases.REASONS)
 
     @app.get("/signals")

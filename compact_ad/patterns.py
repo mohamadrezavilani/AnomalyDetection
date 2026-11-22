@@ -135,6 +135,9 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
                 score,None,limit,evidence,used=training_refs)
             result.update(model_id=digest(['peer-isolation-1',training,validation]),training_rows=len(training),
                 calibration_rows=len(forest_calibration),comparison='PAST_SESSION_PEERS_NOT_PERSONAL_PROFILE',score_is_probability=False)
+            result.update(calibration_tail_rank=rank,
+                single_signal_review_eligible=(result['status']=='ANOMALY' and
+                    len(forest_calibration)>=100 and rank<=.01))
         elif n>=10:
             add('isolation_forest','*',session,'INSUFFICIENT_DATA',reason='PEER_MODEL_WARMUP',used=training_refs)
         if n>=10:
