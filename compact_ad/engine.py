@@ -39,7 +39,8 @@ def summarize(
     max_feature_bytes=64 * 1024 * 1024,
     max_targets=100000,
     max_numeric_values=100000,
-    cutoff_ns=None
+    cutoff_ns=None,
+    previous_events=None
 ):
     services = {}
     actors = {}
@@ -50,6 +51,7 @@ def summarize(
     unresolved = 0
     invalid_contract = 0
     missing_actor = 0
+    incomplete_sessions = set()
     witness_limit = 12
 
     def service(key):
@@ -74,6 +76,11 @@ def summarize(
                 result_witnesses=defaultdict(list),
                 witnesses=[],
                 rate_eligible_count=0,
+                durations=[],
+                duration_invalid=0,
+                rejected_count=0,
+                rejected_actors=Counter(),
+                rejected_witnesses=defaultdict(list),
             )
         return services[key]
 
@@ -85,6 +92,14 @@ def summarize(
         total += 1
         if total > max_rows:
             raise ValueError("analysis_window_row_limit")
+        attempt=f.get('rejected_attempt') or {}
+        if f.get('version')==FEATURES and attempt.get('eligible') is True and row.get('result_code')=='GR0004':
+            rejected=service(attempt['service'])
+            rejected['rejected_count'] += 1
+            if row.get('session_id'):rejected['rejected_actors'][row['session_id']] += 1
+            witnesses=rejected['rejected_witnesses'][row.get('session_id')]
+            if len(witnesses)<12:witnesses.append(row['behavior_id'])
+            continue
         key = (f.get("service_key") if role in ("business", "user_management") else None) or "<unresolved>"
         s = service(key)
         s["count"] += 1
@@ -100,6 +115,13 @@ def summarize(
         )
         s["rate_eligible_count"] += valid_rate
         s["invalid_rate"] += not valid_rate
+        if not valid_rate and row.get('session_id'):
+            incomplete_sessions.add(row['session_id'])
+        duration = row.get('reported_duration')
+        if valid_rate and type(duration) in (int,float) and math.isfinite(duration) and duration>=0:
+            s['durations'].append(duration)
+        else:
+            s['duration_invalid'] += 1
         if len(s["witnesses"]) < witness_limit:
             s["witnesses"].append(row["behavior_id"])
         if valid_contract and f.get("result_eligible") and key != "<unresolved>":
@@ -122,9 +144,13 @@ def summarize(
                     input_valid=0,
                     input_invalid=0,
                     witnesses=[],
+                    events=[],
                 ),
             )
             actor["count"] += 1
+            at = row.get('observed_at_ns')
+            if type(at) is int and (cutoff_ns is None or cutoff_ns-FIVE<=at<cutoff_ns):
+                actor['events'].append((at,key,row['behavior_id']))
             if len(actor["witnesses"]) < witness_limit:
                 actor["witnesses"].append(row["behavior_id"])
         size = len(canonical(f).encode())
@@ -142,6 +168,7 @@ def summarize(
                 and f["input_asof_ns"] < cutoff_ns
             )
             and f.get("input_feature_eligibility", {}).get("targets") is True
+            and bool(inp.get('targets'))
         )
         oe = (
             valid_contract
@@ -234,11 +261,21 @@ def summarize(
             actor_p95=percentile(s["actor_counts"]),
             repeat_p95=percentile(s["target_repeat"]),
             diversity_p95=percentile(s["target_diversity"]),
+            duration_n=len(s['durations']),
+            duration_invalid=s['duration_invalid'],
+            duration_p95=percentile(s['durations']) if s['durations'] else None,
+            rejected_count=s['rejected_count'],
+            rejected_actor_p95=percentile(list(s['rejected_actors'].values())),
         )
         for key, s in services.items()
     }
+    from .patterns import patterns
+    for (session,_), actor in actors.items():
+        actor['sequence_incomplete'] = session in incomplete_sessions or len(actor['events'])!=actor['count']
+    pattern_summary, _ = patterns(actors, previous_events, cutoff_ns-FIVE if cutoff_ns is not None else None)
     return (
         dict(
+            patterns=pattern_summary,
             services=summary,
             total=total,
             unresolved=unresolved,
@@ -253,7 +290,7 @@ def summarize(
     )
 
 
-def evaluate(start, summary, services, actors, references):
+def evaluate(start, summary, services, actors, references, *, previous_events=None, temporal_references=()):
     # Defensive cutoff even when a caller mistakenly supplies future summaries.
     refs = sorted(
         [r for r in references if r["start_ns"] < start], key=lambda r: r["start_ns"]
@@ -316,6 +353,7 @@ def evaluate(start, summary, services, actors, references):
                 next_action="درخواست‌های شاهد و خطای استخراج را بررسی کنید؛ سپس نتیجهٔ انسانی را ثبت کنید.",
             )
         )
+        return results[-1]
 
     def history_for(key):
         if key not in reference_cache:
@@ -659,6 +697,10 @@ def evaluate(start, summary, services, actors, references):
                 reason="OBSERVATIONS_WITHOUT_A_VALID_SESSION",
                 used=[],
             )
+    from .patterns import evaluate_patterns
+    evaluate_patterns(start,summary,services,actors,refs,add,previous_events)
+    from .seasonality import adjust_rates
+    adjust_rates(start,results,temporal_references,add)
     # Missing actors/content produce explicit method readiness, not green success.
     present = {r["method"] for r in results}
     for method in METHODS.keys() - present:

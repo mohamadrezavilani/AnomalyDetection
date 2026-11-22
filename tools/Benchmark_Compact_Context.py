@@ -18,6 +18,15 @@ def signature_without_policy_stamp(body,state,digest):
     policy=normalized['features'].pop('behavior_policy_version')
     if policy not in ('meaningful-api-roles-1','meaningful-api-roles-2'):
         raise ValueError('unreviewed_benchmark_policy')
+    # Owner confirmed ExecutionTime is milliseconds on 2026-11-22. Only these
+    # two provenance constants may differ; the measured value remains hashed.
+    if 'duration_unit' in normalized:
+        unit=normalized.pop('duration_unit')
+        meaning=normalized['features'].pop('duration_analysis')
+        if (unit,meaning) not in (
+            ('UNVERIFIED','OUT_OF_SCOPE_UNVERIFIED_UNIT'),
+            ('MILLISECONDS_OWNER_CONFIRMED_20261122','PUBLIC_HTTP_MILLISECONDS_OWNER_CONFIRMED_20261122')):
+            raise ValueError('unreviewed_duration_provenance')
     return digest([normalized,state]),policy
 
 
@@ -25,7 +34,7 @@ def parity(results):
     baseline,candidate=results['baseline'],results['candidate']
     exact=baseline['behavior_hash']==candidate['behavior_hash']
     except_stamp=baseline['behavior_hash_without_policy_stamp']==candidate['behavior_hash_without_policy_stamp']
-    allowed_transition=(baseline['behavior_policies']==['meaningful-api-roles-1'] and
+    allowed_transition=(baseline['behavior_policies'] in (['meaningful-api-roles-1'],['meaningful-api-roles-2']) and
                         candidate['behavior_policies']==['meaningful-api-roles-2'])
     return dict(same_behavior_hash=exact,same_behavior_except_policy_stamp=except_stamp,
         policy_stamp_transition=allowed_transition,

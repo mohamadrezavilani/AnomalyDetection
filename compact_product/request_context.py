@@ -11,7 +11,7 @@ def observed_context(state, collected=None):
     if collected:
         from compact_behavior.context import source_label
         labels = {'ip': 'IP', 'user_agent': 'User-Agent', 'device_id': 'Device ID',
-            'app_version': 'App Version', 'platform': 'Platform', 'application': 'Application', 'http_method': 'HTTP Method'}
+            'app_version': 'App Version', 'platform': 'Platform', 'application': 'Application', 'http_method': 'HTTP Method', 'origin': 'Origin'}
         result['collected'] = True
         result['limits'] = collected.get('limited', [])
         for name, values in collected.get('values', {}).items():

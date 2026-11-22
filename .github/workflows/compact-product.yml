@@ -34,7 +34,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements-compact.txt
-      - run: python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_trial tests.test_compact_web_presentation tests.test_compact_error_catalog tests.test_compact_request_context tests.test_compact_context tests.test_compact_context_upgrade tests.test_compact_nullable_content tests.test_compact_history_task_repair tests.test_compact_operations tests.test_compact_history tests.test_compact_source_evidence
+      - run: python -B -m unittest -v tests.test_compact_extract tests.test_compact_features_v2 tests.test_compact_ad tests.test_compact_ad_adaptive tests.test_compact_trial tests.test_compact_web_presentation tests.test_compact_error_catalog tests.test_compact_request_context tests.test_compact_context tests.test_compact_context_upgrade tests.test_compact_nullable_content tests.test_compact_history_task_repair tests.test_compact_operations tests.test_compact_history tests.test_compact_source_evidence
       - run: python -B -m compact_product version
       - name: Parse native PowerShell entry
         if: runner.os == 'Windows'
@@ -87,6 +87,11 @@ jobs:
           git fetch --no-tags --depth=1 origin 3bffd33583d5194f685d1f683bb1286b10873cb1
           git worktree add --detach /tmp/compact-installed-10 3bffd33583d5194f685d1f683bb1286b10873cb1
           python tools/Benchmark_Compact_Context.py --baseline /tmp/compact-installed-10 --candidate . --output compact-ui-screenshots/context-benchmark.json
+      - name: Bounded adaptive AD CPU and memory comparison
+        run: |
+          git fetch --no-tags --depth=1 origin 3c01de66f715a5af8c2d5b9e0aafa9717932c596
+          git worktree add --detach /tmp/compact-ad-baseline-14 3c01de66f715a5af8c2d5b9e0aafa9717932c596
+          python tools/Benchmark_Compact_AD.py --baseline /tmp/compact-ad-baseline-14 --candidate . --output compact-ui-screenshots/ad-benchmark.json
       - name: Upload synthetic UI previews
         if: always()
         uses: actions/upload-artifact@v4

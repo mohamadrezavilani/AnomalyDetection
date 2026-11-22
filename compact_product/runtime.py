@@ -52,6 +52,8 @@ def runtime_init(db, s):
         from .error_catalog import ensure_catalog
 
         ensure_catalog(db, s)
+        from .performance import initialize
+        initialize(db, s)
 
 
 class Lease:
@@ -295,6 +297,11 @@ def ingest(lease, source, logger):
                 result = measure_window(
                     Publisher(), stream, src, progress=lambda **kw: lease.check()
                 )
+                try:
+                    from .performance import record
+                    record(db.conn, s, stream, 'ingest', result, mode)
+                except Exception:
+                    logger.warning('performance_sample_not_recorded')
                 if cursor is None:
                     db.conn.execute(
                         f"""INSERT INTO {s}.reference_cursor(stream_id,next_ns,target_ns,last_recheck_ns)
@@ -373,6 +380,12 @@ def analyze(lease, source, logger):
                     writer_backend_start=str(backend["backend_start"]),
                 )
                 result = db.step(lease.stream)
+                if result['status'] == 'ANALYSIS_COMMITTED':
+                    try:
+                        from .performance import record
+                        record(db.conn, cfg.source_schema, lease.stream, 'analysis', result, 'analysis')
+                    except Exception:
+                        logger.warning('performance_sample_not_recorded')
                 lease.update(
                     state=result["status"],
                     last_analysis=result,

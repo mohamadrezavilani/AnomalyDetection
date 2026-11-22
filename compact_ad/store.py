@@ -8,6 +8,7 @@ from compact_behavior.store import Store, stream_lock, ALL
 from compact_behavior.extract import digest
 from . import MODEL, REFERENCE_WINDOWS
 from .engine import summarize, evaluate
+from . import seasonality
 
 
 class ChangedDuringAnalysis(Exception):
@@ -39,6 +40,7 @@ class AnalysisStore(Store):
                     source_published_ns BIGINT NOT NULL,first_source_ns BIGINT NOT NULL,first_analyzed_ns BIGINT NOT NULL,work_cause_ns BIGINT NOT NULL,analyzed_at_ns BIGINT NOT NULL,analysis_seconds DOUBLE PRECISION NOT NULL,
                     revision BIGINT NOT NULL DEFAULT 1,PRIMARY KEY(stream_id,start_ns))""",
                 f"ALTER TABLE {s}.window_results ADD COLUMN IF NOT EXISTS timing_confirmed_revision BIGINT NOT NULL DEFAULT 0",
+                f"CREATE INDEX IF NOT EXISTS compact_analysis_model ON {s}.window_results(stream_id,model_version,feature_version)",
                 f"""CREATE TABLE IF NOT EXISTS {s}.reference_epochs(stream_id TEXT PRIMARY KEY,epoch BIGINT NOT NULL DEFAULT 0)""",
                 f"""CREATE TABLE IF NOT EXISTS {s}.summary_history(stream_id TEXT NOT NULL,start_ns BIGINT NOT NULL,summary_hash TEXT NOT NULL,
                     feature_version TEXT NOT NULL,model_version TEXT NOT NULL,summary JSONB NOT NULL,recorded_at_ns BIGINT NOT NULL,
@@ -60,24 +62,24 @@ class AnalysisStore(Store):
                 f"CREATE INDEX IF NOT EXISTS compact_feedback_finding ON {s}.feedback(finding_id,feedback_id)",
             ]:
                 self.conn.execute(sql)
+            seasonality.initialize(self.conn, s)
 
     def select_work(self, stream):
         self.iteration += 1
         s = self.schema
         a = self.ad_schema
-        # Rebuild old model references from compact facts, at most one new job
-        # per iteration and only within the current 24h reference horizon.
+        # Rebuild every previously analyzed window, one job per iteration.
+        # A model upgrade must not leave completed historical ranges on old AD.
         # Existing results/history/feedback remain available as old revisions.
         self.conn.execute(
             f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns)
             SELECT r.stream_id,r.start_ns,%s FROM {a}.window_results r
             WHERE r.stream_id=%s AND (r.feature_version<>%s OR r.model_version<>%s)
-            AND r.start_ns>=(SELECT max(start_ns) FROM {self.schema}.windows WHERE stream_id=%s)-%s
             AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=r.stream_id
                 AND j.start_ns=r.start_ns AND j.processed_version<j.version)
             ORDER BY r.start_ns DESC LIMIT 1
             ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns""",
-            (time.time_ns(), stream, FEATURES, MODEL, stream, REFERENCE_WINDOWS * FIVE),
+            (time.time_ns(), stream, FEATURES, MODEL),
         )
         # Live freshness gets four slots; one slot guarantees old/reference work.
         direction = "ASC" if self.iteration % 5 == 0 else "DESC"
@@ -135,14 +137,52 @@ class AnalysisStore(Store):
                 AND j.processed_version<j.version) ORDER BY r.start_ns""",
                 (stream, start - REFERENCE_WINDOWS * FIVE, start, FEATURES, MODEL, ALL),
             ).fetchall()
+            temporal_refs = self.conn.execute(f'''SELECT h.start_ns,h.rates,h.complete,h.summary_hash
+                FROM {a}.rate_history h JOIN {a}.window_results r USING(stream_id,start_ns)
+                WHERE h.stream_id=%s AND h.slot=%s AND h.start_ns>=%s AND h.start_ns<%s
+                AND h.summary_hash=r.summary_hash AND r.feature_version=%s
+                AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=h.stream_id
+                    AND d.start_ns=h.start_ns AND d.session_id=%s AND d.processed_version<d.version)
+                AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=h.stream_id
+                    AND j.start_ns=h.start_ns AND j.processed_version<j.version)
+                ORDER BY h.start_ns LIMIT 672''',
+                (stream,(start//FIVE)%12,start-seasonality.HORIZON*FIVE,start,FEATURES,ALL)).fetchall()
             with self.conn.cursor(name="compact_analysis_input") as cur:
                 cur.itersize = 1000
                 cur.execute(
-                    f"""SELECT behavior_id,session_id,result_code,features,kind,api FROM {s}.behaviors
+                    f"""SELECT behavior_id,session_id,result_code,features,kind,api,observed_at_ns,reported_duration FROM {s}.behaviors
                     WHERE stream_id=%s AND observed_at_ns>=%s AND observed_at_ns<%s ORDER BY observed_at_ns,behavior_id""",
                     (stream, start, start + FIVE),
                 )
                 summary, services, actors = summarize(cur, cutoff_ns=start + FIVE)
+            active_sessions = Counter()
+            for (session,_),actor in actors.items():active_sessions[session] += actor['count']
+            candidates = [session for session,count in active_sessions.items() if count>=10]
+            previous_events = None
+            if candidates and self.conn.execute(f'SELECT 1 FROM {s}.windows WHERE stream_id=%s AND start_ns=%s',(stream,start-FIVE)).fetchone():
+                previous_events = {session: [] for session in candidates}
+                with self.conn.cursor(name='compact_previous_events') as previous:
+                    previous.itersize=1000
+                    previous.execute(f'''SELECT session_id,observed_at_ns,behavior_id,
+                        features->>'service_key' AS service,features->>'session_eligible' AS eligible FROM {s}.behaviors
+                        WHERE stream_id=%s AND observed_at_ns>=%s AND observed_at_ns<%s
+                        AND session_id=ANY(%s) AND features->>'operation_role' NOT IN ('system','support')
+                        ORDER BY observed_at_ns,behavior_id LIMIT 60001''',(stream,start-FIVE,start,candidates))
+                    for count,event in enumerate(previous,1):
+                        if count>60000:
+                            previous_events=None;break
+                        if event['session_id'] and (event['eligible']!='true' or not event['service']):
+                            previous_events[event['session_id']]=None
+                        elif event['session_id'] and previous_events.get(event['session_id'],[]) is not None:
+                            from collections import deque
+                            if isinstance(previous_events[event['session_id']],list):
+                                previous_events[event['session_id']]=deque(maxlen=32)
+                            previous_events[event['session_id']].append(
+                                (event['observed_at_ns'],event['service'],event['behavior_id']))
+                if previous_events is not None:
+                    previous_events={k:list(v) if v is not None else None for k,v in previous_events.items()}
+            from .patterns import patterns
+            summary['patterns'], _ = patterns(actors, previous_events, start)
         return dict(
             stream=stream,
             start=start,
@@ -161,6 +201,8 @@ class AnalysisStore(Store):
             services=services,
             actors=actors,
             references=refs,
+            previous_events=previous_events,
+            temporal_references=temporal_refs,
         )
 
     def commit_analysis(self, work, results, seconds, *, fault=None):
@@ -236,6 +278,7 @@ class AnalysisStore(Store):
                     seconds,
                 ),
             ).fetchone()["revision"]
+            seasonality.save_rates(self.conn,a,stream,start,summary,signature)
             previous = {
                 r["finding_id"]: r
                 for r in self.conn.execute(
@@ -327,8 +370,11 @@ class AnalysisStore(Store):
                 self.conn.execute(
                     f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns) SELECT stream_id,start_ns,%s
                     FROM {a}.window_results WHERE stream_id=%s AND start_ns>%s AND start_ns<=%s
-                    ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns""",
-                    (now, stream, start, start + REFERENCE_WINDOWS * FIVE),
+                    AND (start_ns<=%s OR (start_ns/{FIVE})%%12=%s)
+                    ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns
+                    WHERE {a}.reanalysis.processed_version={a}.reanalysis.version""",
+                    (now, stream, start, start + seasonality.HORIZON * FIVE,
+                     start + REFERENCE_WINDOWS*FIVE,(start//FIVE)%12),
                 )
             # Completed reanalysis metadata is not an ever-growing ready queue.
             self.conn.execute(
@@ -368,13 +414,15 @@ class AnalysisStore(Store):
         )
 
     def step(self, stream, *, fault=None):
+        began = time.monotonic()
+        seasonality.backfill(self.conn,self.ad_schema,stream)
         start = self.select_work(stream)
         if start is None:
             return dict(status="ANALYSIS_IDLE")
-        began = time.monotonic()
         work = self.snapshot(stream, start)
         results = evaluate(
-            start, work["summary"], work["services"], work["actors"], work["references"]
+            start, work["summary"], work["services"], work["actors"], work["references"],
+            previous_events=work['previous_events'],temporal_references=work['temporal_references']
         )
         return self.commit_analysis(
             work, results, time.monotonic() - began, fault=fault

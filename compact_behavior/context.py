@@ -2,6 +2,7 @@
 from functools import lru_cache
 import ipaddress
 import re
+from urllib.parse import urlsplit
 
 CONTROL = re.compile(r"[\x00-\x1f]")
 
@@ -23,7 +24,7 @@ def source_label(source):
 
 
 SQL_FIELDS = {'ipaddress': 'ip', 'useragent': 'user_agent', 'application': 'application',
-              'platform': 'platform', 'version': 'app_version'}
+              'platform': 'platform', 'version': 'app_version', 'origin': 'origin'}
 LOG_FIELDS = {'IP': 'ip', 'UserAgent': 'user_agent', 'userAgent': 'user_agent'}
 
 
@@ -47,6 +48,20 @@ def observe(context, field, value, source, observed_at_ns=None):
     value = value.strip()
     if not value or value.upper() in ('N/A', 'NULL', 'NONE', 'UNKNOWN', '-'):
         return
+    if field == 'origin':
+        # Device.Origin may be a release/distribution label or a URL origin.
+        # Never retain URL credentials, path, query or fragment.
+        try:
+            if '://' not in value:
+                if not re.fullmatch(r'[A-Za-z0-9_.-]{1,128}',value):return
+            else:
+                parsed = urlsplit(value)
+                if parsed.scheme not in ('http','https') or not parsed.hostname or parsed.username or parsed.password:
+                    return
+                host = '['+parsed.hostname+']' if ':' in parsed.hostname else parsed.hostname
+                value = parsed.scheme+'://'+host+((':'+str(parsed.port)) if parsed.port else '')
+        except ValueError:
+            return
     if field == 'ip':
         if len(value) > 64:
             return
@@ -138,7 +153,7 @@ def from_payload(value, source, observed_at_ns=None):
     context = empty()
     names = {'ip': 'ip', 'ipaddress': 'ip', 'clientip': 'ip', 'useragent': 'user_agent',
              'deviceid': 'device_id', 'appversion': 'app_version', 'platform': 'platform',
-             'application': 'application'}
+             'application': 'application', 'origin': 'origin'}
     remaining = 256
     def walk(item, depth):
         nonlocal remaining

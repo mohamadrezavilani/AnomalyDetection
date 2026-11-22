@@ -28,6 +28,7 @@ from .presentation import ROLES, data_note
 from .request_context import observed_context
 from compact_ad.methods import METHODS
 from compact_ad import MODEL
+from compact_ad.seasonality import HORIZON
 from compact_behavior.services import meaningful_apis, operation_catalog, operation_label, operation_role
 
 
@@ -234,11 +235,13 @@ def create_app(config, database, stream, *, secret=None):
                 AND r.timing_confirmed_revision=r.revision)
             AND NOT EXISTS(SELECT 1 FROM {config.source_schema}.dirty_windows d
                 WHERE d.stream_id=f.stream_id AND d.session_id='@all'
-                AND d.start_ns BETWEEN f.start_ns-{288 * FIVE} AND f.start_ns
+                AND d.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
+                AND (d.start_ns>=f.start_ns-{288 * FIVE} OR (d.start_ns/{FIVE})%%12=(f.start_ns/{FIVE})%%12)
                 AND d.processed_version<d.version)
             AND NOT EXISTS(SELECT 1 FROM {config.ad_schema}.reanalysis j
                 WHERE j.stream_id=f.stream_id
-                AND j.start_ns BETWEEN f.start_ns-{288 * FIVE} AND f.start_ns
+                AND j.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
+                AND (j.start_ns>=f.start_ns-{288 * FIVE} OR (j.start_ns/{FIVE})%%12=(f.start_ns/{FIVE})%%12)
                 AND j.processed_version<j.version)
             AND COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
                 WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision

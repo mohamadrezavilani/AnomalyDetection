@@ -122,6 +122,11 @@ def tick(store, cfg, source, stream, check, *, source_factory=ElasticWindow):
             return store.publish(*args, allow_history=True, history_job=job["job_id"], **kwargs)
 
     result = measure_window(Publisher(),stream,source_window,progress=lambda **kwargs: check())
+    try:
+        from .performance import record
+        record(store.conn,cfg.source_schema,stream,'history',result,'history')
+    except Exception:
+        logging.getLogger('compact.history').warning('performance_sample_not_recorded')
     return dict(state="PUBLISHED", publication=result, job=latest(store,stream))
 
 

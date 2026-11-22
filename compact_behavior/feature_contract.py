@@ -8,7 +8,7 @@ import re
 from .json_value import unique_object
 
 TARGET = re.compile(
-    r"(?:billid|participatecode|nationalcode|nationalid|platenumber|iban|phonenumber|mobilenumber|telephone|accountnumber)$",
+    r"(?:billid|participatecode|nationalcode|nationalid|platenumber|iban|phonenumber|mobilenumber|linenumber|telephone|accountnumber)$",
     re.I,
 )
 

@@ -134,8 +134,10 @@ class HistoryPostgresTests(unittest.TestCase):
         timing=self.db.conn.execute(f"SELECT timing_confirmed_revision,revision FROM {self.config.ad_schema}.window_results").fetchone()
         self.assertEqual(timing["timing_confirmed_revision"],timing["revision"])
 
-    def test_real_v5_live_processes_and_new_history_worker_coexist_and_complete(self):
+    def test_real_v5_requires_model_upgrade_then_history_continues_without_rewind(self):
         from compact_product.runtime import stop
+        from compact_product import BUILD
+        from compact_product.history import core_ready
         from compact_product.health import health
         from compact_behavior.source import ElasticWindow
         from tests.test_compact_product_runtime import elastic_server,free_port
@@ -155,15 +157,40 @@ class HistoryPostgresTests(unittest.TestCase):
                 self.assertEqual(launch.returncode,0,launch.stdout+launch.stderr)
                 deadline=time.monotonic()+60
                 while time.monotonic()<deadline:
-                    h=health(self.db.conn,self.config,stream)
-                    if __import__('compact_product.history',fromlist=['core_ready']).core_ready(h):break
+                    try:
+                        with urlopen("http://127.0.0.1:"+str(ports[0])+"/api/status",timeout=2) as response:
+                            h=json.load(response)
+                        if core_ready(h):break
+                    except OSError:
+                        pass
                     time.sleep(.25)
-                else:self.fail("accepted v5 roles did not become ready")
+                else:self.fail("accepted v5 roles did not become ready under their own model")
                 self.assertTrue(all(h["roles"][r]["build"]=="COMPACT-PRODUCT-20261121-5" for r in ("ingest","analysis","web")))
                 identities={r:h["roles"][r]["command_token"] for r in ("ingest","analysis","web","supervisor")}
                 cursor=self.db.cursor(stream)
                 first=self.db.conn.execute(f"SELECT min(start_ns) AS n FROM {self.config.source_schema}.windows WHERE stream_id=%s",(stream,)).fetchone()["n"]
                 job=prepare(self.db,stream,first-3*FIVE)
+                # The accepted v5 workers are healthy under MODEL 2. They must
+                # not satisfy MODEL 3 readiness or let new history bypass AD.
+                factory=Mock()
+                value=tick(self.db,self.config,{"ELASTICSEARCH":elastic},stream,lambda:None,source_factory=factory)
+                self.assertEqual(value["state"],"WAITING_FOR_LIVE_AND_ANALYSIS")
+                factory.assert_not_called()
+                self.assertEqual(latest(self.db,stream)["next_ns"],job["from_ns"])
+                stop(root)
+                launch=subprocess.run([sys.executable,"-B","-m","compact_product","start","--project",str(root)],cwd=Path(__file__).resolve().parents[1],capture_output=True,text=True,timeout=45)
+                self.assertEqual(launch.returncode,0,launch.stdout+launch.stderr)
+                deadline=time.monotonic()+60
+                while time.monotonic()<deadline:
+                    h=health(self.db.conn,self.config,stream)
+                    if core_ready(h):break
+                    time.sleep(.25)
+                else:self.fail("new core did not migrate accepted v5 analysis")
+                self.assertTrue(all(h["roles"][r]["build"]==BUILD for r in ("ingest","analysis","web","supervisor")))
+                self.assertTrue(all(h["roles"][r]["command_token"]!=token for r,token in identities.items()))
+                self.assertEqual(latest(self.db,stream)["job_id"],job["job_id"])
+                self.assertEqual(latest(self.db,stream)["next_ns"],job["from_ns"])
+                identities={r:h["roles"][r]["command_token"] for r in identities}
                 child=subprocess.Popen([sys.executable,"-B","-m","compact_product","history-worker","--project",str(root)],cwd=Path(__file__).resolve().parents[1],stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
                 deadline=time.monotonic()+60
                 while time.monotonic()<deadline:
@@ -178,7 +205,7 @@ class HistoryPostgresTests(unittest.TestCase):
                 self.assertGreaterEqual(self.db.cursor(stream),cursor)
                 self.assertEqual(latest(self.db,stream)["published_windows"],3)
                 with urlopen("http://127.0.0.1:"+str(ports[0])+"/healthz",timeout=5) as response:
-                    self.assertEqual(json.load(response)["build"],"COMPACT-PRODUCT-20261121-5")
+                    self.assertEqual(json.load(response)["build"],BUILD)
             finally:
                 if child is not None and child.poll() is None:
                     child.terminate();child.communicate(timeout=15)

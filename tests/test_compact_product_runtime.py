@@ -214,6 +214,9 @@ class CompactRuntimeTests(unittest.TestCase):
                         page = browser.new_page(viewport=dict(width=1400, height=1000))
                         errors = []
                         page.on("pageerror", lambda e: errors.append(str(e)))
+                        page.goto(f"http://127.0.0.1:{port}/status")
+                        self.assertIn('سرعت آخرین پنجره‌ها',page.locator('body').inner_text())
+                        self.assertIn('Log Management',page.locator('body').inner_text())
                         page.goto(f"http://127.0.0.1:{port}/")
                         page.get_by_role(
                             "link", name="جست‌وجوی رفتارهای یک نشست ←", exact=True
