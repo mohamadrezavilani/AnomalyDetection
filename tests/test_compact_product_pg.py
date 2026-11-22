@@ -140,7 +140,7 @@ class CompactProductPostgresTests(unittest.TestCase):
         client=create_app(self.config,self.database,'test').test_client()
         day=datetime.fromtimestamp(T/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%d')
         def visible():
-            response=client.get('/incidents?date='+day)
+            response=client.get('/incidents?tab=cases&date='+day)
             self.assertEqual(response.status_code,200)
             return '/cases/' in response.get_data(as_text=True)
         self.assertTrue(visible())

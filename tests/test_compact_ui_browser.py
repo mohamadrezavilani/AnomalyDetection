@@ -61,6 +61,7 @@ class CompactUiBrowserTests(unittest.TestCase):
                             page.locator('.notes summary').first.click()
                             self.assertIn('خدمت مقصد', page.locator('.notes').first.inner_text())
                         if name=='cases':
+                            self.assertEqual(page.locator('nav[aria-label="نمای آنومالی‌ها"] a').count(),3)
                             self.assertTrue(page.get_by_label('تا روز (میلادی، تهران)').is_visible())
                             self.assertEqual(page.locator('a[href^="/cases/"]').count(),1)
                             self.assertTrue(page.get_by_role('link',name='سیگنال‌های ضعیف و بررسی تخصصی ←').is_visible())

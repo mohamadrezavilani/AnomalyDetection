@@ -165,7 +165,17 @@ class LongitudinalPostgresTests(unittest.TestCase):
         date=datetime.fromtimestamp((DAY+3*long.DAY-FIVE)/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%d')
         page=client.get('/incidents?tab=cases&date='+date+'&days=3')
         self.assertEqual(page.status_code,200);self.assertIn('crawler',page.get_data(as_text=True))
+        import re
+        cid=re.search(r'/cases/([a-f0-9]+)',page.get_data(as_text=True)).group(1)
+        detail=client.get('/cases/'+cid+'?date='+date+'&days=3')
+        self.assertEqual(detail.status_code,200)
+        self.assertIn('110',detail.get_data(as_text=True))
         self.assertEqual(client.get('/incidents?date='+date+'&tab=services').status_code,200)
+        # A later five-minute reanalysis must not retire an independent method.
+        from compact_ad.engine import evaluate
+        work=self.db.snapshot('test',DAY+3*long.DAY-FIVE)
+        self.db.commit_analysis(work,evaluate(work['start'],work['summary'],work['services'],work['actors'],work['references']),.01)
+        self.assertEqual(self.db.conn.execute(f'SELECT status FROM {self.a}.findings WHERE method=%s',(long.METHOD,)).fetchone()['status'],'ANOMALY')
         self.db.conn.execute(f"UPDATE {self.a}.long_runs SET state='PENDING',retry_ns=0")
         self.ready()
         self.assertEqual(self.db.conn.execute(f'SELECT revision FROM {self.a}.findings').fetchone()['revision'],1)

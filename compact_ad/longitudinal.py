@@ -74,10 +74,15 @@ def merge(chunks, *, active_days=False):
     """
     actors = {}
     entries = 0
+    began=time.monotonic()
+    visited=0
     for chunk in chunks:
         if '@capacity_limit' in chunk:
             raise CapacityExceeded('longitudinal_window_payload_budget')
         for session, row in chunk.items():
+            visited+=1
+            if visited % 1024 == 0 and time.monotonic()-began > 5:
+                raise CapacityExceeded('longitudinal_merge_time_budget')
             a = actors.setdefault(session, dict(count=0, fields={}, days=0,
                                                  invalid=False, evidence=[]))
             if len(actors) > ACTOR_CAP:

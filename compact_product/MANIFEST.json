@@ -6,7 +6,7 @@
     "compact_ad/engine.py": "ed89abf9836cf304ba4ead835e9d050da1fd4dab75ad8017c830f2957ff0bd8d",
     "compact_ad/forest.py": "c3a557d2f484a7ee9502825ea6088d3f5087a5cb9ad57ab43a1666efa7536aea",
     "compact_ad/long_store.py": "7bbaee87b70d5371df292f1f82c9cfa4a5fe5d4d116ba8dabd14ba676fd8e7ea",
-    "compact_ad/longitudinal.py": "6e76a1f16b518038f11491c966c370e0fd460f3c3735f3d52ee0bc48f9dabe64",
+    "compact_ad/longitudinal.py": "f22bba504aca3557cf5caf7e343c65379b4ae3141d6b9b99b06ef7a1bf44bb33",
     "compact_ad/methods.py": "091dcd70071a9e047761b6d25bfe1d7bd13af297dfb05b92d2bae9deba8b8e92",
     "compact_ad/patterns.py": "66a9df8ba349fdf8e7030c0bcf2a5aa921b4aafd1b7775feaf53050a82e288ec",
     "compact_ad/seasonality.py": "e535ce10ebfa04b1957ea657ad14712e305e9904f0ddf18c8066857d8172cfa1",
