@@ -52,6 +52,8 @@ def runtime_init(db, s):
         from .error_catalog import ensure_catalog
 
         ensure_catalog(db, s)
+        from . import provider_contracts
+        provider_contracts.initialize(db, s)
         from .performance import initialize
         initialize(db, s)
 

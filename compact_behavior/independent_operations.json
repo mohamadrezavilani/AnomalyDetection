@@ -1,6 +1,6 @@
 {
-  "version": "owner-independent-operations-2",
-  "authority": "owner confirmation 2026-11-22; Ewano endpoint roles also checked against existing source catalog",
+  "version": "owner-independent-operations-3",
+  "authority": "owner confirmation 2026-11-22; Ewano endpoint roles also checked against existing source catalog; six exact internal Proxy operations confirmed by owner on 2026-11-23",
   "identity_policy": "RequestID is stable across layers; Session remains authoritative; partner name does not merge users",
   "ewano_scope": "Partner customer entry/order/payment channel; not inferred to be a background job or proof of manual initiation",
   "routes": {
@@ -68,6 +68,24 @@
       "role": "system"
     },
     "HelperQueue.CleanupOldItems": {
+      "role": "system"
+    },
+    "Proxy.CarTaxInquiry": {
+      "role": "system"
+    },
+    "Proxy.CarTaxRegistration": {
+      "role": "system"
+    },
+    "Proxy.MotorTaxInquiry": {
+      "role": "system"
+    },
+    "Proxy.SettlementCertificateCarAnnualTax": {
+      "role": "system"
+    },
+    "Proxy.TechnicalExaminationCertificateInquiry": {
+      "role": "system"
+    },
+    "Proxy.TechnicalExaminationCertificateRegistration": {
       "role": "system"
     }
   }

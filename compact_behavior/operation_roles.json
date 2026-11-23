@@ -364,12 +364,14 @@
       "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
     },
     "Proxy.CarTaxInquiry": {
-      "role": "unknown",
-      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+      "role": "system",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "authority": "owner-confirmed-internal-proxy-20261123"
     },
     "Proxy.CarTaxRegistration": {
-      "role": "unknown",
-      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+      "role": "system",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "authority": "owner-confirmed-internal-proxy-20261123"
     },
     "Proxy.CarTaxRequestOtp": {
       "role": "support",
@@ -380,24 +382,28 @@
       "family_label_fa": null
     },
     "Proxy.MotorTaxInquiry": {
-      "role": "unknown",
-      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور"
+      "role": "system",
+      "family_label_fa": "مسیر خارجی مالیات خودرو و موتور",
+      "authority": "owner-confirmed-internal-proxy-20261123"
     },
     "Proxy.SettlementCertificateCarAnnualTax": {
-      "role": "unknown",
-      "family_label_fa": "عوارض و مالیات سالیانه خودرو"
+      "role": "system",
+      "family_label_fa": "عوارض و مالیات سالیانه خودرو",
+      "authority": "owner-confirmed-internal-proxy-20261123"
     },
     "Proxy.TechnicalExaminationCertificateCheckUserRegistrationStatus": {
       "role": "support",
       "family_label_fa": "معاینه فنی"
     },
     "Proxy.TechnicalExaminationCertificateInquiry": {
-      "role": "unknown",
-      "family_label_fa": "معاینه فنی"
+      "role": "system",
+      "family_label_fa": "معاینه فنی",
+      "authority": "owner-confirmed-internal-proxy-20261123"
     },
     "Proxy.TechnicalExaminationCertificateRegistration": {
-      "role": "unknown",
-      "family_label_fa": "معاینه فنی"
+      "role": "system",
+      "family_label_fa": "معاینه فنی",
+      "authority": "owner-confirmed-internal-proxy-20261123"
     },
     "Proxy.TechnicalExaminationCertificateRequestOtp": {
       "role": "support",

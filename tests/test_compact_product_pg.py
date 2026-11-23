@@ -525,6 +525,53 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.db.publish('test',T,T+FIVE,states,3)
         self.assertEqual(after,self.db.conn.execute(f'SELECT * FROM {schema}.behaviors').fetchone())
 
+    def test_known_dispatch_failures_resolve_existing_rows_without_actor_or_index_rebuild(self):
+        from compact_behavior.extract import behavior_id
+        from tools.Review_Compact_Unknowns import inventory, collect
+        from tools.Prepare_Compact_Unknown import prepare, index_spec
+        s = self.config.source_schema
+        records = [row(key,'N/A',path='Services.v1/InvoiceRegister',
+                       message=f'{verb} https://example.test/api HTTP/1.1 ({code} | {symbol})')
+                   for key,verb,code,symbol in [
+                       ('expired','POST','G00002','SessionIsNotValid'),
+                       ('head','HEAD','G00003','NullCheckError'),
+                       ('other-symbol','HEAD','G00003','DifferentError')]]
+        self.db.publish('test',T,T+FIVE,extract(records),len(records))
+        client = create_app(self.config,self.database,'test').test_client()
+        self.assertEqual(prepare(self.db.conn,s,lambda _:None),'CREATED')
+        unknown = client.get('/?scope=unknown').get_data(as_text=True)
+        for key,label in [('expired','نشست نامعتبر'),('head','ورودی نامعتبر')]:
+            bid = behavior_id('test',key)
+            self.assertNotIn(bid,unknown)
+            html = client.get('/behaviors/'+bid).get_data(as_text=True)
+            self.assertIn(label,html)
+            self.assertEqual('الگوی کاوش' in html,key=='head')
+            self.assertIn(label,client.get('/?request_id='+key).get_data(as_text=True))
+        self.assertIn(behavior_id('test','other-symbol'),unknown)
+        review=inventory(self.db.conn,s,'test')
+        self.assertEqual((review['remaining_unknown'],review['classified_validation_rejections']),(1,2))
+        self.assertEqual(collect(self.db.conn,s,'test')['groups']['UNKNOWN_BEHAVIORS']['sampled_requests'],1)
+        for r in self.db.conn.execute(f'SELECT session_id,features FROM {s}.behaviors').fetchall():
+            self.assertIsNone(r['session_id'])
+            self.assertFalse(r['features']['session_eligible'])
+            self.assertIsNone(r['features']['service_key'])
+
+    def test_documented_provider_outcome_on_old_behavior_detail(self):
+        from compact_product import provider_contracts as pc
+        from compact_behavior.extract import behavior_id
+        s = self.config.source_schema
+        runtime_init(self.db.conn,s)
+        runtime_init(self.db.conn,s)
+        self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {s}.provider_contracts').fetchone()['n'],len(pc.CONTRACTS))
+        root=row('no-bill',path='Services.v1/CellPhoneBills')
+        provider=row('no-bill',path=pc.MCI,message='Input:[{"MobileNumber":"0001"}]\nOutput:[{"Parameters":null,"Status":{"Code":"GD2048"}}]')
+        self.db.publish('test',T,T+FIVE,extract([root,provider]),2)
+        client = create_app(self.config,self.database,'test').test_client()
+        detail=client.get('/behaviors/'+behavior_id('test','no-bill')).get_data(as_text=True)
+        self.assertIn('نتیجهٔ استعلام نزد سرویس‌دهنده',detail)
+        self.assertIn(pc.INQUIRY[0],detail)
+        self.assertIn('G00000',detail)
+
     def test_unknown_review_separates_pending_and_roles_without_payload_export(self):
         from tools.Review_Compact_Unknowns import collect
         partial=lambda key,at:dict(row(key,path='ClientAyanCoInquiry.WaterBillInquiry',

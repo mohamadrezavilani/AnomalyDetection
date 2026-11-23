@@ -26,6 +26,7 @@ from . import search
 from . import cases, postal_health
 from . import BUILD
 from .error_catalog import definitions
+from . import provider_contracts, validation
 from .presentation import ROLES, data_note
 from .request_context import observed_context
 from compact_ad.methods import METHODS
@@ -121,7 +122,7 @@ def create_app(config, database, stream, *, secret=None):
         # The generic dispatcher is meaningful only after exact same-request
         # service binding. Existing compact rows retain this binding as well.
         if scope == 'unknown':
-            clause, args = search.unknown_scope()
+            clause, args = search.remaining_unknown_scope(config.source_schema)
             return scope, 'AND ' + clause, args
         expression, dispatch, binding, attempt, access_attempt = search.scope_parts()
         if scope == 'attempts':
@@ -223,7 +224,7 @@ def create_app(config, database, stream, *, secret=None):
                 args.extend([before, bid])
             rows = db.execute(
                 f"""SELECT behavior_id,request_id,session_id,observed_at_ns,api,result_code,quality,
-                features->>'service_key' AS service_key,features->'rejected_attempt' AS rejected_attempt,features->'access_denied_attempt' AS access_denied_attempt FROM {config.source_schema}.behaviors
+                features->>'service_key' AS service_key,features->'rejected_attempt' AS rejected_attempt,features->'access_denied_attempt' AS access_denied_attempt FROM {config.source_schema}.behaviors b
                 WHERE stream_id=%s AND session_id=%s {scope_clause} {clause} ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 51""",
                 args,
             ).fetchall()
@@ -244,18 +245,29 @@ def create_app(config, database, stream, *, secret=None):
     def behavior(bid):
         with connection() as db:
             row = db.execute(
-                f"""SELECT b.*,p.state,c.context AS collected_context FROM {config.source_schema}.behaviors b
+                f"""SELECT b.*,p.state,CASE WHEN {validation.candidate_sql()} THEN {validation.evidence_sql()} ELSE false END AS validation_verified,c.context AS collected_context FROM {config.source_schema}.behaviors b
                 JOIN {config.source_schema}.behavior_payloads p USING(behavior_id)
                 LEFT JOIN {config.source_schema}.request_context c USING(behavior_id) WHERE b.stream_id=%s AND b.behavior_id=%s""",
                 (stream, bid),
             ).fetchone()
-            code_definitions = definitions(db, config.source_schema, [row["result_code"]]) if row else {}
-        if not row:
-            abort(404)
-        body = materialize(stream, row["state"])
+            if not row:
+                abort(404)
+            body = materialize(stream, row["state"])
+            code_definitions = definitions(db, config.source_schema, [row["result_code"]])
+            if provider_contracts.observed_no_bill(body, row["state"]):
+                row['provider_outcome'] = db.execute(f"""SELECT document,pdf_page,operation,
+                    outcomes->'GD2048'->>'message_fa' AS meaning FROM {config.source_schema}.provider_contracts
+                    WHERE document_sha256=%s AND operation='MCIMobileBillInquiry'""",
+                    (provider_contracts.INQUIRY[1],)).fetchone()
         row['rejected_attempt']=body['features'].get('rejected_attempt')
         row['access_denied_attempt']=body['features'].get('access_denied_attempt')
         search.decorate(row,row['state'])
+        if row.get('validation_label'):
+            metadata = row.get('collected_context') or {}
+            methods = metadata.get('values', {}).get('http_method', [])
+            row['rejected_head'] = (len(methods) == 1 and methods[0].get('value') == 'HEAD'
+                and 'public_http_completion' in methods[0].get('sources', [])
+                and 'http_method' not in metadata.get('limited', []))
         return render_template(
             "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"], row.get("collected_context"))
         )

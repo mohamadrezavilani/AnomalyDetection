@@ -27,6 +27,12 @@ def independent_operations():
     return frozenset(value['routes'])
 
 
+@lru_cache(maxsize=1)
+def internal_proxies():
+    return frozenset(api for api, row in operation_catalog()['routes'].items()
+                     if row.get('authority') == 'owner-confirmed-internal-proxy-20261123')
+
+
 def operation_role(api, service=None, binding=None):
     if api == "Services.v1/InvoiceRegister":
         if binding == "SAME_REQUEST_REVIEWED_DISPATCH" and service:

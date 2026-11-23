@@ -10,7 +10,7 @@ import re
 from . import CONTRACT, EXTRACTOR, FEATURES
 from .json_value import unique_object
 from .payload import packed, normalize as normalize_payload, identity as payload_identity, feature as payload_feature
-from .services import operation_role, operation_catalog, meaningful, operation_label, independent_operations
+from .services import operation_role, operation_catalog, meaningful, operation_label, independent_operations, internal_proxies
 from . import context as request_context
 from . import inquiry, postal
 
@@ -613,7 +613,16 @@ def materialize(stream, state):
     if not state["apis"]:
         return None
     issues = set(state["issues"])
-    api = state["apis"][0] if len(state["apis"]) == 1 else None
+    apis = state["apis"]
+    roots = state["roots"]
+    if len(apis) > 1 and internal_proxies().intersection(apis):
+        # A system call sharing RequestID with an outer API is supporting
+        # evidence. Preserve competing outer API roots as a real conflict.
+        outer = [api for api in apis if api not in internal_proxies()]
+        if outer:
+            apis = outer
+            roots = [root for root in roots if root["api"] in outer]
+    api = apis[0] if len(apis) == 1 else None
     if not api:
         issues.add("operation_conflict")
     session = state["sessions"][0] if len(state["sessions"]) == 1 else None
@@ -621,7 +630,6 @@ def materialize(stream, state):
         issues.add("session_conflict")
     if session is None:
         issues.add("session_unavailable")
-    roots = state["roots"]
     times = [x["at_ns"] for x in roots if x["at_ns"] is not None]
     at = min(times) if times else state["first_ns"]
     if not times:
@@ -797,6 +805,8 @@ def materialize(stream, state):
             output=output_feature,
         ),
     )
+    if api in internal_proxies():
+        body['features']['role_authority'] = operation_catalog()['routes'][api]['authority']
     if ('postal_contacts' in state and api == postal.SERVICE and operation_usable
             and content_identity_valid and 'prior_fragments_expired' not in issues):
         body['features']['postal_contacts'] = state['postal_contacts']
