@@ -1,5 +1,5 @@
 {
-  "build_id": "COMPACT-PRODUCT-20261123-32",
+  "build_id": "COMPACT-PRODUCT-20261123-33",
   "files_sha256": {
     "catalogs/error_code_catalog.json": "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e",
     "compact_ad/__init__.py": "fe6bb9d00bfe43e3d0789f9ebbd933b0c8268b36bd6e217c3814477090b332c2",
@@ -14,7 +14,7 @@
     "compact_ad/store.py": "eda3dffb95864a3910ea21070b9afcf0205c5003fd0a91938d92e46b596c1d3b",
     "compact_product/History_Compact_Product.ps1": "167ac3ecc3203222f167dcfd1291c4bd4557349a586ded93f5ab6e36a9869827",
     "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
-    "compact_product/__init__.py": "7fc27e17aebac7c56a83802e187355410c5d45357dc5f02559ea77cfb745a7e3",
+    "compact_product/__init__.py": "68654f680d2c71f81b2359c3338024e972cfbf1780f29dbce765f8ea789d6384",
     "compact_product/__main__.py": "b111f9155355c176f0a7eed2116f6a741cbae574ad415d6856b63f39d30ac8f5",
     "compact_product/attempt_review.py": "05fbe29847967d1bf03eeb7d0ea8ad2d501e625a50b4ec9ac58d8a9d45373562",
     "compact_product/case_selection.py": "88319e4babd1b0469b7f8e24dc00b435e93f6eba82d850919b084449a8e7c8d4",

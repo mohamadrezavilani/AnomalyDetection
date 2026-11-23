@@ -59,6 +59,85 @@ class CompactPostgresTests(unittest.TestCase):
         self.store.conn.execute('DROP SCHEMA '+self.schema+' CASCADE');self.store.close()
     def rows(self,name):return self.store.conn.execute('SELECT * FROM '+self.schema+'.'+name).fetchall()
     def publish(self,rows,start=T):return self.store.publish('test',start,start+FIVE,extract(rows),len(rows))
+
+    def test_existing_state_lookup_probes_only_window_keys_at_history_scale(self):
+        from compact_behavior.store import existing_state_sql, EXISTING_FETCH_ROWS
+        s, conn = self.schema, self.store.conn
+        with conn.transaction():
+            conn.execute(f"""INSERT INTO {s}.behaviors
+                (behavior_id,stream_id,request_id,result_kind,kind,quality,features,content_hash)
+                SELECT md5('b'||i::text),'noise',i::text,'unknown','observed_api_operation',
+                '[]'::jsonb,'{{}}'::jsonb,md5(i::text) FROM generate_series(1,200000) i""")
+            conn.execute(f"INSERT INTO {s}.behavior_payloads SELECT behavior_id,'{{}}'::jsonb FROM {s}.behaviors")
+            conn.execute(f"INSERT INTO {s}.request_context SELECT behavior_id,'{{}}'::jsonb FROM {s}.behaviors")
+            conn.execute(f"""INSERT INTO {s}.pending_requests(behavior_id,stream_id,state,content_hash)
+                SELECT md5('p'||i::text),'noise','{{}}'::jsonb,md5(i::text) FROM generate_series(1,200000) i""")
+            for table in ('behaviors','behavior_payloads','request_context','pending_requests'):
+                conn.execute(f'ANALYZE {s}.{table}')
+            conn.execute('CREATE TEMP TABLE compact_keys(behavior_id text PRIMARY KEY) ON COMMIT DROP')
+            conn.execute("INSERT INTO compact_keys SELECT md5('b'||i::text) FROM generate_series(1,16000) i")
+            conn.execute('ANALYZE compact_keys')
+            plan = conn.execute('EXPLAIN (ANALYZE, FORMAT JSON) ' + existing_state_sql(s)).fetchone()['QUERY PLAN'][0]
+            scans = []
+            def walk(node):
+                if node.get('Relation Name') in ('behaviors','behavior_payloads','request_context','pending_requests'):
+                    scans.append(node)
+                for child in node.get('Plans', []):walk(child)
+            walk(plan['Plan'])
+            self.assertEqual({n['Relation Name'] for n in scans},
+                             {'behaviors','behavior_payloads','request_context','pending_requests'})
+            for node in scans:
+                self.assertIn(node['Node Type'], ('Index Scan','Index Only Scan'), node)
+                self.assertLessEqual(node['Actual Rows'], 1, node)
+            with conn.cursor(name='lookup_scale_regression') as cur:
+                cur.itersize = EXISTING_FETCH_ROWS
+                cur.execute(existing_state_sql(s))
+                self.assertEqual(sum(1 for _ in cur), 16000)
+
+    def test_batched_existing_read_preserves_pending_metadata_and_cancellation_is_atomic(self):
+        records = [dict(row('done-'+str(i)), IP='192.0.2.1') for i in range(150)]
+        records += [dict(row('pending-'+str(i), path='ClientAyanCoInquiry.WaterBillInquiry',
+                             message='Input:{"WaterBillID":"001"}'), IP='192.0.2.2') for i in range(150)]
+        self.publish(records)
+        before = {name:self.rows(name) for name in ('behaviors','behavior_payloads','pending_requests',
+                   'request_context','windows','streams','dirty_windows','queue_counts')}
+        events = []
+        def interrupt(**value):
+            events.append(value)
+            if value['phase'] == 'existing_lookup' and value['loaded'] >= 128:
+                raise TimeoutError('synthetic_lookup_deadline')
+        with self.assertRaisesRegex(TimeoutError, 'synthetic_lookup_deadline'):
+            self.store.publish('test',T,T+FIVE,extract(records),len(records),progress=interrupt)
+        self.assertEqual(events[-1]['loaded'], 128)
+        for name, rows in before.items():self.assertCountEqual(self.rows(name), rows)
+        # Exercise a real server-side statement timeout during FETCH, rather
+        # than only a Python cancellation between batches.
+        from unittest.mock import patch
+        from psycopg.errors import QueryCanceled
+        from compact_behavior.store import existing_state_sql
+        delayed = lambda schema: 'SELECT q.*,pg_sleep(.02) AS delay FROM (' + existing_state_sql(schema) + ') q'
+        self.store.conn.execute("SET statement_timeout='100ms'")
+        try:
+            with patch('compact_behavior.store.existing_state_sql',side_effect=delayed):
+                with self.assertRaises(QueryCanceled):
+                    self.store.publish('test',T,T+FIVE,extract(records),len(records))
+        finally:
+            self.store.conn.execute("SET statement_timeout='60s'")
+        for name, rows in before.items():self.assertCountEqual(self.rows(name), rows)
+        # A failed FETCH/callback leaves the same connection usable. Replay
+        # returns both pending and completed state, including retained context.
+        events.clear()
+        result = self.store.publish('test',T,T+FIVE,extract(records),len(records),progress=lambda **v:events.append(v))
+        self.assertEqual((result['updated'],result['unchanged'],result['pending_requests']), (0,150,150))
+        self.assertEqual([e['loaded'] for e in events if e['phase']=='existing_lookup'],[0,128,256,300])
+        for name, rows in before.items():self.assertCountEqual(self.rows(name), rows)
+        # Cancellation after writes must also roll back the complete window.
+        changed = records + [row('new-request')]
+        def before_commit(**value):
+            if value['phase'] == 'before_commit':raise TimeoutError('synthetic_commit_deadline')
+        with self.assertRaisesRegex(TimeoutError, 'synthetic_commit_deadline'):
+            self.store.publish('test',T,T+FIVE,extract(changed),len(changed),progress=before_commit)
+        for name, rows in before.items():self.assertCountEqual(self.rows(name), rows)
     def test_inquiry_refresh_fences_revision_and_preserves_cursors_and_replay(self):
         from compact_behavior.extract import materialize, digest
         from compact_behavior import inquiry

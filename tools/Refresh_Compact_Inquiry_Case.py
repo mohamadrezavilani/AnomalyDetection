@@ -29,15 +29,33 @@ class ExistingInquiryWindow:
     def __init__(self, db, request_id, start, package):
         self.db, self.request_id, self.start, self.package = db, request_id, start, package
         self.limits = db.limits
+        self.committed = False
+        self.phase = 'NOT_STARTED'
 
     def publish(self, stream, start, end, states, count):
         if start != self.start or end != start + FIVE:
             raise ValueError('window_changed')
+        began = last = time.monotonic()
+        notice('PUBLISHING_ONE_INQUIRY_WINDOW', requests=len(states), source_records=count)
+
+        def progress(**values):
+            nonlocal last
+            now = time.monotonic()
+            self.phase = values['phase']
+            if now - began > 180:
+                raise TimeoutError('inquiry_publication_budget_exceeded')
+            if now - last >= 5:
+                notice('PUBLISHING_ONE_INQUIRY_WINDOW', elapsed_seconds=round(now-began, 2), **values)
+                last = now
+
         with self.db.conn.transaction():
+            self.phase = 'stream_lock'
             self.db.conn.execute("SET LOCAL lock_timeout='10s'")
             self.db.conn.execute('SELECT pg_advisory_xact_lock(%s)', (stream_lock(stream),))
             writers(self.db, self.package)
-            return republish(self.db, stream, start, end, states, count, [self.request_id])
+            result = republish(self.db, stream, start, end, states, count, [self.request_id], progress=progress)
+        self.committed = True
+        return result
 
 
 def main():
@@ -49,12 +67,18 @@ def main():
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args()
     cfg, settings, stream = load(args.project)
-    db = Store(settings['DATABASE'], schema=cfg.source_schema, application='inquiry-case-review')
+    db = None
+    target = None
+    stage = 'CONNECTING'
+    reanalysis_requested = False
     try:
+        db = Store(settings['DATABASE'], schema=cfg.source_schema, application='inquiry-case-review')
+        stage = 'REVIEWING_RETAINED_INQUIRY'
         result, _ = review(db, stream, args.witness, args.service, args.axis)
         start = instant(result['from_utc'])
         anchor = db.conn.execute(f'SELECT request_id,session_id FROM {db.schema}.behaviors WHERE stream_id=%s AND behavior_id=%s',
                                  (stream,args.witness)).fetchone()
+        stage = 'READING_CURRENT_FINDINGS'
         with db.conn.transaction():
             db.conn.execute('SET TRANSACTION READ ONLY')
             db.conn.execute("SET LOCAL statement_timeout='10s'")
@@ -73,15 +97,19 @@ def main():
         if not result['retained_reconstruction']['distinct_is_exact']:
             raise ValueError('complete_reconstructable_session_required')
         package = verify()['source_sha256']
+        stage = 'CHECKING_INSTALLED_WRITERS'
         writers(db, package)
         if not result['stored']['distinct_is_exact']:
             source = ElasticWindow(settings['ELASTICSEARCH'], start, start+FIVE,
                 page_size=settings['ELASTICSEARCH'].get('compact_page_size',500),budget=cfg.ingest_budget_seconds)
             target = ExistingInquiryWindow(db,anchor['request_id'],start,package)
+            stage = 'READING_AND_REPUBLISHING_ONE_WINDOW'
             measure_window(target,stream,source,progress=lambda **kw: notice('READING_ONE_INQUIRY_WINDOW',**kw))
+            stage = 'VERIFYING_REPUBLISHED_COVERAGE'
             after, _ = review(db,stream,args.witness,args.service,args.axis)
             if not after['stored']['distinct_is_exact'] or after['stored'] != after['retained_reconstruction']:
                 raise ValueError('source_republished_verify_current_coverage')
+        stage = 'SUBMITTING_WINDOW_TO_AD'
         with db.conn.transaction():
             db.conn.execute("SET LOCAL lock_timeout='10s'")
             db.conn.execute('SELECT pg_advisory_xact_lock(%s)',(stream_lock(stream),))
@@ -90,9 +118,19 @@ def main():
                 VALUES (%s,%s,%s) ON CONFLICT (stream_id,start_ns) DO UPDATE
                 SET version=q.version+1,updated_at_ns=excluded.updated_at_ns WHERE q.version=q.processed_version""",
                 (stream,start,time.time_ns()))
+        reanalysis_requested = True
         notice('INQUIRY_WINDOW_SUBMITTED_TO_AD', windows=1, from_utc=result['from_utc'])
+    except Exception as exc:
+        notice('INQUIRY_CASE_REFRESH_INCOMPLETE', stage=stage,
+               failure_type=type(exc).__name__, sqlstate=getattr(exc, 'sqlstate', None),
+               code=str(exc) if isinstance(exc, (ValueError, TimeoutError)) else None,
+               publication_phase=target.phase if target else None,
+               source_window_republished=bool(target and target.committed),
+               reanalysis_requested=reanalysis_requested)
+        return 2
     finally:
-        db.close()
+        if db:
+            db.close()
     return 0
 
 
