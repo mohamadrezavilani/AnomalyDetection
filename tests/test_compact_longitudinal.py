@@ -39,6 +39,14 @@ class LongitudinalTests(unittest.TestCase):
         row=dict(result,finding_id='synthetic',start_ns=result['window_start_ns'],result=result)
         self.assertEqual(select_cases([row])[0]['reasons'],['QUALIFIED_SINGLE_METHOD'])
 
+    def test_two_reviewed_axes_can_both_qualify_for_one_session(self):
+        actors=long.merge((daily(d,peers=160) for d in range(3)),active_days=True)
+        for a in actors.values():
+            a['fields']['NationalCode']=copy.deepcopy(a['fields']['$.BillID'])
+        results=self.evaluate(actors)
+        self.assertEqual({r['numeric_path'] for r in results},{'$.BillID','NationalCode'})
+        self.assertEqual([r['observed'] for r in results],[30,30])
+
     def test_same_target_across_days_not_summed_and_typed_fields_not_mixed(self):
         chunks=[daily(d) for d in range(3)]
         for row in chunks:
@@ -254,7 +262,7 @@ class LongitudinalPostgresTests(unittest.TestCase):
         self.db.step('test')
         publication=self.db.conn.execute(f'SELECT published_at_ns FROM {self.s}.windows WHERE start_ns=%s',(T,)).fetchone()
         old=self.db.conn.execute(f'SELECT signature FROM {self.a}.long_windows WHERE start_ns=%s',(T,)).fetchone()
-        late=row('late',path=SERVICE,at=iso(T+2*10**9),message='Input:{"BillID":"synthetic-new"} Output:{"Amount":1}')
+        late=row('late',path=SERVICE,at=iso(T+2*10**9),message='Input:{"Identifier":"synthetic-new"} Output:{"Amount":1}')
         self.db.publish('test',T+FIVE,T+2*FIVE,extract([late]),1)
         self.assertEqual(publication,self.db.conn.execute(f'SELECT published_at_ns FROM {self.s}.windows WHERE start_ns=%s',(T,)).fetchone())
         work=self.db.snapshot('test',T);self.assertTrue(work['long_needed'])

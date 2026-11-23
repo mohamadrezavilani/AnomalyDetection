@@ -103,9 +103,13 @@ def upgrade(project, root, old, history, sha, *, execute=run):
     if core is None:
         last=report['steps'][-1].get('result',{}).get('status')
         if active and last in ('COMPACT_UPGRADE_FAILED_PREVIOUS_RELEASE_RESTORED','COMPACT_UPGRADE_FAILED'):
-            step('previous_history_resume',[root/'tools/Upgrade_Compact_Product.py','--action','resume-history',
-                '--project',project,'--code-root',history,'--old-code-root',old,
-                '--expected-source-sha',previous['source_sha256']],history)
+            if old != history and before.get('from_utc'):
+                step('previous_history_resume',['-m','compact_product','history-install',
+                     '--project',project,'--history-from',before['from_utc']],history)
+            else:
+                step('previous_history_resume',[root/'tools/Upgrade_Compact_Product.py','--action','resume-history',
+                    '--project',project,'--code-root',history,'--old-code-root',old,
+                    '--expected-source-sha',previous['source_sha256']],history)
         return report
     if before.get('history_state')=='COMPLETE':
         report['status']='COMPACT_CONTEXT_CORE_UPGRADED_HISTORY_ALREADY_COMPLETE';return report

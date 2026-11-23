@@ -12,6 +12,7 @@ from .json_value import unique_object
 from .payload import packed, normalize as normalize_payload, identity as payload_identity, feature as payload_feature
 from .services import operation_role, operation_catalog, meaningful, operation_label, independent_operations
 from . import context as request_context
+from . import inquiry
 
 CONTROL = re.compile(r"[\x00-\x1f]")
 GUID = re.compile(r"[0-9a-fA-F]{32}")
@@ -298,8 +299,16 @@ def timed_union(before, after, limit, label):
     unique = {}
     for value in before + after:
         data = {k: v for k, v in value.items() if k != "observed_at_ns"}
+        # A later release may derive a subject from identical oversized input
+        # bytes. Preserve the richer projection and the earliest evidence time.
+        candidates = data.pop('inquiry_candidates', None)
         key = canonical(data)
         previous = unique.get(key)
+        if candidates or (previous and previous.get('inquiry_candidates')):
+            old = (previous or {}).get('inquiry_candidates')
+            if old and candidates and old != candidates:
+                raise ValueError('inconsistent_inquiry_snapshot')
+            data['inquiry_candidates'] = candidates or old
         times = [
             v
             for v in (
@@ -443,7 +452,7 @@ def facts(row):
             continue
         context = request_context.combine(context, request_context.from_payload(value, 'payload.' + path, at))
         result[label].append(
-            dict(basis=basis, path=path, **packed(value), observed_at_ns=at)
+            dict(basis=basis, path=path, **packed(value, inquiry_input=label == "inputs"), observed_at_ns=at)
         )
     if path in BUSINESS_SQL:
         params, errors = sql_fields(message)
@@ -464,7 +473,7 @@ def facts(row):
                     dict(
                         basis="business_parameters",
                         path=path,
-                        **packed(params[key]),
+                        **packed(params[key], inquiry_input=target == "inputs"),
                         observed_at_ns=at,
                     )
                 )
@@ -765,6 +774,9 @@ def materialize(stream, state):
             output=output_feature,
         ),
     )
+    if service in inquiry.ROUTES and body['features']['input_feature_eligibility']['targets']:
+        matched = next(iter(iv.values()))
+        body['features'][inquiry.POLICY] = inquiry.subjects(service, api, input_basis, matched)
     if (api == 'Services.v1/InvoiceRegister' and binding == 'UNRESOLVED_DISPATCH'
             and code == 'GR0004' and usable):
         actions = {v['value'] for v in state.get('dispatch', []) if v['kind']=='action'}

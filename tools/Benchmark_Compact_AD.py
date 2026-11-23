@@ -22,7 +22,7 @@ def worker(root,count):
         base=dict(RequestID=f'r-{i}',Session=f's-{i//20}',CallPath='Services.v1/'+service,
             **{'@timestamp':iso(start+(i%20)*10*10**9)},ExecutionTime='100')
         logs.extend([dict(base,message='POST https://example.test/api HTTP/1.1 (G00000 | successful)'),
-            dict(base,message='Input:{"BillID":"'+str(i%100)+'"} Output:{"Amount":10}')])
+            dict(base,message='Input:{"BillID":"'+str(i%100)+'","Identifier":"'+str(i%100)+'"} Output:{"Amount":10}')])
     t=time.perf_counter();extractor=Extractor()
     for row in logs:extractor.add(row)
     states=extractor.finish()

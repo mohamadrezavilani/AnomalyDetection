@@ -129,11 +129,11 @@ class CompactProductPostgresTests(unittest.TestCase):
         from zoneinfo import ZoneInfo
         self.publish()
         work=self.db.snapshot('test',T)
-        base=evaluate(T,work['summary'],work['services'],work['actors'],[])[0]
+        current=evaluate(T,work['summary'],work['services'],work['actors'],[])
         bids=[r['behavior_id'] for r in self.db.conn.execute(f'SELECT behavior_id FROM {self.config.source_schema}.behaviors LIMIT 3').fetchall()]
         results=[]
         for method in ('actor_rate','target_diversity'):
-            r=deepcopy(base);r.update(method=method,session_id='s0',service='Services.v1/WaterBills',
+            r=deepcopy(next(v for v in current if v['method']==method and v['service']=='Services.v1/WaterBills'));r.update(method=method,session_id='s0',service='Services.v1/WaterBills',
                 status='ANOMALY',reference_windows=24,evidence=bids,observed=50,baseline=2,threshold=10)
             results.append(r)
         self.db.commit_analysis(work,results,.01)

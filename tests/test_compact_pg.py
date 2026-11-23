@@ -59,6 +59,40 @@ class CompactPostgresTests(unittest.TestCase):
         self.store.conn.execute('DROP SCHEMA '+self.schema+' CASCADE');self.store.close()
     def rows(self,name):return self.store.conn.execute('SELECT * FROM '+self.schema+'.'+name).fetchall()
     def publish(self,rows,start=T):return self.store.publish('test',start,start+FIVE,extract(rows),len(rows))
+    def test_inquiry_refresh_fences_revision_and_preserves_cursors_and_replay(self):
+        from compact_behavior.extract import materialize, digest
+        from compact_behavior import inquiry
+        from tools.Repair_Compact_Inquiry_Targets import refresh
+        from psycopg.types.json import Jsonb
+        records=[row(),row(message='Input:{"Identifier":"001"}')]
+        self.publish(records)
+        before=self.rows('behaviors')[0]
+        state=self.rows('behavior_payloads')[0]['state']
+        body=materialize('test',state)
+        subjects=body['features'].pop(inquiry.POLICY)
+        legacy=digest([body,state])
+        self.store.conn.execute(f'UPDATE {self.schema}.behaviors SET features=%s,content_hash=%s',
+                                (Jsonb(body['features']),legacy))
+        windows=self.rows('windows')
+        cursor=self.store.cursor('test')
+        self.assertEqual(refresh(self.store,'test',T)['verified_target'],1)
+        self.assertEqual(self.rows('behaviors')[0]['content_hash'],legacy)
+        self.store.conn.execute(f"UPDATE {self.schema}.behaviors SET content_hash='competing-revision'")
+        with self.assertRaisesRegex(ValueError,'legacy_behavior_revision'):
+            refresh(self.store,'test',T,apply=True)
+        self.store.conn.execute(f'UPDATE {self.schema}.behaviors SET content_hash=%s',(legacy,))
+        self.assertEqual(refresh(self.store,'test',T,apply=True)['updated'],1)
+        after=self.rows('behaviors')[0]
+        self.assertEqual(after['features'][inquiry.POLICY],subjects)
+        self.assertEqual(after['content_hash'],before['content_hash'])
+        self.assertEqual(after['revision'],before['revision']+1)
+        self.assertNotIn('updated',refresh(self.store,'test',T,apply=True))
+        self.assertEqual(self.publish(records)['updated'],0)
+        self.assertEqual(cursor,self.store.cursor('test'))
+        self.assertEqual(windows,self.rows('windows'))
+        self.assertEqual(self.rows('queue_counts')[0]['dirty_keys'],
+                         sum(d['version']>d['processed_version'] for d in self.rows('dirty_windows')))
+
     def test_context_only_update_does_not_rewrite_behavior_or_requeue_ad(self):
         self.publish([row()])
         before=self.rows('behaviors'); dirty=self.rows('dirty_windows'); windows=self.rows('windows'); streams=self.rows('streams')

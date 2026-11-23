@@ -347,5 +347,75 @@ class FeatureContractTests(unittest.TestCase):
         self.assertEqual(a["features"]["financial_chain"], "OUT_OF_SCOPE")
 
 
+
+
+class InquirySubjectTests(unittest.TestCase):
+    def body(self, api, value, *, path=None):
+        import json
+        from tests.test_compact_extract import row, extract
+        from compact_behavior.extract import materialize
+        return materialize('test', extract([row(path=api), row(path=path or api,
+            message='Input:' + json.dumps(value))])['req-1'])
+
+    def test_source_aliases_do_not_count_incidental_ids(self):
+        from compact_behavior.inquiry import POLICY, token
+        water = self.body('Services.v1/WaterBills', {'Identifier':'001', 'MobileNumber':'x'})
+        provider = self.body('Services.v1/WaterBills', {'Parameters':{'WaterBillID':'001'}},
+                             path='ClientAyanCoInquiry.WaterBillInquiry')
+        self.assertEqual(water['features'][POLICY], {'WaterBillID':token('001')})
+        self.assertEqual(provider['features'][POLICY], water['features'][POLICY])
+        self.assertEqual(self.body('Services.v1/PostTrackingExtended',
+            {'TrackingCode':'P', 'MobileNumber':'x'})['features'][POLICY], {'TrackingCode':token('P')})
+        self.assertNotEqual(token('01'),token('1'))
+        self.assertEqual(self.body('Services.v1/WaterBills', {'Identifier':'A',
+            'Parameters':{'Identifier':'B'}})['features'][POLICY], {})
+        self.assertNotIn(POLICY,self.body('Services.v1/WaterBills', {'Identifier':'x'},
+            path='ClientAyanCoUnreviewed.Method')['features'])
+        self.assertEqual(self.body('Services.v1/WaterBills', {'Nested':{'Identifier':'x'},
+            'Identifier':' '})['features'][POLICY], {})
+
+    def test_unreviewed_operation_cannot_qualify_from_an_incidental_generic_id(self):
+        from compact_ad.engine import summarize, evaluate
+        from tests.test_compact_extract import T
+        body=self.body('Public.v1/ExchangeGold', {'NationalCode':'unrelated'})
+        summary, services, actors=summarize([body])
+        rows=[r for r in evaluate(T,summary,services,actors,[]) if r['method']=='target_diversity']
+        self.assertEqual([r['reason'] for r in rows],['INQUIRY_SUBJECT_NOT_REVIEWED'])
+
+    def test_oversized_input_snapshot_and_old_duplicate_share_one_timed_variant(self):
+        import copy
+        from compact_behavior.extract import timed_union
+        from compact_behavior.inquiry import POLICY, token
+        from compact_behavior.payload import packed
+        data={'Identifier':'001','Description':'x'*20000}
+        self.assertEqual(self.body('Services.v1/WaterBills',data)['features'][POLICY],{'WaterBillID':token('001')})
+        new = dict(packed(data,inquiry_input=True),observed_at_ns=20)
+        old = copy.deepcopy(new); old.pop('inquiry_candidates'); old['observed_at_ns']=10
+        expected=dict(new,observed_at_ns=10)
+        for a,b in ((old,new),(new,old)):
+            self.assertEqual(timed_union([a],[b],1,'input'),[expected])
+
+    def test_contract_and_person_have_independent_counts_references_and_readiness(self):
+        from compact_behavior import FIVE
+        from compact_ad.engine import summarize, evaluate
+        from tests.test_compact_extract import T
+        for version in ('v1','v2'):
+            api=f'Services.{version}/RealEstateContract'
+            rows=[self.body(api, {'TrackingCode':str(i),'NationalCode':'same'}) for i in range(40)]
+            for i,row in enumerate(rows):
+                row['behavior_id']=str(i)
+            baseline=[self.body(api, {'TrackingCode':'one','NationalCode':'one'}) for _ in range(3)]
+            reference=summarize(baseline)[0]
+            refs=[dict(start_ns=T+i*FIVE,summary=reference) for i in range(12)]
+            summary,services,actors=summarize(rows,collect_longitudinal=True)
+            out=evaluate(T+12*FIVE,summary,services,actors,refs)
+            counts={r['numeric_path']:(r['observed'],r['status']) for r in out if r['method']=='target_diversity'}
+            self.assertEqual(counts,{'TrackingCode':(40,'ANOMALY'),'NationalCode':(1,'NORMAL')})
+            rows.append(self.body(api,{'TrackingCode':'last'}))
+            out=evaluate(T+12*FIVE,*summarize(rows),refs)
+            self.assertEqual({r['numeric_path']:r['status'] for r in out if r['method']=='target_diversity'},
+                             {'TrackingCode':'ANOMALY','NationalCode':'INVALID_INPUT'})
+
+
 if __name__ == "__main__":
     unittest.main()

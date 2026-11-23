@@ -16,6 +16,13 @@ class ContextUpgradeTests(unittest.TestCase):
         self.assertEqual(calls[5][0][0],Path('new/tools/Upgrade_Compact_Product.py'))
         self.assertIn('resume-history',calls[6][0])
         self.assertEqual(result['status'],'COMPACT_CONTEXT_UPGRADE_INCOMPLETE')
+    def test_mixed_history_restore_uses_existing_narrowed_floor_and_old_task_root(self):
+        floor='2026-11-19T20:30:00Z'
+        result,calls=self.run_steps([(0,{'source_sha256':'core24'}),(0,{'history_state':'ACTIVE','from_utc':floor}),
+            (0,{}),(0,{}),(0,{}),(2,{'status':'COMPACT_UPGRADE_FAILED_PREVIOUS_RELEASE_RESTORED'}),(0,{})])
+        self.assertIn('history-install',calls[-1][0]); self.assertIn(floor,calls[-1][0])
+        self.assertEqual(calls[-1][1],Path('history-old'))
+
     def test_owned_history_migrates_only_after_core_succeeds(self):
         result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),
             (0,{}),(0,{}),(0,{}),(0,{}),(0,{})])

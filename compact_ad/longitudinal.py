@@ -10,11 +10,11 @@ import zlib
 import time
 from collections import defaultdict
 
-from compact_behavior import FEATURES, FIVE
+from compact_behavior import FEATURES, FIVE, inquiry
 from compact_behavior.extract import digest
 from .engine import upper
 
-VERSION = "compact-long-input-1"
+VERSION = "compact-long-input-2"
 METHOD = "long_target_enumeration"
 DAY = 288 * FIVE
 OFFSET = 210 * 60 * 10**9  # Tehran; event dates supported by this product.
@@ -52,6 +52,8 @@ def projection(summary, actors):
     """Reuse the already-read window; no source or database lookups."""
     services = defaultdict(dict)
     for (session, service), a in actors.items():
+        if service not in inquiry.ROUTES:
+            continue
         fields = {}
         for path, field in a.get("target_fields", {}).items():
             tokens = sorted(field["tokens"])
@@ -141,7 +143,6 @@ def evaluate(actors, *, service, end, span, signature, diagnostics=None):
             raise CapacityExceeded('longitudinal_comparison_time_budget')
         if a["invalid"] or a["days"] < (3 if span <= 7 else 7):
             continue
-        best = None
         for path, field in a["fields"].items():
             if field["covered"] != a["count"]:
                 continue
@@ -194,8 +195,6 @@ def evaluate(actors, *, service, end, span, signature, diagnostics=None):
                 reason="QUALIFIED_MULTI_DAY_TARGET_ENUMERATION",
                 next_action="تنوع شناسه‌ها و درخواست‌های شاهد را بررسی کنید؛ رتبهٔ آماری احتمال تخلف نیست.",
             )
-            if best is None or candidate["adjusted_tail_rank"] < best["adjusted_tail_rank"]:
-                best = candidate
-        if best and len(set(best["evidence"])) >= 3:
-            results.append(best)
+            if len(set(candidate["evidence"])) >= 3:
+                results.append(candidate)
     return results
