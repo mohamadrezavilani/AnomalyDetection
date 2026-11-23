@@ -568,6 +568,13 @@ class Extractor:
                 for key, state in self.states.items()}
 
 
+def reviewed_providers(key, service):
+    if key == "inputs" and service == inquiry.CELL_SERVICE:
+        return inquiry.CELL_INPUT_PROVIDERS
+    path = PROVIDERS.get(service)
+    return (path,) if path else ()
+
+
 def selected(state, key, api, service=None):
     values = state[key]
     errors = [x for x in state.get("parse_errors", []) if x["direction"] == key]
@@ -584,10 +591,10 @@ def selected(state, key, api, service=None):
         ]
         if found or bad:
             return found, basis
-    provider = PROVIDERS.get(service or api)
-    if provider:
-        found = [x for x in values if x["path"] == provider]
-        bad = [x for x in errors if x["path"] == provider]
+    providers = reviewed_providers(key, service or api)
+    if providers:
+        found = [x for x in values if x["path"] in providers]
+        bad = [x for x in errors if x["path"] in providers]
         if found or bad:
             return found, "reviewed_same_request_provider"
     candidates = [x for x in values if x["basis"] == "supporting"]
@@ -682,7 +689,7 @@ def materialize(stream, state):
         if basis == "public_api":
             paths.add(api)
         if basis == "reviewed_same_request_provider":
-            paths.add(PROVIDERS.get(service or api))
+            paths.update(reviewed_providers(direction, service or api))
         return any(
             e["direction"] == direction
             and (

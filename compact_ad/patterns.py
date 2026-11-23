@@ -135,9 +135,7 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
                 score,None,limit,evidence,used=training_refs)
             result.update(model_id=digest(['peer-isolation-1',training,validation]),training_rows=len(training),
                 calibration_rows=len(forest_calibration),comparison='PAST_SESSION_PEERS_NOT_PERSONAL_PROFILE',score_is_probability=False)
-            result.update(calibration_tail_rank=rank,
-                single_signal_review_eligible=(result['status']=='ANOMALY' and
-                    len(forest_calibration)>=100 and rank<=.01))
+            result['calibration_tail_rank'] = rank
         elif n>=10:
             add('isolation_forest','*',session,'INSUFFICIENT_DATA',reason='PEER_MODEL_WARMUP',used=training_refs)
         if n>=10:
@@ -153,12 +151,28 @@ def evaluate_patterns(start, summary, services, actors, refs, add, previous=None
                 reason=None if ready else 'CONTIGUOUS_SEQUENCE_REFERENCE_REQUIRED',used=sequence_refs)
             sequence_result.update(calibration_windows=len(sequence_calibration),rare_transition_fraction=rare/max(1,pair_total),
                 comparison='PAST_PEER_TRANSITIONS_WITH_TEMPORAL_HOLDOUT')
+            if sequence_result['status'] == 'ANOMALY':
+                # Scope corroboration to a repeated rare directed transition in
+                # this window. Repeating one API produces only self-transitions.
+                events = actor['events']
+                cross = Counter((a[1], b[1]) for a, b in zip(events, events[1:]) if a[1] != b[1])
+                sequence_result['rare_cross_services'] = sorted({service
+                    for pair, count in cross.items() if count >= 3 and old_pairs.get(digest(list(pair)), 0) < 3
+                    for service in pair})
         if n>=21 and actor['cv'] is not None:
             limit=min(.05,timing_baseline/3) if timing_baseline is not None else None
             ready=actor['continuity'] and past_gap is not None and len(timing_refs)>=12 and sum(r['summary']['patterns']['timing_n'] for r in timing_refs)>=30
-            add('timing_regularization','*',session,'INSUFFICIENT_DATA' if not ready else
+            timing_result = add('timing_regularization','*',session,'INSUFFICIENT_DATA' if not ready else
                 'ANOMALY' if actor['cv']<limit and actor['gap_median']<past_gap/3 else 'NORMAL',actor['cv'],timing_baseline,limit,actor['timing_evidence'],
                 reason='LOWER_VARIATION_THAN_REFERENCE' if ready else 'TIMING_REFERENCE_WARMUP',used=timing_refs)
+            if timing_result['status'] == 'ANOMALY':
+                # All measured gaps (including the previous-window boundary)
+                # must belong to this service for timing to corroborate its rate.
+                timed = {e[1] for e in actor['events']}
+                prior = (previous or {}).get(session) or []
+                if prior:
+                    timed.add(prior[-1][1])
+                timing_result['timing_services'] = sorted(timed) if len(timed) == 1 else []
     for key, service in services.items():
         rejection_refs=[r for r in refs if key in r['summary']['services']
             and 'rejected_count' in r['summary']['services'][key] and not r['summary']['services'][key]['invalid_rate']]

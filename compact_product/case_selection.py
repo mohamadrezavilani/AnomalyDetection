@@ -43,15 +43,19 @@ def bounds(date, days):
 
 
 def select(db, config, stream, start, end):
+    # Keep legacy forest flags out of the priority slice. The existing partial
+    # index still covers the positive predicate for writers on both versions.
+    priority = "(method='long_target_enumeration' OR (method='target_diversity' AND COALESCE(result->>'single_signal_review_eligible','false')='true'))"
     rows=db.execute(f'''WITH strong_candidates AS MATERIALIZED (
         SELECT * FROM {config.ad_schema}.findings
         WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
         AND (method='long_target_enumeration' OR result->>'single_signal_review_eligible'='true')
+        AND {priority}
         ORDER BY start_ns DESC,finding_id DESC LIMIT 1001
     ), ordinary_candidates AS MATERIALIZED (
         SELECT * FROM {config.ad_schema}.findings
         WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
-        AND NOT (method='long_target_enumeration' OR COALESCE(result->>'single_signal_review_eligible','false')='true')
+        AND NOT {priority}
         ORDER BY start_ns DESC,finding_id DESC LIMIT {cases.LIMIT+1}
     ), candidates AS MATERIALIZED (
         SELECT * FROM strong_candidates UNION ALL SELECT * FROM ordinary_candidates
@@ -63,7 +67,7 @@ def select(db, config, stream, start, end):
     ) SELECT e.*,c.n AS candidate_count,c.strong_count FROM
         (SELECT count(*) AS n,(SELECT count(*) FROM strong_candidates) AS strong_count FROM candidates) c
         LEFT JOIN eligible e ON true ORDER BY
-        (e.method='long_target_enumeration' OR COALESCE(e.result->>'single_signal_review_eligible','false')='true') DESC,
+        (e.method='long_target_enumeration' OR (e.method='target_diversity' AND COALESCE(e.result->>'single_signal_review_eligible','false')='true')) DESC,
         e.start_ns DESC,e.finding_id DESC''',
         [stream,start,end,stream,start,end,*eligible_args()]).fetchall()
     truncated=bool(rows and (rows[0]['candidate_count']>cases.LIMIT or rows[0]['strong_count']>1000))

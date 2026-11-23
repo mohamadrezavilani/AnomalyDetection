@@ -374,6 +374,21 @@ class InquirySubjectTests(unittest.TestCase):
         self.assertEqual(self.body('Services.v1/WaterBills', {'Nested':{'Identifier':'x'},
             'Identifier':' '})['features'][POLICY], {})
 
+    def test_cell_bill_providers_bind_only_reviewed_inputs(self):
+        from compact_behavior import inquiry
+        for path in inquiry.CELL_INPUT_PROVIDERS:
+            f=self.body(inquiry.CELL_SERVICE,{'MobileNumber':'001','TraceNumber':'trace'},path=path)['features']
+            self.assertEqual(f[inquiry.POLICY],{'MobileNumber':inquiry.token('001')})
+        from compact_behavior.extract import materialize
+        from tests.test_compact_extract import row, extract
+        paths = sorted(inquiry.CELL_INPUT_PROVIDERS)
+        raw = [row(path=inquiry.CELL_SERVICE),row(path=paths[0],message='Output:{"MobileNumber":"001"}')]
+        f=materialize('test',extract(raw)['req-1'])['features']
+        self.assertFalse(f['output_eligible'])
+        self.assertNotIn(inquiry.POLICY,f)
+        raw += [row(path=paths[0],message='Input:{"MobileNumber":"001"}'),row(path=paths[1],message='Input:{"MobileNumber":"002"}')]
+        self.assertNotIn(inquiry.POLICY,materialize('test',extract(raw)['req-1'])['features'])
+
     def test_postal_cache_return_is_narrow_and_never_an_input(self):
         from compact_ad.engine import summarize
         from compact_behavior import postal, inquiry

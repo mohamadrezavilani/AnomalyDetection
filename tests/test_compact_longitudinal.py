@@ -118,8 +118,11 @@ class LongitudinalTests(unittest.TestCase):
         result=dict(reference_windows=36,evidence=['a','b','c'],single_signal_review_eligible=True,
                     calibration_rows=100,calibration_tail_rank=.009)
         row=dict(finding_id='forest',method='isolation_forest',service='*',session_id='s',start_ns=0,result=result)
-        selected=select_cases([row]);self.assertEqual(len(selected),1)
-        self.assertFalse(service_groups(selected))
+        self.assertFalse(select_cases([row]))
+        row['verdict'] = 'CONFIRMED'
+        self.assertEqual(len(select_cases([row])),1)
+        self.assertFalse(service_groups(select_cases([row])))
+        del row['verdict']
         result['calibration_tail_rank']=.02
         self.assertFalse(select_cases([row]))
 
