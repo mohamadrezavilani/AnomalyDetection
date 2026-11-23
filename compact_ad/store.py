@@ -3,7 +3,7 @@
 from collections import Counter
 import re
 import time
-from compact_behavior import CONTRACT, EXTRACTOR, FEATURES, FIVE
+from compact_behavior import CONTRACT, EXTRACTOR, FEATURES, FIVE, postal
 from compact_behavior.store import Store, stream_lock, ALL
 from compact_behavior.extract import digest
 from . import MODEL, REFERENCE_WINDOWS
@@ -39,7 +39,7 @@ class AnalysisStore(Store):
                     feature_version TEXT NOT NULL,model_version TEXT NOT NULL,source_epoch BIGINT NOT NULL,
                     source_published_ns BIGINT NOT NULL,first_source_ns BIGINT NOT NULL,first_analyzed_ns BIGINT NOT NULL,work_cause_ns BIGINT NOT NULL,analyzed_at_ns BIGINT NOT NULL,analysis_seconds DOUBLE PRECISION NOT NULL,
                     revision BIGINT NOT NULL DEFAULT 1,PRIMARY KEY(stream_id,start_ns))""",
-                f"ALTER TABLE {s}.window_results ADD COLUMN IF NOT EXISTS timing_confirmed_revision BIGINT NOT NULL DEFAULT 0",
+                f"ALTER TABLE {s}.window_results ADD COLUMN IF NOT EXISTS timing_confirmed_revision BIGINT NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS postal_health JSONB",
                 f"CREATE INDEX IF NOT EXISTS compact_analysis_model ON {s}.window_results(stream_id,model_version,feature_version)",
                 f"""CREATE TABLE IF NOT EXISTS {s}.reference_epochs(stream_id TEXT PRIMARY KEY,epoch BIGINT NOT NULL DEFAULT 0)""",
                 f"""CREATE TABLE IF NOT EXISTS {s}.summary_history(stream_id TEXT NOT NULL,start_ns BIGINT NOT NULL,summary_hash TEXT NOT NULL,
@@ -274,11 +274,11 @@ class AnalysisStore(Store):
             ).fetchone()
             committed_revision = self.conn.execute(
                 f"""INSERT INTO {a}.window_results(stream_id,start_ns,summary,summary_hash,readiness,feature_version,
-                model_version,source_epoch,source_published_ns,first_source_ns,first_analyzed_ns,work_cause_ns,analyzed_at_ns,analysis_seconds) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                model_version,source_epoch,source_published_ns,first_source_ns,first_analyzed_ns,work_cause_ns,analyzed_at_ns,analysis_seconds,postal_health) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(stream_id,start_ns) DO UPDATE SET summary=excluded.summary,summary_hash=excluded.summary_hash,
                 readiness=excluded.readiness,feature_version=excluded.feature_version,model_version=excluded.model_version,
                 source_epoch=excluded.source_epoch,source_published_ns=excluded.source_published_ns,analyzed_at_ns=excluded.analyzed_at_ns,
-                analysis_seconds=excluded.analysis_seconds,work_cause_ns=excluded.work_cause_ns,revision={a}.window_results.revision+1 RETURNING revision""",
+                postal_health=excluded.postal_health,analysis_seconds=excluded.analysis_seconds,work_cause_ns=excluded.work_cause_ns,revision={a}.window_results.revision+1 RETURNING revision""",
                 (
                     stream,
                     start,
@@ -294,6 +294,7 @@ class AnalysisStore(Store):
                     work["cause_ns"],
                     now,
                     seconds,
+                    Jsonb(work['services'].get(postal.SERVICE, {}).get('postal_health', {})),
                 ),
             ).fetchone()["revision"]
             seasonality.save_rates(self.conn,a,stream,start,summary,signature)

@@ -404,6 +404,57 @@ class InquirySubjectTests(unittest.TestCase):
         self.assertEqual(actual['features'][inquiry.POLICY],{'PostalCode':inquiry.token('0000000001')})
         self.assertEqual(actual['features']['input_basis'],'reviewed_same_request_provider')
 
+    def test_postal_provider_status_uses_the_provider_envelope_and_cutoff(self):
+        from compact_behavior import FIVE, postal
+        from compact_behavior.extract import iso
+        from compact_ad.engine import summarize
+        path = 'http://core2.inquiry.ayantech.ir/WebServices/Core.svc/PostalCodeToAddress'
+        def provider(at, header='G00000', code='G00000', endpoint=path):
+            reply = [{'Parameters':{'PostalCode':'0123456789'},'Status':{'Code':code}}]
+            return row(path=postal.PROVIDER, at=iso(at),
+                       message=endpoint+' ('+header+' | result)\nOutput:'+json.dumps(reply))
+        public = row(path=postal.SERVICE)
+        def health(rows, cutoff=T+FIVE):
+            body = materialize('s', extract(rows)['req-1'])
+            result, services, _ = summarize([body], cutoff_ns=cutoff)
+            self.assertNotIn('postal_health', result['services'][postal.SERVICE])
+            return services[postal.SERVICE]['postal_health']
+        old = provider(T+1, code='G00010')
+        later = provider(T+2)
+        self.assertEqual(health([public,old,later,later]), dict(
+            requests=1,public_success=1,error=1,last_error=T+1,success=1,last_success=T+2))
+        network = provider(T+3, header='G00010', code='G00010')
+        self.assertEqual(health([public,network])['error'],1)
+        for bad in (provider(T+4, header='G00010'), provider(T+5, code='invalid')):
+            self.assertEqual(health([public,bad])['uncertain'],1)
+        outside = provider(T+FIVE)
+        self.assertEqual(health([public,outside]),{'requests':1,'public_success':1,'unattributed_success':1})
+        wrong = provider(T+1, endpoint=path+'Other')
+        self.assertEqual(health([public,wrong])['unattributed_success'],1)
+        from compact_product.postal_health import evidence_state
+        self.assertEqual(evidence_state(dict(last_success=T+2,last_error=T+1,last_uncertain=None)), 'SUCCESS')
+        self.assertEqual(evidence_state(dict(last_success=T+2,last_error=T+2,last_uncertain=None)), 'MIXED')
+
+    def test_cache_report_time_preserves_old_projection_identity(self):
+        from compact_behavior import postal
+        cache_at='2026-05-15T02:35:59.363'
+        data={'Type':postal.CACHE_TYPE,'CacheContent':json.dumps({'PostalCode':'0123456789'})}
+        def hit(data):
+            return row(path=postal.CACHE, message=postal.CACHE_HEADER+'\r\nInput:[]\r\nOutput:'+json.dumps(
+                [{'Parameters':data,'Status':{'Code':'G00000'}}]))
+        items = [row(path=postal.SERVICE),hit(data),hit(dict(data,ReportDateTime=cache_at))]
+        state = extract(items)['req-1']
+        self.assertEqual(len(state['outputs']),1)
+        self.assertEqual(state['postal_cache_date'],cache_at)
+        body=materialize('s',state)
+        from compact_ad.engine import summarize
+        stats=summarize([body])[1][postal.SERVICE]['postal_health']
+        self.assertEqual((stats['cache'],stats.get('success'),stats.get('unattributed_success')), (1,None,None))
+        self.assertNotIn('postal_contacts',body['features'])
+        items.append(hit(dict(data,ReportDateTime='2026-06-01T10:00:00')))
+        self.assertEqual(extract(items)['req-1']['postal_cache_date'],'CONFLICT')
+        self.assertEqual(extract(items),extract(list(reversed(items))*2))
+
     def test_unreviewed_operation_cannot_qualify_from_an_incidental_generic_id(self):
         from compact_ad.engine import summarize, evaluate
         from tests.test_compact_extract import T
