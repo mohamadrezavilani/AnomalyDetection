@@ -329,6 +329,11 @@ def merge(a, b, limits=Limits(), *, _check_size=True, _normalized=False):
         raise ValueError("request_identity_changed")
     c = empty(a["request_id"])
     c["issues"] = sorted(set(a["issues"] + b["issues"]))
+    if 'postal_cache_date' in a or 'postal_cache_date' in b:
+        left, right = a.get('postal_cache_date'), b.get('postal_cache_date')
+        c['postal_cache_date'] = 'CONFLICT' if left and right and left != right else left or right
+    if 'postal_contacts' in a or 'postal_contacts' in b:
+        c['postal_contacts'] = postal.merge_contacts(a.get('postal_contacts', {}), b.get('postal_contacts', {}))
     c["dispatch"] = union(
         a.get("dispatch", []),
         b.get("dispatch", []),
@@ -455,9 +460,15 @@ def facts(row):
         result[label].append(
             dict(basis=basis, path=path, **packed(value, inquiry_input=label == "inputs"), observed_at_ns=at)
         )
+    if path == postal.PROVIDER and at is not None:
+        kind = postal.contact_kind(message, result['outputs'])
+        if kind:
+            result['postal_contacts'] = {kind: [at, at]}
     if path == postal.CACHE:
         projection = postal.cache_projection(message)
         if projection is not None:
+            if 'ReportDateTime' in projection:
+                result['postal_cache_date'] = projection.pop('ReportDateTime')
             result['outputs'].append(dict(basis=postal.BASIS, path=path, **packed(projection), observed_at_ns=at))
     if path in BUSINESS_SQL:
         params, errors = sql_fields(message)
@@ -779,6 +790,9 @@ def materialize(stream, state):
             output=output_feature,
         ),
     )
+    if ('postal_contacts' in state and api == postal.SERVICE and operation_usable
+            and content_identity_valid and 'prior_fragments_expired' not in issues):
+        body['features']['postal_contacts'] = state['postal_contacts']
     if api == postal.SERVICE and operation_usable and content_identity_valid and code == 'G00000' and 'prior_fragments_expired' not in issues:
         cache = [entry for entry in state['outputs'] if entry['basis'] == postal.BASIS]
         if len(cache) == 1 and cache[0]['value']['PostalCode'] and cache[0]['observed_at_ns'] is not None:

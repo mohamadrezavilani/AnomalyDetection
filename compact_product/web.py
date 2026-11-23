@@ -23,7 +23,7 @@ from compact_behavior import FIVE, FEATURES, inquiry
 from compact_behavior.extract import identity, materialize
 from .health import health
 from . import search
-from . import cases
+from . import cases, postal_health
 from . import BUILD
 from .error_catalog import definitions
 from .presentation import ROLES, data_note
@@ -156,6 +156,7 @@ def create_app(config, database, stream, *, secret=None):
     def api_status():
         with connection() as db:
             value = health(db, config, stream)
+            value['postal_health'] = postal_health.report(db,config,stream)
         return jsonify(value)
 
     @app.get("/status")
@@ -177,6 +178,7 @@ def create_app(config, database, stream, *, secret=None):
             value=health(db,config,stream) if request.path=='/status' else None
             coverage=None;rows=[];code_definitions={}
             if request.path=='/status':
+                value['postal_health'] = postal_health.report(db,config,stream)
                 value['longitudinal']=long_store.status(db,config.source_schema,config.ad_schema,stream)
                 coverage=db.execute(f"SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s",
                     (stream,value['latest_analyzed_end_ns']-FIVE if value['latest_analyzed_end_ns'] is not None else None)).fetchone()

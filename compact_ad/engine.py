@@ -156,6 +156,10 @@ def summarize(
                 actor['events'].append((at,key,row['behavior_id']))
             if len(actor["witnesses"]) < witness_limit:
                 actor["witnesses"].append(row["behavior_id"])
+        if valid_rate and row.get('api') == postal.SERVICE:
+            observed = row.get('observed_at_ns')
+            if type(observed) is int and (cutoff_ns is None or observed < cutoff_ns):
+                postal.observe(s.setdefault('postal_health', {}), row, cutoff_ns)
         size = len(canonical(f).encode())
         bytes_used += size
         if bytes_used > max_feature_bytes:

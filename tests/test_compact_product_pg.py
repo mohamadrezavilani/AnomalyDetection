@@ -653,6 +653,31 @@ class CompactProductPostgresTests(unittest.TestCase):
         )
         return self.db.commit_analysis(work, results, 0.01)
 
+    def test_postal_health_replaces_window_counts_and_excludes_stale_revisions(self):
+        from compact_behavior import postal
+        from compact_product.postal_health import report
+        now = T + FIVE
+        data = [row(path=postal.SERVICE)]
+        self.db.publish('test',T,T+FIVE,extract(data),1)
+        def check(): return report(self.db.conn,self.config,'test',now_ns=now)
+        self.assertEqual(check()['state'],'WARMING_UP')
+        self.analyze_at(T)
+        self.assertEqual((check()['covered'],check()['unattributed_success']), (1,1))
+        direct = row(path=postal.PROVIDER, message='http://core2.inquiry.ayantech.ir/WebServices/Core.svc/PostalCodeToAddress '
+                     '(G00000 | successful)\nOutput:[{"Parameters":{"PostalCode":"0123456789"},"Status":{"Code":"G00000"}}]')
+        self.db.publish('test',T,T+FIVE,extract(data+[direct]),2,allow_history=True)
+        self.assertEqual(check()['covered'],0)
+        self.analyze_at(T)
+        for _ in range(2):
+            result=check()
+            self.assertEqual((result['requests'],result['success'],result['unattributed_success'],result['state']), (1,1,0,'SUCCESS'))
+        self.db.conn.execute(f"UPDATE {self.config.ad_schema}.window_results SET timing_confirmed_revision=0")
+        self.assertEqual(check()['covered'],0)
+        # An older AD build can confirm a newer revision after rollback while
+        # leaving this optional column untouched. The previous counters must disappear.
+        self.db.conn.execute(f"UPDATE {self.config.ad_schema}.window_results SET revision=revision+1,timing_confirmed_revision=revision+1")
+        self.assertEqual(check()['covered'],0)
+
     def test_incident_publication_hides_dirty_unconfirmed_and_rejected_revision(self):
         self.publish()
         work = self.db.snapshot("test", T)
