@@ -141,6 +141,7 @@ def summarize(
                 (session, key),
                 dict(
                     count=0,
+                    successes=0,
                     targets=Counter(),
                     target_fields={},
                     target_witnesses=defaultdict(list),
@@ -151,6 +152,7 @@ def summarize(
                 ),
             )
             actor["count"] += 1
+            actor["successes"] += bool(f.get("result_eligible") and row["result_code"] == "G00000")
             at = row.get('observed_at_ns')
             if type(at) is int and (cutoff_ns is None or cutoff_ns-FIVE<=at<cutoff_ns):
                 actor['events'].append((at,key,row['behavior_id']))
@@ -580,6 +582,8 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
                     if path in h["numeric"] and not h.get("numeric_invalid", 0)
                 ],
             )
+    from . import inquiry_patterns
+    burst_context = {}
     target_references = {}
     for (session, key), actor in actors.items():
         rate_refs, history = history_for(key)
@@ -617,7 +621,7 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
             field = actor['target_fields'].get(axis)
             tokens = field['tokens'] if field else ()
             complete = bool(field and field['covered'] == actor['count'])
-            repeated = max(tokens, key=actor['targets'].get, default=None)
+            repeated = max(tokens, key=lambda t: (actor['targets'][t], t), default=None)
             cache_key = (key, axis)
             if cache_key not in target_references:
                 points = []
@@ -649,6 +653,13 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
                 result = add(method, key, session, status, value if complete else None, baseline, limit,
                              witnesses, path=axis, used=used)
                 result['subject_policy'] = inquiry.POLICY
+                if (complete and actor['count'] >= 12 and actor['successes'] == actor['count']
+                        and not summary['content_resource_invalid']):
+                    if key not in burst_context:
+                        burst_context[key] = inquiry_patterns.reference_context(start, key, services[key]['actor_counts'], temporal_references)
+                    inquiry_patterns.qualify(result, requests=actor['count'], distinct=len(tokens),
+                        peak=actor['targets'][repeated], successes=actor['successes'],
+                        context=burst_context[key], target_history_ready=enough_inputs)
                 if method == 'target_diversity' and status == 'ANOMALY' and len(used) >= 24 and value >= 2 * limit:
                     result['single_signal_review_eligible'] = True
     # Actor service mix versus past population, not an inferred personal identity.

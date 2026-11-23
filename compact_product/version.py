@@ -43,7 +43,7 @@ def write():
             for p in (root / folder).rglob("*")
             if p.is_file() and p.suffix in (".py", ".html", ".ps1")
         ]
-        + [root / "requirements-compact.txt", root / "catalogs/error_code_catalog.json"]
+        + [root / "compact_product/provider_rules.json", root / "requirements-compact.txt", root / "catalogs/error_code_catalog.json"]
     )
     manifest = dict(
         build_id=BUILD,

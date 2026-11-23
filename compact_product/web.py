@@ -254,11 +254,14 @@ def create_app(config, database, stream, *, secret=None):
                 abort(404)
             body = materialize(stream, row["state"])
             code_definitions = definitions(db, config.source_schema, [row["result_code"]])
-            if provider_contracts.observed_no_bill(body, row["state"]):
-                row['provider_outcome'] = db.execute(f"""SELECT document,pdf_page,operation,
-                    outcomes->'GD2048'->>'message_fa' AS meaning FROM {config.source_schema}.provider_contracts
-                    WHERE document_sha256=%s AND operation='MCIMobileBillInquiry'""",
-                    (provider_contracts.INQUIRY[1],)).fetchone()
+            provider = provider_contracts.observed_contract(body, row["state"])
+            if provider:
+                document, operation, code = provider
+                row['provider_outcome'] = db.execute(f"""SELECT document,pdf_page,operation,operation_note,
+                    business_inputs, tracking_inputs, documented_outputs, %s::text AS code,
+                    outcomes->(%s::text) AS outcome FROM {config.source_schema}.provider_contracts
+                    WHERE document_sha256=%s AND operation=%s""",
+                    (code, code, document, operation)).fetchone()
         row['rejected_attempt']=body['features'].get('rejected_attempt')
         row['access_denied_attempt']=body['features'].get('access_denied_attempt')
         search.decorate(row,row['state'])

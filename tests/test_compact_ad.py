@@ -74,6 +74,29 @@ class CompactADTests(unittest.TestCase):
         self.assertEqual(set(services),set(user_paths))
         self.assertEqual(len(actors),len(user_paths))
 
+    def test_two_independent_inquiry_patterns(self):
+        from compact_product.cases import select_cases
+        def classify(targets, *, failed=False, heavy_peers=False):
+            rows = [behavior('req'+str(i),'actor',target=t,
+                             code='GR0010' if failed and i==0 else 'G00000') for i,t in enumerate(targets)]
+            for n in range(21):
+                for i in range(16 if heavy_peers else 1):
+                    rows.append(behavior(f'p{n}-{i}',f'peer{n}',target='same'))
+            summary, services, actors = summarize(rows)
+            findings = [dict(method=r['method'], result=r, service=r['service'], session_id=r['session_id'],
+                             start_ns=T, finding_id=r['method']) for r in evaluate(T,summary,services,actors,[])
+                        if r['session_id']=='actor' and r.get('inquiry_pattern_policy') and r['status']=='ANOMALY']
+            return [r for case in select_cases(findings) for r in case['findings']]
+        concentrated = ['a']*10+['b']*8+['c']*7+['d']*5
+        repeat, = classify(concentrated)
+        self.assertEqual(repeat['method'],'repeated_target')
+        self.assertEqual([repeat['result'][k] for k in ('distinct_targets','most_frequent_count','peer_mean_requests')],[4,10,1])
+        broad, = classify(['id'+str(n) for n in range(12)])
+        self.assertEqual(broad['method'],'target_diversity')
+        self.assertEqual(classify(concentrated,failed=True),[])
+        self.assertEqual(classify(concentrated,heavy_peers=True),[])
+        self.assertEqual(classify(concentrated[:8]),[])
+
     def result(self, method, **kw):
         summary, services, actors = window(T + 12 * FIVE, **kw)
         return [

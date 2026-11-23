@@ -8,6 +8,21 @@ from tests.test_compact_extract import row, extract, T
 
 
 class DocumentedBillOutcome(unittest.TestCase):
+    def test_contract_facts_are_scoped_to_document_and_client(self):
+        from compact_product import provider_contracts as pc
+        rules = pc.BY_CLIENT
+        mci = rules[pc.MCI]
+        mtn = rules['ClientAyanCoInquiry.MTNMobileBillInquiry']
+        self.assertEqual(mci['outcomes']['GD2048'], ['empty',23])
+        self.assertNotIn('GD2048', mtn['outcomes'])
+        self.assertEqual(mtn['outcomes']['GD2276'], ['down',25])
+        reserve = rules['ClientAyanCoTopUp.ProductReserve']
+        self.assertIn('PurchaseKey', reserve['outputs'])
+        self.assertIn('UniqueKey', reserve['tracking'])
+        self.assertNotIn('PurchaseKey', reserve['business'])
+        self.assertNotIn('ClientAyanCoInquiry.ProductReserve',rules)
+        self.assertEqual(len({(r['document'],r['operation']) for r in pc.CONTRACTS}),len(pc.CONTRACTS))
+
     def test_conflicting_or_unbound_output_cannot_mean_no_bill(self):
         from compact_product import provider_contracts as pc
         from tests.test_compact_extract import row, extract

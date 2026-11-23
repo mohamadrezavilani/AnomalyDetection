@@ -45,7 +45,7 @@ def bounds(date, days):
 def select(db, config, stream, start, end):
     # Keep legacy forest flags out of the priority slice. The existing partial
     # index still covers the positive predicate for writers on both versions.
-    priority = "(method='long_target_enumeration' OR (method='target_diversity' AND COALESCE(result->>'single_signal_review_eligible','false')='true'))"
+    priority = "(method='long_target_enumeration' OR (method IN ('target_diversity','repeated_target') AND COALESCE(result->>'single_signal_review_eligible','false')='true'))"
     rows=db.execute(f'''WITH strong_candidates AS MATERIALIZED (
         SELECT * FROM {config.ad_schema}.findings
         WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
@@ -67,7 +67,7 @@ def select(db, config, stream, start, end):
     ) SELECT e.*,c.n AS candidate_count,c.strong_count FROM
         (SELECT count(*) AS n,(SELECT count(*) FROM strong_candidates) AS strong_count FROM candidates) c
         LEFT JOIN eligible e ON true ORDER BY
-        (e.method='long_target_enumeration' OR (e.method='target_diversity' AND COALESCE(e.result->>'single_signal_review_eligible','false')='true')) DESC,
+        (e.method='long_target_enumeration' OR (e.method IN ('target_diversity','repeated_target') AND COALESCE(e.result->>'single_signal_review_eligible','false')='true')) DESC,
         e.start_ns DESC,e.finding_id DESC''',
         [stream,start,end,stream,start,end,*eligible_args()]).fetchall()
     truncated=bool(rows and (rows[0]['candidate_count']>cases.LIMIT or rows[0]['strong_count']>1000))

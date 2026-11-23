@@ -23,7 +23,8 @@ reference_from_ns reference_cutoff_ns reference_policy reference_signature model
 feature_version model_id numeric_path subject_policy measurement_unit baseline_family
 validation_samples validation_log_mae calibration_rows calibration_windows training_rows
 calibration_tail_rank single_signal_review_eligible rare_transition_fraction comparison
-peer_count peer_max adjusted_tail_rank comparisons peer_basis active_days requests
+inquiry_pattern_policy covered_requests distinct_targets most_frequent_count repeated_requests successful_requests
+peer_mean_requests peer_p95_requests same_hour_windows same_hour_actor_p95_median peer_count peer_max adjusted_tail_rank comparisons peer_basis active_days requests
 rare_cross_services timing_services horizon_days period_start_ns period_end_ns duration_valid duration_missing behavior_stage
 """.split()
 COLUMNS = """behavior_id, observed_at_ns, session_id, api, kind, result_code,

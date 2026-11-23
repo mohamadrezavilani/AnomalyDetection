@@ -147,6 +147,25 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.assertNotIn('00123',str(result))
         self.assertEqual(self.db.cursor('test'),T+FIVE)
 
+    def test_verified_cell_repetition_reaches_operator_case_from_real_store(self):
+        from compact_behavior import inquiry
+        from compact_product import case_selection
+        raw=[]
+        for i, number in enumerate(['001']*10+['002']*8+['003']*7+['004']*5):
+            key = f'cell-{i}'
+            raw.extend([row(key,'s1',path=inquiry.CELL_SERVICE),
+                        row(key,'s1',path='ClientAyanCoInquiry.MCIMobileBillInquiry',
+                            message='Input:{"MobileNumber":"' + number + '"}')])
+        self.db.publish('test',T,T+FIVE,extract(raw),len(raw))
+        self.db.step('test')
+        cases, _, truncated = case_selection.select(self.db.conn,self.config,'test',T,T+FIVE)
+        self.assertFalse(truncated)
+        self.assertEqual(len(cases),1)
+        finding = cases[0]['findings'][0]
+        self.assertEqual(finding['method'],'repeated_target')
+        self.assertEqual(finding['result']['most_frequent_count'],10)
+        self.assertEqual(finding['result']['distinct_targets'],4)
+
     def test_evidence_case_page_keeps_revision_fences_and_same_revision_feedback(self):
         from copy import deepcopy
         from datetime import datetime
@@ -548,7 +567,9 @@ class CompactProductPostgresTests(unittest.TestCase):
             self.assertEqual('الگوی کاوش' in html,key=='head')
             self.assertIn(label,client.get('/?request_id='+key).get_data(as_text=True))
         self.assertIn(behavior_id('test','other-symbol'),unknown)
-        review=inventory(self.db.conn,s,'test')
+        pages=[]
+        review=inventory(self.db.conn,s,'test',page_size=1,progress=pages.append)
+        self.assertTrue(pages)
         self.assertEqual((review['remaining_unknown'],review['classified_validation_rejections']),(1,2))
         self.assertEqual(collect(self.db.conn,s,'test')['groups']['UNKNOWN_BEHAVIORS']['sampled_requests'],1)
         for r in self.db.conn.execute(f'SELECT session_id,features FROM {s}.behaviors').fetchall():
