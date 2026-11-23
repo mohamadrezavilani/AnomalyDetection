@@ -108,6 +108,10 @@ def latest_coverage(db, cfg, stream):
     services = {service: dict(requests=h['count'],usable_input=h['input_valid'],
                     axes={axis: values['covered'] for axis,values in h[inquiry.POLICY].items()})
                 for service,h in row['summary']['services'].items() if inquiry.POLICY in h}
+    for service, values in services.items():
+        h = row['summary']['services'][service]
+        if 'postal_cache_returns' in h:
+            values['postal_cache_returns'] = h['postal_cache_returns']
     return dict(status='LATEST_INQUIRY_COVERAGE',start=iso(row['start_ns']),services=services,
                 count_scope='COMPLETE_SESSION_SERVICE_FIELD_COVERAGE_IN_THIS_WINDOW')
 

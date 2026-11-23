@@ -31,7 +31,7 @@ def verify(root=None):
 if __name__ == "__main__":
     root = Path(__file__).resolve().parent
     value = dict(
-        build_id="COMPACT-BEHAVIOR-20261123-17",
+        build_id="COMPACT-BEHAVIOR-20261123-18",
         contract="compact-behavior-1",
         files_sha256={
             p.name: hashlib.sha256(p.read_bytes()).hexdigest()

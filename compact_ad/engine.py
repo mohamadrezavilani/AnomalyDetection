@@ -12,7 +12,7 @@ from compact_behavior.extract import digest, canonical
 from . import MODEL, MIN_REFERENCE_WINDOWS
 from .methods import METHODS
 from compact_behavior.services import operation_role
-from compact_behavior import inquiry
+from compact_behavior import inquiry, postal
 
 
 def percentile(values, q=0.95):
@@ -185,6 +185,10 @@ def summarize(
         )
         s["input_valid"] += ie
         s["input_invalid"] += not ie
+        if key == postal.SERVICE:
+            cached_at = f.get('postal_cache_returned_at_ns')
+            if type(cached_at) is int and valid_rate and (cutoff_ns is None or cached_at < cutoff_ns):
+                s['postal_cache_returns'] = s.get('postal_cache_returns', 0) + 1
         s["output_valid"] += oe
         s["output_invalid"] += not oe
         if actor:
@@ -280,6 +284,8 @@ def summarize(
         for key, s in services.items()
     }
     for key, s in services.items():
+        if key == postal.SERVICE:
+            summary[key]['postal_cache_returns'] = s.get('postal_cache_returns', 0)
         if key in inquiry.ROUTES:
             summary[key][inquiry.POLICY] = {
                 axis: dict(covered=n, repeat_p95=percentile(repeats), diversity_p95=percentile(widths))

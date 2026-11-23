@@ -100,13 +100,16 @@ def main():
     parser.add_argument('--project',type=Path,required=True)
     parser.add_argument('--code-root',type=Path,required=True)
     parser.add_argument('--check-only',action='store_true')
+    parser.add_argument('--expected-from')
+    parser.add_argument('--resume-existing', action='store_true',
+                        help='Require the existing task to belong to this very release')
     args=parser.parse_args()
     project=args.project.resolve();root=args.code_root.resolve()
     sys.path.insert(0,str(root))
     from compact_product.version import verify
     from compact_product.operations import require_windows_admin
     from compact_product.history import control
-    from compact_behavior.extract import iso
+    from compact_behavior.extract import instant, iso
     from viewer_performance.financial_screen.host import powershell
     from viewer_performance.Diagnose_Three_Modes import controller_lock
     require_windows_admin()
@@ -137,6 +140,10 @@ def main():
             job=before.get('job')
             if not job or job['state']=='COMPLETE':
                 raise ValueError('ACTIVE_HISTORY_JOB_REQUIRED')
+            if args.expected_from and instant(args.expected_from) != job['from_ns']:
+                raise ValueError('HISTORY_RANGE_CHANGED')
+            if args.resume_existing and Path(old).resolve() != root:
+                raise ValueError('PREVIOUS_HISTORY_TASK_ROOT_CHANGED')
             result.update(previous_code_root=old,new_code_root=str(root),before=job)
             backup=report.with_suffix('.task.xml')
             backup.write_text(snapshot['xml'],encoding='utf-8')
@@ -144,15 +151,17 @@ def main():
             if args.check_only:
                 result['status']='HISTORY_TASK_MIGRATION_CHECKED_NO_CHANGE'
             else:
-                mark('MIGRATING_TASK_ACTION')
-                powershell(CHANGE,dict(P24_OLD_ARGS=snapshot['actions'][0]['Arguments'],P24_OLD_ROOT=old,
-                    P24_NEW_ARGS=worker_args(str(root),str(project),sys.executable),P24_NEW_ROOT=str(root)))
-                migrated=True
+                if Path(old).resolve() != root:
+                    mark('MIGRATING_TASK_ACTION')
+                    powershell(CHANGE,dict(P24_OLD_ARGS=snapshot['actions'][0]['Arguments'],P24_OLD_ROOT=old,
+                        P24_NEW_ARGS=worker_args(str(root),str(project),sys.executable),P24_NEW_ROOT=str(root)))
+                    migrated=True
                 mark('STARTING_EXISTING_HISTORY')
                 outcome=control(project,'install',from_value=iso(job['from_ns']))
                 after=json.loads(Path(outcome['output']).read_text(encoding='utf-8'))
                 next_job=after['job']
-                if next_job['job_id']!=job['job_id'] or next_job['next_ns']<job['next_ns']:
+                if (any(next_job[k] != job[k] for k in ('job_id','from_ns','target_ns'))
+                        or next_job['next_ns'] < job['next_ns']):
                     raise ValueError('HISTORY_CHECKPOINT_MISMATCH')
                 result.update(status='COMPACT_HISTORY_TASK_REPAIRED_AND_STARTED',after=next_job,
                     history_role=after['history_role'],history_status_report=outcome['output'])

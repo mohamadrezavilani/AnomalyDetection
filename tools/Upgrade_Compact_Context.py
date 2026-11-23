@@ -94,6 +94,10 @@ def upgrade(project, root, old, history, sha, *, execute=run):
     if preflight is None:return report
     active=before.get('history_state') in ('ACTIVE','SOURCE_COMPLETE')
     if active:
+        floor = before.get('from_utc') or before.get('from_tehran')
+        if not floor:
+            report.update(status='COMPACT_CONTEXT_UPGRADE_INCOMPLETE', failure='EXISTING_HISTORY_RANGE_REQUIRED')
+            return report
         stopped=step('history_stop',['-m','compact_product','history-stop','--project',project],history)
         if stopped is None:return report
         checked=step('history_launcher_drain',[root/'tools/Repair_Compact_History_Task.py',
@@ -103,19 +107,14 @@ def upgrade(project, root, old, history, sha, *, execute=run):
     if core is None:
         last=report['steps'][-1].get('result',{}).get('status')
         if active and last in ('COMPACT_UPGRADE_FAILED_PREVIOUS_RELEASE_RESTORED','COMPACT_UPGRADE_FAILED'):
-            if old != history and before.get('from_utc'):
-                step('previous_history_resume',['-m','compact_product','history-install',
-                     '--project',project,'--history-from',before['from_utc']],history)
-            else:
-                step('previous_history_resume',[root/'tools/Upgrade_Compact_Product.py','--action','resume-history',
-                    '--project',project,'--code-root',history,'--old-code-root',old,
-                    '--expected-source-sha',previous['source_sha256']],history)
+            step('previous_history_resume',[root/'tools/Repair_Compact_History_Task.py',
+                '--project',project,'--code-root',history,'--resume-existing','--expected-from',floor],history)
         return report
     if before.get('history_state')=='COMPLETE':
         report['status']='COMPACT_CONTEXT_CORE_UPGRADED_HISTORY_ALREADY_COMPLETE';return report
     if before.get('history_state') not in ('ACTIVE','SOURCE_COMPLETE'):
         report['status']='COMPACT_CONTEXT_CORE_UPGRADED_NO_ACTIVE_HISTORY';return report
-    migrated=step('history_migration',[root/'tools/Repair_Compact_History_Task.py','--project',project,'--code-root',root],root)
+    migrated=step('history_migration',[root/'tools/Repair_Compact_History_Task.py','--project',project,'--code-root',root,'--expected-from',floor],root)
     if migrated is None:return report  # Preserve guarded migration receipt; no blind rollback of another task.
     report['status']='COMPACT_CONTEXT_CORE_AND_HISTORY_UPGRADED'
     return report

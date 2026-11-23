@@ -12,7 +12,7 @@ from .json_value import unique_object
 from .payload import packed, normalize as normalize_payload, identity as payload_identity, feature as payload_feature
 from .services import operation_role, operation_catalog, meaningful, operation_label, independent_operations
 from . import context as request_context
-from . import inquiry
+from . import inquiry, postal
 
 CONTROL = re.compile(r"[\x00-\x1f]")
 GUID = re.compile(r"[0-9a-fA-F]{32}")
@@ -33,6 +33,7 @@ BUSINESS_SQL = {
 }
 # Reviewed exact pairs only. Other supporting payloads remain explicitly unbound.
 PROVIDERS = {
+    postal.SERVICE: "ClientAyanCoInquiry.PostalCodeToAddress",
     "Services.v1/WaterBills": "ClientAyanCoInquiry.WaterBillInquiry",
     "Services.v1/GasBills": "ClientAyanCoInquiry.GasBillInquiry",
     # PostPackagesStatusHandler.CallService invokes exactly this provider.
@@ -454,6 +455,10 @@ def facts(row):
         result[label].append(
             dict(basis=basis, path=path, **packed(value, inquiry_input=label == "inputs"), observed_at_ns=at)
         )
+    if path == postal.CACHE:
+        projection = postal.cache_projection(message)
+        if projection is not None:
+            result['outputs'].append(dict(basis=postal.BASIS, path=path, **packed(projection), observed_at_ns=at))
     if path in BUSINESS_SQL:
         params, errors = sql_fields(message)
         for key, target in [("queryparameters", "inputs"), ("queryresult", "outputs")]:
@@ -774,6 +779,12 @@ def materialize(stream, state):
             output=output_feature,
         ),
     )
+    if api == postal.SERVICE and operation_usable and content_identity_valid and code == 'G00000' and 'prior_fragments_expired' not in issues:
+        cache = [entry for entry in state['outputs'] if entry['basis'] == postal.BASIS]
+        if len(cache) == 1 and cache[0]['value']['PostalCode'] and cache[0]['observed_at_ns'] is not None:
+            body['features']['postal_cache_returned_at_ns'] = cache[0]['observed_at_ns']
+        elif cache:
+            body['quality'] = sorted(issues | {'postal_cache_result_unconfirmed'})
     if service in inquiry.ROUTES and body['features']['input_feature_eligibility']['targets']:
         matched = next(iter(iv.values()))
         body['features'][inquiry.POLICY] = inquiry.subjects(service, api, input_basis, matched)
