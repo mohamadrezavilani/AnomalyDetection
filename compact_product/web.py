@@ -272,7 +272,7 @@ def create_app(config, database, stream, *, secret=None):
                 AND r.model_version=%s AND r.feature_version=%s
                 AND r.source_published_ns=w.published_at_ns
                 AND r.timing_confirmed_revision=r.revision)
-            AND (f.method NOT IN ('repeated_target','target_diversity') OR f.service<>ALL(%s)
+            AND (f.method NOT IN ('repeated_target','target_diversity')
                  OR f.result->>'subject_policy'=%s)
             AND NOT EXISTS(SELECT 1 FROM {config.source_schema}.dirty_windows d
                 WHERE d.stream_id=f.stream_id AND d.session_id='@all'
@@ -289,7 +289,7 @@ def create_app(config, database, stream, *, secret=None):
                 ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE')<>'FALSE_POSITIVE'"""
 
     def eligible_args():
-        return [MODEL, FEATURES, MODEL, FEATURES, list(inquiry.ROUTES), inquiry.POLICY]
+        return [MODEL, FEATURES, MODEL, FEATURES, inquiry.POLICY]
 
     def case_rows():
         try:

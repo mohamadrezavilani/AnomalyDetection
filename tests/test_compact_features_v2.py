@@ -374,6 +374,14 @@ class InquirySubjectTests(unittest.TestCase):
         self.assertEqual(self.body('Services.v1/WaterBills', {'Nested':{'Identifier':'x'},
             'Identifier':' '})['features'][POLICY], {})
 
+    def test_unreviewed_operation_cannot_qualify_from_an_incidental_generic_id(self):
+        from compact_ad.engine import summarize, evaluate
+        from tests.test_compact_extract import T
+        body=self.body('Public.v1/ExchangeGold', {'NationalCode':'unrelated'})
+        summary, services, actors=summarize([body])
+        rows=[r for r in evaluate(T,summary,services,actors,[]) if r['method']=='target_diversity']
+        self.assertEqual([r['reason'] for r in rows],['INQUIRY_SUBJECT_NOT_REVIEWED'])
+
     def test_oversized_input_snapshot_and_old_duplicate_share_one_timed_variant(self):
         import copy
         from compact_behavior.extract import timed_union

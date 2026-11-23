@@ -3,10 +3,10 @@
   "files_sha256": {
     "catalogs/error_code_catalog.json": "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e",
     "compact_ad/__init__.py": "fe6bb9d00bfe43e3d0789f9ebbd933b0c8268b36bd6e217c3814477090b332c2",
-    "compact_ad/engine.py": "e43743107e2828b47eb6ed5d1857795d6674cc1d7cc823d99716666a7577557b",
+    "compact_ad/engine.py": "50450df58a97f609703b40785d3d1517a60395a722de50858a8da93df90426b4",
     "compact_ad/forest.py": "c3a557d2f484a7ee9502825ea6088d3f5087a5cb9ad57ab43a1666efa7536aea",
     "compact_ad/long_store.py": "79c14a693da63a9a28347fc73ed486057833e272e82357df7281368b6b37ca9a",
-    "compact_ad/longitudinal.py": "93de8cc7560f102e9b5d33f655bd387f67c3ba002ec45197db5f2834c50488c9",
+    "compact_ad/longitudinal.py": "07847d2119ccd62d904fc79df13ebd49800057b56a5c244b3d9c67fe6fe7eebd",
     "compact_ad/methods.py": "091dcd70071a9e047761b6d25bfe1d7bd13af297dfb05b92d2bae9deba8b8e92",
     "compact_ad/patterns.py": "66a9df8ba349fdf8e7030c0bcf2a5aa921b4aafd1b7775feaf53050a82e288ec",
     "compact_ad/seasonality.py": "e535ce10ebfa04b1957ea657ad14712e305e9904f0ddf18c8066857d8172cfa1",
@@ -48,7 +48,7 @@
     "compact_product/templates/sessions.html": "e42b3375d19f5c31a9b1ac96b36f1d30f479eb9b35b1a777a91a4f6a08087d11",
     "compact_product/templates/status.html": "532f0c155a640e5db1055b8c7b2a23365aa1c19cbd47c1c80225df3bfd1868d4",
     "compact_product/version.py": "c3989e98b38c56a9a83aae278932c1d738c7f7b06671d0ec21db2efe4bac2a8b",
-    "compact_product/web.py": "788e90dca8e2c9c2aff1b6daef83ff282418f9d88403e09bd3d5e4187bc7df02",
+    "compact_product/web.py": "1dc548fdfb5c0c900abd1427a61540dae2c64c4c4057a940b32381bda312c17f",
     "requirements-compact.txt": "c34eb554e053520137a531ea3e2a30729c6a19e8180d7222f8ab1eb6198cf96e"
   }
 }

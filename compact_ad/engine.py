@@ -161,7 +161,6 @@ def summarize(
         if bytes_used > max_feature_bytes:
             resource_invalid = True
             continue
-        inp = f.get("input") or {}
         out = f.get("output") or {}
         reviewed = key in inquiry.ROUTES
         subjects = f.get(inquiry.POLICY) or {}
@@ -173,7 +172,7 @@ def summarize(
                 and f["input_asof_ns"] < cutoff_ns
             )
             and f.get("input_feature_eligibility", {}).get("targets") is True
-            and bool(subjects if reviewed else inp.get('targets'))
+            and reviewed and bool(subjects)
         )
         oe = (
             valid_contract
@@ -194,26 +193,18 @@ def summarize(
             if ie:
                 # One occurrence per logical behavior+typed target. Repeated items
                 # within a single array are not extra requests to that target.
-                if reviewed:
-                    typed_tokens = {path: {path + ':' + fingerprint} for path, fingerprint in subjects.items()}
-                else:
-                    typed_tokens = {path: {digest([path, value]) for value in values}
-                                for path, values in inp.get("targets", {}).items()}
-                tokens = set().union(*typed_tokens.values())
-                targets_used += len(tokens)
+                targets_used += len(subjects)
                 if targets_used > max_targets:
                     resource_invalid = True
                 else:
-                    actor["targets"].update(tokens)
-                    if collect_longitudinal or reviewed:
-                        for path, values in typed_tokens.items():
-                            field = actor["target_fields"].setdefault(path, dict(tokens=set(), covered=0))
-                            field["tokens"].update(values)
-                            if values:
-                                field["covered"] += 1
-                    for token in tokens:
-                        if len(actor["target_witnesses"][token]) < witness_limit:
-                            actor["target_witnesses"][token].append(row["behavior_id"])
+                    for path, fingerprint in subjects.items():
+                        token = path + ':' + fingerprint
+                        actor['targets'][token] += 1
+                        field = actor['target_fields'].setdefault(path, dict(tokens=set(), covered=0))
+                        field['tokens'].add(token)
+                        field['covered'] += 1
+                        if len(actor['target_witnesses'][token]) < witness_limit:
+                            actor['target_witnesses'][token].append(row['behavior_id'])
         if oe:
             s["shapes"][out["shape_hash"]] += 1
             if len(s["shape_witnesses"][out["shape_hash"]]) < witness_limit:
@@ -608,23 +599,23 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
             used=rate_refs,
         )
         reviewed_axes = inquiry.ROUTES.get(key)
-        axes = [axis for axis, _ in reviewed_axes] if reviewed_axes else [None]
-        for axis in axes:
-            field = actor['target_fields'].get(axis) if axis else None
-            tokens = field['tokens'] if field else (() if axis else actor['targets'])
-            complete = field['covered'] == actor['count'] if field else (axis is None and not actor['input_invalid'])
+        if not reviewed_axes:
+            for method in ('repeated_target', 'target_diversity'):
+                add(method, key, session, 'INSUFFICIENT_DATA', reason='INQUIRY_SUBJECT_NOT_REVIEWED', used=[])
+            continue
+        for axis, _ in reviewed_axes:
+            field = actor['target_fields'].get(axis)
+            tokens = field['tokens'] if field else ()
+            complete = bool(field and field['covered'] == actor['count'])
             repeated = max(tokens, key=actor['targets'].get, default=None)
             cache_key = (key, axis)
             if cache_key not in target_references:
                 points = []
                 for ref, hist in zip(rate_refs, history):
-                    if axis:
-                        metric = hist.get(inquiry.POLICY, {}).get(axis)
-                        # Only fully observed reference windows contribute a distribution.
-                        if metric and metric['covered'] == hist['count']:
-                            points.append((ref, metric, metric['covered']))
-                    elif hist['input_valid'] and not hist.get('input_invalid'):
-                        points.append((ref, hist, hist['input_valid']))
+                    metric = hist.get(inquiry.POLICY, {}).get(axis)
+                    # Only fully observed reference windows contribute a distribution.
+                    if metric and metric['covered'] == hist['count']:
+                        points.append((ref, metric, metric['covered']))
                 used = [ref for ref, _, _ in points]
                 enough_inputs = len(used) >= MIN_REFERENCE_WINDOWS and sum(n for _, _, n in points) >= 30
                 stats = {}
@@ -647,8 +638,7 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
                     status = 'ANOMALY' if value > limit else 'NORMAL'
                 result = add(method, key, session, status, value if complete else None, baseline, limit,
                              witnesses, path=axis, used=used)
-                if axis:
-                    result['subject_policy'] = inquiry.POLICY
+                result['subject_policy'] = inquiry.POLICY
     # Actor service mix versus past population, not an inferred personal identity.
     grouped = defaultdict(dict)
     for (session, key), actor in actors.items():

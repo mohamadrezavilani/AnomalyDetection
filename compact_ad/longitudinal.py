@@ -10,7 +10,7 @@ import zlib
 import time
 from collections import defaultdict
 
-from compact_behavior import FEATURES, FIVE
+from compact_behavior import FEATURES, FIVE, inquiry
 from compact_behavior.extract import digest
 from .engine import upper
 
@@ -52,6 +52,8 @@ def projection(summary, actors):
     """Reuse the already-read window; no source or database lookups."""
     services = defaultdict(dict)
     for (session, service), a in actors.items():
+        if service not in inquiry.ROUTES:
+            continue
         fields = {}
         for path, field in a.get("target_fields", {}).items():
             tokens = sorted(field["tokens"])
