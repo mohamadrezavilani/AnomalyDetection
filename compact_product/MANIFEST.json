@@ -1,5 +1,5 @@
 {
-  "build_id": "COMPACT-PRODUCT-20261123-28",
+  "build_id": "COMPACT-PRODUCT-20261123-29",
   "files_sha256": {
     "catalogs/error_code_catalog.json": "c7dd443e34f24e3965c5f6e4e11b76fd747d33766823554cdaa3b1b8d1ca427e",
     "compact_ad/__init__.py": "fe6bb9d00bfe43e3d0789f9ebbd933b0c8268b36bd6e217c3814477090b332c2",
@@ -13,9 +13,10 @@
     "compact_ad/store.py": "eda3dffb95864a3910ea21070b9afcf0205c5003fd0a91938d92e46b596c1d3b",
     "compact_product/History_Compact_Product.ps1": "167ac3ecc3203222f167dcfd1291c4bd4557349a586ded93f5ab6e36a9869827",
     "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
-    "compact_product/__init__.py": "294908cf24d2e0ac4079fbe73ad4ad590ab29ef4c4b83c5a1647ec8af2cf4cf6",
+    "compact_product/__init__.py": "a545cb3737a048e421c036a81ef476027c6d6f5bd61416729ce935725a331cc0",
     "compact_product/__main__.py": "b111f9155355c176f0a7eed2116f6a741cbae574ad415d6856b63f39d30ac8f5",
     "compact_product/attempt_review.py": "05fbe29847967d1bf03eeb7d0ea8ad2d501e625a50b4ec9ac58d8a9d45373562",
+    "compact_product/case_selection.py": "306acf63a3ab0aad7cfc3a85a28528c80720ef5ec75458a0af1d7c3df5a04d24",
     "compact_product/cases.py": "4a13363fa947f37cc07ae6a20a7ca12717d5f3edb66f7605427a80927a7be1ec",
     "compact_product/config.py": "25e4efba2dcea98280c69678cf9a5934f3474f5c6be28f5b679d977d7286b168",
     "compact_product/dispatch_review.py": "828597fb722b84d3324f3e27e2240d5d8c53d0bdfd823d299ac9826a5599d48d",
@@ -28,8 +29,8 @@
     "compact_product/postal_health.py": "a0b03ead57e0c91743ce2b82ef5ab04f00b7a3bb2ed28371234473fe8e27f5c4",
     "compact_product/presentation.py": "bf42feb2b53f5a9d4f0c11cbf8f66dd7e3598fc6cd02306975e844cc9d5595de",
     "compact_product/request_context.py": "bd2ce6ae3ff6e9d9066c04f374e6e962b22788a52bbb545cbd99d57e96d13514",
-    "compact_product/runtime.py": "bd2015bd59ae45543aed270602bc020f114b991640a8fe5bd69596b91dc888ac",
-    "compact_product/search.py": "d5ebbd322ae38fb3ac6175d0432bbf67e94ce58b94e783beef9da0e1136154a3",
+    "compact_product/runtime.py": "86023ae9e4d283443217f9a56c72ccbcabd63a565450f1dce5914be312d6a4ef",
+    "compact_product/search.py": "e6098d7cc92fd5f799152e3a66393f27d37ce64bf84c4b2c006056311096459a",
     "compact_product/search_maintenance.py": "7af7725009f8305954adc9ae37aecceef25b92904d8fc741d11b40e928c07e3e",
     "compact_product/service_review.py": "a1de13451b82131d0d1806340c0bb732c76afacda7fc7aef129a62efbd65684a",
     "compact_product/templates/base.html": "d6d7fa8d1bc267f4ae6f93409af86a9bd230442300d2ae3e972cafb15188e250",
@@ -49,7 +50,7 @@
     "compact_product/templates/sessions.html": "e42b3375d19f5c31a9b1ac96b36f1d30f479eb9b35b1a777a91a4f6a08087d11",
     "compact_product/templates/status.html": "ea688a2a748c2cc6f4a3ae65f25e7563ead4f63ace0dbbaff2fdf865680a7453",
     "compact_product/version.py": "c3989e98b38c56a9a83aae278932c1d738c7f7b06671d0ec21db2efe4bac2a8b",
-    "compact_product/web.py": "a02036ab966e5f96ad9028e234ef9c46fdc9ff246fa571580ba78cc5a3b5afda",
+    "compact_product/web.py": "23402bef5f7a3dfeb485e03fd5546829f6797ee0c1a96343b958922002589ce5",
     "requirements-compact.txt": "c34eb554e053520137a531ea3e2a30729c6a19e8180d7222f8ab1eb6198cf96e"
   }
 }

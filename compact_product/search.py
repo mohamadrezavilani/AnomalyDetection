@@ -110,3 +110,20 @@ def prepare_index(db, schema, *, progress=lambda stage: None):
     if not state or not state['indisvalid'] or not state['indisready']:
         raise ValueError('SEARCH_INDEX_NOT_READY')
     return 'CREATED'
+
+
+def scope_parts():
+    expression = "(api=ANY(%s) OR (api=%s AND features->>'service_binding'=%s AND features->>'service_key'=ANY(%s)))"
+    dispatch = "Services.v1/InvoiceRegister"
+    binding = "SAME_REQUEST_REVIEWED_DISPATCH"
+    attempt = "(api='Services.v1/InvoiceRegister' AND result_code='GR0004')"
+    access_attempt = "(api='Services.v1/InvoiceRegister' AND result_code='G00010' AND features->'access_denied_attempt'->>'verified'='true')"
+    return expression, dispatch, binding, attempt, access_attempt
+
+
+def unknown_scope():
+    from compact_behavior.services import operation_catalog
+    expression, dispatch, binding, attempt, access_attempt = scope_parts()
+    known = sorted(api for api, row in operation_catalog()['routes'].items()
+                   if row['role'] != 'unknown' and api != dispatch)
+    return f'NOT COALESCE({expression} OR ({attempt} OR {access_attempt}),false)', [known, dispatch, binding, known]

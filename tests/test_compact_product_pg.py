@@ -143,15 +143,58 @@ class CompactProductPostgresTests(unittest.TestCase):
             response=client.get('/incidents?tab=cases&date='+day)
             self.assertEqual(response.status_code,200)
             return '/cases/' in response.get_data(as_text=True)
+        from tools.Export_Compact_Case_Review import collect
+        def audit():
+            with self.db.conn.transaction():
+                self.db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+                return collect(self.db.conn, self.config, 'test', day, 30)
         self.assertTrue(visible())
+        exported = audit()
+        self.assertEqual(exported['visible_cases'], 1)
+        case = exported['cases'][0]
+        self.assertIn(case['case_id'], client.get('/incidents?tab=cases&date='+day).get_data(as_text=True))
+        self.assertEqual(exported['witness_coverage'], dict(referenced=3, looked_up=3, found=3))
+        self.assertEqual(exported['session_windows'][0]['behaviors_examined'], 2)
+        self.assertNotIn('"s0"', json.dumps(exported))
         self.db.conn.execute(f'UPDATE {self.config.ad_schema}.window_results SET timing_confirmed_revision=0')
         self.assertFalse(visible())
+        self.assertEqual(audit()['visible_cases'], 0)
         self.db.conn.execute(f'UPDATE {self.config.ad_schema}.window_results SET timing_confirmed_revision=revision')
         target=self.db.conn.execute(f"SELECT finding_id,revision FROM {self.config.ad_schema}.findings WHERE method='target_diversity'").fetchone()
         self.db.conn.execute(f"INSERT INTO {self.config.ad_schema}.feedback(finding_id,finding_revision,verdict,note,recorded_at_ns) VALUES(%s,%s,'FALSE_POSITIVE','fixture',1)",(target['finding_id'],target['revision']))
         self.assertFalse(visible())
+        self.assertEqual(audit()['visible_cases'], 0)
         self.assertIn('incident-groups/',client.get('/signals').get_data(as_text=True))
         self.assertEqual(client.get('/incidents?date=wrong').status_code,400)
+
+    def test_sparse_unknown_index_matches_legacy_query_and_updates(self):
+        from tools.Prepare_Compact_Unknown import prepare, index_spec
+        from compact_product.search import unknown_scope
+        db, schema = self.db.conn, self.config.source_schema
+        self.publish(n=10)
+        original = self.db.cursor('test')
+        self.assertEqual(prepare(db, schema, lambda stage: None), 'CREATED')
+        self.assertEqual(prepare(db, schema, lambda stage: None), 'ALREADY_READY')
+        predicate, params = unknown_scope()
+        statement = (f'SELECT behavior_id FROM {schema}.behaviors WHERE stream_id=%s AND {predicate} '
+                     'ORDER BY observed_at_ns DESC,behavior_id DESC LIMIT 31')
+        self.assertEqual(db.execute(statement, ['test', *params]).fetchall(), [])
+        # The live web uses a newly opened connection with bound parameters.
+        # Simulate sparse candidates in a larger population for a meaningful plan.
+        db.execute(f"""INSERT INTO {schema}.behaviors
+            SELECT md5(n::text),'test',n::text,NULL,{T},'Services.v1/WaterBills',NULL,
+            NULL,'unknown','behavior','[]','{{}}','x',1 FROM generate_series(1,12000) n""")
+        db.execute(f'ANALYZE {schema}.behaviors')
+        name, _ = index_spec(db)
+        plan = db.execute('EXPLAIN (COSTS OFF) '+statement, ['test', *params]).fetchall()
+        self.assertIn(name, str(plan))
+        # One formerly known row becomes unresolved and later gains its binding.
+        bid = db.execute(f'SELECT behavior_id FROM {schema}.behaviors LIMIT 1').fetchone()['behavior_id']
+        db.execute(f"UPDATE {schema}.behaviors SET api='Services.v1/InvoiceRegister',features='{{}}' WHERE behavior_id=%s",(bid,))
+        self.assertEqual(db.execute(statement, ['test', *params]).fetchall(), [dict(behavior_id=bid)])
+        db.execute(f"UPDATE {schema}.behaviors SET result_code='GR0004' WHERE behavior_id=%s",(bid,))
+        self.assertEqual(db.execute(statement,['test',*params]).fetchall(), [])
+        self.assertEqual(self.db.cursor('test'), original)
 
     def test_targeted_attempt_repair_preserves_cursor_counts_once_and_requeues_analysis(self):
         from compact_product.attempt_review import inspect,AttemptWindowWriter
