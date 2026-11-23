@@ -24,7 +24,7 @@ feature_version model_id numeric_path subject_policy measurement_unit baseline_f
 validation_samples validation_log_mae calibration_rows calibration_windows training_rows
 calibration_tail_rank single_signal_review_eligible rare_transition_fraction comparison
 peer_count peer_max adjusted_tail_rank comparisons peer_basis active_days requests
-horizon_days period_start_ns period_end_ns duration_valid duration_missing behavior_stage
+rare_cross_services timing_services horizon_days period_start_ns period_end_ns duration_valid duration_missing behavior_stage
 """.split()
 COLUMNS = """behavior_id, observed_at_ns, session_id, api, kind, result_code,
     reported_duration, revision, quality, features->>'service_key' AS service,

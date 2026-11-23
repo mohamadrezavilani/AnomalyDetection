@@ -649,6 +649,8 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
                 result = add(method, key, session, status, value if complete else None, baseline, limit,
                              witnesses, path=axis, used=used)
                 result['subject_policy'] = inquiry.POLICY
+                if method == 'target_diversity' and status == 'ANOMALY' and len(used) >= 24 and value >= 2 * limit:
+                    result['single_signal_review_eligible'] = True
     # Actor service mix versus past population, not an inferred personal identity.
     grouped = defaultdict(dict)
     for (session, key), actor in actors.items():

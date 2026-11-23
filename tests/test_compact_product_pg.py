@@ -123,6 +123,30 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.assertEqual(sample['durations_by_reported_code'][0]['min_ms'],7)
         self.assertNotIn('session_id',str(data))
 
+    def test_inquiry_session_recounts_legacy_rows_without_storing_numbers(self):
+        from tools.Review_Compact_Inquiry_Session import review
+        from compact_behavior import inquiry
+        from compact_behavior.extract import behavior_id
+        db, schema = self.db.conn, self.config.source_schema
+        session = 'B'*32
+        def records(req, number):
+            base = row(req,session,path=inquiry.CELL_SERVICE)
+            return [base,row(req,session,path='ClientAyanCoInquiry.MCIMobileBillInquiry',
+                message='Input:{"MobileNumber":"' + number + '"}')] if number else [base]
+        raw = records('one','00123') + records('two','00123') + records('three','00567') + records('four',None)
+        self.db.publish('test',T,T+FIVE,extract(raw),len(raw))
+        db.execute(f'UPDATE {schema}.behaviors SET features=features-%s',(inquiry.POLICY,))
+        with self.assertRaisesRegex(ValueError, 'witness_session_or_service_unavailable'):
+            review(self.db,'test','0'*64,inquiry.CELL_SERVICE,'MobileNumber')
+        result, kql = review(self.db,'test',behavior_id('test','one'),inquiry.CELL_SERVICE,'MobileNumber')
+        self.assertEqual(result['requests_checked'],4)
+        self.assertIsNone(result['stored']['distinct'])
+        self.assertEqual(result['retained_reconstruction'],dict(covered=3,distinct=2,most_frequent_count=2,distinct_is_exact=False))
+        self.assertIn(session,kql)
+        self.assertNotIn(session, str(result))
+        self.assertNotIn('00123',str(result))
+        self.assertEqual(self.db.cursor('test'),T+FIVE)
+
     def test_evidence_case_page_keeps_revision_fences_and_same_revision_feedback(self):
         from copy import deepcopy
         from datetime import datetime
@@ -135,6 +159,9 @@ class CompactProductPostgresTests(unittest.TestCase):
         for method in ('actor_rate','target_diversity'):
             r=deepcopy(next(v for v in current if v['method']==method and v['service']=='Services.v1/WaterBills'));r.update(method=method,session_id='s0',service='Services.v1/WaterBills',
                 status='ANOMALY',reference_windows=24,evidence=bids,observed=50,baseline=2,threshold=10)
+            if method=='target_diversity':
+                from compact_behavior import inquiry
+                r.update(numeric_path='WaterBillID', subject_policy=inquiry.POLICY, observed=15)
             results.append(r)
         self.db.commit_analysis(work,results,.01)
         client=create_app(self.config,self.database,'test').test_client()

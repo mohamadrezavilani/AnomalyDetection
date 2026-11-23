@@ -2,15 +2,37 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from compact_behavior import FIVE
+from compact_behavior import FIVE, inquiry
 from compact_behavior.extract import digest
 
-POLICY = 'qualified-review-4'
+POLICY = 'qualified-review-5'
+CASE_ID_NAMESPACE = 'qualified-review-4'  # Existing case URLs identify the session/service.
 LIMIT = 10000
-FAMILIES = {'actor_rate':'volume','isolation_forest':'volume',
-    'rate_limit_rejections':'volume','repeated_target':'targets',
-    'target_diversity':'targets','service_sequence':'sequence','timing_regularization':'timing'}
-CONTEXT_ONLY = {'repeated_target'}
+CONTEXT_METHODS = {'isolation_forest', 'repeated_target'}
+BULK_DELETE = 'Core.v1/UserServiceQueryDelete'
+
+
+def reviewed_diversity(row):
+    r = row['result']
+    return (row['method'] == 'target_diversity' and r.get('subject_policy') == inquiry.POLICY
+            and any(r.get('numeric_path') == axis for axis, _ in inquiry.ROUTES.get(row['service'], ()))
+            and type(r.get('observed')) is int and type(r.get('threshold')) in (int, float)
+            and 0 < r['threshold'] < r['observed'])
+
+
+def dimension(row, service):
+    method = row['method']
+    if row['service'] == BULK_DELETE or service == BULK_DELETE:
+        return None
+    if method in ('actor_rate', 'rate_limit_rejections'):
+        return 'volume'
+    if reviewed_diversity(row):
+        return 'targets'
+    if method == 'service_sequence' and service in row['result'].get('rare_cross_services', ()):
+        return 'cross_service_sequence'
+    if method == 'timing_regularization' and service in row['result'].get('timing_services', ()):
+        return 'timing'
+    return None
 
 
 def day_bounds(value=None):
@@ -47,15 +69,10 @@ def service_groups(cases):
 def select_cases(rows):
     """Caller fences source/model/revision, pending work and human feedback.
 
-    A qualified standalone detector or two behavioral dimensions can qualify.
-    Corroborating dimensions must refer to the same session and
-    five-minute window. Rate, forest and rate-limit counts share one dimension;
-    Repeated-target counts are context only: the same requests can generate both
-    high volume and high repetition, even when every attempt has one target.
-    This does not label retries benign or discard their findings. Distinct target
-    diversity, sequence and timing can still corroborate another dimension.
-    Service health is kept separate.
-    No learned precision or statistical independence is claimed by this policy.
+    Keep model outliers as context. Only reviewed target counts or specific
+    measured dimensions can qualify automatic session cases. A rare self-loop
+    caused by retries cannot substantiate a rate finding. Stored older pattern
+    rows without the new scope evidence stay available in the signal view.
     """
     accepted={};reasons=defaultdict(set)
     def accept(group, why):
@@ -66,13 +83,15 @@ def select_cases(rows):
         if row.get('verdict')=='CONFIRMED':accept([row],'HUMAN_CONFIRMED')
         if not supported(row):continue
         r=row['result']
-        if (r.get('single_signal_review_eligible') is True and
-                ((row['method']=='long_target_enumeration' and r.get('peer_count',0)>=100
-                  and r.get('adjusted_tail_rank',1)<=.05 and r.get('horizon_days') in (3,7,30)) or
-                 (row['method']=='isolation_forest' and r.get('calibration_rows',0)>=100
-                  and r.get('calibration_tail_rank',1)<=.01))):
-            accept([row],'QUALIFIED_SINGLE_METHOD')
-        if row.get('session_id') and row['method'] in FAMILIES:
+        if (row.get('session_id') and row['method'] == 'long_target_enumeration'
+                and r.get('single_signal_review_eligible') is True and r.get('peer_count',0) >= 100
+                and r.get('adjusted_tail_rank',1) <= .05 and r.get('horizon_days') in (3,7,30)):
+            accept([row], 'QUALIFIED_SINGLE_METHOD')
+        if row.get('session_id') and reviewed_diversity(row) and r['observed'] >= 2 * r['threshold']:
+            accept([row], 'DISTINCT_REVIEWED_TARGETS')
+        if row.get('session_id') and row['method'] in (
+                'actor_rate', 'target_diversity', 'rate_limit_rejections', 'service_sequence',
+                'timing_regularization', *CONTEXT_METHODS):
             sessions[(row['session_id'],row['start_ns'])].append(row)
         # Persistence cannot validate an inappropriate reference population.
         # Current latency/result detectors have no validated time-context model;
@@ -86,9 +105,12 @@ def select_cases(rows):
         services={r['service'] for r in group if r['service']!='*'} or {'*'}
         for service in services:
             subset=[r for r in group if r['service'] in (service,'*')]
-            if len({FAMILIES[r['method']] for r in subset
-                    if r['method'] not in CONTEXT_ONLY})>=2:
-                accept(subset,'CORROBORATED_SAME_SESSION_WINDOW')
+            evidence = [r for r in subset if dimension(r, service)]
+            if len({dimension(r, service) for r in evidence}) >= 2:
+                accept(evidence, 'CORROBORATED_SAME_SESSION_WINDOW')
+                for r in subset:
+                    if r['method'] in CONTEXT_METHODS:
+                        accepted[r['finding_id']] = r
     for group in persistent.values():
         # Multiple numeric paths in a single window are not persistence.
         by_time=defaultdict(list)
@@ -102,7 +124,7 @@ def select_cases(rows):
         # service binding. Link corroborating findings inside the same case.
         domain='session' if row.get('session_id') else 'service_health'
         key=(domain,row.get('session_id') or row['service'])
-        c=cases.setdefault(key,dict(case_id=digest([POLICY,*key])[:32],domain=domain,
+        c=cases.setdefault(key,dict(case_id=digest([CASE_ID_NAMESPACE,*key])[:32],domain=domain,
             session_id=row.get('session_id'),services=set(),methods=set(),reasons=set(),findings=[],
             first_ns=row['start_ns'],last_ns=row['start_ns']))
         c['findings'].append(row);c['services'].add(row['service']);c['methods'].add(row['method'])
@@ -119,6 +141,7 @@ def select_cases(rows):
 
 REASONS={
  'QUALIFIED_SINGLE_METHOD':'یک روش به‌تنهایی شرایط شواهد قوی را دارد: پوشش معتبر، مرجع کافی و فاصلهٔ روشن از رفتار مرجع. وجود روش دوم شرط نیست؛ نتیجه نیازمند بررسی است.',
- 'CORROBORATED_SAME_SESSION_WINDOW':'هم‌زمانی دست‌کم دو بُعد رفتاری در همان نشست و پنجره؛ مانند نرخ غیرعادی همراه الگوی ورودی یا توالی غیرعادی.',
+ 'DISTINCT_REVIEWED_TARGETS':'تعداد شناسه‌های ورودی متمایز در پنج دقیقه دست‌کم دو برابر آستانهٔ محاسبه‌شده از سابقهٔ همان خدمت و فیلد است.',
+ 'CORROBORATED_SAME_SESSION_WINDOW':'در همان نشست و پنجره، دو ویژگی قابل بررسی برای یک خدمت دیده شده‌اند. جزئیات هر روش در ادامه آمده است.',
  'PERSISTENT_SERVICE_HEALTH':'تداوم هشدار همین خدمت در سه پنجرهٔ متوالی با مرجع زمانی اعتبارسنجی‌شده؛ مربوط به عملکرد خدمت، نه اثبات سوءاستفادهٔ کاربر.',
  'HUMAN_CONFIRMED':'این نسخهٔ نتیجه قبلاً توسط بررسی‌کننده تأیید شده است.'}

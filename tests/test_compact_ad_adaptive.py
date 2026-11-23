@@ -151,13 +151,18 @@ class AdaptiveTests(unittest.TestCase):
             def add(method,service,session,status,*args,**kwargs):
                 r=dict(method=method,status=status);results.append(r);return r
             evaluate_patterns(T,{}, {},actors,refs,add,previous)
-            return {r['method']:r['status'] for r in results}
+            return {r['method']:r for r in results}
         positive=run({'s':[]})
-        self.assertEqual(positive['service_sequence'],'ANOMALY')
-        self.assertEqual(positive['timing_regularization'],'ANOMALY')
+        self.assertEqual(positive['service_sequence']['status'],'ANOMALY')
+        self.assertEqual(positive['service_sequence']['rare_cross_services'],['A','B'])
+        self.assertEqual(positive['timing_regularization']['timing_services'],[])
         missing=run(None)
-        self.assertEqual(missing['service_sequence'],'INSUFFICIENT_DATA')
-        self.assertEqual(missing['timing_regularization'],'INSUFFICIENT_DATA')
+        self.assertEqual(missing['service_sequence']['status'],'INSUFFICIENT_DATA')
+        self.assertEqual(missing['timing_regularization']['status'],'INSUFFICIENT_DATA')
+        actors[('s','A')]['events'] = [(at,'B',bid) for at,_,bid in actors[('s','A')]['events']]
+        single=run({'s':[]})
+        self.assertEqual(single['service_sequence']['rare_cross_services'],[])
+        self.assertEqual(single['timing_regularization']['timing_services'],['B'])
 
     def test_forest_readiness_does_not_substitute_for_sequence_calibration(self):
         from compact_ad.patterns import evaluate_patterns

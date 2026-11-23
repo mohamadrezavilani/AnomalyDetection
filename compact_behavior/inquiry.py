@@ -71,6 +71,14 @@ PROVIDER_FIELDS = {
     ('Services.v1/LivelihoodInformation', 'ClientAyanCoInquiry.SfaraCouponInquiry'): (('MobileNumber','MobileNumber'),),
     ('Services.v1/SfaraCoupon', 'ClientAyanCoInquiry.SfaraCouponInquiry'): (('MobileNumber','MobileNumber'),),
 }
+# CellPhoneBillsHandler assigns _model.LineNumber to input.MobileNumber.
+# Match exact request-side CallPaths, including the older Irancell V1 branch.
+CELL_SERVICE = 'Services.v1/CellPhoneBills'
+CELL_INPUT_PROVIDERS = frozenset('ClientAyanCoInquiry.' + name for name in (
+    'MCIMobileBillInquiry', 'MTNMobileBillInquiry', 'MtnMobileDebtInquiry', 'RightelMobileBillInquiry'))
+for _path in CELL_INPUT_PROVIDERS:
+    PROVIDER_FIELDS[CELL_SERVICE, _path] = (('MobileNumber', 'MobileNumber'),)
+
 POLICY = 'inquiry_subjects_v1'
 NAMES = frozenset(field for fields in (*ROUTES.values(), *PROVIDER_FIELDS.values()) for _, field in fields)
 

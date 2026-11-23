@@ -29,7 +29,7 @@ class CompactUiBrowserTests(unittest.TestCase):
             home = render_template('home.html', title='رفتارهای مشاهده‌شده', rows=[row]*3, scope='unknown', code_definitions=codes)
         from compact_product.cases import select_cases,REASONS
         signals=[dict(finding_id=m,method=m,session_id='demo',service='Services.v1/WaterBills',start_ns=0,
-            result=dict(reference_windows=24,evidence=['a','b','c'],observed=30,baseline=2,threshold=10))
+            result=dict(reference_windows=24,evidence=['a','b','c'],observed=30,baseline=2,threshold=10,subject_policy="inquiry_subjects_v1",numeric_path="WaterBillID"))
             for m in ('actor_rate','target_diversity')]
         with app.test_request_context('/incidents?date=2026-11-22'):
             cases=render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',rows=select_cases(signals),

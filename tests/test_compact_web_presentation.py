@@ -73,8 +73,12 @@ class SearchContractTests(unittest.TestCase):
 
 class CasePolicyTests(unittest.TestCase):
     def signal(self,method='actor_rate',session='s',service='Services.v1/WaterBills',at=0):
+        result = dict(reference_windows=24,evidence=['a','b','c'])
+        if method == 'target_diversity':
+            from compact_behavior import inquiry
+            result.update(subject_policy=inquiry.POLICY, numeric_path='WaterBillID', observed=8, threshold=6)
         return dict(finding_id=str((method,session,service,at)),method=method,session_id=session,
-            service=service,start_ns=at,result=dict(reference_windows=24,evidence=['a','b','c']))
+                    service=service,start_ns=at,result=result)
 
     def test_correlated_volume_and_target_methods_do_not_self_confirm(self):
         from compact_product.cases import select_cases
@@ -102,7 +106,25 @@ class CasePolicyTests(unittest.TestCase):
         from compact_product.cases import select_cases
         for method in ('timing_regularization','service_sequence','target_diversity'):
             self.assertFalse(select_cases([self.signal('repeated_target'),self.signal(method)]))
-            self.assertEqual(len(select_cases([self.signal(),self.signal(method)])),1)
+            other = self.signal(method)
+            if method in ('timing_regularization', 'service_sequence'):
+                self.assertFalse(select_cases([self.signal(), other]))
+                key = 'timing_services' if method=='timing_regularization' else 'rare_cross_services'
+                other['result'][key] = ['Services.v1/WaterBills']
+            self.assertEqual(len(select_cases([self.signal(), other])),1)
+
+    def test_standalone_verified_short_diversity_and_bulk_exception(self):
+        from compact_product.cases import select_cases, BULK_DELETE
+        finding = self.signal('target_diversity')
+        finding['result']['observed'] = 12
+        self.assertEqual(select_cases([finding])[0]['reasons'], ['DISTINCT_REVIEWED_TARGETS'])
+        finding['result']['numeric_path'] = 'TraceNumber'
+        self.assertFalse(select_cases([finding, self.signal()]))
+        timing = self.signal('timing_regularization', service='*')
+        timing['result']['timing_services'] = [BULK_DELETE]
+        self.assertFalse(select_cases([self.signal(service=BULK_DELETE), timing]))
+        timing['verdict'] = 'CONFIRMED'
+        self.assertEqual(select_cases([timing])[0]['reasons'], ['HUMAN_CONFIRMED'])
 
     def test_different_sessions_windows_services_and_thin_evidence_do_not_confirm(self):
         from compact_product.cases import select_cases
