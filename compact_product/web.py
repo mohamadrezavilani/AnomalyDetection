@@ -19,7 +19,7 @@ from flask import (
     session,
 )
 from compact_behavior.store import Store
-from compact_behavior import FIVE, FEATURES, inquiry
+from compact_behavior import FIVE
 from compact_behavior.extract import identity, materialize
 from .health import health
 from . import search
@@ -30,9 +30,9 @@ from .presentation import ROLES, data_note
 from .request_context import observed_context
 from compact_ad.methods import METHODS
 from compact_ad import MODEL
-from compact_ad.seasonality import HORIZON
+from . import case_selection
 from compact_ad import long_store, longitudinal
-from compact_behavior.services import meaningful_apis, operation_catalog, operation_label, operation_role
+from compact_behavior.services import meaningful_apis, operation_label, operation_role
 
 
 def create_app(config, database, stream, *, secret=None):
@@ -120,17 +120,13 @@ def create_app(config, database, stream, *, secret=None):
             return scope, "", []
         # The generic dispatcher is meaningful only after exact same-request
         # service binding. Existing compact rows retain this binding as well.
-        expression = "(api=ANY(%s) OR (api=%s AND features->>'service_binding'=%s AND features->>'service_key'=ANY(%s)))"
-        dispatch = "Services.v1/InvoiceRegister"
-        binding = "SAME_REQUEST_REVIEWED_DISPATCH"
-        attempt = "(api='Services.v1/InvoiceRegister' AND result_code='GR0004')"
-        access_attempt = "(api='Services.v1/InvoiceRegister' AND result_code='G00010' AND features->'access_denied_attempt'->>'verified'='true')"
+        if scope == 'unknown':
+            clause, args = search.unknown_scope()
+            return scope, 'AND ' + clause, args
+        expression, dispatch, binding, attempt, access_attempt = search.scope_parts()
         if scope == 'attempts':
-            return scope, 'AND '+attempt, []
+            return scope, 'AND ' + attempt, []
         attempt = "(" + attempt + " OR " + access_attempt + ")"
-        if scope == "unknown":
-            known = sorted(api for api, row in operation_catalog()["routes"].items() if row["role"] != "unknown" and api != dispatch)
-            return scope, "AND NOT COALESCE(" + expression + " OR " + attempt + ",false)", [known, dispatch, binding, known]
         if scope != "meaningful":
             abort(400)
         allowed = meaningful_apis()
@@ -142,7 +138,7 @@ def create_app(config, database, stream, *, secret=None):
 
         if isinstance(exc, HTTPException):
             return exc
-        app.logger.error("web operation failed: %s", type(exc).__name__)
+        app.logger.error("web endpoint=%s exception=%s sqlstate=%s", request.endpoint, type(exc).__name__, getattr(exc, "sqlstate", None))
         return (
             render_template("error.html", title="دریافت اطلاعات موقتاً ممکن نیست"),
             503,
@@ -264,73 +260,18 @@ def create_app(config, database, stream, *, secret=None):
             "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"], row.get("collected_context"))
         )
 
-    def publishable():
-        # Snapshot-local eligibility, including changed reference windows.
-        return f"""f.status='ANOMALY' AND ({long_store.eligible_sql(config.source_schema,config.ad_schema)} OR (f.result->>'model_version'=%s
-            AND f.result->>'feature_version'=%s
-            AND EXISTS(SELECT 1 FROM {config.ad_schema}.window_results r
-                JOIN {config.source_schema}.windows w USING(stream_id,start_ns)
-                WHERE r.stream_id=f.stream_id AND r.start_ns=f.start_ns
-                AND r.model_version=%s AND r.feature_version=%s
-                AND r.source_published_ns=w.published_at_ns
-                AND r.timing_confirmed_revision=r.revision)
-            AND (f.method NOT IN ('repeated_target','target_diversity')
-                 OR f.result->>'subject_policy'=%s)
-            AND NOT EXISTS(SELECT 1 FROM {config.source_schema}.dirty_windows d
-                WHERE d.stream_id=f.stream_id AND d.session_id='@all'
-                AND d.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
-                AND (d.start_ns>=f.start_ns-{288 * FIVE} OR (d.start_ns/{FIVE})%%12=(f.start_ns/{FIVE})%%12)
-                AND d.processed_version<d.version)
-            AND NOT EXISTS(SELECT 1 FROM {config.ad_schema}.reanalysis j
-                WHERE j.stream_id=f.stream_id
-                AND j.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
-                AND (j.start_ns>=f.start_ns-{288 * FIVE} OR (j.start_ns/{FIVE})%%12=(f.start_ns/{FIVE})%%12)
-                AND j.processed_version<j.version)))
-            AND COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
-                WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
-                ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE')<>'FALSE_POSITIVE'"""
-
-    def eligible_args():
-        return [MODEL, FEATURES, MODEL, FEATURES, inquiry.POLICY]
-
     def case_rows():
         try:
-            day,start,end=cases.day_bounds(request.args.get('date'))
-            days=int(request.args.get('days','30'))
-            if not 1<=days<=30:raise ValueError('invalid_range')
-            start-=(days-1)*longitudinal.DAY
-        except (ValueError,OverflowError):abort(400,description='تاریخ میلادی معتبر وارد کنید.')
+            days = int(request.args.get('days', '30'))
+            day, start, end = case_selection.bounds(request.args.get('date'), days)
+        except (ValueError, OverflowError):
+            abort(400, description='تاریخ میلادی معتبر وارد کنید.')
         with connection() as db:
-            rows=db.execute(f'''WITH strong_candidates AS MATERIALIZED (
-                SELECT * FROM {config.ad_schema}.findings
-                WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
-                AND (method='long_target_enumeration' OR result->>'single_signal_review_eligible'='true')
-                ORDER BY start_ns DESC,finding_id DESC LIMIT 1001
-            ), ordinary_candidates AS MATERIALIZED (
-                SELECT * FROM {config.ad_schema}.findings
-                WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
-                AND NOT (method='long_target_enumeration' OR COALESCE(result->>'single_signal_review_eligible','false')='true')
-                ORDER BY start_ns DESC,finding_id DESC LIMIT {cases.LIMIT+1}
-            ), candidates AS MATERIALIZED (
-                SELECT * FROM strong_candidates UNION ALL SELECT * FROM ordinary_candidates
-            ), eligible AS (
-                SELECT f.*,COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
-                    WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
-                    ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE') AS verdict
-                FROM candidates f WHERE {publishable()}
-            ) SELECT e.*,c.n AS candidate_count,c.strong_count FROM
-                (SELECT count(*) AS n,(SELECT count(*) FROM strong_candidates) AS strong_count FROM candidates) c
-                LEFT JOIN eligible e ON true ORDER BY
-                (e.method='long_target_enumeration' OR COALESCE(e.result->>'single_signal_review_eligible','false')='true') DESC,
-                e.start_ns DESC,e.finding_id DESC''',
-                [stream,start,end,stream,start,end,*eligible_args()]).fetchall()
-        truncated=bool(rows and (rows[0]['candidate_count']>cases.LIMIT or rows[0]['strong_count']>1000))
-        eligible=[r for r in rows if r.get('finding_id')][:cases.LIMIT]
-        selected=cases.select_cases(eligible)
-        service=request.args.get('service')
+            selected, signals, truncated = case_selection.select(db, config, stream, start, end)
+        service = request.args.get('service')
         if service:
-            selected=[c for c in selected if service in c['services']]
-        return day,days,selected,len(eligible),truncated
+            selected = [case for case in selected if service in case['services']]
+        return day, days, selected, signals, truncated
 
     @app.get('/incidents')
     def incidents():
@@ -375,7 +316,7 @@ def create_app(config, database, stream, *, secret=None):
         # One overview row per Tehran day and service; retain individual findings.
         # Group before pagination: never split a group across pages.
         before = request.args.get("before")
-        args = [stream, *eligible_args()]
+        args = [stream, *case_selection.eligible_args()]
         clause = ""
         if before:
             try:
@@ -389,7 +330,7 @@ def create_app(config, database, stream, *, secret=None):
                     SELECT f.*,md5(jsonb_build_array(f.service,
                         (f.start_ns+12600000000000)/86400000000000)::text) AS group_id
                     FROM {config.ad_schema}.findings f
-                    WHERE f.stream_id=%s AND {publishable()}
+                    WHERE f.stream_id=%s AND {case_selection.publishable(config)}
                 ), grouped AS (
                     SELECT group_id,service,count(DISTINCT session_id) AS session_count, bool_or(session_id IS NULL) AS has_service_scope,array_agg(DISTINCT method) AS methods,min(start_ns) AS first_ns,
                         max(start_ns) AS last_ns,count(*) AS signal_count,
@@ -405,7 +346,7 @@ def create_app(config, database, stream, *, secret=None):
     def incident_group(gid):
         if len(gid) != 32 or any(c not in "0123456789abcdef" for c in gid):
             abort(404)
-        args = [stream,*eligible_args(),gid]
+        args = [stream,*case_selection.eligible_args(),gid]
         clause = ""
         if request.args.get("before"):
             try:
@@ -415,7 +356,7 @@ def create_app(config, database, stream, *, secret=None):
             clause = "AND (f.start_ns,f.finding_id)<(%s,%s)"
         with connection() as db:
             rows = db.execute(f"""SELECT f.* FROM {config.ad_schema}.findings f
-                WHERE f.stream_id=%s AND {publishable()}
+                WHERE f.stream_id=%s AND {case_selection.publishable(config)}
                 AND md5(jsonb_build_array(f.service,
                     (f.start_ns+12600000000000)/86400000000000)::text)=%s
                 {clause} ORDER BY f.start_ns DESC,f.finding_id DESC LIMIT 51""",
@@ -433,8 +374,8 @@ def create_app(config, database, stream, *, secret=None):
             if not finding:
                 abort(404)
             ready = db.execute(
-                f"SELECT 1 FROM {config.ad_schema}.findings f WHERE f.stream_id=%s AND f.finding_id=%s AND {publishable()}",
-                [stream, fid, *eligible_args()],
+                f"SELECT 1 FROM {config.ad_schema}.findings f WHERE f.stream_id=%s AND f.finding_id=%s AND {case_selection.publishable(config)}",
+                [stream, fid, *case_selection.eligible_args()],
             ).fetchone() is not None
             feedback = db.execute(
                 f"SELECT * FROM {config.ad_schema}.feedback WHERE finding_id=%s ORDER BY feedback_id DESC LIMIT 50",

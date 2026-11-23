@@ -69,6 +69,12 @@ class Lease:
             schema=self.config.source_schema,
             application="lease." + role,
         )
+        # A scheduled supervisor attaches after the core has installed its
+        # lease table. Repeating source ALTERs here competes with live ingest.
+        attached_supervisor = role == "supervisor" and self.db.conn.execute(
+            "SELECT to_regclass(%s) IS NOT NULL AS installed",
+            (self.config.source_schema + ".runtime_roles",),
+        ).fetchone()["installed"]
         if role == "history":
             from .history_schema import validate_installed
             try:
@@ -76,7 +82,7 @@ class Lease:
             except Exception:
                 self.db.close()
                 raise
-        else:
+        elif not attached_supervisor:
             self.db.init()
         streams = self.db.conn.execute(
             f"SELECT stream_id FROM {self.config.source_schema}.streams LIMIT 2"
@@ -85,7 +91,7 @@ class Lease:
             self.db.close()
             raise ValueError("new_source_requires_new_compact_namespace")
         self.db.conn.execute("SET statement_timeout=5000")
-        if role != "history":
+        if role != "history" and not attached_supervisor:
             runtime_init(self.db.conn, self.config.source_schema)
         ok = self.db.conn.execute(
             "SELECT pg_try_advisory_lock(%s) AS ok",

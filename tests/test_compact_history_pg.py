@@ -152,6 +152,13 @@ class HistoryPostgresTests(unittest.TestCase):
                 self.assertEqual(other.cursor("test"),T+FIVE)
                 self.assertEqual(other.conn.execute('SHOW lock_timeout').fetchone()['lock_timeout'],'100ms')
                 with tempfile.TemporaryDirectory() as directory, patch('compact_product.runtime.load',return_value=(self.config,{'DATABASE':self.database},'test')), patch.object(Store,'init',side_effect=AssertionError('unexpected source DDL')), patch('compact_product.runtime.runtime_init',side_effect=AssertionError('unexpected runtime DDL')):
+                    supervisor = Lease(Path(directory), 'supervisor', 'installed-supervisor')
+                    try:
+                        self.assertEqual(supervisor.info['state'], 'STARTING')
+                        with self.assertRaisesRegex(ValueError, 'ALREADY_RUNNING'):
+                            Lease(Path(directory), 'supervisor', 'duplicate-supervisor')
+                    finally:
+                        supervisor.close()
                     lease=Lease(Path(directory),'history','read-only-attach-test')
                     try:
                         self.assertEqual(lease.info['state'],'STARTING')
