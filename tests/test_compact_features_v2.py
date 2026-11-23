@@ -374,6 +374,36 @@ class InquirySubjectTests(unittest.TestCase):
         self.assertEqual(self.body('Services.v1/WaterBills', {'Nested':{'Identifier':'x'},
             'Identifier':' '})['features'][POLICY], {})
 
+    def test_postal_cache_return_is_narrow_and_never_an_input(self):
+        from compact_ad.engine import summarize
+        from compact_behavior import postal, inquiry
+        from compact_behavior.extract import instant
+        def cache(code='0012345678', kind=postal.CACHE_TYPE, header=postal.CACHE_HEADER):
+            content = json.dumps({'PostalCode':code, 'PostalAddress':'private-synthetic'})
+            out = [{'Parameters':{'Type':kind, 'CacheContent':content}, 'Status':{'Code':'G00000'}}]
+            return row(path=postal.CACHE, message=header + '\r\nInput:[{"Identity":{"Token":"secret-synthetic"}}]\r\nOutput:' + json.dumps(out))
+        api = row(path=postal.SERVICE)
+        def body(rows):
+            return materialize('s', extract(rows)['req-1'])
+        state = extract([api, cache(), cache()])['req-1']
+        self.assertNotIn('private-synthetic', json.dumps(state))
+        self.assertNotIn('secret-synthetic', json.dumps(state))
+        observed = materialize('s', state)
+        self.assertNotIn(inquiry.POLICY, observed['features'])
+        self.assertFalse(observed['features']['output_eligible'])
+        at = instant(api['@timestamp'])
+        for cutoff, n in [(at,0),(at+1,1)]:
+            metric = summarize([observed], cutoff_ns=cutoff)[0]['services'][postal.SERVICE]
+            self.assertEqual((metric['postal_cache_returns'], metric['input_valid']),(n,0))
+        for rows in ([api,cache(),cache('1111111111')],[api,cache('short')],
+                     [api,cache(kind='other')],[api,cache(header=postal.CACHE_HEADER + '/bad')],
+                     [row(),cache()], [row(path=postal.SERVICE,message='POST https://example.test (GR0004 | error)'),cache()]):
+            self.assertNotIn('postal_cache_returned_at_ns',body(rows)['features'])
+        actual = self.body(postal.SERVICE, {'Parameters':{'PostalCode':'0000000001','TraceNumber':'ignore'}},
+                           path='ClientAyanCoInquiry.PostalCodeToAddress')
+        self.assertEqual(actual['features'][inquiry.POLICY],{'PostalCode':inquiry.token('0000000001')})
+        self.assertEqual(actual['features']['input_basis'],'reviewed_same_request_provider')
+
     def test_unreviewed_operation_cannot_qualify_from_an_incidental_generic_id(self):
         from compact_ad.engine import summarize, evaluate
         from tests.test_compact_extract import T

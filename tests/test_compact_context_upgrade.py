@@ -10,39 +10,41 @@ class ContextUpgradeTests(unittest.TestCase):
         report=upgrade(Path('project'),Path('new'),Path('old'),Path('history-old'),'sha',execute=execute)
         return report,calls
     def test_history_stops_before_core_and_resumes_after_confirmed_restore(self):
-        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE','from_tehran':'2026-11-20T00:00:00+03:30'}),
             (0,{}),(0,{}),(0,{}),(2,{'status':'COMPACT_UPGRADE_FAILED_PREVIOUS_RELEASE_RESTORED'}),(0,{})])
         self.assertIn('history-stop',calls[3][0])
         self.assertEqual(calls[5][0][0],Path('new/tools/Upgrade_Compact_Product.py'))
-        self.assertIn('resume-history',calls[6][0])
+        self.assertIn('--resume-existing',calls[6][0])
+        self.assertIn('2026-11-20T00:00:00+03:30',calls[6][0])
+        self.assertNotIn('old-sha',calls[6][0])
         self.assertEqual(result['status'],'COMPACT_CONTEXT_UPGRADE_INCOMPLETE')
     def test_mixed_history_restore_uses_existing_narrowed_floor_and_old_task_root(self):
         floor='2026-11-19T20:30:00Z'
         result,calls=self.run_steps([(0,{'source_sha256':'core24'}),(0,{'history_state':'ACTIVE','from_utc':floor}),
             (0,{}),(0,{}),(0,{}),(2,{'status':'COMPACT_UPGRADE_FAILED_PREVIOUS_RELEASE_RESTORED'}),(0,{})])
-        self.assertIn('history-install',calls[-1][0]); self.assertIn(floor,calls[-1][0])
+        self.assertIn('--resume-existing',calls[-1][0]); self.assertIn(floor,calls[-1][0])
         self.assertEqual(calls[-1][1],Path('history-old'))
 
     def test_owned_history_migrates_only_after_core_succeeds(self):
-        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE','from_tehran':'2026-11-20T00:00:00+03:30'}),
             (0,{}),(0,{}),(0,{}),(0,{}),(0,{})])
         self.assertEqual(result['status'],'COMPACT_CONTEXT_CORE_AND_HISTORY_UPGRADED')
         self.assertEqual(calls[3][1],Path('history-old'))
         self.assertIn('--check-only',calls[4][0])
         self.assertEqual(calls[6][0][0],Path('new/tools/Repair_Compact_History_Task.py'))
     def test_stop_failure_and_completed_history(self):
-        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),(0,{}),(2,{})])
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE','from_tehran':'2026-11-20T00:00:00+03:30'}),(0,{}),(2,{})])
         self.assertEqual(len(calls),4)
         result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'COMPLETE'}),(0,{}),(0,{})])
         self.assertEqual(len(calls),4)
         self.assertEqual(result['status'],'COMPACT_CONTEXT_CORE_UPGRADED_HISTORY_ALREADY_COMPLETE')
     def test_unconfirmed_stop_never_resumes_history_or_migrates(self):
-        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE','from_tehran':'2026-11-20T00:00:00+03:30'}),
             (0,{}),(0,{}),(0,{}),(2,{'status':'COMPACT_UPGRADE_RESTORE_NEEDS_ATTENTION'})])
         self.assertEqual(len(calls),6)
         self.assertEqual(result['status'],'COMPACT_CONTEXT_UPGRADE_INCOMPLETE')
     def test_failed_candidate_preflight_does_not_stop_history(self):
-        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE'}),(2,{})])
+        result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE','from_tehran':'2026-11-20T00:00:00+03:30'}),(2,{})])
         self.assertEqual(len(calls),3)
 
 
@@ -227,6 +229,23 @@ class SequentialUpgradeTests(unittest.TestCase):
         host.check_children = lambda: host.calls.append(('children_exited',))
         host.catalog = lambda: host.calls.append(('catalog',))
         return host
+
+    def test_preflight_waits_for_transient_failure_and_reports_persistent_role(self):
+        from tools.Upgrade_Compact_Product import wait_existing_core
+        host = self.upgrade_host()
+        host.online('history')
+        host.values['history']['package'] = {'source_sha256':'separate-history-build'}
+        host.values['analysis'].update(failure={'type':'QueryCanceled','sqlstate':'57014'},state='RETRYING')
+        seen = []
+        def recover(_):
+            host.online('analysis')
+        wait_existing_core(host, 'accepted', lambda _: None, seen.append, allow_history=True, sleep=recover)
+        self.assertEqual(list(seen[0]), ['analysis'])
+        self.assertEqual(seen[0]['analysis']['sqlstate'],'57014')
+        host.values['web']['running'] = False
+        with self.assertRaisesRegex(TimeoutError, 'MUST_BE_HEALTHY:web'):
+            wait_existing_core(host, 'accepted', lambda _: None, seen.append, allow_history=True, timeout=0)
+        self.assertFalse(host.calls)
 
     def test_success_stops_processes_before_sequential_launch(self):
         from tools.Upgrade_Compact_Product import upgrade_core

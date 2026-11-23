@@ -295,7 +295,7 @@ def control(project, action, *, from_value=None):
             result["history_log_tails"]=log_tails(project)
         path = Path(project)/"AnomalyDetection/reports/Compact_History_Status.json"
         save(path,result)
-        return dict(status=result["status"],output=str(path),from_tehran=result.get("from_tehran"),
+        return dict(status=result["status"],output=str(path),from_tehran=result.get("from_tehran"),from_utc=result.get("from_utc"),
             next_utc=result.get("next_utc"),target_utc=result.get("target_utc"),remaining_windows=result.get("remaining_windows"),
             history_state=result.get("job",{}).get("state") if result.get("job") else None,
             history_worker_running=result["history_role"].get("running",False),

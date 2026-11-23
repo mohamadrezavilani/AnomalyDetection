@@ -74,16 +74,40 @@ def start_core(host, expected, emit):
     require(all(ready(roles.get(r, {})) for r in CORE), 'CORE_READINESS_NOT_CONFIRMED')
 
 
+def wait_existing_core(host, expected, emit, record, *, allow_history=False,
+                       timeout=90, clock=time.monotonic, sleep=time.sleep):
+    """Transient retries and stale heartbeats must clear before we modify tasks."""
+    from tools.Recover_Compact_Product import ready, require, validate_roles
+    deadline = clock() + timeout
+    while True:
+        roles = host.roles()
+        core = {role: roles.get(role, {}) for role in CORE}
+        validate_roles(core, expected)
+        if not allow_history:
+            require(not roles.get('history', {}).get('running'), 'STOP_HISTORY_BEFORE_CORE_UPGRADE')
+        pending = {}
+        for role, info in core.items():
+            if not ready(info):
+                err = info.get('failure') or {}
+                pending[role] = dict(running=bool(info.get('running')), state=info.get('state'),
+                    heartbeat_age_seconds=info.get('heartbeat_age_seconds'), failure_type=err.get('type'),
+                    sqlstate=err.get('sqlstate'))
+        if not pending:
+            return
+        record(pending)
+        emit('WAITING_FOR_EXISTING_CORE_READINESS')
+        if clock() >= deadline:
+            raise TimeoutError('EXISTING_CORE_ROLES_MUST_BE_HEALTHY:' + ','.join(pending))
+        sleep(3)
+
+
 def upgrade_core(host, previous, candidate, restore, emit, diagnose):
     from tools.Recover_Compact_Product import require, validate_roles, preserved, ready
     result = dict(status='PREPARING', data_reset=False, history_task_changed=False)
     changed = False
     try:
         emit('CHECKING_EXISTING_ROLES_AND_CHECKPOINTS')
-        roles = host.roles()
-        validate_roles(roles, previous)
-        require(all(ready(roles.get(r, {})) for r in CORE), 'EXISTING_CORE_ROLES_MUST_BE_HEALTHY')
-        require(not roles.get('history', {}).get('running'), 'STOP_HISTORY_BEFORE_CORE_UPGRADE')
+        wait_existing_core(host, previous, emit, lambda v: result.update(readiness_wait=v))
         result['before'] = host.checkpoint()
         host.supervision_enabled = True
         host.guard(previous)
@@ -172,6 +196,9 @@ def main():
         helper.require(package['source_sha256'] == args.expected_source_sha, 'PINNED_RELEASE_HASH_MISMATCH')
         host = Host(project, allowed_core_task_roots=(old,))
         if args.action == 'preflight':
+            previous = read_package(old)
+            wait_existing_core(host, previous['source_sha256'], emit,
+                               lambda v: result.update(readiness_wait=v), allow_history=True)
             host.checkpoint()
             result['status'] = 'COMPACT_UPGRADE_PACKAGE_AND_DATABASE_VERIFIED'
         elif args.action == 'resume-history':
@@ -214,7 +241,8 @@ def main():
         result.update(status='COMPACT_UPGRADE_FAILED', failure=failure(exc))
     output.write_text(json.dumps(result, indent=2, default=str), encoding='utf-8')
     print(json.dumps(dict(status=result['status'], output=str(output), data_reset=False,
-                         failure=result.get('failure'), restore_failure=result.get('restore_failure'))), flush=True)
+                         failure=result.get('failure'), restore_failure=result.get('restore_failure'),
+                         readiness_wait=result.get('readiness_wait'))), flush=True)
     return 0 if result['status'] in ('COMPACT_UPGRADED_HISTORY_PRESERVED', 'COMPACT_PREVIOUS_CORE_RESTORED',
         'COMPACT_PREVIOUS_HISTORY_RESUMED', 'COMPACT_UPGRADE_PACKAGE_AND_DATABASE_VERIFIED') else 2
 

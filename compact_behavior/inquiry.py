@@ -63,6 +63,7 @@ _routes('v1/CarAnnualTaxBills v1/FreewayTollBills v2/FreewayTollBills v1/Freeway
 # Only aliases on the particular *reviewed input provider*. For example, a
 # completed upload's response may be useful, but its input is not the bill.
 PROVIDER_FIELDS = {
+    ('Services.v1/PostalCodeToAddress', 'ClientAyanCoInquiry.PostalCodeToAddress'): (('PostalCode','PostalCode'),),
     ('Services.v1/WaterBills', 'ClientAyanCoInquiry.WaterBillInquiry'): (('WaterBillID','WaterBillID'),),
     ('Services.v1/GasBills', 'ClientAyanCoInquiry.GasBillInquiry'): (('GasBillID','GasBillID'),),
     ('Services.v1/PostPackagesStatus', 'ClientAyanCoInquiry.PostTrackingInquiry'): (('TrackingCode','PackageNumber'),),
