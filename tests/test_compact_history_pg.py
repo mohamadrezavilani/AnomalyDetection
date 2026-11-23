@@ -53,6 +53,43 @@ class HistoryPostgresTests(unittest.TestCase):
     publish=fixture.CompactProductPostgresTests.publish
     analyze_at=fixture.CompactProductPostgresTests.analyze_at
 
+    def test_history_attachment_avoids_live_writer_ddl_lock_and_preserves_cursors(self):
+        from compact_product.history_schema import validate_installed, existing_job
+        from compact_product.runtime import Lease, runtime_init
+        from psycopg.errors import LockNotAvailable
+        self.publish()
+        floor=T-400*FIVE
+        runtime_init(self.db.conn,self.config.source_schema)
+        job=prepare(self.db,"test",floor)
+        blocker=Store(self.database,schema=self.config.source_schema)
+        other=Store(self.database,schema=self.config.source_schema)
+        try:
+            with blocker.conn.transaction():
+                # An ordinary live transaction holds RowExclusive until commit.
+                blocker.conn.execute(f"UPDATE {self.config.source_schema}.streams SET next_ns=next_ns WHERE stream_id='test'")
+                other.conn.execute("SET lock_timeout='100ms'")
+                with self.assertRaises(LockNotAvailable): other.init()
+                validate_installed(other,"test",history_required=True)
+                self.assertEqual(existing_job(other,"test",floor),job)
+                self.assertEqual(other.cursor("test"),T+FIVE)
+                self.assertEqual(other.conn.execute('SHOW lock_timeout').fetchone()['lock_timeout'],'100ms')
+                with tempfile.TemporaryDirectory() as directory, patch('compact_product.runtime.load',return_value=(self.config,{'DATABASE':self.database},'test')), patch.object(Store,'init',side_effect=AssertionError('unexpected source DDL')), patch('compact_product.runtime.runtime_init',side_effect=AssertionError('unexpected runtime DDL')):
+                    lease=Lease(Path(directory),'history','read-only-attach-test')
+                    try:
+                        self.assertEqual(lease.info['state'],'STARTING')
+                        with self.assertRaisesRegex(ValueError,'ALREADY_RUNNING'):
+                            Lease(Path(directory),'history','duplicate')
+                    finally: lease.close()
+            self.assertEqual(latest(other,'test'),job)
+            self.assertEqual(other.conn.execute('SHOW transaction_read_only').fetchone()['transaction_read_only'],'off')
+            with self.assertRaisesRegex(ValueError,'compatible_compact_stream'):
+                validate_installed(other,'different-stream',history_required=True)
+            other.conn.execute(f'ALTER TABLE {self.config.source_schema}.pending_requests DROP COLUMN deadline_ns CASCADE')
+            from psycopg.errors import UndefinedColumn
+            with self.assertRaises(UndefinedColumn): validate_installed(other,'test',history_required=True)
+        finally:
+            blocker.close();other.close()
+
     def test_explicit_range_does_not_weaken_default_guard_or_rewind_live(self):
         self.publish(); floor=T-400*FIVE
         with self.assertRaisesRegex(ValueError,"24_hours"):

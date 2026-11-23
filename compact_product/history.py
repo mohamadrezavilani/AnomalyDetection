@@ -24,6 +24,7 @@ from compact_behavior.history import initialize, prepare, latest, finish
 from compact_ad import MODEL
 from .config import load
 from .health import health
+from .history_schema import validate_installed, existing_job
 from .runtime import Lease, paths
 from .version import verify
 
@@ -144,7 +145,7 @@ def worker(project, token):
                 signal.signal(sig,lambda *args: lease.stop.set())
         cfg, source, stream = load(project)
         store = Store(source["DATABASE"],schema=cfg.source_schema,application="history")
-        store.init(); initialize(store)
+        validate_installed(store,stream,history_required=True)
         lease.update(state="CHECKING_HISTORY")
         retry = 0
         while not lease.stop.is_set():
@@ -172,7 +173,7 @@ def worker(project, token):
                 if store.conn.closed:
                     store.close()
                     store = Store(source["DATABASE"],schema=cfg.source_schema,application="history")
-                    store.init(); initialize(store)
+                    validate_installed(store,stream,history_required=True)
                 lease.stop.wait(min(30,2**min(retry,5)))
         if lease.fatal:
             logger.error("history lease lost: %s",lease.fatal)
@@ -223,9 +224,16 @@ def control(project, action, *, from_value=None):
     if action in ("install","stop"):
         require_windows_admin()
     store = Store(source["DATABASE"],schema=cfg.source_schema,application="history.control")
+    stage = "OPENED_DATABASE"
+    def mark(value):
+        nonlocal stage
+        stage = value
+        if action == "install":
+            print(json.dumps(dict(status="COMPACT_HISTORY_PROGRESS",stage=stage)),flush=True)
     try:
         if action == "install":
-            store.init(); initialize(store)
+            mark("VALIDATING_INSTALLED_SCHEMA")
+            validate_installed(store,stream)
         if action == "status":
             result = progress(store,cfg,stream)
         elif action == "stop":
@@ -245,21 +253,29 @@ def control(project, action, *, from_value=None):
         elif action == "install":
             if not from_value: raise ValueError("explicit_history_from_required")
             floor = instant(from_value)
+            mark("CHECKING_LIVE_ROLES")
             current = health(store.conn,cfg,stream)
             for role in ("ingest","analysis","web"):
                 entry = current.get("roles",{}).get(role,{})
                 if not entry.get("running") or entry.get("heartbeat_age_seconds",999)>15 or entry.get("failure"):
                     raise ValueError("healthy_live_roles_required_before_history")
             from compact_behavior.probe_elastic import probe
+            mark("CHECKING_HISTORY_SOURCE")
             check = probe(source["ELASTICSEARCH"],floor)
             if check.get("status") != "FIRST_SEARCH_PAGE_VALID": raise ValueError("historical_source_preflight_failed")
-            job = prepare(store,stream,floor)
+            mark("RESUMING_EXISTING_HISTORY_JOB")
+            job = existing_job(store,stream,floor)
+            if job is None:
+                mark("PREPARING_NEW_HISTORY_JOB")
+                job = prepare(store,stream,floor)
             expected = verify()["source_sha256"]
             existing = current.get("roles",{}).get("history",{})
             if existing.get("running") and existing.get("package",{}).get("source_sha256") != expected:
                 raise ValueError("stop_existing_history_worker_before_history_code_update")
             if job["state"] != "COMPLETE":
+                mark("REGISTERING_HISTORY_TASK")
                 task(project,"register")
+                mark("WAITING_FOR_HISTORY_WORKER")
                 deadline = time.monotonic()+45
                 while time.monotonic()<deadline:
                     role = health(store.conn,cfg,stream).get("roles",{}).get("history",{})
@@ -269,6 +285,7 @@ def control(project, action, *, from_value=None):
                         break
                     time.sleep(.5)
                 else: raise TimeoutError("history_start_not_confirmed")
+            mark("VERIFYING_HISTORY_PROGRESS")
             result = progress(store,cfg,stream)
             result["status"] = "COMPACT_HISTORY_COMPLETE" if job["state"]=="COMPLETE" else "COMPACT_HISTORY_STARTED_LIVE_PRESERVED"
             result["source_preflight"] = check
@@ -291,14 +308,14 @@ def control(project, action, *, from_value=None):
     except Exception as exc:
         path = Path(project)/"AnomalyDetection/reports/Compact_History_Status.json"
         failure = dict(type=type(exc).__name__,code=str(exc) if isinstance(exc,(ValueError,TimeoutError)) else None,sqlstate=getattr(exc,"sqlstate",None))
-        value = dict(status="COMPACT_HISTORY_OPERATION_INCOMPLETE",failure=failure)
+        value = dict(status="COMPACT_HISTORY_OPERATION_INCOMPLETE",stage=stage,failure=failure)
         value["history_log_tails"]=log_tails(project)
         try:
             value["diagnostic"] = progress(store,cfg,stream)
         except Exception as diagnostic_error:
             value["diagnostic_error_type"] = type(diagnostic_error).__name__
         save(path,value)
-        exc.details = dict(report=str(path),failure=failure)
+        exc.details = dict(report=str(path),stage=stage,failure=failure)
         raise
     finally:
         store.close()

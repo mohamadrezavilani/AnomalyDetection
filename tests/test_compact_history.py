@@ -49,6 +49,31 @@ class HistoryControlTests(unittest.TestCase):
             control(root,"status")
             store.init.assert_not_called(); initialize.assert_not_called()
 
+    def test_resume_skips_schema_ddl_and_prepare_and_reports_exact_failure_stage(self):
+        with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+            root=Path(directory)
+            stack.enter_context(patch("compact_product.history.load",return_value=(Config(),{"DATABASE":{},"ELASTICSEARCH":{}},"test")))
+            stack.enter_context(patch("compact_product.operations.require_windows_admin"))
+            store=stack.enter_context(patch("compact_product.history.Store")).return_value
+            validator=stack.enter_context(patch("compact_product.history.validate_installed"))
+            initializer=stack.enter_context(patch("compact_product.history.initialize"))
+            preparer=stack.enter_context(patch("compact_product.history.prepare"))
+            ready=healthy_observation()["samples"][0]["health"]
+            stack.enter_context(patch("compact_product.history.health",return_value=ready))
+            stack.enter_context(patch("compact_behavior.probe_elastic.probe",return_value={'status':'FIRST_SEARCH_PAGE_VALID'}))
+            job={'state':'ACTIVE','job_id':'existing'}
+            stack.enter_context(patch("compact_product.history.existing_job",return_value=job))
+            task_call=stack.enter_context(patch("compact_product.history.task",side_effect=TimeoutError('test-task-timeout')))
+            stack.enter_context(patch("compact_product.history.progress",return_value=dict(status="COMPACT_HISTORY_STATUS",job=job,history_role={},core={},storage={})))
+            with self.assertRaises(TimeoutError) as caught:
+                control(root,'install',from_value='2026-10-23T00:00:00+03:30')
+            self.assertEqual(caught.exception.details['stage'],'REGISTERING_HISTORY_TASK')
+            result=json.loads((root/'AnomalyDetection/reports/Compact_History_Status.json').read_text())
+            self.assertEqual(result['stage'],'REGISTERING_HISTORY_TASK')
+            validator.assert_called_once_with(store,'test')
+            store.init.assert_not_called();initializer.assert_not_called();preparer.assert_not_called()
+            task_call.assert_called_once_with(root,'register')
+
     @unittest.skipUnless(os.name=="nt","native Windows PowerShell required")
     def test_native_history_entry_and_persian_calendar_and_task_settings(self):
         with tempfile.TemporaryDirectory(prefix="history installer ") as directory:

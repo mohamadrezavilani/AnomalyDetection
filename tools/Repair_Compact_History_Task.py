@@ -115,8 +115,12 @@ def main():
     report.parent.mkdir(parents=True,exist_ok=True)
     result={'status':'PREPARING','core_roles_restarted':False,'data_reset':False}
     migrated=False
+    def mark(stage):
+        result['stage']=stage
+        print(json.dumps(dict(status='COMPACT_HISTORY_REPAIR_PROGRESS',stage=stage)),flush=True)
     with controller_lock(project):
         try:
+            mark('CHECKING_EXISTING_HISTORY')
             state=control(project,'status')
             before=json.loads(Path(state['output']).read_text(encoding='utf-8'))
             if before.get('history_role',{}).get('running'):
@@ -125,6 +129,7 @@ def main():
                 current = powershell(SNAPSHOT)
                 result['task_snapshot'] = {k: v for k, v in current.items() if k != 'xml'}
                 return current
+            mark('CHECKING_DISABLED_TASK')
             snapshot=wait_for_stopped_task(read_snapshot,str(project),sys.executable)
             old=validate_task(snapshot,str(project),sys.executable)
             if not (Path(old)/'compact_product/History_Compact_Product.ps1').is_file():
@@ -139,9 +144,11 @@ def main():
             if args.check_only:
                 result['status']='HISTORY_TASK_MIGRATION_CHECKED_NO_CHANGE'
             else:
+                mark('MIGRATING_TASK_ACTION')
                 powershell(CHANGE,dict(P24_OLD_ARGS=snapshot['actions'][0]['Arguments'],P24_OLD_ROOT=old,
                     P24_NEW_ARGS=worker_args(str(root),str(project),sys.executable),P24_NEW_ROOT=str(root)))
                 migrated=True
+                mark('STARTING_EXISTING_HISTORY')
                 outcome=control(project,'install',from_value=iso(job['from_ns']))
                 after=json.loads(Path(outcome['output']).read_text(encoding='utf-8'))
                 next_job=after['job']

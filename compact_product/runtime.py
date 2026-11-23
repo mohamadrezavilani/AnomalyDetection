@@ -69,7 +69,15 @@ class Lease:
             schema=self.config.source_schema,
             application="lease." + role,
         )
-        self.db.init()
+        if role == "history":
+            from .history_schema import validate_installed
+            try:
+                validate_installed(self.db, self.stream, history_required=True)
+            except Exception:
+                self.db.close()
+                raise
+        else:
+            self.db.init()
         streams = self.db.conn.execute(
             f"SELECT stream_id FROM {self.config.source_schema}.streams LIMIT 2"
         ).fetchall()
@@ -77,7 +85,8 @@ class Lease:
             self.db.close()
             raise ValueError("new_source_requires_new_compact_namespace")
         self.db.conn.execute("SET statement_timeout=5000")
-        runtime_init(self.db.conn, self.config.source_schema)
+        if role != "history":
+            runtime_init(self.db.conn, self.config.source_schema)
         ok = self.db.conn.execute(
             "SELECT pg_try_advisory_lock(%s) AS ok",
             (role_key(self.config, self.stream, role),),
