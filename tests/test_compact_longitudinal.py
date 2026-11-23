@@ -262,7 +262,7 @@ class LongitudinalPostgresTests(unittest.TestCase):
         self.db.step('test')
         publication=self.db.conn.execute(f'SELECT published_at_ns FROM {self.s}.windows WHERE start_ns=%s',(T,)).fetchone()
         old=self.db.conn.execute(f'SELECT signature FROM {self.a}.long_windows WHERE start_ns=%s',(T,)).fetchone()
-        late=row('late',path=SERVICE,at=iso(T+2*10**9),message='Input:{"BillID":"synthetic-new"} Output:{"Amount":1}')
+        late=row('late',path=SERVICE,at=iso(T+2*10**9),message='Input:{"Identifier":"synthetic-new"} Output:{"Amount":1}')
         self.db.publish('test',T+FIVE,T+2*FIVE,extract([late]),1)
         self.assertEqual(publication,self.db.conn.execute(f'SELECT published_at_ns FROM {self.s}.windows WHERE start_ns=%s',(T,)).fetchone())
         work=self.db.snapshot('test',T);self.assertTrue(work['long_needed'])

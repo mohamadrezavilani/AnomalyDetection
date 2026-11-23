@@ -59,7 +59,13 @@ def refresh(db, stream, start, *, apply=False):
                 for change in changes:
                     copy.write_row(change)
             conn.execute('ANALYZE inquiry_patch')
-            conn.execute('SELECT pg_advisory_xact_lock(%s)', (stream_lock(stream),))
+            deadline = time.monotonic() + 180
+            lock = stream_lock(stream)
+            while not conn.execute('SELECT pg_try_advisory_xact_lock(%s) AS got',(lock,)).fetchone()['got']:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('inquiry_stream_busy')
+                print(json.dumps(dict(status='WAITING_FOR_CURRENT_PUBLICATION', start=iso(start))), flush=True)
+                time.sleep(5)
             # The producer and AD commit use this same lock. A changed row forces
             # the entire window to retry, including dirty accounting.
             updated = conn.execute(f'''UPDATE {s}.behaviors b SET
@@ -83,26 +89,59 @@ def refresh(db, stream, start, *, apply=False):
     return dict(status='INQUIRY_WINDOW_APPLIED' if apply else 'INQUIRY_WINDOW_PREVIEW', start=iso(start), **counts)
 
 
+def latest_coverage(db, cfg, stream):
+    """One published window; use the AD summary and revision fences, never the evidence table."""
+    s, a = db.schema, cfg.ad_schema
+    with db.conn.transaction():
+        db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+        db.conn.execute("SET LOCAL statement_timeout='5s'")
+        row = db.conn.execute(f"""SELECT w.start_ns,r.summary,r.source_published_ns=w.published_at_ns
+              AND r.timing_confirmed_revision=r.revision
+              AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=w.stream_id
+                 AND d.start_ns=w.start_ns AND d.session_id='@all' AND d.processed_version<d.version)
+              AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=w.stream_id
+                 AND j.start_ns=w.start_ns AND j.processed_version<j.version) AS current
+            FROM {s}.windows w LEFT JOIN {a}.window_results r USING(stream_id,start_ns)
+            WHERE w.stream_id=%s ORDER BY w.start_ns DESC LIMIT 1""",(stream,)).fetchone()
+    if not row or not row['current']:
+        return dict(status='LATEST_INQUIRY_WINDOW_AWAITING_AD',start=iso(row['start_ns']) if row else None)
+    services = {service: dict(requests=h['count'],usable_input=h['input_valid'],
+                    axes={axis: values['covered'] for axis,values in h[inquiry.POLICY].items()})
+                for service,h in row['summary']['services'].items() if inquiry.POLICY in h}
+    return dict(status='LATEST_INQUIRY_COVERAGE',start=iso(row['start_ns']),services=services,
+                count_scope='COMPLETE_SESSION_SERVICE_FIELD_COVERAGE_IN_THIS_WINDOW')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', type=Path, required=True)
-    parser.add_argument('--from', dest='begin', required=True)
+    scope = parser.add_mutually_exclusive_group(required=True)
+    scope.add_argument('--from', dest='begin')
+    scope.add_argument('--latest', action='store_true', help='Print field coverage for the latest published window')
     parser.add_argument('--until', help='Exclusive; default is one five-minute window')
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args()
-    begin = instant(args.begin)
-    end = instant(args.until) if args.until else begin + FIVE
-    if begin % FIVE or end % FIVE or end <= begin:
-        parser.error('aligned, nonempty five-minute range required')
+    if args.latest and (args.apply or args.until):
+        parser.error('--latest is a single read-only observation')
+    if not args.latest:
+        begin = instant(args.begin)
+        end = instant(args.until) if args.until else begin + FIVE
+        if begin % FIVE or end % FIVE or end <= begin:
+            parser.error('aligned, nonempty five-minute range required')
     cfg, source, stream = load(args.project.resolve())
     db = Store(source['DATABASE'], schema=cfg.source_schema, application='compact-inquiry-repair')
     try:
+        if args.latest:
+            print(json.dumps(latest_coverage(db, cfg, stream)), flush=True)
+            return 0
         if args.apply:
             from compact_product.version import verify
             package = verify()['source_sha256']
             roles = db.conn.execute(f"SELECT role,info->'package'->>'source_sha256' AS sha FROM {db.schema}.runtime_roles").fetchall()
             installed = {r['role']:r['sha'] for r in roles}
-            if any(installed.get(r) != package for r in ('ingest','analysis')) or installed.get('history', package) != package:
+            job = db.conn.execute(f"SELECT state FROM {db.schema}.history_jobs WHERE stream_id=%s ORDER BY created_at_ns DESC LIMIT 1",(stream,)).fetchone()
+            active_history = job and job['state'] in ('ACTIVE','SOURCE_COMPLETE')
+            if any(installed.get(r) != package for r in ('ingest','analysis')) or (active_history and installed.get('history') != package):
                 raise ValueError('install_matching_writers_before_target_repair')
         for start in range(begin, end, FIVE):
             if args.apply and end - begin > FIVE:
