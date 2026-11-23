@@ -5,7 +5,9 @@ from zoneinfo import ZoneInfo
 from compact_behavior import FIVE, inquiry
 from compact_behavior.extract import digest
 
-POLICY = 'qualified-review-5'
+from compact_ad.inquiry_patterns import POLICY as INQUIRY_BURST
+
+POLICY = 'qualified-review-6'
 CASE_ID_NAMESPACE = 'qualified-review-4'  # Existing case URLs identify the session/service.
 LIMIT = 10000
 CONTEXT_METHODS = {'isolation_forest', 'repeated_target'}
@@ -81,8 +83,15 @@ def select_cases(rows):
     sessions=defaultdict(list);persistent=defaultdict(list)
     for row in rows:
         if row.get('verdict')=='CONFIRMED':accept([row],'HUMAN_CONFIRMED')
-        if not supported(row):continue
         r=row['result']
+        if (row.get('session_id') and row['method'] in ('target_diversity','repeated_target')
+                and r.get('inquiry_pattern_policy') == INQUIRY_BURST and r.get('single_signal_review_eligible')
+                and r.get('subject_policy') == inquiry.POLICY and r.get('requests',0) >= 12
+                and r['requests'] == r.get('covered_requests') == r.get('successful_requests')
+                and r.get('numeric_path') in {axis for axis,_ in inquiry.ROUTES.get(row['service'], ())}
+                and len(set(r.get('evidence') or [])) >= 3):
+            accept([row], 'REPEATED_VERIFIED_INQUIRIES' if row['method']=='repeated_target' else 'ENUMERATED_VERIFIED_INQUIRIES')
+        if not supported(row):continue
         if (row.get('session_id') and row['method'] == 'long_target_enumeration'
                 and r.get('single_signal_review_eligible') is True and r.get('peer_count',0) >= 100
                 and r.get('adjusted_tail_rank',1) <= .05 and r.get('horizon_days') in (3,7,30)):
@@ -140,6 +149,8 @@ def select_cases(rows):
 
 
 REASONS={
+ 'REPEATED_VERIFIED_INQUIRIES':'یک نشست در پنج دقیقه بارها با ورودی‌های یکسان استعلام موفق گرفته است.',
+ 'ENUMERATED_VERIFIED_INQUIRIES':'یک نشست در پنج دقیقه برای شناسه‌های متعدد و متفاوت استعلام موفق گرفته است.',
  'QUALIFIED_SINGLE_METHOD':'یک روش به‌تنهایی شرایط شواهد قوی را دارد: پوشش معتبر، مرجع کافی و فاصلهٔ روشن از رفتار مرجع. وجود روش دوم شرط نیست؛ نتیجه نیازمند بررسی است.',
  'DISTINCT_REVIEWED_TARGETS':'تعداد شناسه‌های ورودی متمایز در پنج دقیقه دست‌کم دو برابر آستانهٔ محاسبه‌شده از سابقهٔ همان خدمت و فیلد است.',
  'CORROBORATED_SAME_SESSION_WINDOW':'در همان نشست و پنجره، دو ویژگی قابل بررسی برای یک خدمت دیده شده‌اند. جزئیات هر روش در ادامه آمده است.',

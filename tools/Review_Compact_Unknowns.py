@@ -75,25 +75,59 @@ def collect(db,schema,stream,*,limit=50,scan=500):
             'Unknown behavior roles and pending API absence are different classifications.'])
 
 
-def inventory(db,schema,stream):
-    """Count every logical request in the sparse unresolved-candidate population."""
+def inventory(db, schema, stream, *, page_size=128, progress=None):
+    """Scan the installed sparse index once. Check evidence in bounded primary-key batches."""
+    from psycopg import ClientCursor
     from compact_product.search import unknown_scope
     from compact_product.validation import verified_sql
     from compact_behavior.services import internal_proxies
+
+    if not 1 <= page_size <= 256:
+        raise ValueError('invalid_inventory_page_size')
     broad, args = unknown_scope()
-    groups = db.execute(f"""WITH grouped AS (
-        SELECT b.api,b.result_code,b.features->>'service_binding' AS binding,
-        {verified_sql(schema)} AS validation_rejection,
-        count(*) AS requests,min(b.behavior_id) AS example
-        FROM {schema}.behaviors b WHERE b.stream_id=%s AND {broad} AND NOT COALESCE(b.api=ANY(%s),false)
-        GROUP BY 1,2,3,4)
-        SELECT g.*,p.state->'raw_request_ids' AS example_source_request_ids
-        FROM grouped g LEFT JOIN {schema}.behavior_payloads p ON p.behavior_id=g.example
-        ORDER BY validation_rejection,requests DESC,api,result_code,binding""",(stream,*args,sorted(internal_proxies()))).fetchall()
-    return dict(status='READ_ONLY_ROLE_INVENTORY_COMPLETE',complete=True,
-                remaining_unknown=sum(g['requests'] for g in groups if not g['validation_rejection']),
-                classified_validation_rejections=sum(g['requests'] for g in groups if g['validation_rejection']),
-                groups=groups,database_modified=False,workers_restarted=False,source_contacted=False)
+    groups = {}
+    scanned = 0
+    started = last_update = time.monotonic()
+    # Literal role arrays match the installed partial-index predicate even on
+    # connections with prepared statements. Keep the cursor in the caller's snapshot.
+    with ClientCursor(db) as cur:
+        query = cur.mogrify(f"""SELECT b.behavior_id FROM {schema}.behaviors b
+            WHERE b.stream_id=%s AND {broad} ORDER BY b.observed_at_ns,b.behavior_id""", (stream,*args))
+    proxies = sorted(internal_proxies())
+    with db.transaction(), db.cursor(name='compact_unknown_index_walk') as scan:
+        scan.execute(query)
+        while batch := scan.fetchmany(page_size):
+            ids = [r['behavior_id'] for r in batch]
+            rows = db.execute(f"""SELECT b.behavior_id,b.api,b.result_code,
+                b.features->>'service_binding' AS binding,{verified_sql(schema)} AS validation_rejection
+                FROM {schema}.behaviors b WHERE b.behavior_id=ANY(%s)
+                AND NOT COALESCE(b.api=ANY(%s),false)""", (ids,proxies)).fetchall()
+            for row in rows:
+                key = tuple(row[k] for k in ('api','result_code','binding','validation_rejection'))
+                group = groups.setdefault(key, dict(api=key[0], result_code=key[1], binding=key[2],
+                    validation_rejection=key[3], requests=0, example=row['behavior_id']))
+                group['requests'] += 1
+                group['example'] = min(group['example'], row['behavior_id'])
+            scanned += len(ids)
+            now = time.monotonic()
+            if progress and (scanned == len(ids) or now - last_update >= 5):
+                progress(dict(status='READING_ROLE_INVENTORY', candidates_scanned=scanned,
+                              elapsed_seconds=round(now-started,1), complete=False))
+                last_update = now
+        ordered = sorted(groups.values(), key=lambda g:(g['validation_rejection'], -g['requests'],
+                         g['api'] or '', g['result_code'] or '', g['binding'] or ''))
+        for offset in range(0, len(ordered), page_size):
+            batch = ordered[offset:offset+page_size]
+            examples = db.execute(f"""SELECT behavior_id,state->'raw_request_ids' AS ids
+                FROM {schema}.behavior_payloads WHERE behavior_id=ANY(%s)""",
+                ([g['example'] for g in batch],)).fetchall()
+            by_id = {r['behavior_id']: r['ids'] for r in examples}
+            for group in batch:
+                group['example_source_request_ids'] = by_id.get(group['example'])
+    return dict(status='READ_ONLY_ROLE_INVENTORY_COMPLETE',complete=True,candidates_scanned=scanned,
+                remaining_unknown=sum(g['requests'] for g in ordered if not g['validation_rejection']),
+                classified_validation_rejections=sum(g['requests'] for g in ordered if g['validation_rejection']),
+                groups=ordered,database_modified=False,workers_restarted=False,source_contacted=False)
 
 
 def main():
@@ -113,7 +147,8 @@ def main():
         db.conn.execute('SET statement_timeout=30000' if a.inventory else 'SET statement_timeout=8000')
         with db.conn.transaction():
             db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
-            report=(inventory(db.conn,cfg.source_schema,stream) if a.inventory else
+            report=(inventory(db.conn,cfg.source_schema,stream,
+                    progress=lambda event: print(json.dumps(event), flush=True)) if a.inventory else
                     collect(db.conn,cfg.source_schema,stream,limit=a.limit,scan=a.scan))
     except Exception as exc:
         print(json.dumps(dict(status='READ_ONLY_REVIEW_INCOMPLETE',failure=type(exc).__name__,
