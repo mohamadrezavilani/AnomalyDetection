@@ -673,6 +673,10 @@ class CompactProductPostgresTests(unittest.TestCase):
             self.assertEqual((result['requests'],result['success'],result['unattributed_success'],result['state']), (1,1,0,'SUCCESS'))
         self.db.conn.execute(f"UPDATE {self.config.ad_schema}.window_results SET timing_confirmed_revision=0")
         self.assertEqual(check()['covered'],0)
+        # An older AD build can confirm a newer revision after rollback while
+        # leaving this optional column untouched. The previous counters must disappear.
+        self.db.conn.execute(f"UPDATE {self.config.ad_schema}.window_results SET revision=revision+1,timing_confirmed_revision=revision+1")
+        self.assertEqual(check()['covered'],0)
 
     def test_incident_publication_hides_dirty_unconfirmed_and_rejected_revision(self):
         self.publish()

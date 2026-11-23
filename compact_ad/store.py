@@ -278,7 +278,8 @@ class AnalysisStore(Store):
                 ON CONFLICT(stream_id,start_ns) DO UPDATE SET summary=excluded.summary,summary_hash=excluded.summary_hash,
                 readiness=excluded.readiness,feature_version=excluded.feature_version,model_version=excluded.model_version,
                 source_epoch=excluded.source_epoch,source_published_ns=excluded.source_published_ns,analyzed_at_ns=excluded.analyzed_at_ns,
-                postal_health=excluded.postal_health,analysis_seconds=excluded.analysis_seconds,work_cause_ns=excluded.work_cause_ns,revision={a}.window_results.revision+1 RETURNING revision""",
+                postal_health=excluded.postal_health || jsonb_build_object('revision',{a}.window_results.revision+1),
+                analysis_seconds=excluded.analysis_seconds,work_cause_ns=excluded.work_cause_ns,revision={a}.window_results.revision+1 RETURNING revision""",
                 (
                     stream,
                     start,
@@ -294,7 +295,7 @@ class AnalysisStore(Store):
                     work["cause_ns"],
                     now,
                     seconds,
-                    Jsonb(work['services'].get(postal.SERVICE, {}).get('postal_health', {})),
+                    Jsonb(dict(work['services'].get(postal.SERVICE, {}).get('postal_health', {}), revision=1)),
                 ),
             ).fetchone()["revision"]
             seasonality.save_rates(self.conn,a,stream,start,summary,signature)

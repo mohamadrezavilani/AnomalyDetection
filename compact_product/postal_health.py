@@ -24,7 +24,7 @@ def report(db, cfg, stream, *, now_ns=None):
     rows = db.execute(f"""SELECT r.postal_health FROM {a}.window_results r
         JOIN {s}.windows w USING(stream_id,start_ns)
         WHERE r.stream_id=%s AND r.start_ns >= %s AND r.start_ns < %s
-        AND r.postal_health IS NOT NULL AND r.source_published_ns=w.published_at_ns
+        AND (r.postal_health->>'revision')::bigint=r.revision AND r.source_published_ns=w.published_at_ns
         AND r.timing_confirmed_revision=r.revision AND r.feature_version=%s AND r.model_version=%s
         AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=r.stream_id
             AND d.start_ns=r.start_ns AND d.session_id='@all' AND d.processed_version<d.version)
