@@ -13,7 +13,7 @@ def encoded(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
-def packed(value):
+def packed(value, *, inquiry_input=False):
     raw = encoded(value)
     info = dict(value_hash=hashlib.sha256(raw).hexdigest(), value_bytes=len(raw))
     if len(raw) <= VALUE_BYTES:
@@ -26,6 +26,11 @@ def packed(value):
             complete["complete"] = False
             complete["reasons"] = sorted(set(complete["reasons"] + ["FEATURE_STORAGE_LIMIT"]))
     feature["complete"] = all(x["complete"] for x in feature["completeness"].values())
+    if inquiry_input:
+        from .inquiry import NAMES, candidates
+        fields = candidates(value, NAMES)
+        if fields:
+            info['inquiry_candidates'] = fields
     return dict(info, representation="FEATURES_ONLY_V1", value=None, feature_snapshot=feature)
 
 

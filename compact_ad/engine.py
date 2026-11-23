@@ -12,6 +12,7 @@ from compact_behavior.extract import digest, canonical
 from . import MODEL, MIN_REFERENCE_WINDOWS
 from .methods import METHODS
 from compact_behavior.services import operation_role
+from compact_behavior import inquiry
 
 
 def percentile(values, q=0.95):
@@ -162,6 +163,8 @@ def summarize(
             continue
         inp = f.get("input") or {}
         out = f.get("output") or {}
+        reviewed = key in inquiry.ROUTES
+        subjects = f.get(inquiry.POLICY) or {}
         ie = (
             valid_contract
             and (
@@ -170,7 +173,7 @@ def summarize(
                 and f["input_asof_ns"] < cutoff_ns
             )
             and f.get("input_feature_eligibility", {}).get("targets") is True
-            and bool(inp.get('targets'))
+            and bool(subjects if reviewed else inp.get('targets'))
         )
         oe = (
             valid_contract
@@ -191,7 +194,10 @@ def summarize(
             if ie:
                 # One occurrence per logical behavior+typed target. Repeated items
                 # within a single array are not extra requests to that target.
-                typed_tokens = {path: {digest([path, value]) for value in values}
+                if reviewed:
+                    typed_tokens = {path: {path + ':' + fingerprint} for path, fingerprint in subjects.items()}
+                else:
+                    typed_tokens = {path: {digest([path, value]) for value in values}
                                 for path, values in inp.get("targets", {}).items()}
                 tokens = set().union(*typed_tokens.values())
                 targets_used += len(tokens)
@@ -199,7 +205,7 @@ def summarize(
                     resource_invalid = True
                 else:
                     actor["targets"].update(tokens)
-                    if collect_longitudinal:
+                    if collect_longitudinal or reviewed:
                         for path, values in typed_tokens.items():
                             field = actor["target_fields"].setdefault(path, dict(tokens=set(), covered=0))
                             field["tokens"].update(values)
@@ -245,6 +251,13 @@ def summarize(
         if actor["input_valid"] and not actor["input_invalid"]:
             s["target_repeat"].append(max(actor["targets"].values(), default=0))
             s["target_diversity"].append(len(actor["targets"]))
+        if key in inquiry.ROUTES:
+            for axis, field in actor['target_fields'].items():
+                if field['covered'] == actor['count']:
+                    metrics = s.setdefault('inquiry_axes', {}).setdefault(axis, [0, [], []])
+                    metrics[0] += field['covered']
+                    metrics[1].append(max(actor['targets'][v] for v in field['tokens']))
+                    metrics[2].append(len(field['tokens']))
     # Persist service-level summaries only. Actor maps remain transient.
     summary = {
         key: dict(
@@ -275,6 +288,12 @@ def summarize(
         )
         for key, s in services.items()
     }
+    for key, s in services.items():
+        if key in inquiry.ROUTES:
+            summary[key][inquiry.POLICY] = {
+                axis: dict(covered=n, repeat_p95=percentile(repeats), diversity_p95=percentile(widths))
+                for axis, (n, repeats, widths) in s.get('inquiry_axes', {}).items()
+            }
     from .patterns import patterns
     for (session,_), actor in actors.items():
         actor['sequence_incomplete'] = session in incomplete_sessions or len(actor['events'])!=actor['count']
@@ -560,6 +579,7 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
                     if path in h["numeric"] and not h.get("numeric_invalid", 0)
                 ],
             )
+    target_references = {}
     for (session, key), actor in actors.items():
         rate_refs, history = history_for(key)
         enough = (
@@ -587,54 +607,48 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
             actor["witnesses"],
             used=rate_refs,
         )
-        for method, field, value in [
-            (
-                "repeated_target",
-                "repeat_p95",
-                max(actor["targets"].values(), default=0),
-            ),
-            ("target_diversity", "diversity_p95", len(actor["targets"])),
-        ]:
-            old_valid = sum(h["input_valid"] for h in history)
-            past = [
-                h.get(field, 0)
-                for h in history
-                if h["input_valid"] and not h.get("input_invalid")
-            ]
-            threshold = upper(past)
-            status = (
-                "INVALID_INPUT"
-                if actor["input_invalid"] or summary["content_resource_invalid"]
-                else (
-                    "INSUFFICIENT_DATA"
-                    if len(past) < MIN_REFERENCE_WINDOWS
-                    or old_valid < 30
-                    or not actor["input_valid"]
-                    else "ANOMALY" if value > threshold else "NORMAL"
-                )
-            )
-            witnesses = (
-                actor["target_witnesses"].get(
-                    max(actor["targets"], key=actor["targets"].get), []
-                )
-                if method == "repeated_target" and actor["targets"]
-                else actor["witnesses"]
-            )
-            add(
-                method,
-                key,
-                session,
-                status,
-                value,
-                statistics.median(past) if past else None,
-                threshold,
-                witnesses,
-                used=[
-                    r
-                    for r, h in zip(rate_refs, history)
-                    if h["input_valid"] and not h.get("input_invalid")
-                ],
-            )
+        reviewed_axes = inquiry.ROUTES.get(key)
+        axes = [axis for axis, _ in reviewed_axes] if reviewed_axes else [None]
+        for axis in axes:
+            field = actor['target_fields'].get(axis) if axis else None
+            tokens = field['tokens'] if field else (() if axis else actor['targets'])
+            complete = field['covered'] == actor['count'] if field else (axis is None and not actor['input_invalid'])
+            repeated = max(tokens, key=actor['targets'].get, default=None)
+            cache_key = (key, axis)
+            if cache_key not in target_references:
+                points = []
+                for ref, hist in zip(rate_refs, history):
+                    if axis:
+                        metric = hist.get(inquiry.POLICY, {}).get(axis)
+                        # Only fully observed reference windows contribute a distribution.
+                        if metric and metric['covered'] == hist['count']:
+                            points.append((ref, metric, metric['covered']))
+                    elif hist['input_valid'] and not hist.get('input_invalid'):
+                        points.append((ref, hist, hist['input_valid']))
+                used = [ref for ref, _, _ in points]
+                enough_inputs = len(used) >= MIN_REFERENCE_WINDOWS and sum(n for _, _, n in points) >= 30
+                stats = {}
+                for name in ('repeat_p95', 'diversity_p95'):
+                    values = [m.get(name, 0) for _, m, _ in points]
+                    stats[name] = (statistics.median(values) if values else None, upper(values))
+                target_references[cache_key] = used, enough_inputs, stats
+            used, enough_inputs, stats = target_references[cache_key]
+            for method, name, value, witnesses in (
+                ('repeated_target', 'repeat_p95', actor['targets'][repeated] if repeated else 0,
+                 actor['target_witnesses'].get(repeated, [])),
+                ('target_diversity', 'diversity_p95', len(tokens), actor['witnesses']),
+            ):
+                baseline, limit = stats[name]
+                if not complete or summary['content_resource_invalid']:
+                    status = 'INVALID_INPUT'
+                elif not enough_inputs or not actor['input_valid']:
+                    status = 'INSUFFICIENT_DATA'
+                else:
+                    status = 'ANOMALY' if value > limit else 'NORMAL'
+                result = add(method, key, session, status, value if complete else None, baseline, limit,
+                             witnesses, path=axis, used=used)
+                if axis:
+                    result['subject_policy'] = inquiry.POLICY
     # Actor service mix versus past population, not an inferred personal identity.
     grouped = defaultdict(dict)
     for (session, key), actor in actors.items():

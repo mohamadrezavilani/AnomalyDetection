@@ -190,7 +190,7 @@ def run_period(db, stream, *, fault=None):
         previous={r['finding_id']:r for r in conn.execute(f'''SELECT * FROM {a}.findings
             WHERE stream_id=%s AND service=%s AND start_ns=%s AND method=%s
             AND (result->>'horizon_days')::int=%s''',(stream,service,end-FIVE,long.METHOD,span))} if state=='READY' else {}
-        next_results={digest([long.VERSION,stream,service,end,span,r['session_id']]):r for r in results}
+        next_results={digest([long.VERSION,stream,service,end,span,r['session_id'],r['numeric_path']]):r for r in results}
         for fid,old in previous.items():
             if fid not in next_results:
                 next_results[fid]=dict(old['result'],status='INVALID_INPUT',reason='CUMULATIVE_RESULT_REVISED')

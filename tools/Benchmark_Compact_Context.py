@@ -18,6 +18,10 @@ def signature_without_policy_stamp(body,state,digest):
     policy=normalized['features'].pop('behavior_policy_version')
     if policy not in ('meaningful-api-roles-1','meaningful-api-roles-2'):
         raise ValueError('unreviewed_benchmark_policy')
+    if 'inquiry_subjects_v1' in normalized['features']:
+        # The fixed WaterBillInquiry fixture carries precisely this single identifier.
+        if normalized['features'].pop('inquiry_subjects_v1') != {'WaterBillID': digest('123')}:
+            raise ValueError('benchmark_inquiry_subject_mismatch')
     # Owner confirmed ExecutionTime is milliseconds on 2026-11-22. Only these
     # two provenance constants may differ; the measured value remains hashed.
     if 'duration_unit' in normalized:
@@ -64,7 +68,7 @@ def worker(root, count):
                 base=dict(RequestID=f'{w}-{i}',Session=f's-{i%100}',IP=f'192.0.2.{i%250+1}',
                     **{'@timestamp':iso(start+10**9)})
                 logs.extend([dict(base,CallPath='Services.v1/WaterBills',message='POST https://example.test/WaterBills HTTP/1.1 (G00000 | successful)',ExecutionTime='12'),
-                    dict(base,CallPath='ClientAyanCoInquiry.WaterBillInquiry',message='Input:{"BillID":"123"} Output:{"Amount":10}'),
+                    dict(base,CallPath='ClientAyanCoInquiry.WaterBillInquiry',message='Input:{"WaterBillID":"123"} Output:{"Amount":10}'),
                     dict(base,CallPath='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',message='(SQL Parameters: @session=s @userAgent=Synthetic Browser/1.0 @ipAddress= @action=v1/WaterBills)')])
             before=time.perf_counter();ex=Extractor()
             for log in logs:ex.add(log)

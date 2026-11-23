@@ -19,7 +19,7 @@ from flask import (
     session,
 )
 from compact_behavior.store import Store
-from compact_behavior import FIVE, FEATURES
+from compact_behavior import FIVE, FEATURES, inquiry
 from compact_behavior.extract import identity, materialize
 from .health import health
 from . import search
@@ -272,6 +272,8 @@ def create_app(config, database, stream, *, secret=None):
                 AND r.model_version=%s AND r.feature_version=%s
                 AND r.source_published_ns=w.published_at_ns
                 AND r.timing_confirmed_revision=r.revision)
+            AND (f.method NOT IN ('repeated_target','target_diversity') OR f.service<>ALL(%s)
+                 OR f.result->>'subject_policy'=%s)
             AND NOT EXISTS(SELECT 1 FROM {config.source_schema}.dirty_windows d
                 WHERE d.stream_id=f.stream_id AND d.session_id='@all'
                 AND d.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
@@ -287,7 +289,7 @@ def create_app(config, database, stream, *, secret=None):
                 ORDER BY v.feedback_id DESC LIMIT 1),'UNSURE')<>'FALSE_POSITIVE'"""
 
     def eligible_args():
-        return [MODEL, FEATURES, MODEL, FEATURES]
+        return [MODEL, FEATURES, MODEL, FEATURES, list(inquiry.ROUTES), inquiry.POLICY]
 
     def case_rows():
         try:

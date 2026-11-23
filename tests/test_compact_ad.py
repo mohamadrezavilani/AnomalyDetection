@@ -33,7 +33,7 @@ def behavior(
             key,
             session,
             path=api,
-            message='Input:{"BillID":"'
+            message='Input:{"Identifier":"'
             + str(target or key)
             + '"} Output:'
             + ('{"new_field":10}' if shape else '{"Amount":' + str(amount) + "}"),

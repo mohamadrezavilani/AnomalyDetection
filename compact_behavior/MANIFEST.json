@@ -1,23 +1,24 @@
 {
-  "build_id": "COMPACT-BEHAVIOR-20261122-16",
+  "build_id": "COMPACT-BEHAVIOR-20261123-17",
   "contract": "compact-behavior-1",
   "files_sha256": {
     "__init__.py": "7a8bdf1c0a54dec96e1886b1004a662ef0d98d3693f08c31cb042624fd413dd5",
     "__main__.py": "8481ae5cee88325f1ba8ccb32ff85f4c7ceefc805b56453f1fe0500c012f0322",
     "context.py": "5478a97908ad345196bbf52ee942df0dccfdefeddf4515f52170b0c0eee8b162",
     "dispatch_routes.json": "ce4364996c98d298c3d3f4950fed487702d07b3a794a34194be6ce9da526ce37",
-    "extract.py": "dd811e358be177d838a7caf48197c318cc1c78fff9b33496baabc0eb51253d28",
+    "extract.py": "833e3357306595c8c461ef1353de3e69ffe297d7ed3248b82ce29dcdf5951404",
     "feature_contract.py": "f6d41e472da74e364a78ce6aeb7f69b62ea02066601ca084999a9fe715196c12",
     "history.py": "67243f67fddd42aed2390d04d01bfcad38b5f96fda9caa27507ccab65df7be5c",
     "independent_operations.json": "990398f0ad658b812ae01c1377543e76f184e247a2f7f7b7dafb20875f799e59",
+    "inquiry.py": "30c51114b7bbaaa11a32f723314b0bdf6836dd161cabb57d0e5ae3952ef603df",
     "json_value.py": "abcd58e33466dbe1afeedc1567fbae128632a18db9a95d6fa0e9fe35888d9ea2",
     "operation_roles.json": "c84b3af8574a74533a538fc7256548b5d2165984070701e84df5aba8ed179575",
-    "payload.py": "f8115d5497928ad467d9665448c83a60763037b3c1152f84bc8209507419aafb",
+    "payload.py": "f800600c0396e34cb60b24e8ab759cab0ef0a64006991159ef2e8e443bbe90f8",
     "probe_elastic.py": "b5daa9ba908d7a286b5cbe2e6ce962dd0187a0856825a6bf03c96cb1247bb4b2",
     "server_trial.py": "17ddc0f37629f924d7c7805b1e26acb930430d4d960f29e1ebb3dcd455a9c568",
     "services.py": "d7feeb5d4596b7589808fb6679fab6a829e71f155cdc177a38613d6d2e02b22d",
     "source.py": "5b1b3479171e470191b00932ac1ff8f2df8dbb2bfc8a5646771aed80424dd860",
     "store.py": "fecf5e654d3a16ee2d94258ba0348f87c061df11502440b7fa92edc8de29c63f",
-    "version.py": "aadf7e470760d935356390d9b90f46fdb3640341789cdf6d55605adcf7034996"
+    "version.py": "a949813621f01b4ee6b49b03bd724c3e356a211485360e0e672a638511f9e0a8"
   }
 }
