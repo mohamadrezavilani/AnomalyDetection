@@ -59,6 +59,11 @@ def source_ids(state, canonical, name):
 
 
 def decorate(row, state):
+    from .validation import REJECTIONS
+    if row.get('validation_verified') or state.get('validation_verified'):
+        row['validation_label'] = REJECTIONS[row['result_code']][1]
+        row['quality'] = [q for q in row.get('quality', []) if q != 'unresolved_dispatch']
+
     row['rate_limited_attempt'] = row.get('api')=='Services.v1/InvoiceRegister' and row.get('result_code')=='GR0004'
     access = row.get('access_denied_attempt') or {}
     row['access_denied'] = (row.get('api') == 'Services.v1/InvoiceRegister' and row.get('result_code') == 'G00010' and access.get('verified') is True)
@@ -76,8 +81,9 @@ def decorate(row, state):
 
 def originals(db, schema, rows):
     if not rows:return
+    from .validation import candidate_sql, evidence_sql
     states = {r['behavior_id']: r for r in db.execute(
-        f"SELECT behavior_id,state->'raw_request_ids' AS raw_request_ids,state->'raw_session_ids' AS raw_session_ids,state->'dispatch' AS dispatch FROM {schema}.behavior_payloads WHERE behavior_id=ANY(%s)",
+        f"SELECT b.behavior_id,CASE WHEN {candidate_sql()} THEN {evidence_sql()} ELSE false END AS validation_verified,state->'raw_request_ids' AS raw_request_ids,state->'raw_session_ids' AS raw_session_ids,state->'dispatch' AS dispatch FROM {schema}.behavior_payloads p JOIN {schema}.behaviors b USING(behavior_id) WHERE b.behavior_id=ANY(%s)",
         ([r['behavior_id'] for r in rows],)).fetchall()}
     for row in rows:decorate(row,states.get(row['behavior_id'],{}))
 
@@ -122,8 +128,18 @@ def scope_parts():
 
 
 def unknown_scope():
-    from compact_behavior.services import operation_catalog
+    from compact_behavior.services import operation_catalog, internal_proxies
     expression, dispatch, binding, attempt, access_attempt = scope_parts()
+    # Preserve the installed build-30 partial index predicate. Later role
+    # decisions are filtered only within that sparse population.
     known = sorted(api for api, row in operation_catalog()['routes'].items()
-                   if row['role'] != 'unknown' and api != dispatch)
+                   if row['role'] != 'unknown' and api != dispatch and api not in internal_proxies())
     return f'NOT COALESCE({expression} OR ({attempt} OR {access_attempt}),false)', [known, dispatch, binding, known]
+
+
+def remaining_unknown_scope(schema):
+    from .validation import verified_sql
+    broad, args = unknown_scope()
+    from compact_behavior.services import internal_proxies
+    return (f'({broad}) AND NOT COALESCE(b.api=ANY(%s),false) AND NOT ({verified_sql(schema)})',
+            [*args, sorted(internal_proxies())])

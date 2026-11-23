@@ -7,6 +7,26 @@ from compact_behavior.feature_contract import extract_features
 from tests.test_compact_extract import row, extract, T
 
 
+class DocumentedBillOutcome(unittest.TestCase):
+    def test_conflicting_or_unbound_output_cannot_mean_no_bill(self):
+        from compact_product import provider_contracts as pc
+        from tests.test_compact_extract import row, extract
+        from compact_behavior.extract import materialize
+        root = row('mci',path='Services.v1/CellPhoneBills')
+        provider = row('mci',path=pc.MCI,message='Input:[{"MobileNumber":"001"}]\nOutput:[{"Status":{"Code":"GD2048"},"Parameters":null}]')
+        def observed(records):
+            state = extract(records)['mci']
+            return pc.observed_no_bill(materialize('test',state),state)
+        self.assertTrue(observed([root,provider]))
+        for records in ([root,dict(provider, message=provider['message'].replace('GD2048','GD2046'))],
+                [root,dict(provider, message=provider['message'].replace('null','{}'))],
+                [root,dict(provider, CallPath='Client.Other Line:1')],
+                [root,provider,dict(provider,message=provider['message'].replace('GD2048','G00000'))],
+                [root,provider,row('mci',path='DBPath.pishkhan24.application.ud_prc_inquiryInvoiceResult2',
+                                   message='(SQL Parameters: @queryParameters={"LineNumber":"002"})')]):
+            self.assertFalse(observed(records))
+
+
 class PayloadAndScopeTests(unittest.TestCase):
     def test_large_payload_keeps_exact_features_without_retaining_the_large_value(self):
         value = {"WaterBillID": "001", "Amount": 42, "Description": "x" * 400000}
@@ -67,8 +87,12 @@ class PayloadAndScopeTests(unittest.TestCase):
         self.assertEqual(catalog["source_catalog_sha256"], hashlib.sha256(source.read_bytes()).hexdigest())
         added=catalog['owner_additions']['roles']
         self.assertFalse(set(added)&set(registered))
+        overrides = {'Proxy.'+method:'system' for method in (
+            'CarTaxInquiry','CarTaxRegistration','MotorTaxInquiry','SettlementCertificateCarAnnualTax',
+            'TechnicalExaminationCertificateInquiry','TechnicalExaminationCertificateRegistration')}
+        self.assertTrue(all(registered[k]['role']=='unknown' for k in overrides))
         self.assertEqual({k:v["role"] for k,v in catalog["routes"].items()},
-            {**{k:v["role"] for k,v in registered.items()},**added})
+            {**{k:v["role"] for k,v in registered.items()},**added,**overrides})
         from compact_behavior.services import routes
         self.assertFalse(set(routes())-set(catalog['routes']))
 

@@ -42,6 +42,24 @@ def access_denied_rows():
                 message='(SQL Parameters: @action=v1/LandLinePhoneBills)')]
 
 
+class InternalProxyRoles(unittest.TestCase):
+    def test_exact_owner_confirmed_routes_standalone_or_supporting(self):
+        from compact_behavior.services import internal_proxies, operation_role
+        self.assertEqual(len(internal_proxies()),6)
+        for api in internal_proxies():
+            records=[row(path=api)]
+            body=materialize('test',extract(records)['req-1'])
+            self.assertEqual(body['operation_role'],'system')
+            self.assertFalse(body['features']['session_eligible'])
+            self.assertFalse(body['features']['service_rate_eligible'])
+            outer=row(path='Services.v1/CellPhoneBills')
+            for combined in (records+[outer],[outer]+records):
+                b=materialize('test',extract(combined)['req-1'])
+                self.assertEqual(b['api'],'Services.v1/CellPhoneBills')
+                self.assertTrue(b['features']['session_eligible'])
+        self.assertEqual(operation_role('Proxy.NewUnreviewedOperation'),'unknown')
+
+
 class AccessDeniedDispatchTests(unittest.TestCase):
     def test_exact_refusal_is_intent_only_and_does_not_change_ad_summary(self):
         from copy import deepcopy
@@ -171,7 +189,7 @@ class CompactExtractionTests(unittest.TestCase):
                 self.assertEqual(body['manual_start'],'UNKNOWN')
 
     def test_independent_root_allowlist_does_not_accept_similar_unconfirmed_paths(self):
-        for path in ['Webhook.v1/OtherEvent','Ewano.v1/UnknownOperation','Proxy.CarTaxInquiry','Files.Upload','JobsQueue.v1/UnknownJob','HelperQueue.UnknownTask']:
+        for path in ['Webhook.v1/OtherEvent','Ewano.v1/UnknownOperation','Proxy.CarTaxInquiryExtra','Files.Upload','JobsQueue.v1/UnknownJob','HelperQueue.UnknownTask']:
             self.assertIsNone(materialize('stream',extract([row(path=path)])['req-1']))
 
     def test_cleanup_trace_is_system_without_fabricated_http_completion(self):
