@@ -53,6 +53,84 @@ class HistoryPostgresTests(unittest.TestCase):
     publish=fixture.CompactProductPostgresTests.publish
     analyze_at=fixture.CompactProductPostgresTests.analyze_at
 
+    def test_narrow_scope_is_atomic_preserves_live_and_fences_old_workers(self):
+        from psycopg.errors import CheckViolation
+        from compact_behavior.store import stream_lock
+        from tools.Narrow_Compact_History import audit_for, narrow
+        self.publish()
+        old_floor, floor = T-20*FIVE, T-2*FIVE
+        original = prepare(self.db, "test", old_floor)
+        self.db.publish("test",old_floor,old_floor+FIVE,{},0,allow_history=True,history_job=original["job_id"])
+        prior = latest(self.db, "test")
+        deadline = (max(T,time.time_ns())//FIVE+288)*FIVE
+        args = (self.db,"test",old_floor,floor,T,deadline)
+        other = Store(self.database,schema=self.config.source_schema)
+        try:
+            with other.conn.transaction():
+                other.conn.execute("SELECT pg_advisory_xact_lock(%s)",(stream_lock("test"),))
+                with self.assertRaisesRegex(TimeoutError,"stream_busy"):
+                    narrow(*args,wait_seconds=0)
+        finally:
+            other.close()
+        with self.assertRaisesRegex(ValueError,"target_mismatch"):
+            narrow(self.db,"test",old_floor,floor,T+FIVE,deadline)
+        with self.assertRaisesRegex(ValueError,"passed_requested_start"):
+            narrow(self.db,"test",old_floor,prior["next_ns"],T,deadline)
+        self.assertEqual(latest(self.db,"test"),prior)
+        schema=self.config.source_schema
+        # A failure after the audit insert must leave neither a new job nor an audit.
+        self.db.conn.execute(f"ALTER TABLE {schema}.history_jobs ADD CONSTRAINT test_block_rotation CHECK(from_ns={old_floor})")
+        with self.assertRaises(CheckViolation):
+            narrow(*args)
+        self.assertIsNone(audit_for(self.db,prior["job_id"]))
+        self.assertIsNone(self.db.conn.execute("SELECT to_regclass(%s) AS t",(schema+".history_scope_changes",)).fetchone()["t"])
+        self.db.conn.execute(f"ALTER TABLE {schema}.history_jobs DROP CONSTRAINT test_block_rotation")
+        self.assertEqual(narrow(*args),"APPLIED")
+        job=latest(self.db,"test")
+        self.assertNotEqual(job["job_id"],prior["job_id"])
+        self.assertEqual(audit_for(self.db,job["job_id"])["previous_job"],prior)
+        self.assertEqual((job["from_ns"],job["next_ns"],job["target_ns"],job["published_windows"]),(floor,floor,T,0))
+        self.assertEqual(self.db.cursor("test"),T+FIVE)
+        with self.assertRaisesRegex(ValueError,"not_authorized"):
+            self.db.publish("test",prior["next_ns"],prior["next_ns"]+FIVE,{},0,allow_history=True,history_job=prior["job_id"])
+        self.db.publish("test",floor,floor+FIVE,{},0,allow_history=True,history_job=job["job_id"])
+        after=latest(self.db,"test")
+        self.assertEqual(narrow(*args),"ALREADY_APPLIED")
+        self.assertEqual(latest(self.db,"test"),after)
+        self.assertEqual(self.db.cursor("test"),T+FIVE)
+        self.assertEqual(self.db.conn.execute(f"SELECT count(*) AS n FROM {schema}.windows WHERE stream_id='test' AND start_ns<%s",(floor,)).fetchone()["n"],1)
+
+    def test_narrowed_presentation_requires_contiguous_current_ad_and_live(self):
+        from tools.Narrow_Compact_History import narrow, report
+        self.publish()
+        old_floor, floor = T-20*FIVE, T-2*FIVE
+        prepare(self.db,"test",old_floor)
+        narrow(self.db,"test",old_floor,floor,T,(max(T,time.time_ns())//FIVE+288)*FIVE)
+        job=latest(self.db,"test")
+        end=T+FIVE
+        healthy=dict(roles={name:dict(running=True,heartbeat_age_seconds=1,state="RUNNING")
+                          for name in ("ingest","analysis","web","supervisor")},
+                     source_backlog_windows=0,reference_pending_windows=0,analysis_pending_windows=0)
+        def snapshot(closed=end):
+            with patch("tools.Narrow_Compact_History.time.time_ns",return_value=closed+self.config.source_lag_seconds*10**9), patch("tools.Narrow_Compact_History.health",return_value=healthy):
+                return report(self.db,self.config,"test")
+        self.assertEqual(snapshot()["history"]["missing_source"],2)
+        for start in (floor,floor+FIVE):
+            self.db.publish("test",start,start+FIVE,{},0,allow_history=True,history_job=job["job_id"])
+        v=snapshot()
+        self.assertEqual((v["history"]["missing_source"],v["history"]["published_awaiting_ad"]),(0,2))
+        self.assertEqual(v["status"],"COMPACT_SCOPE_IN_PROGRESS")
+        while self.db.step("test")["status"]!="ANALYSIS_IDLE": pass
+        self.assertTrue(finish(self.db,"test",latest(self.db,"test"),self.config.ad_schema,MODEL))
+        self.assertEqual(snapshot()["status"],"CONTIGUOUS_HISTORY_AND_LIVE_AD_CURRENT")
+        # A missing live window or a now-stale base revision must revoke readiness.
+        self.assertEqual(snapshot(end+FIVE)["live"]["missing_source"],1)
+        self.assertEqual(snapshot(end+FIVE)["status"],"COMPACT_SCOPE_IN_PROGRESS")
+        self.db.conn.execute(f"UPDATE {self.config.ad_schema}.window_results SET source_published_ns=0 WHERE stream_id='test' AND start_ns=%s",(floor,))
+        v=snapshot()
+        self.assertEqual(v["history"]["published_awaiting_ad"],1)
+        self.assertEqual(v["status"],"COMPACT_SCOPE_IN_PROGRESS")
+
     def test_history_attachment_avoids_live_writer_ddl_lock_and_preserves_cursors(self):
         from compact_product.history_schema import validate_installed, existing_job
         from compact_product.runtime import Lease, runtime_init
