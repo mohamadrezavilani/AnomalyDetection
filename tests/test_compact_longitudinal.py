@@ -179,6 +179,8 @@ class LongitudinalPostgresTests(unittest.TestCase):
             self.db.conn.execute(f'''UPDATE {self.a}.long_days SET payload=%s,signature=%s
                 WHERE stream_id='test' AND day_ns=%s''',(long.pack(profile),digest(profile),DAY+day*long.DAY))
         self.db.conn.execute(f"UPDATE {self.a}.long_runs SET state='LIMIT',retry_ns=0,details='{{}}'::jsonb")
+        self.db.conn.execute(f'''INSERT INTO {self.a}.long_runs(stream_id,service,end_ns,span,state)
+            VALUES ('test','synthetic-waiting',%s,3,'WAITING')''',(DAY+long.DAY,))
         result=long_store.run_period(self.db,'test')
         self.assertEqual(result['state'],'READY')
         self.assertEqual(result['actors'],8000)

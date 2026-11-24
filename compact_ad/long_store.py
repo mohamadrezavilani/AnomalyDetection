@@ -157,15 +157,27 @@ def run_period(db, stream, *, fault=None):
     from psycopg.types.json import Jsonb
     conn,s,a=db.conn,db.schema,db.ad_schema
     now=time.time_ns()
-    job=conn.execute(f'''SELECT * FROM {a}.long_runs WHERE stream_id=%s
-        AND state IN ('PENDING','WAITING') AND retry_ns<=%s ORDER BY end_ns,span,service LIMIT 1''',
+    iteration=getattr(db,'long_period_iteration',0)
+    db.long_period_iteration=iteration+1
+    def prior_limit():
+        completed=getattr(db,'long_limits_migrated',set())
+        if stream in completed:return None
+        row=conn.execute(f'''SELECT * FROM {a}.long_runs WHERE stream_id=%s AND state='LIMIT'
+            AND details->>'evaluation_policy' IS DISTINCT FROM %s
+            ORDER BY end_ns,span,service LIMIT 1''',(stream,long.EVALUATION_POLICY)).fetchone()
+        if not row:
+            completed.add(stream);db.long_limits_migrated=completed
+        return row
+    # Old LIMIT periods must progress even while incomplete periods keep
+    # returning WAITING. Check once per five calls, and stop after migration.
+    job=prior_limit() if iteration%5==0 else None
+    if not job:job=conn.execute(f'''SELECT * FROM {a}.long_runs WHERE stream_id=%s
+        AND state IN ('PENDING','WAITING') AND retry_ns<=%s ORDER BY retry_ns,end_ns,span,service LIMIT 1''',
         (stream,now)).fetchone()
     if not job:
         # Retry limits produced by the former quadratic evaluator once under
         # the new policy. Current hard memory limits wait for changed input.
-        job=conn.execute(f'''SELECT * FROM {a}.long_runs WHERE stream_id=%s AND state='LIMIT'
-            AND retry_ns<=%s AND details->>'evaluation_policy' IS DISTINCT FROM %s
-            ORDER BY end_ns,span,service LIMIT 1''',(stream,now,long.EVALUATION_POLICY)).fetchone()
+        job=prior_limit()
     if not job:
         return None
     service,end,span=job['service'],job['end_ns'],job['span']
