@@ -9,7 +9,7 @@ from compact_behavior.extract import digest
 from . import MODEL, REFERENCE_WINDOWS
 from .engine import summarize, evaluate
 from . import seasonality, long_store, longitudinal
-from . import inquiry_breadth
+from . import inquiry_breadth, references as reference_inputs
 from compact_behavior import security
 
 
@@ -51,6 +51,8 @@ class AnalysisStore(Store):
                 f"""CREATE TABLE IF NOT EXISTS {s}.reanalysis(stream_id TEXT NOT NULL,start_ns BIGINT NOT NULL,
                     version BIGINT NOT NULL DEFAULT 1,updated_at_ns BIGINT NOT NULL DEFAULT 0,processed_version BIGINT NOT NULL DEFAULT 0,
                     PRIMARY KEY(stream_id,start_ns))""",
+                f"ALTER TABLE {s}.reanalysis ADD COLUMN IF NOT EXISTS priority BOOLEAN NOT NULL DEFAULT false",
+                f"CREATE INDEX IF NOT EXISTS compact_requested_reanalysis ON {s}.reanalysis(stream_id,start_ns) WHERE priority AND processed_version<version",
                 f"CREATE INDEX IF NOT EXISTS compact_revision_timing_unconfirmed ON {s}.window_results(stream_id,start_ns) WHERE timing_confirmed_revision<>revision",
                 f"CREATE INDEX IF NOT EXISTS compact_reanalysis_ready ON {s}.reanalysis(stream_id,start_ns) WHERE processed_version<version",
                 f"""CREATE TABLE IF NOT EXISTS {s}.findings(finding_id TEXT PRIMARY KEY,stream_id TEXT NOT NULL,
@@ -77,14 +79,15 @@ class AnalysisStore(Store):
         if cursor == 'DONE':
             return
         lower = '' if cursor == 'START' else 'AND r.start_ns>%s'
-        args = [time.time_ns(), stream, FEATURES, MODEL, security.POLICY,inquiry_breadth.POLICY]
+        args = [time.time_ns(), stream, FEATURES, MODEL, security.POLICY,inquiry_breadth.POLICY,reference_inputs.POLICY]
         if cursor != 'START':
             args.append(cursor)
         row = self.conn.execute(f'''INSERT INTO {self.ad_schema}.reanalysis(stream_id,start_ns,updated_at_ns)
             SELECT r.stream_id,r.start_ns,%s FROM {self.ad_schema}.window_results r
             WHERE r.stream_id=%s AND r.feature_version=%s AND r.model_version=%s
             AND (COALESCE(r.summary->'security'->>'policy','')<>%s
-                OR COALESCE(r.summary->>'inquiry_policy','')<>%s) {lower}
+                OR COALESCE(r.summary->>'inquiry_policy','')<>%s
+                OR COALESCE(r.summary->>'analysis_policy','')<>%s) {lower}
             AND NOT EXISTS(SELECT 1 FROM {self.ad_schema}.reanalysis j WHERE j.stream_id=r.stream_id
                 AND j.start_ns=r.start_ns AND j.processed_version<j.version)
             ORDER BY r.start_ns ASC LIMIT 1
@@ -110,6 +113,28 @@ class AnalysisStore(Store):
             (time.time_ns(), stream, FEATURES, MODEL),
         )
         self.queue_security_migration(stream)
+        # A directly evidenced case must not sit behind weeks of unrelated
+        # policy warm-up. Bound this slice; ordinary history retains four turns.
+        if self.iteration % 5 == 0:
+            requested=self.conn.execute(f'''SELECT start_ns FROM {a}.reanalysis WHERE stream_id=%s
+                AND priority AND processed_version<version ORDER BY start_ns LIMIT 1''',(stream,)).fetchone()
+            if requested:
+                return requested['start_ns']
+            candidate = self.conn.execute(f'''WITH candidates AS MATERIALIZED (
+                SELECT stream_id,start_ns FROM {a}.findings WHERE stream_id=%s AND status='ANOMALY'
+                AND result->>'single_signal_review_eligible'='true'
+                AND method IN ('repeated_target','target_diversity','access_denied_attempts','invalid_session_attempts')
+                ORDER BY start_ns DESC,finding_id DESC LIMIT 64)
+                SELECT c.start_ns FROM candidates c JOIN {a}.window_results r USING(stream_id,start_ns)
+                LEFT JOIN {a}.reanalysis j USING(stream_id,start_ns)
+                WHERE COALESCE(r.summary->>'analysis_policy','')<>%s OR j.processed_version<j.version
+                ORDER BY c.start_ns DESC LIMIT 1''', (stream,reference_inputs.POLICY)).fetchone()
+            if candidate:
+                self.conn.execute(f'''INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns) VALUES(%s,%s,%s)
+                    ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns
+                    WHERE {a}.reanalysis.processed_version={a}.reanalysis.version''',
+                    (stream,candidate['start_ns'],time.time_ns()))
+                return candidate['start_ns']
         # Fresh/changed source has priority on four out of five iterations.
         # Reference-only work is chronological: processing newer dependants
         # before their older references repeatedly invalidates the same results.
@@ -177,9 +202,11 @@ class AnalysisStore(Store):
                 WHERE r.stream_id=%s AND r.start_ns>=%s AND r.start_ns<%s AND r.feature_version=%s AND r.model_version=%s
                 AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=r.stream_id AND d.start_ns=r.start_ns
                 AND d.session_id=%s AND d.processed_version<d.version)
-                AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=r.stream_id AND j.start_ns=r.start_ns
-                AND j.processed_version<j.version) ORDER BY r.start_ns""",
-                (stream, start - REFERENCE_WINDOWS * FIVE, start, FEATURES, MODEL, ALL),
+                AND r.source_published_ns=(SELECT w.published_at_ns FROM {s}.windows w
+                    WHERE w.stream_id=r.stream_id AND w.start_ns=r.start_ns)
+                AND r.summary->'security'->>'policy'=%s AND r.summary->>'inquiry_policy'=%s
+                ORDER BY r.start_ns""",
+                (stream, start - REFERENCE_WINDOWS * FIVE, start, FEATURES, MODEL, ALL,security.POLICY,inquiry_breadth.POLICY),
             ).fetchall()
             temporal_refs = self.conn.execute(f'''SELECT h.start_ns,h.rates,h.complete,h.summary_hash
                 FROM {a}.rate_history h JOIN {a}.window_results r USING(stream_id,start_ns)
@@ -187,10 +214,12 @@ class AnalysisStore(Store):
                 AND h.summary_hash=r.summary_hash AND r.feature_version=%s
                 AND NOT EXISTS(SELECT 1 FROM {s}.dirty_windows d WHERE d.stream_id=h.stream_id
                     AND d.start_ns=h.start_ns AND d.session_id=%s AND d.processed_version<d.version)
-                AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=h.stream_id
-                    AND j.start_ns=h.start_ns AND j.processed_version<j.version)
+                AND r.source_published_ns=(SELECT w.published_at_ns FROM {s}.windows w
+                    WHERE w.stream_id=r.stream_id AND w.start_ns=r.start_ns)
+                AND r.model_version=%s AND r.summary->'security'->>'policy'=%s
+                AND r.summary->>'inquiry_policy'=%s
                 ORDER BY h.start_ns LIMIT 672''',
-                (stream,(start//FIVE)%12,start-seasonality.HORIZON*FIVE,start,FEATURES,ALL)).fetchall()
+                (stream,(start//FIVE)%12,start-seasonality.HORIZON*FIVE,start,FEATURES,ALL,MODEL,security.POLICY,inquiry_breadth.POLICY)).fetchall()
             with self.conn.cursor(name="compact_analysis_input") as cur:
                 cur.itersize = 1000
                 cur.execute(
@@ -230,8 +259,7 @@ class AnalysisStore(Store):
                     previous_events={k:list(v) if v is not None else None for k,v in previous_events.items()}
             from .patterns import patterns
             summary['patterns'], _ = patterns(actors, previous_events, start)
-            summary['security']['base_summary_hash'] = digest({k:v for k,v in summary.items()
-                if k!='security' and not k.startswith('inquiry_')})
+            summary['security']['base_summary_hash'] = digest(reference_inputs.base(summary))
         return dict(
             stream=stream,
             start=start,
@@ -303,9 +331,18 @@ class AnalysisStore(Store):
             if job != work["job"]:
                 raise ChangedDuringAnalysis("reference_revision_changed")
             before = self.conn.execute(
-                f"SELECT summary_hash,feature_version,model_version,summary->'security'->>'base_summary_hash' AS base_hash,summary->'security'->>'summary_hash' AS security_hash FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
+                f"SELECT summary_hash,feature_version,model_version,summary FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
                 (stream, start),
             ).fetchone()
+            # Retain a legacy reference token when the actual measurements are
+            # identical. A diagnostic/policy migration must not manufacture a
+            # finding revision and silently detach its human feedback.
+            if (before and before['feature_version']==FEATURES and before['model_version']==MODEL
+                    and reference_inputs.base(before['summary'])==reference_inputs.base(summary)):
+                prior_token=before['summary'].get('security',{}).get('base_summary_hash')
+                if prior_token:
+                    summary['security']['base_summary_hash']=prior_token
+                    signature=digest(summary)
             committed_revision = self.conn.execute(
                 f"""INSERT INTO {a}.window_results(stream_id,start_ns,summary,summary_hash,readiness,feature_version,
                 model_version,source_epoch,source_published_ns,first_source_ns,first_analyzed_ns,work_cause_ns,analyzed_at_ns,analysis_seconds,postal_health) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
@@ -411,13 +448,17 @@ class AnalysisStore(Store):
                 (acknowledged, stream),
             )
             self.conn.execute(
-                f"UPDATE {a}.reanalysis SET processed_version=version WHERE stream_id=%s AND start_ns=%s",
+                f"UPDATE {a}.reanalysis SET processed_version=version,priority=false WHERE stream_id=%s AND start_ns=%s",
                 (stream, start),
             )
             if not before or (before["summary_hash"], before["feature_version"], before["model_version"]) != (signature, FEATURES, MODEL):
-                security_only = bool(before and before['feature_version']==FEATURES and before['model_version']==MODEL
-                                     and (before['base_hash'] or before['summary_hash'])==summary['security']['base_summary_hash'])
-                rolling_only=bool(security_only and before['security_hash']==summary['security']['summary_hash'])
+                current_hashes=reference_inputs.hashes(summary)
+                previous_hashes=reference_inputs.hashes(before['summary']) if before else (None,)*4
+                compatible=bool(before and before['feature_version']==FEATURES and before['model_version']==MODEL)
+                base_changed=not compatible or previous_hashes[0]!=current_hashes[0]
+                rates_changed=not compatible or previous_hashes[1]!=current_hashes[1]
+                security_changed=not compatible or previous_hashes[2]!=current_hashes[2]
+                rolling_changed=not compatible or previous_hashes[3]!=current_hashes[3]
                 self.conn.execute(
                     f"INSERT INTO {a}.reference_epochs VALUES(%s,1) ON CONFLICT(stream_id) DO UPDATE SET epoch={a}.reference_epochs.epoch+1",
                     (stream,),
@@ -432,12 +473,13 @@ class AnalysisStore(Store):
                 self.conn.execute(
                     f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns) SELECT stream_id,start_ns,%s
                     FROM {a}.window_results WHERE stream_id=%s AND start_ns>%s AND start_ns<=%s
-                    AND (start_ns<=%s OR (start_ns/{FIVE})%%12=%s)
-                    AND (NOT %s OR (summary->'security'->>'policy'=%s AND summary->>'inquiry_policy'=%s))
+                    AND ((%s AND start_ns<=%s) OR (%s AND (start_ns/{FIVE})%%12=%s)
+                        OR (%s AND start_ns=%s))
                     ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns
                     WHERE {a}.reanalysis.processed_version={a}.reanalysis.version""",
-                    (now, stream, start, start + (1 if rolling_only else REFERENCE_WINDOWS if security_only else seasonality.HORIZON) * FIVE,
-                     start + REFERENCE_WINDOWS*FIVE,(start//FIVE)%12,security_only,security.POLICY,inquiry_breadth.POLICY),
+                    (now, stream, start, start + seasonality.HORIZON*FIVE,
+                     base_changed or security_changed,start+REFERENCE_WINDOWS*FIVE,
+                     rates_changed,(start//FIVE)%12,rolling_changed,start+FIVE),
                 )
             # Completed reanalysis metadata is not an ever-growing ready queue.
             self.conn.execute(

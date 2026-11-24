@@ -13,6 +13,7 @@ from . import MODEL, MIN_REFERENCE_WINDOWS
 from .methods import METHODS
 from compact_behavior.services import operation_role
 from compact_behavior import inquiry, postal
+from . import references as reference_inputs
 
 
 def percentile(values, q=0.95):
@@ -335,7 +336,8 @@ def summarize(
     result['inquiry_policy']=inquiry_breadth.POLICY
     result['inquiry_window_signature']=inquiry_breadth.signature(actors)
     security_summary['summary_hash'] = digest(security_summary)
-    security_summary['base_summary_hash'] = digest({k:v for k,v in result.items() if not k.startswith('inquiry_')})
+    result['analysis_policy'] = reference_inputs.POLICY
+    security_summary['base_summary_hash'] = digest(reference_inputs.base(result))
     result['security'] = security_summary
     return result, services, actors
 
@@ -360,11 +362,8 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
             security = ref['summary'].get('security', {})
             if security_method:
                 value = security.get('summary_hash') or digest(security)
-            elif security or 'inquiry_policy' in ref['summary']:
-                value = security.get('base_summary_hash') or digest({k:v for k,v in ref['summary'].items()
-                    if k!='security' and not k.startswith('inquiry_')})
             else:
-                value = ref.get('summary_hash') or digest(ref['summary'])
+                value = security.get('base_summary_hash') or digest(reference_inputs.base(ref['summary']))
             reference_hashes[key] = value
         return reference_hashes[key]
 
