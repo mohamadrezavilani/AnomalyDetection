@@ -81,6 +81,7 @@ def inventory(db, schema, stream, *, page_size=128, progress=None):
     from compact_product.search import unknown_scope
     from compact_product.validation import verified_sql
     from compact_behavior.services import internal_proxies
+    from compact_behavior.dispatch_evidence import verified_sql as provider_sql
 
     if not 1 <= page_size <= 256:
         raise ValueError('invalid_inventory_page_size')
@@ -99,13 +100,14 @@ def inventory(db, schema, stream, *, page_size=128, progress=None):
         while batch := scan.fetchmany(page_size):
             ids = [r['behavior_id'] for r in batch]
             rows = db.execute(f"""SELECT b.behavior_id,b.api,b.result_code,
-                b.features->>'service_binding' AS binding,{verified_sql(schema)} AS validation_rejection
+                b.features->>'service_binding' AS binding,{verified_sql(schema)} AS validation_rejection,
+                ({provider_sql(schema)}) AS provider_dispatch_verified
                 FROM {schema}.behaviors b WHERE b.behavior_id=ANY(%s)
                 AND NOT COALESCE(b.api=ANY(%s),false)""", (ids,proxies)).fetchall()
             for row in rows:
-                key = tuple(row[k] for k in ('api','result_code','binding','validation_rejection'))
+                key = tuple(row[k] for k in ('api','result_code','binding','validation_rejection','provider_dispatch_verified'))
                 group = groups.setdefault(key, dict(api=key[0], result_code=key[1], binding=key[2],
-                    validation_rejection=key[3], requests=0, example=row['behavior_id']))
+                    validation_rejection=key[3], provider_dispatch_verified=key[4], requests=0, example=row['behavior_id']))
                 group['requests'] += 1
                 group['example'] = min(group['example'], row['behavior_id'])
             scanned += len(ids)
@@ -125,8 +127,9 @@ def inventory(db, schema, stream, *, page_size=128, progress=None):
             for group in batch:
                 group['example_source_request_ids'] = by_id.get(group['example'])
     return dict(status='READ_ONLY_ROLE_INVENTORY_COMPLETE',complete=True,candidates_scanned=scanned,
-                remaining_unknown=sum(g['requests'] for g in ordered if not g['validation_rejection']),
+                remaining_unknown=sum(g['requests'] for g in ordered if not g['validation_rejection'] and not g['provider_dispatch_verified']),
                 classified_validation_rejections=sum(g['requests'] for g in ordered if g['validation_rejection']),
+                classified_provider_dispatches=sum(g['requests'] for g in ordered if g['provider_dispatch_verified']),
                 groups=ordered,database_modified=False,workers_restarted=False,source_contacted=False)
 
 

@@ -4,6 +4,7 @@ from compact_ad.seasonality import HORIZON
 from compact_behavior import FIVE, FEATURES, inquiry
 from . import cases
 from compact_ad.security import POLICY as SECURITY_POLICY
+from compact_ad.references import POLICY as ANALYSIS_POLICY
 
 
 def publishable(config):
@@ -15,6 +16,7 @@ def publishable(config):
             WHERE r.stream_id=f.stream_id AND r.start_ns=f.start_ns
             AND r.model_version=%s AND r.feature_version=%s
             AND r.source_published_ns=w.published_at_ns
+            AND r.summary->>'analysis_policy'='{ANALYSIS_POLICY}'
             AND r.timing_confirmed_revision=r.revision)
         AND (f.method NOT IN ('repeated_target','target_diversity')
              OR f.result->>'subject_policy'=%s)
@@ -27,8 +29,7 @@ def publishable(config):
             AND d.processed_version<d.version)
         AND NOT EXISTS(SELECT 1 FROM {config.ad_schema}.reanalysis j
             WHERE j.stream_id=f.stream_id
-            AND j.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
-            AND (j.start_ns>=f.start_ns-{288 * FIVE} OR (j.start_ns/{FIVE})%%12=(f.start_ns/{FIVE})%%12)
+            AND j.start_ns=f.start_ns
             AND j.processed_version<j.version)))
         AND COALESCE((SELECT v.verdict FROM {config.ad_schema}.feedback v
             WHERE v.finding_id=f.finding_id AND v.finding_revision=f.revision
