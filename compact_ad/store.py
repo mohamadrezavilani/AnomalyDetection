@@ -25,6 +25,7 @@ class AnalysisStore(Store):
         super().__init__(config, schema=schema, application="analysis")
         self.ad_schema = ad_schema
         self.iteration = 0
+        self.security_migration_cursor = {}
 
     def init(self):
         super().init()
@@ -66,6 +67,29 @@ class AnalysisStore(Store):
             seasonality.initialize(self.conn, s)
             long_store.initialize(self.conn, s)
 
+    def queue_security_migration(self, stream):
+        # Only this analysis lease writes results. New results always carry the
+        # current policy, so a forward cursor is sufficient for pre-upgrade
+        # summaries. Once caught up, do not detoast all historical JSON again
+        # on every idle/live iteration. A restarted analyzer checks afresh.
+        cursor = self.security_migration_cursor.get(stream, 'START')
+        if cursor == 'DONE':
+            return
+        lower = '' if cursor == 'START' else 'AND r.start_ns>%s'
+        args = [time.time_ns(), stream, FEATURES, MODEL, security.POLICY]
+        if cursor != 'START':
+            args.append(cursor)
+        row = self.conn.execute(f'''INSERT INTO {self.ad_schema}.reanalysis(stream_id,start_ns,updated_at_ns)
+            SELECT r.stream_id,r.start_ns,%s FROM {self.ad_schema}.window_results r
+            WHERE r.stream_id=%s AND r.feature_version=%s AND r.model_version=%s
+            AND COALESCE(r.summary->'security'->>'policy','')<>%s {lower}
+            AND NOT EXISTS(SELECT 1 FROM {self.ad_schema}.reanalysis j WHERE j.stream_id=r.stream_id
+                AND j.start_ns=r.start_ns AND j.processed_version<j.version)
+            ORDER BY r.start_ns ASC LIMIT 1
+            ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={self.ad_schema}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns
+            RETURNING start_ns''', args).fetchone()
+        self.security_migration_cursor[stream] = row['start_ns'] if row else 'DONE'
+
     def select_work(self, stream):
         self.iteration += 1
         s = self.schema
@@ -76,14 +100,14 @@ class AnalysisStore(Store):
         self.conn.execute(
             f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns)
             SELECT r.stream_id,r.start_ns,%s FROM {a}.window_results r
-            WHERE r.stream_id=%s AND (r.feature_version<>%s OR r.model_version<>%s
-                OR COALESCE(r.summary->'security'->>'policy','')<>%s)
+            WHERE r.stream_id=%s AND (r.feature_version<>%s OR r.model_version<>%s)
             AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=r.stream_id
                 AND j.start_ns=r.start_ns AND j.processed_version<j.version)
             ORDER BY r.start_ns ASC LIMIT 1
             ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns""",
-            (time.time_ns(), stream, FEATURES, MODEL, security.POLICY),
+            (time.time_ns(), stream, FEATURES, MODEL),
         )
+        self.queue_security_migration(stream)
         # Fresh/changed source has priority on four out of five iterations.
         # Reference-only work is chronological: processing newer dependants
         # before their older references repeatedly invalidates the same results.

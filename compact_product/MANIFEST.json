@@ -12,7 +12,7 @@
     "compact_ad/patterns.py": "2a8c95916eb912835d95eeee1db06b100102ccfd24fb4681d39ae6bdfd68c6ad",
     "compact_ad/seasonality.py": "e535ce10ebfa04b1957ea657ad14712e305e9904f0ddf18c8066857d8172cfa1",
     "compact_ad/security.py": "6da73b8bf567897ed5e33754737838382e95e4914a53b8ff2eb57b873d84c73b",
-    "compact_ad/store.py": "c725574b9bd266f9cccb2810b2aeab8dc59545734409484353906049430a0ee6",
+    "compact_ad/store.py": "6c27654d89062a29ba6af669e3316305c006e78e55b196c517b4569f1de6edcf",
     "compact_product/History_Compact_Product.ps1": "167ac3ecc3203222f167dcfd1291c4bd4557349a586ded93f5ab6e36a9869827",
     "compact_product/Install_Compact_Product.ps1": "a4b934ac6aedcf8ac9b93b634ec9d7e469858188e6d471060b4abcbb45259e1c",
     "compact_product/__init__.py": "68bd63cde6c09774efa82de06484dfeaf609635c404b50c529f1f6e0733e8df3",

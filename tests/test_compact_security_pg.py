@@ -78,10 +78,27 @@ class SecurityPostgresTests(unittest.TestCase):
         self.db.step('test')
         a=self.config.ad_schema
         self.db.conn.execute(f"UPDATE {a}.window_results SET summary=summary-'security'")
+        self.db.close()
+        self.db=product_tests.AnalysisStore(self.database,schema=self.config.source_schema,ad_schema=a)
         self.assertEqual(self.db.select_work('test'),T)
         self.db.step('test')
         self.assertEqual(self.db.cursor('test'),T+FIVE)
         self.assertEqual(self.db.conn.execute(f"SELECT summary->'security'->>'policy' AS policy FROM {a}.window_results").fetchone()['policy'],security.POLICY)
+
+    def test_completed_policy_migration_does_not_reread_historical_json(self):
+        from unittest.mock import Mock
+        self.publish(attempts())
+        self.db.step('test')
+        self.assertIsNone(self.db.select_work('test'))
+        real=self.db.conn
+        measured=Mock(wraps=real)
+        self.db.conn=measured
+        try:
+            for _ in range(10):self.assertIsNone(self.db.select_work('test'))
+            queries=[str(call.args[0]) for call in measured.execute.call_args_list]
+            self.assertFalse(any("summary->'security'" in sql for sql in queries))
+        finally:
+            self.db.conn=real
 
     def test_legacy_payload_and_ip_reads_stay_on_primary_keys_in_large_history(self):
         import json
