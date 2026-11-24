@@ -6,8 +6,9 @@ from compact_behavior import FIVE, inquiry
 from compact_behavior.extract import digest
 
 from compact_ad.inquiry_patterns import POLICY as INQUIRY_BURST
+from compact_ad.security import POLICY as SECURITY_POLICY
 
-POLICY = 'qualified-review-6'
+POLICY = 'qualified-review-7'
 CASE_ID_NAMESPACE = 'qualified-review-4'  # Existing case URLs identify the session/service.
 LIMIT = 10000
 CONTEXT_METHODS = {'isolation_forest', 'repeated_target'}
@@ -60,9 +61,11 @@ def service_groups(cases):
                 methods=set(),last_ns=0,health=False))
             group['cases'].add(case['case_id'])
             if case['session_id']:group['sessions'].add(case['session_id'])
-            else:group['health']=True
+            elif case['domain']=='service_health':group['health']=True
+            if case['domain']=='network_attempts':group['network']=True
             for finding in case['findings']:
-                if finding['service']==service:
+                if (finding['service']==service or case['domain']=='network_attempts'
+                        and service in finding['result'].get('endpoints', ())):
                     group['methods'].add(finding['method'])
                     group['last_ns']=max(group['last_ns'],finding['start_ns'])
     return sorted(groups.values(),key=lambda g:(g['last_ns'],g['service']),reverse=True)
@@ -84,6 +87,12 @@ def select_cases(rows):
     for row in rows:
         if row.get('verdict')=='CONFIRMED':accept([row],'HUMAN_CONFIRMED')
         r=row['result']
+        if (row['method'] in ('access_denied_attempts', 'invalid_session_attempts')
+                and r.get('security_policy') == SECURITY_POLICY
+                and r.get('single_signal_review_eligible') is True
+                and r.get('entity_key') and r.get('span_seconds', 0) >= 30
+                and len(set(r.get('evidence') or [])) >= 3):
+            accept([row], 'REPEATED_ACCESS_DENIALS' if row['method']=='access_denied_attempts' else 'REPEATED_INVALID_SESSION_ATTEMPTS')
         if (row.get('session_id') and row['method'] in ('target_diversity','repeated_target')
                 and r.get('inquiry_pattern_policy') == INQUIRY_BURST and r.get('single_signal_review_eligible')
                 and r.get('subject_policy') == inquiry.POLICY and r.get('requests',0) >= 12
@@ -131,12 +140,15 @@ def select_cases(rows):
     for fid,row in accepted.items():
         # Session-wide pattern signals stay on their own scope; never invent a
         # service binding. Link corroborating findings inside the same case.
-        domain='session' if row.get('session_id') else 'service_health'
-        key=(domain,row.get('session_id') or row['service'])
+        network = row['method']=='invalid_session_attempts' and row['result'].get('entity_type')=='ip'
+        domain='network_attempts' if network else 'session' if row.get('session_id') else 'service_health'
+        key=(domain,row['result']['entity_key'] if network else row.get('session_id') or row['service'])
         c=cases.setdefault(key,dict(case_id=digest([CASE_ID_NAMESPACE,*key])[:32],domain=domain,
             session_id=row.get('session_id'),services=set(),methods=set(),reasons=set(),findings=[],
             first_ns=row['start_ns'],last_ns=row['start_ns']))
-        c['findings'].append(row);c['services'].add(row['service']);c['methods'].add(row['method'])
+        c['findings'].append(row)
+        c['services'].update(row['result'].get('endpoints') or ['*']) if network else c['services'].add(row['service'])
+        c['methods'].add(row['method'])
         c['reasons'].update(reasons[fid]);c['first_ns']=min(c['first_ns'],row['start_ns']);c['last_ns']=max(c['last_ns'],row['start_ns'])
     for c in cases.values():
         for k in ('services','methods','reasons'):c[k]=sorted(c[k])
@@ -149,6 +161,8 @@ def select_cases(rows):
 
 
 REASONS={
+ 'REPEATED_ACCESS_DENIALS':'در پنج دقیقه، تلاش‌های معتبر و پرتکرار برای خدمت بدون مجوز ثبت شده است؛ مجوز و تکرارهای برنامه باید بررسی شوند.',
+ 'REPEATED_INVALID_SESSION_ATTEMPTS':'از یک IP مشاهده‌شده، تلاش‌های پرتکرار با نشست نامعتبر ثبت شده است. نشست منقضی، خطای برنامه و IP مشترک هم ممکن‌اند؛ حدس‌زدن توکن اثبات نشده است.',
  'REPEATED_VERIFIED_INQUIRIES':'یک نشست در پنج دقیقه بارها با ورودی‌های یکسان استعلام موفق گرفته است.',
  'ENUMERATED_VERIFIED_INQUIRIES':'یک نشست در پنج دقیقه برای شناسه‌های متعدد و متفاوت استعلام موفق گرفته است.',
  'QUALIFIED_SINGLE_METHOD':'یک روش به‌تنهایی شرایط شواهد قوی را دارد: پوشش معتبر، مرجع کافی و فاصلهٔ روشن از رفتار مرجع. وجود روش دوم شرط نیست؛ نتیجه نیازمند بررسی است.',

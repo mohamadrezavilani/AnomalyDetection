@@ -609,11 +609,12 @@ def features(value):
     return extract_features(value)
 
 
-def materialize(stream, state):
+def materialize(stream, state, *, context=None):
     if not state["apis"]:
         return None
     issues = set(state["issues"])
-    apis = state["apis"]
+    from .services import foreground_apis
+    apis = foreground_apis(state['apis'], state['roots'])
     roots = state["roots"]
     if len(apis) > 1 and internal_proxies().intersection(apis):
         # A system call sharing RequestID with an outer API is supporting
@@ -839,5 +840,15 @@ def materialize(stream, state):
             body['features']['access_denied_attempt'] = dict(
                 service=next(iter(actions)), verified=True, result_code=code,
                 stage='ACCESS_DENIED_BEFORE_CONFIRMED_DISPATCH',
-                dedicated_ad='NOT_IMPLEMENTED')
+                dedicated_ad='verified-access-attempt-1')
+    from . import security
+    attempt = security.project(state, context)
+    if attempt:
+        body['features'][security.FIELD] = attempt
+        # A terminal refusal is an attempt, never a completed user action.
+        for name in ('rate_eligible', 'service_rate_eligible', 'session_eligible', 'result_eligible',
+                     'input_eligible', 'output_eligible'):
+            body['features'][name] = False
+        for direction in ('input', 'output'):
+            body['features'][direction + '_feature_eligibility'] = dict.fromkeys(('targets', 'numeric', 'shape'), False)
     return body

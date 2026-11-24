@@ -1,25 +1,26 @@
 {
-  "build_id": "COMPACT-BEHAVIOR-20261123-22",
+  "build_id": "COMPACT-BEHAVIOR-20261124-23",
   "contract": "compact-behavior-1",
   "files_sha256": {
     "__init__.py": "7a8bdf1c0a54dec96e1886b1004a662ef0d98d3693f08c31cb042624fd413dd5",
     "__main__.py": "8481ae5cee88325f1ba8ccb32ff85f4c7ceefc805b56453f1fe0500c012f0322",
     "context.py": "5478a97908ad345196bbf52ee942df0dccfdefeddf4515f52170b0c0eee8b162",
     "dispatch_routes.json": "ce4364996c98d298c3d3f4950fed487702d07b3a794a34194be6ce9da526ce37",
-    "extract.py": "7801ba2e7a0acdebc7bea3a7f75e872c9787e2dd46529a5fbe056885119c3bd7",
+    "extract.py": "5152c41e2eafe00ca4ce110f9a670a8d697fe74254efe99fed8dc010eaa86e79",
     "feature_contract.py": "f6d41e472da74e364a78ce6aeb7f69b62ea02066601ca084999a9fe715196c12",
     "history.py": "67243f67fddd42aed2390d04d01bfcad38b5f96fda9caa27507ccab65df7be5c",
     "independent_operations.json": "301162a9b909921344f0fbcdd28ea830a6cb0f52e4bbab1bbfa25026e01aeb27",
     "inquiry.py": "5e9921dbbd2df4b322b964dc71c4f175aee0fb04a6b85cafb1eab5f7d0cf3b46",
     "json_value.py": "abcd58e33466dbe1afeedc1567fbae128632a18db9a95d6fa0e9fe35888d9ea2",
-    "operation_roles.json": "7601cebeb7c9253c3d2eb7a49df8817c8c91d5d5126a8cbd17392e0aa0aecff1",
+    "operation_roles.json": "73edc76101fab7548c73e8f21227147c00a086079c68cb69732e737bca14bfaf",
     "payload.py": "f800600c0396e34cb60b24e8ab759cab0ef0a64006991159ef2e8e443bbe90f8",
     "postal.py": "9b1d46f844a4d8433e2f304b669b3146bf45381c80ad51b110ad61c90ed2fac2",
     "probe_elastic.py": "b5daa9ba908d7a286b5cbe2e6ce962dd0187a0856825a6bf03c96cb1247bb4b2",
+    "security.py": "440898266bebf06d8dcee85cdb4518edefe773995a4e8400fb6503b4bd6a0bbd",
     "server_trial.py": "17ddc0f37629f924d7c7805b1e26acb930430d4d960f29e1ebb3dcd455a9c568",
-    "services.py": "716e3e7aa07bfafa6ffe41dbbe29f57d44c089c8b472a77438154f090e63d0d1",
+    "services.py": "704598468a35c4d940ae568ef85ebf56c736933825758376b3e5047d53b3936c",
     "source.py": "5b1b3479171e470191b00932ac1ff8f2df8dbb2bfc8a5646771aed80424dd860",
-    "store.py": "86ec3a2c21045e4fb23678c50f3fdae9fc64332c0f13c1e57ba5a2fe9748733a",
-    "version.py": "9439adb83efa228d046e445d34291b303949d7b302fe0ca689cd72c95a64e067"
+    "store.py": "d40d2de277f4dfaa1daa53c088ddef6988f3fa7e716fecd5a88d6d39a7794f5d",
+    "version.py": "50e8b1cbcda08304a178ad14953188e45721c1e89472a8611cabc5182236bcc2"
   }
 }

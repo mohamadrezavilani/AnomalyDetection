@@ -67,8 +67,12 @@ def decorate(row, state):
     row['rate_limited_attempt'] = row.get('api')=='Services.v1/InvoiceRegister' and row.get('result_code')=='GR0004'
     access = row.get('access_denied_attempt') or {}
     row['access_denied'] = (row.get('api') == 'Services.v1/InvoiceRegister' and row.get('result_code') == 'G00010' and access.get('verified') is True)
+    row['access_denied'] = row['access_denied'] or (bool(row.get('validation_label')) and row.get('result_code')=='G00010')
     attempt=(access if row['access_denied'] else row.get('rejected_attempt')) or {}
     row['requested_service']=attempt.get('service')
+    if row['access_denied'] and not row['requested_service']:
+        actions={v['value'] for v in state.get('dispatch',[]) if v.get('kind')=='action'}
+        if len(actions)==1:row['requested_service']=next(iter(actions))
     if row['rate_limited_attempt'] and not row['requested_service']:
         from compact_behavior.services import operation_role
         actions={v['value'] for v in state.get('dispatch',[]) if v.get('kind')=='action'}
