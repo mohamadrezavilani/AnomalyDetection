@@ -89,7 +89,11 @@ def main():
                 (SELECT v.verdict FROM {cfg.ad_schema}.feedback v WHERE v.finding_id=f.finding_id
                     AND v.finding_revision=f.revision ORDER BY feedback_id DESC LIMIT 1) AS verdict,
                 (SELECT r.timing_confirmed_revision=r.revision FROM {cfg.ad_schema}.window_results r
-                    WHERE r.stream_id=f.stream_id AND r.start_ns=f.start_ns) AS timing_confirmed
+                    WHERE r.stream_id=f.stream_id AND r.start_ns=f.start_ns) AS timing_confirmed,
+                (SELECT r.summary->>'analysis_policy' FROM {cfg.ad_schema}.window_results r
+                    WHERE r.stream_id=f.stream_id AND r.start_ns=f.start_ns) AS analysis_policy,
+                EXISTS(SELECT 1 FROM {cfg.ad_schema}.reanalysis j WHERE j.stream_id=f.stream_id
+                    AND j.start_ns=f.start_ns AND j.processed_version<j.version) AS own_reanalysis_pending
                 FROM {cfg.ad_schema}.findings f WHERE stream_id=%s AND start_ns=%s
                 AND f.status='ANOMALY' AND service=%s AND session_id=%s AND result->>'numeric_path'=%s
                 AND (result->>'inquiry_pattern_policy'=%s OR result->>'inquiry_breadth_policy'=%s)""",
@@ -119,9 +123,10 @@ def main():
             db.conn.execute("SET LOCAL lock_timeout='10s'")
             db.conn.execute('SELECT pg_advisory_xact_lock(%s)',(stream_lock(stream),))
             writers(db, package)
-            db.conn.execute(f"""INSERT INTO {cfg.ad_schema}.reanalysis AS q(stream_id,start_ns,updated_at_ns)
-                VALUES (%s,%s,%s) ON CONFLICT (stream_id,start_ns) DO UPDATE
-                SET version=q.version+1,updated_at_ns=excluded.updated_at_ns WHERE q.version=q.processed_version""",
+            db.conn.execute(f"""INSERT INTO {cfg.ad_schema}.reanalysis AS q(stream_id,start_ns,updated_at_ns,priority)
+                VALUES (%s,%s,%s,true) ON CONFLICT (stream_id,start_ns) DO UPDATE
+                SET priority=true,version=q.version+CASE WHEN q.version=q.processed_version THEN 1 ELSE 0 END,
+                updated_at_ns=CASE WHEN q.version=q.processed_version THEN excluded.updated_at_ns ELSE q.updated_at_ns END""",
                 (stream,start,time.time_ns()))
         reanalysis_requested = True
         notice('INQUIRY_WINDOW_SUBMITTED_TO_AD', windows=1, from_utc=result['from_utc'],

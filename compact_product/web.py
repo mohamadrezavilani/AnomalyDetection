@@ -131,7 +131,8 @@ def create_app(config, database, stream, *, secret=None):
         if scope != "meaningful":
             abort(400)
         allowed = meaningful_apis()
-        return scope, "AND (" + expression + " OR " + attempt + ")", [allowed, dispatch, binding, allowed]
+        from compact_behavior.dispatch_evidence import verified_sql as provider_sql
+        return scope, "AND (" + expression + " OR " + attempt + " OR ("+provider_sql(config.source_schema)+"))", [allowed, dispatch, binding, allowed]
 
     @app.errorhandler(Exception)
     def failure(exc):
@@ -253,6 +254,7 @@ def create_app(config, database, stream, *, secret=None):
             if not row:
                 abort(404)
             body = materialize(stream, row["state"])
+            row['quality']=body['quality']
             code_definitions = definitions(db, config.source_schema, [row["result_code"]])
             provider = provider_contracts.observed_contract(body, row["state"])
             if provider:

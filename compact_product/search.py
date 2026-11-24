@@ -59,6 +59,10 @@ def source_ids(state, canonical, name):
 
 
 def decorate(row, state):
+    if state.get('provider_dispatch_verified'):
+        from compact_behavior.dispatch_evidence import SERVICE
+        row['service_key']=SERVICE
+        row['quality']=[q for q in row.get('quality',[]) if q!='unresolved_dispatch']
     from .validation import REJECTIONS
     if row.get('validation_verified') or state.get('validation_verified'):
         row['validation_label'] = REJECTIONS[row['result_code']][1]
@@ -86,8 +90,9 @@ def decorate(row, state):
 def originals(db, schema, rows):
     if not rows:return
     from .validation import candidate_sql, evidence_sql
+    from compact_behavior.dispatch_evidence import verified_sql as provider_sql
     states = {r['behavior_id']: r for r in db.execute(
-        f"SELECT b.behavior_id,CASE WHEN {candidate_sql()} THEN {evidence_sql()} ELSE false END AS validation_verified,state->'raw_request_ids' AS raw_request_ids,state->'raw_session_ids' AS raw_session_ids,state->'dispatch' AS dispatch FROM {schema}.behavior_payloads p JOIN {schema}.behaviors b USING(behavior_id) WHERE b.behavior_id=ANY(%s)",
+        f"SELECT b.behavior_id,CASE WHEN {candidate_sql()} THEN {evidence_sql()} ELSE false END AS validation_verified,({provider_sql(schema)}) AS provider_dispatch_verified,state->'raw_request_ids' AS raw_request_ids,state->'raw_session_ids' AS raw_session_ids,state->'dispatch' AS dispatch FROM {schema}.behavior_payloads p JOIN {schema}.behaviors b USING(behavior_id) WHERE b.behavior_id=ANY(%s)",
         ([r['behavior_id'] for r in rows],)).fetchall()}
     for row in rows:decorate(row,states.get(row['behavior_id'],{}))
 
@@ -145,5 +150,6 @@ def remaining_unknown_scope(schema):
     from .validation import verified_sql
     broad, args = unknown_scope()
     from compact_behavior.services import internal_proxies
-    return (f'({broad}) AND NOT COALESCE(b.api=ANY(%s),false) AND NOT ({verified_sql(schema)})',
+    from compact_behavior.dispatch_evidence import verified_sql as provider_sql
+    return (f'({broad}) AND NOT COALESCE(b.api=ANY(%s),false) AND NOT ({verified_sql(schema)}) AND NOT ({provider_sql(schema)})',
             [*args, sorted(internal_proxies())])

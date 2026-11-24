@@ -12,6 +12,7 @@ from compact_product.config import load
 from compact_product.health import health
 from compact_product.version import verify
 from compact_ad import MODEL, inquiry_breadth, longitudinal
+from compact_ad.references import POLICY as ANALYSIS_POLICY
 
 
 def snapshot(db,cfg,stream,baseline=None):
@@ -46,9 +47,17 @@ def snapshot(db,cfg,stream,baseline=None):
             GREATEST(0,(r.first_analyzed_ns-r.first_source_ns)/1e9::float) AS first_seconds
             FROM {a}.window_results r JOIN {s}.windows w USING(stream_id,start_ns)
             WHERE r.stream_id=%s AND r.model_version=%s AND r.feature_version=%s
-            AND r.summary->>'inquiry_policy'=%s AND r.timing_confirmed_revision=r.revision
+            AND r.summary->>'inquiry_policy'=%s AND r.summary->>'analysis_policy'=%s AND r.timing_confirmed_revision=r.revision
             AND r.source_published_ns=w.published_at_ns ORDER BY r.analyzed_at_ns DESC LIMIT 96''',
-            (stream,MODEL,FEATURES,inquiry_breadth.POLICY)).fetchall()
+            (stream,MODEL,FEATURES,inquiry_breadth.POLICY,ANALYSIS_POLICY)).fetchall()
+        pending_sample=db.conn.execute(f'''WITH pending AS MATERIALIZED (
+            SELECT start_ns,updated_at_ns FROM {a}.reanalysis WHERE stream_id=%s AND processed_version<version
+            ORDER BY start_ns LIMIT 16)
+            SELECT j.start_ns,j.updated_at_ns,r.summary->>'analysis_policy' AS analysis_policy,
+                r.source_published_ns=w.published_at_ns AS source_current,r.analysis_seconds
+            FROM pending j LEFT JOIN {a}.window_results r ON r.stream_id=%s AND r.start_ns=j.start_ns
+            LEFT JOIN {s}.windows w ON w.stream_id=r.stream_id AND w.start_ns=r.start_ns
+            ORDER BY j.start_ns''',(stream,stream)).fetchall()
         def percentile(field):
             import math
             values=sorted(v[field] for v in timings)
@@ -65,6 +74,7 @@ def snapshot(db,cfg,stream,baseline=None):
             for role,r in value['roles'].items()},operator_cases=len(selected),operator_methods=dict(counts),
         selected_signals=signals,operator_selection_truncated=truncated,finding_samples=samples,
         longitudinal_states={r['state']:r['n'] for r in states},longitudinal_waiting_or_limits=limits,
+        oldest_reanalysis_sample=pending_sample,analysis_policy=ANALYSIS_POLICY,
         current_policy_timing_samples=len(timings),revision_latency_p95_seconds=percentile('revision_seconds'),
         first_analysis_latency_p95_seconds=percentile('first_seconds'),fresh_windows_since_first_observation=fresh,
         timing_scope='SOURCE_CURRENT_POSTCOMMIT_REVISIONS_WITH_CURRENT_INQUIRY_POLICY; REFERENCE_QUEUES_REPORTED_SEPARATELY')

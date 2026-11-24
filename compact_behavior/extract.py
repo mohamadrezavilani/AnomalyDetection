@@ -257,6 +257,9 @@ def resolve_service(state, api):
     }
     if len(actions) == 1 and len(requests) == 1:
         return next(iter(actions)), "SAME_REQUEST_REVIEWED_DISPATCH"
+    from . import dispatch_evidence
+    if dispatch_evidence.verified(state):
+        return dispatch_evidence.SERVICE, "SAME_REQUEST_REVIEWED_DISPATCH"
     return None, (
         "UNRESOLVED_DISPATCH"
         if len(actions) < 2 and len(requests) < 2

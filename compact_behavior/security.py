@@ -87,6 +87,8 @@ def legacy_rows(rows):
         context = row.pop('security_context', None)
         if state is not None:
             if (row.get('api') in ('Services.v1/ElectricBills','Services.v2/GasBills')
+                    or row.get('api')=='Services.v1/InvoiceRegister' and row['features'].get('service_binding')=='UNRESOLVED_DISPATCH'
+                    and row.get('result_code') not in ('G00002','G00003','G00010','GR0004')
                     or row['features'].get('service_key') in inquiry.ROUTES
                     and inquiry.POLICY not in row['features']):
                 from .extract import materialize
@@ -103,6 +105,8 @@ def input_sql(schema, *, previous=False):
     # LIMIT 1 retains parameterized primary-key lookups, including large tables.
     reviewed=','.join("'"+x+"'" for x in sorted(inquiry.ROUTES))
     candidate = f"""(b.result_code IN ('G00002','G00003','G00010') AND NOT (b.features ? 'security_attempt')
+        OR b.api='Services.v1/InvoiceRegister' AND b.features->>'service_binding'='UNRESOLVED_DISPATCH'
+            AND COALESCE(b.result_code,'') NOT IN ('G00002','G00003','G00010','GR0004')
         OR b.features->>'service_key' IN ({reviewed})
             AND NOT (b.features ? 'inquiry_subjects_v1'))"""
     features='b.features'

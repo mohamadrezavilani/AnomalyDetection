@@ -1,12 +1,13 @@
 {
-  "build_id": "COMPACT-BEHAVIOR-20261124-24",
+  "build_id": "COMPACT-BEHAVIOR-20261124-25",
   "contract": "compact-behavior-1",
   "files_sha256": {
     "__init__.py": "7a8bdf1c0a54dec96e1886b1004a662ef0d98d3693f08c31cb042624fd413dd5",
     "__main__.py": "4e67203bd1e72f94ae9590e1a10bb4d2b2bc765db3c5409e5508f605ba0cfb3b",
     "context.py": "5478a97908ad345196bbf52ee942df0dccfdefeddf4515f52170b0c0eee8b162",
+    "dispatch_evidence.py": "4efd25991fe2803af0d228695eca12f37fe495a00a38eb3a152cc8dbc0c31452",
     "dispatch_routes.json": "ce4364996c98d298c3d3f4950fed487702d07b3a794a34194be6ce9da526ce37",
-    "extract.py": "70cfe14b36fb3d38f9f471dd46cdb3d0a4d2931b57b456d22f9d1aefdd344dc5",
+    "extract.py": "eaa709a85556934c8276711b9a3e39c755a79855011d5fa72bbfe92b58a2c4f6",
     "feature_contract.py": "f6d41e472da74e364a78ce6aeb7f69b62ea02066601ca084999a9fe715196c12",
     "history.py": "67243f67fddd42aed2390d04d01bfcad38b5f96fda9caa27507ccab65df7be5c",
     "independent_operations.json": "301162a9b909921344f0fbcdd28ea830a6cb0f52e4bbab1bbfa25026e01aeb27",
@@ -16,12 +17,12 @@
     "payload.py": "f800600c0396e34cb60b24e8ab759cab0ef0a64006991159ef2e8e443bbe90f8",
     "postal.py": "9b1d46f844a4d8433e2f304b669b3146bf45381c80ad51b110ad61c90ed2fac2",
     "probe_elastic.py": "b5daa9ba908d7a286b5cbe2e6ce962dd0187a0856825a6bf03c96cb1247bb4b2",
-    "security.py": "554c139b14dbdcf3e87e4bf02cb8528c994f1c0850c2b829b8a0ab7857702e34",
+    "security.py": "9b6e3e5fe5f534fbed14ec80613e2252baffcf02224a5a014b58b7263cfc508f",
     "server_trial.py": "17ddc0f37629f924d7c7805b1e26acb930430d4d960f29e1ebb3dcd455a9c568",
     "services.py": "704598468a35c4d940ae568ef85ebf56c736933825758376b3e5047d53b3936c",
     "source.py": "5b1b3479171e470191b00932ac1ff8f2df8dbb2bfc8a5646771aed80424dd860",
     "statistics.py": "b90c5cae801b89b0cf55e19b43581560bed309047de3734242b8c657ebfca15b",
     "store.py": "6dfe15b966f44911715b35dcae293bd645c51e8bff7bc9382b1fd3de839dca95",
-    "version.py": "71055b67d3b1c9379acb47aff79448397ed1e994bb97b29555ac39df02fbf59e"
+    "version.py": "175ba3e4f49d718387669d105562d6f089e8fd70a4d00fc638dd2066e774c504"
   }
 }
