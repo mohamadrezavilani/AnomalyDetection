@@ -42,7 +42,7 @@ METHODS = {
         label="تنوع هدف ورودی",
         unit="نشست و خدمت / پنج دقیقه",
         features="input_feature_eligibility.targets",
-        minimum="۱۲ پنجره و ۳۰ ورودی معتبر مرجع",
+        minimum="درخواست هدف‌های متفاوت مستقل از نتیجه؛ کف اولیهٔ آب ۱۰ و دیگر مسیرهای مستند ۱۲؛ مرجع آماری جداگانه",
     ),
     "response_shape": dict(
         label="تغییر ساختار پاسخ",

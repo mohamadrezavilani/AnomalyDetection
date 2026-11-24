@@ -157,9 +157,27 @@ def run_period(db, stream, *, fault=None):
     from psycopg.types.json import Jsonb
     conn,s,a=db.conn,db.schema,db.ad_schema
     now=time.time_ns()
-    job=conn.execute(f'''SELECT * FROM {a}.long_runs WHERE stream_id=%s
-        AND state IN ('PENDING','WAITING') AND retry_ns<=%s ORDER BY end_ns,span,service LIMIT 1''',
+    iteration=getattr(db,'long_period_iteration',0)
+    db.long_period_iteration=iteration+1
+    def prior_limit():
+        completed=getattr(db,'long_limits_migrated',set())
+        if stream in completed:return None
+        row=conn.execute(f'''SELECT * FROM {a}.long_runs WHERE stream_id=%s AND state='LIMIT'
+            AND details->>'evaluation_policy' IS DISTINCT FROM %s
+            ORDER BY end_ns,span,service LIMIT 1''',(stream,long.EVALUATION_POLICY)).fetchone()
+        if not row:
+            completed.add(stream);db.long_limits_migrated=completed
+        return row
+    # Old LIMIT periods must progress even while incomplete periods keep
+    # returning WAITING. Check once per five calls, and stop after migration.
+    job=prior_limit() if iteration%5==0 else None
+    if not job:job=conn.execute(f'''SELECT * FROM {a}.long_runs WHERE stream_id=%s
+        AND state IN ('PENDING','WAITING') AND retry_ns<=%s ORDER BY retry_ns,end_ns,span,service LIMIT 1''',
         (stream,now)).fetchone()
+    if not job:
+        # Retry limits produced by the former quadratic evaluator once under
+        # the new policy. Current hard memory limits wait for changed input.
+        job=prior_limit()
     if not job:
         return None
     service,end,span=job['service'],job['end_ns'],job['span']
@@ -177,11 +195,25 @@ def run_period(db, stream, *, fault=None):
                         AND day_ns>=%s AND day_ns<%s ORDER BY day_ns''',(stream,service,start,end))
                     actors=long.merge((long.unpack(r['payload']) for r in cur),active_days=True)
                 readiness={}
-                results=long.evaluate(actors,service=service,end=end,span=span,signature=signature,diagnostics=readiness)
+                checkpoint=(job['details'] if job['signature']==signature
+                    and job['details'].get('evaluation_policy')==long.EVALUATION_POLICY else {})
+                carried=checkpoint.get('partial_results',[])
+                results=long.evaluate(actors,service=service,end=end,span=span,signature=signature,diagnostics=readiness,
+                                      resume_index=checkpoint.get('resume_index',0))
+                results=carried+results
+                for name in readiness:readiness[name]+=checkpoint.get(name,0)
                 state='READY';details={'actors':len(actors),'findings':len(results),'complete_windows':span*288,
                                        'rule':long.VERSION,'period_start_ns':start,**readiness}
-            except long.CapacityExceeded:
-                state='LIMIT';details={'reason':'BOUNDED_PROFILE_CAPACITY'}
+            except long.ComparisonPending as pending:
+                results=[]
+                for name in pending.diagnostics:pending.diagnostics[name]+=checkpoint.get(name,0)
+                state='WAITING';details=dict(reason='RESUMABLE_COMPARISON',resume_index=pending.resume_index,
+                    partial_results=carried+pending.results,**pending.diagnostics)
+                if len(details['partial_results'])>2000:
+                    state='LIMIT';details={'reason':'COMPARISON_RESULT_CAPACITY'}
+            except long.CapacityExceeded as exc:
+                state='LIMIT';details={'reason':'BOUNDED_PROFILE_CAPACITY','failure_code':str(exc)}
+        details['evaluation_policy']=long.EVALUATION_POLICY
     with conn.transaction():
         conn.execute('SELECT pg_advisory_xact_lock(%s)',(stream_lock(stream),))
         current=period(db,stream,service,start,end) if days is not None else None
@@ -212,7 +244,8 @@ def run_period(db, stream, *, fault=None):
             fault('before_commit')
     if fault:
         fault('after_commit')
-    return dict(status='LONGITUDINAL_PERIOD_REVIEWED',state=state,start_ns=end-FIVE,horizon_days=span,**details)
+    public_details={k:v for k,v in details.items() if k!='partial_results'}
+    return dict(status='LONGITUDINAL_PERIOD_REVIEWED',state=state,start_ns=end-FIVE,horizon_days=span,**public_details)
 
 
 def backfill(db, stream):

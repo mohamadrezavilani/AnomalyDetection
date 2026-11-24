@@ -3,6 +3,7 @@ import hashlib
 import json
 from .context import VERSION as CONTEXT_VERSION
 from .services import operation_role, foreground_apis
+from . import inquiry
 
 POLICY = 'verified-access-attempt-1'
 FIELD = 'security_attempt'
@@ -10,6 +11,7 @@ DISPATCH = 'Services.v1/InvoiceRegister'
 PAIRS = {
     ('G00010', 'UserAccessObjectsDoesNotContainAccessObject'): 'access_denied',
     ('G00002', 'SessionIsNotValid'): 'invalid_session',
+    ('G00003', 'NullCheckError'): 'validation_rejection',
 }
 DOCUMENTS = [
     dict(name='Inquiry-V4.1.0.pdf', page=137, printed_page=136,
@@ -70,7 +72,7 @@ def project(state, context=None):
     value = dict(policy=POLICY, kind=kind, api=api, scope=requested or api,
                  requested_service=requested, result_code=root['code'], symbol=root['symbol'],
                  at_ns=root['at_ns'], stage='REJECTED_BEFORE_CONFIRMED_EXECUTION')
-    if kind == 'access_denied':
+    if kind != 'invalid_session':
         value.update(cohort_type='session', cohort_key=unique_session)
     else:
         value.update(cohort_type='ip', cohort_key=network(context or state.get('request_context', {}), root['at_ns']),
@@ -84,16 +86,31 @@ def legacy_rows(rows):
         state = row.pop('security_state', None)
         context = row.pop('security_context', None)
         if state is not None:
+            if (row.get('api') in ('Services.v1/ElectricBills','Services.v2/GasBills')
+                    or row['features'].get('service_key') in inquiry.ROUTES
+                    and inquiry.POLICY not in row['features']):
+                from .extract import materialize
+                body=materialize('projection',state,context=context)
+                if body and body['api']==row['api']:
+                    row['features']=body['features']
             attempt = project(state, context)
             if attempt:
                 row['features'] = dict(row['features'], **{FIELD: attempt})
         yield row
 
 
-def input_sql(schema):
+def input_sql(schema, *, previous=False):
     # LIMIT 1 retains parameterized primary-key lookups, including large tables.
-    candidate = "b.result_code IN ('G00002','G00010') AND NOT (b.features ? 'security_attempt')"
-    return f"""SELECT b.behavior_id,b.session_id,b.result_code,b.features,b.kind,b.api,
+    reviewed=','.join("'"+x+"'" for x in sorted(inquiry.ROUTES))
+    candidate = f"""(b.result_code IN ('G00002','G00003','G00010') AND NOT (b.features ? 'security_attempt')
+        OR b.features->>'service_key' IN ({reviewed})
+            AND NOT (b.features ? 'inquiry_subjects_v1'))"""
+    features='b.features'
+    if previous:
+        keys=('version','service_key','service_binding','session_eligible','service_rate_eligible',
+              'input_asof_ns','input_feature_eligibility','inquiry_subjects_v1','security_attempt','rejected_attempt')
+        features="jsonb_build_object("+','.join("'"+k+"',b.features->'"+k+"'" for k in keys)+") AS features"
+    return f"""SELECT b.behavior_id,b.session_id,b.result_code,{features},b.kind,b.api,
         b.observed_at_ns,b.reported_duration,p.state AS security_state,c.context AS security_context
         FROM {schema}.behaviors b
         LEFT JOIN LATERAL(SELECT state FROM {schema}.behavior_payloads p
@@ -101,4 +118,5 @@ def input_sql(schema):
         LEFT JOIN LATERAL(SELECT context FROM {schema}.request_context c
             WHERE c.behavior_id=b.behavior_id AND p.state IS NOT NULL LIMIT 1) c ON true
         WHERE b.stream_id=%s AND b.observed_at_ns>=%s AND b.observed_at_ns<%s
+        {"AND b.session_id=ANY(%s) AND b.features->>'operation_role' NOT IN ('system','support')" if previous else ''}
         ORDER BY b.observed_at_ns,b.behavior_id"""

@@ -90,6 +90,11 @@ def summarize(
 
     for row in rows:
         f = row["features"]
+        refusal=f.get('security_attempt') or {}
+        if refusal.get('policy')=='verified-access-attempt-1' and refusal.get('kind')=='validation_rejection':
+            total+=1
+            if total>max_rows:raise ValueError('analysis_window_row_limit')
+            continue
         if security.observe(row):
             total += 1
             if total > max_rows:
@@ -156,6 +161,7 @@ def summarize(
                     input_invalid=0,
                     witnesses=[],
                     events=[],
+                    inquiry_events=[],
                 ),
             )
             actor["count"] += 1
@@ -205,6 +211,9 @@ def summarize(
         s["output_valid"] += oe
         s["output_invalid"] += not oe
         if actor:
+            if key in inquiry.ROUTES:
+                actor['inquiry_events'].append((row.get('observed_at_ns'),row['behavior_id'],
+                    dict(subjects) if ie else {},row.get('result_code')))
             actor["input_valid"] += ie
             actor["input_invalid"] += not ie
             if ie:
@@ -322,13 +331,16 @@ def summarize(
             feature_bytes=bytes_used,
     )
     security_summary = security.summary()
+    from . import inquiry_breadth
+    result['inquiry_policy']=inquiry_breadth.POLICY
+    result['inquiry_window_signature']=inquiry_breadth.signature(actors)
     security_summary['summary_hash'] = digest(security_summary)
-    security_summary['base_summary_hash'] = digest(result)
+    security_summary['base_summary_hash'] = digest({k:v for k,v in result.items() if not k.startswith('inquiry_')})
     result['security'] = security_summary
     return result, services, actors
 
 
-def evaluate(start, summary, services, actors, references, *, previous_events=None, temporal_references=()):
+def evaluate(start, summary, services, actors, references, *, previous_events=None, temporal_references=(), previous_inquiries=()):
     # Defensive cutoff even when a caller mistakenly supplies future summaries.
     refs = sorted(
         [r for r in references if r["start_ns"] < start], key=lambda r: r["start_ns"]
@@ -348,8 +360,9 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
             security = ref['summary'].get('security', {})
             if security_method:
                 value = security.get('summary_hash') or digest(security)
-            elif security:
-                value = security.get('base_summary_hash') or digest({k:v for k,v in ref['summary'].items() if k!='security'})
+            elif security or 'inquiry_policy' in ref['summary']:
+                value = security.get('base_summary_hash') or digest({k:v for k,v in ref['summary'].items()
+                    if k!='security' and not k.startswith('inquiry_')})
             else:
                 value = ref.get('summary_hash') or digest(ref['summary'])
             reference_hashes[key] = value
@@ -678,7 +691,8 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
                 result = add(method, key, session, status, value if complete else None, baseline, limit,
                              witnesses, path=axis, used=used)
                 result['subject_policy'] = inquiry.POLICY
-                if (complete and actor['count'] >= 12 and actor['successes'] == actor['count']
+                if method=='target_diversity':result['target_reference_ready']=enough_inputs
+                if (method=='repeated_target' and complete and actor['count'] >= 12 and actor['successes'] == actor['count']
                         and not summary['content_resource_invalid']):
                     if key not in burst_context:
                         burst_context[key] = inquiry_patterns.reference_context(start, key, services[key]['actor_counts'], temporal_references)
@@ -687,6 +701,8 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
                         context=burst_context[key], target_history_ready=enough_inputs)
                 if method == 'target_diversity' and status == 'ANOMALY' and len(used) >= 24 and value >= 2 * limit:
                     result['single_signal_review_eligible'] = True
+    from . import inquiry_breadth
+    inquiry_breadth.apply(start,summary,actors,results,previous_inquiries)
     # Actor service mix versus past population, not an inferred personal identity.
     grouped = defaultdict(dict)
     for (session, key), actor in actors.items():

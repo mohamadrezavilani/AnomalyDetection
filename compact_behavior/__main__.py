@@ -83,17 +83,14 @@ def measure_window(store,stream,source,*,progress=None):
     begin=instant(source.metadata['window_start']);end=instant(source.metadata['window_end'])
     if begin%FIVE or end-begin!=FIVE:raise ValueError('aligned_window_required')
     result=store.publish(stream,begin,end,states,extractor.records)
-    quality=Counter();apis=Counter();body_count=input_count=output_count=eligible=output_eligible=0
-    # Statistics of the final persisted bodies for this exact window are filled
-    # by compact state, not by counting provider or SQL log rows as behaviors.
-    from .extract import materialize
-    for state in states.values():
-        body=materialize(stream,state)
-        if body:
-            body_count+=1;quality.update(body['quality']);apis[body['api'] or '<conflict>']+=1
-            input_count+=body['features']['input'] is not None;output_count+=body['features']['output'] is not None
-            eligible+=body['features']['input_eligible']
-            output_eligible+=body['features']['output_eligible']
+    statistics=result.pop('packet_statistics',None)
+    if statistics is None:
+        # Compatibility with read-only/test publishers that do not use Store.
+        from .statistics import PacketStatistics
+        from .extract import materialize
+        packet=PacketStatistics()
+        for state in states.values():packet.observe(materialize(stream,state))
+        statistics=packet.result()
     elapsed=time.monotonic()-began
     result.update(read_extract_seconds=read_extract,source_request_decode_seconds=getattr(source,'network_seconds',None),
         source_attempts=attempts,source_page_size=getattr(source,'page_size',None),
@@ -103,8 +100,7 @@ def measure_window(store,stream,source,*,progress=None):
         source_timer_scope='HTTP_REQUEST_BODY_READ_AND_JSON_DECODE_INCLUDING_CURSOR_CLEANUP',
         read_decode_extract_seconds_includes_network=True,total_seconds=elapsed,client_cpu_seconds=time.process_time()-cpu,
         extraction_state_bytes=extractor.state_bytes,missing_request_ids=extractor.missing_request_ids,
-        observed_public_api_requests=body_count,input_available=input_count,output_available=output_count,
-        input_eligible=eligible,output_eligible=output_eligible,quality=dict(quality),apis=dict(apis),
+        **statistics,
         statistics_scope='CURRENT_INPUT_PACKET_NOT_UNIQUE_HISTORY_OR_ALL_MERGED_LATE_STATES')
     return result
 

@@ -85,7 +85,7 @@ class CompactADTests(unittest.TestCase):
             summary, services, actors = summarize(rows)
             findings = [dict(method=r['method'], result=r, service=r['service'], session_id=r['session_id'],
                              start_ns=T, finding_id=r['method']) for r in evaluate(T,summary,services,actors,[])
-                        if r['session_id']=='actor' and r.get('inquiry_pattern_policy') and r['status']=='ANOMALY']
+                        if r['session_id']=='actor' and (r.get('inquiry_pattern_policy') or r.get('inquiry_breadth_policy')) and r['status']=='ANOMALY']
             return [r for case in select_cases(findings) for r in case['findings']]
         concentrated = ['a']*10+['b']*8+['c']*7+['d']*5
         repeat, = classify(concentrated)

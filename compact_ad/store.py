@@ -9,6 +9,7 @@ from compact_behavior.extract import digest
 from . import MODEL, REFERENCE_WINDOWS
 from .engine import summarize, evaluate
 from . import seasonality, long_store, longitudinal
+from . import inquiry_breadth
 from compact_behavior import security
 
 
@@ -76,13 +77,14 @@ class AnalysisStore(Store):
         if cursor == 'DONE':
             return
         lower = '' if cursor == 'START' else 'AND r.start_ns>%s'
-        args = [time.time_ns(), stream, FEATURES, MODEL, security.POLICY]
+        args = [time.time_ns(), stream, FEATURES, MODEL, security.POLICY,inquiry_breadth.POLICY]
         if cursor != 'START':
             args.append(cursor)
         row = self.conn.execute(f'''INSERT INTO {self.ad_schema}.reanalysis(stream_id,start_ns,updated_at_ns)
             SELECT r.stream_id,r.start_ns,%s FROM {self.ad_schema}.window_results r
             WHERE r.stream_id=%s AND r.feature_version=%s AND r.model_version=%s
-            AND COALESCE(r.summary->'security'->>'policy','')<>%s {lower}
+            AND (COALESCE(r.summary->'security'->>'policy','')<>%s
+                OR COALESCE(r.summary->>'inquiry_policy','')<>%s) {lower}
             AND NOT EXISTS(SELECT 1 FROM {self.ad_schema}.reanalysis j WHERE j.stream_id=r.stream_id
                 AND j.start_ns=r.start_ns AND j.processed_version<j.version)
             ORDER BY r.start_ns ASC LIMIT 1
@@ -199,20 +201,24 @@ class AnalysisStore(Store):
             active_sessions = Counter()
             for (session,_),actor in actors.items():active_sessions[session] += actor['count']
             candidates = [session for session,count in active_sessions.items() if count>=10]
+            candidates=sorted(set(candidates)|{session for session,_ in inquiry_breadth.current(actors)})
             previous_events = None
+            previous_inquiries=[]
             if candidates and self.conn.execute(f'SELECT 1 FROM {s}.windows WHERE stream_id=%s AND start_ns=%s',(stream,start-FIVE)).fetchone():
                 previous_events = {session: [] for session in candidates}
                 with self.conn.cursor(name='compact_previous_events') as previous:
                     previous.itersize=1000
-                    previous.execute(f'''SELECT session_id,observed_at_ns,behavior_id,
-                        features->>'service_key' AS service,features->>'session_eligible' AS eligible FROM {s}.behaviors
-                        WHERE stream_id=%s AND observed_at_ns>=%s AND observed_at_ns<%s
-                        AND session_id=ANY(%s) AND features->>'operation_role' NOT IN ('system','support')
-                        ORDER BY observed_at_ns,behavior_id LIMIT 60001''',(stream,start-FIVE,start,candidates))
-                    for count,event in enumerate(previous,1):
+                    previous.execute(security.input_sql(s,previous=True)+' LIMIT 60001',(stream,start-FIVE,start,candidates))
+                    for count,event in enumerate(security.legacy_rows(previous),1):
                         if count>60000:
-                            previous_events=None;break
-                        if event['session_id'] and (event['eligible']!='true' or not event['service']):
+                            previous_events=None;previous_inquiries=[];break
+                        f=event['features']
+                        event['service']=f.get('service_key');event['eligible']=f.get('session_eligible')
+                        observation=inquiry_breadth.previous(event,start+FIVE)
+                        if observation:previous_inquiries.append(observation)
+                        if f.get('security_attempt') or f.get('rejected_attempt'):
+                            continue
+                        if event['session_id'] and (event['eligible'] is not True or not event['service']):
                             previous_events[event['session_id']]=None
                         elif event['session_id'] and previous_events.get(event['session_id'],[]) is not None:
                             from collections import deque
@@ -224,7 +230,8 @@ class AnalysisStore(Store):
                     previous_events={k:list(v) if v is not None else None for k,v in previous_events.items()}
             from .patterns import patterns
             summary['patterns'], _ = patterns(actors, previous_events, start)
-            summary['security']['base_summary_hash'] = digest({k:v for k,v in summary.items() if k!='security'})
+            summary['security']['base_summary_hash'] = digest({k:v for k,v in summary.items()
+                if k!='security' and not k.startswith('inquiry_')})
         return dict(
             stream=stream,
             start=start,
@@ -244,6 +251,7 @@ class AnalysisStore(Store):
             actors=actors,
             references=refs,
             previous_events=previous_events,
+            previous_inquiries=previous_inquiries,
             temporal_references=temporal_refs,
             long_needed=long_needed,
         )
@@ -295,7 +303,7 @@ class AnalysisStore(Store):
             if job != work["job"]:
                 raise ChangedDuringAnalysis("reference_revision_changed")
             before = self.conn.execute(
-                f"SELECT summary_hash,feature_version,model_version,summary->'security'->>'base_summary_hash' AS base_hash FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
+                f"SELECT summary_hash,feature_version,model_version,summary->'security'->>'base_summary_hash' AS base_hash,summary->'security'->>'summary_hash' AS security_hash FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
                 (stream, start),
             ).fetchone()
             committed_revision = self.conn.execute(
@@ -409,6 +417,7 @@ class AnalysisStore(Store):
             if not before or (before["summary_hash"], before["feature_version"], before["model_version"]) != (signature, FEATURES, MODEL):
                 security_only = bool(before and before['feature_version']==FEATURES and before['model_version']==MODEL
                                      and (before['base_hash'] or before['summary_hash'])==summary['security']['base_summary_hash'])
+                rolling_only=bool(security_only and before['security_hash']==summary['security']['summary_hash'])
                 self.conn.execute(
                     f"INSERT INTO {a}.reference_epochs VALUES(%s,1) ON CONFLICT(stream_id) DO UPDATE SET epoch={a}.reference_epochs.epoch+1",
                     (stream,),
@@ -424,11 +433,11 @@ class AnalysisStore(Store):
                     f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns) SELECT stream_id,start_ns,%s
                     FROM {a}.window_results WHERE stream_id=%s AND start_ns>%s AND start_ns<=%s
                     AND (start_ns<=%s OR (start_ns/{FIVE})%%12=%s)
-                    AND (NOT %s OR summary->'security'->>'policy'=%s)
+                    AND (NOT %s OR (summary->'security'->>'policy'=%s AND summary->>'inquiry_policy'=%s))
                     ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns
                     WHERE {a}.reanalysis.processed_version={a}.reanalysis.version""",
-                    (now, stream, start, start + (REFERENCE_WINDOWS if security_only else seasonality.HORIZON) * FIVE,
-                     start + REFERENCE_WINDOWS*FIVE,(start//FIVE)%12,security_only,security.POLICY),
+                    (now, stream, start, start + (1 if rolling_only else REFERENCE_WINDOWS if security_only else seasonality.HORIZON) * FIVE,
+                     start + REFERENCE_WINDOWS*FIVE,(start//FIVE)%12,security_only,security.POLICY,inquiry_breadth.POLICY),
                 )
             # Completed reanalysis metadata is not an ever-growing ready queue.
             self.conn.execute(
@@ -485,6 +494,7 @@ class AnalysisStore(Store):
         results = evaluate(
             start, work["summary"], work["services"], work["actors"], work["references"],
             previous_events=work['previous_events'],temporal_references=work['temporal_references']
+            ,previous_inquiries=work['previous_inquiries']
         )
         return self.commit_analysis(
             work, results, time.monotonic() - began, fault=fault

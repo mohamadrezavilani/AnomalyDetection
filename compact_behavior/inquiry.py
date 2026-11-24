@@ -66,6 +66,8 @@ PROVIDER_FIELDS = {
     ('Services.v1/PostalCodeToAddress', 'ClientAyanCoInquiry.PostalCodeToAddress'): (('PostalCode','PostalCode'),),
     ('Services.v1/WaterBills', 'ClientAyanCoInquiry.WaterBillInquiry'): (('WaterBillID','WaterBillID'),),
     ('Services.v1/GasBills', 'ClientAyanCoInquiry.GasBillInquiry'): (('GasBillID','GasBillID'),),
+    ('Services.v2/GasBills', 'ClientAyanCoInquiry.GasBillInquiry'): (('ParticipateCode','ParticipateCode'),),
+    ('Services.v1/ElectricBills', 'ClientAyanCoInquiry.ElectricityBillInquiry'): (('ElectricityBillID','ElectricityBillID'),),
     ('Services.v1/PostPackagesStatus', 'ClientAyanCoInquiry.PostTrackingInquiry'): (('TrackingCode','PackageNumber'),),
     ('Services.v1/LandLinePhoneBills', 'ClientAyanCoInquiry.FixedLineBillInquiry'): (('FixedLineNumber','FixedLineNumber'),),
     ('Services.v1/LivelihoodInformation', 'ClientAyanCoInquiry.SfaraCouponInquiry'): (('MobileNumber','MobileNumber'),),

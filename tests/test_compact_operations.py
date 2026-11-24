@@ -16,42 +16,43 @@ from compact_product.runtime import start
 
 
 class InquiryRefreshFailureTests(unittest.TestCase):
-    def test_statement_cancellation_reports_phase_and_actual_commit_state_without_query_text(self):
+    def test_statement_cancellation_reports_phase_without_source_replay_or_query_text(self):
         from unittest.mock import MagicMock
         from psycopg.errors import QueryCanceled
         from tools import Refresh_Compact_Inquiry_Case as tool
         from tests.test_compact_extract import T
         from compact_behavior.extract import iso
-        for committed in (False, True):
-            with self.subTest(committed=committed), ExitStack() as stack:
-                db=MagicMock()
-                db.conn.execute.return_value.fetchone.return_value={'request_id':'fixture','session_id':'fixture-session'}
-                db.conn.execute.return_value.fetchall.return_value=[]
-                stack.enter_context(patch.object(sys,'argv',['refresh','--project','fixture',
-                    '--witness','a'*64,'--service','Services.v1/CellPhoneBills','--axis','MobileNumber','--apply']))
-                stack.enter_context(patch.object(tool,'load',return_value=(Config(),{'DATABASE':{},'ELASTICSEARCH':{}},'test')))
-                stack.enter_context(patch.object(tool,'Store',return_value=db))
-                stack.enter_context(patch.object(tool,'review',return_value=({
-                    'from_utc':iso(T),'stored':{'distinct_is_exact':False},
-                    'retained_reconstruction':{'distinct_is_exact':True}},None)))
-                stack.enter_context(patch.object(tool,'verify',return_value={'source_sha256':'fixture-package'}))
-                stack.enter_context(patch.object(tool,'writers'))
-                stack.enter_context(patch.object(tool,'ElasticWindow'))
-                def cancelled(target,*args,**kwargs):
-                    target.committed=committed
-                    target.phase='existing_lookup'
-                    raise QueryCanceled('private SQL and request parameters must not be printed')
-                stack.enter_context(patch.object(tool,'measure_window',side_effect=cancelled))
-                output=stack.enter_context(patch.object(tool,'notice'))
-                self.assertEqual(tool.main(),2)
-                args,report=output.call_args
-                self.assertEqual(args,('INQUIRY_CASE_REFRESH_INCOMPLETE',))
-                self.assertEqual(report['sqlstate'],'57014')
-                self.assertEqual(report['publication_phase'],'existing_lookup')
-                self.assertEqual(report['source_window_republished'],committed)
-                self.assertFalse(report['reanalysis_requested'])
-                self.assertNotIn('private SQL',str(output.call_args_list))
-                db.close.assert_called_once()
+        db=MagicMock()
+        cursor=MagicMock()
+        cursor.fetchone.return_value={'request_id':'fixture','session_id':'fixture-session'}
+        cursor.fetchall.return_value=[]
+        def execute(sql,*args,**kwargs):
+            if 'INSERT INTO' in sql and '.reanalysis' in sql:
+                raise QueryCanceled('private SQL and request parameters must not be printed')
+            return cursor
+        db.conn.execute.side_effect=execute
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(sys,'argv',['refresh','--project','fixture',
+                '--witness','a'*64,'--service','Services.v1/CellPhoneBills','--axis','MobileNumber','--apply']))
+            stack.enter_context(patch.object(tool,'load',return_value=(Config(),{'DATABASE':{}},'test')))
+            stack.enter_context(patch.object(tool,'Store',return_value=db))
+            stack.enter_context(patch.object(tool,'review',return_value=({
+                'from_utc':iso(T),'stored':{'distinct_is_exact':False},
+                'retained_reconstruction':{'distinct_is_exact':True,'covered':30}},None)))
+            stack.enter_context(patch.object(tool,'verify',return_value={'source_sha256':'fixture-package'}))
+            stack.enter_context(patch.object(tool,'writers'))
+            stack.enter_context(patch.object(tool.case_selection,'select',return_value=([],0,False)))
+            output=stack.enter_context(patch.object(tool,'notice'))
+            self.assertEqual(tool.main(),2)
+            args,report=output.call_args
+            self.assertEqual(args,('INQUIRY_CASE_REFRESH_INCOMPLETE',))
+            self.assertEqual(report['sqlstate'],'57014')
+            self.assertEqual(report['stage'],'SUBMITTING_WINDOW_TO_AD')
+            self.assertIsNone(report['publication_phase'])
+            self.assertFalse(report['source_window_republished'])
+            self.assertFalse(report['reanalysis_requested'])
+            self.assertNotIn('private SQL',str(output.call_args_list))
+            db.close.assert_called_once()
 
 
 def healthy_observation():

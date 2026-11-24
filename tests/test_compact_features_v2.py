@@ -408,8 +408,8 @@ class InquirySubjectTests(unittest.TestCase):
         self.assertNotEqual(token('01'),token('1'))
         self.assertEqual(self.body('Services.v1/WaterBills', {'Identifier':'A',
             'Parameters':{'Identifier':'B'}})['features'][POLICY], {})
-        self.assertNotIn(POLICY,self.body('Services.v1/WaterBills', {'Identifier':'x'},
-            path='ClientAyanCoUnreviewed.Method')['features'])
+        self.assertEqual(self.body('Services.v1/WaterBills', {'Identifier':'x'},
+            path='ClientAyanCoUnreviewed.Method')['features'][POLICY],{})
         self.assertEqual(self.body('Services.v1/WaterBills', {'Nested':{'Identifier':'x'},
             'Identifier':' '})['features'][POLICY], {})
 
@@ -424,9 +424,9 @@ class InquirySubjectTests(unittest.TestCase):
         raw = [row(path=inquiry.CELL_SERVICE),row(path=paths[0],message='Output:{"MobileNumber":"001"}')]
         f=materialize('test',extract(raw)['req-1'])['features']
         self.assertFalse(f['output_eligible'])
-        self.assertNotIn(inquiry.POLICY,f)
+        self.assertEqual(f[inquiry.POLICY],{})
         raw += [row(path=paths[0],message='Input:{"MobileNumber":"001"}'),row(path=paths[1],message='Input:{"MobileNumber":"002"}')]
-        self.assertNotIn(inquiry.POLICY,materialize('test',extract(raw)['req-1'])['features'])
+        self.assertEqual(materialize('test',extract(raw)['req-1'])['features'][inquiry.POLICY],{})
 
     def test_postal_cache_return_is_narrow_and_never_an_input(self):
         from compact_ad.engine import summarize
@@ -443,7 +443,7 @@ class InquirySubjectTests(unittest.TestCase):
         self.assertNotIn('private-synthetic', json.dumps(state))
         self.assertNotIn('secret-synthetic', json.dumps(state))
         observed = materialize('s', state)
-        self.assertNotIn(inquiry.POLICY, observed['features'])
+        self.assertEqual(observed['features'][inquiry.POLICY],{})
         self.assertFalse(observed['features']['output_eligible'])
         at = instant(api['@timestamp'])
         for cutoff, n in [(at,0),(at+1,1)]:
