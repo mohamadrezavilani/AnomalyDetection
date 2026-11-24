@@ -89,7 +89,7 @@
     },
     "Core.v1/InvoicePayment": {
       "role": "business",
-      "family_label_fa": null
+      "family_label_fa": "پرداخت صورتحساب"
     },
     "Core.v1/LoginByGoogle": {
       "role": "user_management",

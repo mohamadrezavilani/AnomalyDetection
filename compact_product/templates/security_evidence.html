@@ -1,0 +1,4 @@
+<p>{{ r.observed }} درخواست ردشده در {{ r.span_seconds|metric }} ثانیه{% if r.entity_type=='ip' %} · {{ r.distinct_presented_tokens }} توکن ارائه‌شدهٔ متفاوت{% endif %}. {% if r.threshold_basis=='INITIAL_ENGINEERING_FLOOR' %}آستانهٔ اولیهٔ مهندسی؛ مرجع کافی برای مقایسهٔ همین گروه موجود نیست.{% else %}آستانه با سابقهٔ همین گروه در پنجره‌های قبلی مقایسه شده است.{% endif %}</p>
+{% if r.entity_type=='ip' %}<p>این گروه به IP مشاهده‌شده در همان درخواست‌ها مربوط است. IP مشترک هویت یک نفر را اثبات نمی‌کند. انقضای نشست و خطای تکرار برنامه هم باید بررسی شوند؛ تلاش برای حدس توکن قطعی نیست.</p>{% endif %}
+<p>{{ r.next_action }}</p>
+<details><summary>مرجع معنای کد</summary>{% for d in r.documentation %}<p><code>{{ d.name }}</code>، صفحهٔ فایل {{ d.page }} (شمارهٔ چاپی {{ d.printed_page }}).</p>{% endfor %}<p>G00010 یعنی اجازهٔ استفاده از خدمت وجود ندارد. G00002 یعنی کد نشست منقضی شده است. برای طبقه‌بندی، نام پایان API در همان RequestID هم تطبیق داده می‌شود.</p></details>

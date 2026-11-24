@@ -9,6 +9,7 @@ from compact_behavior.extract import digest
 from . import MODEL, REFERENCE_WINDOWS
 from .engine import summarize, evaluate
 from . import seasonality, long_store, longitudinal
+from compact_behavior import security
 
 
 class ChangedDuringAnalysis(Exception):
@@ -75,12 +76,13 @@ class AnalysisStore(Store):
         self.conn.execute(
             f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns)
             SELECT r.stream_id,r.start_ns,%s FROM {a}.window_results r
-            WHERE r.stream_id=%s AND (r.feature_version<>%s OR r.model_version<>%s)
+            WHERE r.stream_id=%s AND (r.feature_version<>%s OR r.model_version<>%s
+                OR COALESCE(r.summary->'security'->>'policy','')<>%s)
             AND NOT EXISTS(SELECT 1 FROM {a}.reanalysis j WHERE j.stream_id=r.stream_id
                 AND j.start_ns=r.start_ns AND j.processed_version<j.version)
             ORDER BY r.start_ns ASC LIMIT 1
             ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns""",
-            (time.time_ns(), stream, FEATURES, MODEL),
+            (time.time_ns(), stream, FEATURES, MODEL, security.POLICY),
         )
         # Fresh/changed source has priority on four out of five iterations.
         # Reference-only work is chronological: processing newer dependants
@@ -166,11 +168,10 @@ class AnalysisStore(Store):
             with self.conn.cursor(name="compact_analysis_input") as cur:
                 cur.itersize = 1000
                 cur.execute(
-                    f"""SELECT behavior_id,session_id,result_code,features,kind,api,observed_at_ns,reported_duration FROM {s}.behaviors
-                    WHERE stream_id=%s AND observed_at_ns>=%s AND observed_at_ns<%s ORDER BY observed_at_ns,behavior_id""",
+                    security.input_sql(s),
                     (stream, start, start + FIVE),
                 )
-                summary, services, actors = summarize(cur, cutoff_ns=start + FIVE, collect_longitudinal=long_needed)
+                summary, services, actors = summarize(security.legacy_rows(cur), cutoff_ns=start + FIVE, collect_longitudinal=long_needed)
             active_sessions = Counter()
             for (session,_),actor in actors.items():active_sessions[session] += actor['count']
             candidates = [session for session,count in active_sessions.items() if count>=10]
@@ -199,6 +200,7 @@ class AnalysisStore(Store):
                     previous_events={k:list(v) if v is not None else None for k,v in previous_events.items()}
             from .patterns import patterns
             summary['patterns'], _ = patterns(actors, previous_events, start)
+            summary['security']['base_summary_hash'] = digest({k:v for k,v in summary.items() if k!='security'})
         return dict(
             stream=stream,
             start=start,
@@ -269,7 +271,7 @@ class AnalysisStore(Store):
             if job != work["job"]:
                 raise ChangedDuringAnalysis("reference_revision_changed")
             before = self.conn.execute(
-                f"SELECT summary_hash,feature_version,model_version FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
+                f"SELECT summary_hash,feature_version,model_version,summary->'security'->>'base_summary_hash' AS base_hash FROM {a}.window_results WHERE stream_id=%s AND start_ns=%s",
                 (stream, start),
             ).fetchone()
             committed_revision = self.conn.execute(
@@ -381,6 +383,8 @@ class AnalysisStore(Store):
                 (stream, start),
             )
             if not before or (before["summary_hash"], before["feature_version"], before["model_version"]) != (signature, FEATURES, MODEL):
+                security_only = bool(before and before['feature_version']==FEATURES and before['model_version']==MODEL
+                                     and (before['base_hash'] or before['summary_hash'])==summary['security']['base_summary_hash'])
                 self.conn.execute(
                     f"INSERT INTO {a}.reference_epochs VALUES(%s,1) ON CONFLICT(stream_id) DO UPDATE SET epoch={a}.reference_epochs.epoch+1",
                     (stream,),
@@ -396,10 +400,11 @@ class AnalysisStore(Store):
                     f"""INSERT INTO {a}.reanalysis(stream_id,start_ns,updated_at_ns) SELECT stream_id,start_ns,%s
                     FROM {a}.window_results WHERE stream_id=%s AND start_ns>%s AND start_ns<=%s
                     AND (start_ns<=%s OR (start_ns/{FIVE})%%12=%s)
+                    AND (NOT %s OR summary->'security'->>'policy'=%s)
                     ON CONFLICT(stream_id,start_ns) DO UPDATE SET version={a}.reanalysis.version+1,updated_at_ns=excluded.updated_at_ns
                     WHERE {a}.reanalysis.processed_version={a}.reanalysis.version""",
-                    (now, stream, start, start + seasonality.HORIZON * FIVE,
-                     start + REFERENCE_WINDOWS*FIVE,(start//FIVE)%12),
+                    (now, stream, start, start + (REFERENCE_WINDOWS if security_only else seasonality.HORIZON) * FIVE,
+                     start + REFERENCE_WINDOWS*FIVE,(start//FIVE)%12,security_only,security.POLICY),
                 )
             # Completed reanalysis metadata is not an ever-growing ready queue.
             self.conn.execute(

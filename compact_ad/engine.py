@@ -55,6 +55,8 @@ def summarize(
     missing_actor = 0
     incomplete_sessions = set()
     witness_limit = 12
+    from .security import Aggregates
+    security = Aggregates(cutoff_ns)
 
     def service(key):
         if key not in services:
@@ -88,6 +90,11 @@ def summarize(
 
     for row in rows:
         f = row["features"]
+        if security.observe(row):
+            total += 1
+            if total > max_rows:
+                raise ValueError('analysis_window_row_limit')
+            continue
         role = operation_role(row.get("api") or f.get("service_key"), f.get("service_key"), f.get("service_binding"))
         if row.get("kind") == "automatic_support" or role in ("support", "system"):
             continue
@@ -301,8 +308,9 @@ def summarize(
     for (session,_), actor in actors.items():
         actor['sequence_incomplete'] = session in incomplete_sessions or len(actor['events'])!=actor['count']
     pattern_summary, _ = patterns(actors, previous_events, cutoff_ns-FIVE if cutoff_ns is not None else None)
-    return (
-        dict(
+    if invalid_contract:
+        security.complete = False
+    result = dict(
             patterns=pattern_summary,
             services=summary,
             total=total,
@@ -312,10 +320,12 @@ def summarize(
             invalid_behavior_rate=sum(v["invalid_rate"] for v in services.values()),
             content_resource_invalid=resource_invalid,
             feature_bytes=bytes_used,
-        ),
-        services,
-        actors,
     )
+    security_summary = security.summary()
+    security_summary['summary_hash'] = digest(security_summary)
+    security_summary['base_summary_hash'] = digest(result)
+    result['security'] = security_summary
+    return result, services, actors
 
 
 def evaluate(start, summary, services, actors, references, *, previous_events=None, temporal_references=()):
@@ -329,7 +339,21 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
     results = []
     signature_cache = {}
     reference_cache = {}
+    reference_hashes = {}
     cutoff = max((r["start_ns"] + FIVE for r in refs), default=None)
+
+    def reference_hash(ref, security_method):
+        key = (security_method, id(ref))
+        if key not in reference_hashes:
+            security = ref['summary'].get('security', {})
+            if security_method:
+                value = security.get('summary_hash') or digest(security)
+            elif security:
+                value = security.get('base_summary_hash') or digest({k:v for k,v in ref['summary'].items() if k!='security'})
+            else:
+                value = ref.get('summary_hash') or digest(ref['summary'])
+            reference_hashes[key] = value
+        return reference_hashes[key]
 
     def add(
         method,
@@ -345,11 +369,12 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
         used=None,
     ):
         selected_refs = refs if used is None else used
-        signature_key = tuple(id(r) for r in selected_refs)
+        security_method = method in ('access_denied_attempts', 'invalid_session_attempts')
+        signature_key = (security_method, *(id(r) for r in selected_refs))
         if signature_key not in signature_cache:
             signature_cache[signature_key] = digest(
                 [
-                    [r["start_ns"], r.get("summary_hash") or digest(r["summary"])]
+                    [r['start_ns'], reference_hash(r, security_method)]
                     for r in selected_refs
                 ]
             )
@@ -732,6 +757,8 @@ def evaluate(start, summary, services, actors, references, *, previous_events=No
             )
     from .patterns import evaluate_patterns
     evaluate_patterns(start,summary,services,actors,refs,add,previous_events)
+    from .security import evaluate as evaluate_security
+    evaluate_security(summary.get('security', dict(policy=None, complete=False, cohorts=[], missing_context={})), refs, add)
     from .seasonality import adjust_rates
     adjust_rates(start,results,temporal_references,add)
     # Missing actors/content produce explicit method readiness, not green success.

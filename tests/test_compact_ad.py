@@ -203,7 +203,8 @@ class CompactADTests(unittest.TestCase):
         before = evaluate(T + 12 * FIVE, s, a, b, refs)
         refs.append(dict(start_ns=T + 13 * FIVE, summary=window(n=10000)[0]))
         self.assertEqual(before, evaluate(T + 12 * FIVE, s, a, b, refs))
-        self.assertTrue(all(r["reference_cutoff_ns"] <= T + 12 * FIVE for r in before))
+        self.assertTrue(all(r['reference_cutoff_ns'] is None and r['reference_windows']==0
+                            or r['reference_cutoff_ns'] <= T + 12 * FIVE for r in before))
 
     def test_old_feature_version_is_invalid_not_healthy(self):
         b = behavior("r", "s")

@@ -49,7 +49,7 @@ class CompactProductPostgresTests(unittest.TestCase):
         saved = self.db.conn.execute(f'SELECT * FROM {s}.behaviors').fetchone()
         client = create_app(self.config, self.database, 'test').test_client()
         url = '/behaviors/'+saved['behavior_id']
-        self.assertIn(url, client.get('/?scope=unknown').get_data(as_text=True))
+        self.assertNotIn(url, client.get('/?scope=unknown').get_data(as_text=True))
         expected = 'Services.v1/LandLinePhoneBills'
         self.assertFalse(inspect(self.db,'test','access-fixture',expected,access_denied=True)['ready_for_requested_repair'])
         writer = DispatchWindowWriter(self.db,'access-fixture',expected,T,access_denied=True)
@@ -69,7 +69,7 @@ class CompactProductPostgresTests(unittest.TestCase):
             page=response.get_data(as_text=True)
             self.assertIn(expected,page)
             self.assertIn('درخواست ردشده در کنترل دسترسی',page)
-        self.assertIn('هنوز فعال نیست', client.get(url).get_data(as_text=True))
+        self.assertIn('روش مستقل', client.get(url).get_data(as_text=True))
         self.assertNotIn(url,client.get('/?scope=unknown').get_data(as_text=True))
         self.assertNotIn(url,client.get('/?scope=attempts').get_data(as_text=True))
         with self.db.conn.transaction():

@@ -8,7 +8,7 @@
 {% if tab=='services' %}
 {% for g in service_groups %}<article class="card"><h2><code>{{ g.service }}</code></h2><p>{{ g.sessions|length }} نشست · {{ g.cases|length }} پرونده{% if g.health %} · شامل مورد سلامت خدمت{% endif %}</p><p>{% for m in g.methods|sort %}{{ m|method_label }}{% if not loop.last %} · {% endif %}{% endfor %}</p><p class="ltr">{{ g.last_ns|tehran }}</p><a href="{{ url_for('incidents',date=date,days=days,tab='cases',service=g.service) }}">مشاهدهٔ پرونده‌های این خدمت ←</a></article>{% else %}<section class="card">خدمتی با مورد آمادهٔ بررسی در این بازه نیست. الگوهای کل نشست بدون انتساب حدسی به خدمت، در تب نشست‌ها دیده می‌شوند.</section>{% endfor %}
 {% else %}
-{% for c in rows %}<article class="card"><div class="toolbar"><strong>{{ 'رفتار نشست' if c.domain=='session' else 'سلامت خدمت' }}</strong><span class="ltr">{{ c.first_ns|tehran }} تا {{ c.last_ns|tehran }}</span></div>
+{% for c in rows %}<article class="card"><div class="toolbar"><strong>{{ 'تلاش‌های یک IP' if c.domain=='network_attempts' else 'رفتار نشست' if c.domain=='session' else 'سلامت خدمت' }}</strong><span class="ltr">{{ c.first_ns|tehran }} تا {{ c.last_ns|tehran }}</span></div>
 {% if c.session_id %}<p>نشست: <code>{{ c.session_id }}</code></p>{% endif %}
 <p>{% for s in c.services %}{% if s=='*' %}الگوی کل نشست{% else %}<code>{{ s }}</code>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</p>
 <p>{{ c.findings|length }} نتیجهٔ مرتبط · {{ c.methods|length }} روش</p>{% for reason in c.reasons %}<p>{{ reasons[reason] }}</p>{% endfor %}

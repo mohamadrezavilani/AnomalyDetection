@@ -1,6 +1,8 @@
 """Explicit readiness contract. No financial inference or unverified durations."""
 
 METHODS = {
+    'access_denied_attempts': dict(label='تکرار تلاش بدون مجوز دسترسی',unit='نشست و خدمت درخواستی / پنج دقیقه',features='G00010 و نام دقیق رد دسترسی در پایان همان درخواست',minimum='۲۰ رد معتبر در دست‌کم ۳۰ ثانیه؛ مقایسه با سابقهٔ همان نشست در صورت وجود ۱۲ پنجره'),
+    'invalid_session_attempts': dict(label='تلاش پرتکرار با نشست نامعتبر',unit='IP مشاهده‌شده / پنج دقیقه',features='G00002 | SessionIsNotValid و IP بدون تعارض در همان درخواست',minimum='۳۰ رد و دست‌کم ۵ توکن متفاوت یا ۱۰۰ رد؛ دست‌کم ۳۰ ثانیه؛ IP هویت یک نفر نیست'),
     'rate_limit_rejections': dict(label='تکرار درخواست ردشده با محدودیت نرخ',unit='نشست و خدمت درخواستی / پنج دقیقه',features='GR0004 و مقصد درخواستی معتبر؛ مستقل از اجرای خدمت',minimum='۱۲ پنجرهٔ مرجع؛ اجرای موفق یا پرداخت فرض نمی‌شود'),
     'service_latency': dict(label='افزایش زمان اجرای خدمت',unit='صدک ۹۵ ExecutionTime خدمت / پنج دقیقه',features='زمان پایان درخواست با انتساب معتبر',minimum='۱۲ پنجرهٔ مرجع و ۱۰ زمان معتبر در هر پنجره؛ مقایسهٔ نسبی'),
     'isolation_forest': dict(label='الگوی چندمتغیرهٔ نشست',unit='نشست / پنج دقیقه',features='حجم، تنوع خدمات، سهم خدمت غالب و آنتروپی',minimum='۱۶۰ بردار گذشته و ۱۰ رفتار فعلی؛ آموزش و کالیبراسیون جدا'),

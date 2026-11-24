@@ -3,6 +3,7 @@ from compact_ad import MODEL, long_store, longitudinal
 from compact_ad.seasonality import HORIZON
 from compact_behavior import FIVE, FEATURES, inquiry
 from . import cases
+from compact_ad.security import POLICY as SECURITY_POLICY
 
 
 def publishable(config):
@@ -17,6 +18,8 @@ def publishable(config):
             AND r.timing_confirmed_revision=r.revision)
         AND (f.method NOT IN ('repeated_target','target_diversity')
              OR f.result->>'subject_policy'=%s)
+        AND (f.method NOT IN ('access_denied_attempts','invalid_session_attempts')
+             OR f.result->>'security_policy'='{SECURITY_POLICY}')
         AND NOT EXISTS(SELECT 1 FROM {config.source_schema}.dirty_windows d
             WHERE d.stream_id=f.stream_id AND d.session_id='@all'
             AND d.start_ns BETWEEN f.start_ns-{HORIZON * FIVE} AND f.start_ns
@@ -45,7 +48,7 @@ def bounds(date, days):
 def select(db, config, stream, start, end):
     # Keep legacy forest flags out of the priority slice. The existing partial
     # index still covers the positive predicate for writers on both versions.
-    priority = "(method='long_target_enumeration' OR (method IN ('target_diversity','repeated_target') AND COALESCE(result->>'single_signal_review_eligible','false')='true'))"
+    priority = "(method='long_target_enumeration' OR (method IN ('target_diversity','repeated_target','access_denied_attempts','invalid_session_attempts') AND COALESCE(result->>'single_signal_review_eligible','false')='true'))"
     rows=db.execute(f'''WITH strong_candidates AS MATERIALIZED (
         SELECT * FROM {config.ad_schema}.findings
         WHERE stream_id=%s AND status='ANOMALY' AND start_ns>=%s AND start_ns<%s
@@ -67,7 +70,7 @@ def select(db, config, stream, start, end):
     ) SELECT e.*,c.n AS candidate_count,c.strong_count FROM
         (SELECT count(*) AS n,(SELECT count(*) FROM strong_candidates) AS strong_count FROM candidates) c
         LEFT JOIN eligible e ON true ORDER BY
-        (e.method='long_target_enumeration' OR (e.method IN ('target_diversity','repeated_target') AND COALESCE(e.result->>'single_signal_review_eligible','false')='true')) DESC,
+        (e.method='long_target_enumeration' OR (e.method IN ('target_diversity','repeated_target','access_denied_attempts','invalid_session_attempts') AND COALESCE(e.result->>'single_signal_review_eligible','false')='true')) DESC,
         e.start_ns DESC,e.finding_id DESC''',
         [stream,start,end,stream,start,end,*eligible_args()]).fetchall()
     truncated=bool(rows and (rows[0]['candidate_count']>cases.LIMIT or rows[0]['strong_count']>1000))

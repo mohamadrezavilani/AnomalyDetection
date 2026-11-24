@@ -31,9 +31,16 @@ class CompactUiBrowserTests(unittest.TestCase):
         signals=[dict(finding_id=m,method=m,session_id='demo',service='Services.v1/WaterBills',start_ns=0,
             result=dict(reference_windows=24,evidence=['a','b','c'],observed=30,baseline=2,threshold=10,subject_policy="inquiry_subjects_v1",numeric_path="WaterBillID"))
             for m in ('actor_rate','target_diversity')]
+        from tests.test_compact_security import attempts, results, case_rows
+        _,security_results=results(attempts()+attempts('invalid_session',30))
+        signals.extend(case_rows(security_results))
+        selected=select_cases(signals)
         with app.test_request_context('/incidents?date=2026-11-22'):
-            cases=render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',rows=select_cases(signals),
-                date='2026-11-22',page=1,has_next=False,case_count=1,signal_count=2,truncated=False,reasons=REASONS)
+            cases=render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',rows=selected,
+                date='2026-11-22',page=1,has_next=False,case_count=3,signal_count=4,truncated=False,reasons=REASONS)
+        with app.test_request_context('/cases/synthetic?date=2026-11-22'):
+            network=render_template('case.html',title='بررسی تلاش‌ها',case=next(c for c in selected if c['domain']=='network_attempts'),
+                date='2026-11-22',days=1,truncated=False,reasons=REASONS,ips=['192.0.2.1'],ip_range={})
         with sync_playwright() as p:
             browser = p.chromium.launch(executable_path=os.environ['P24_COMPACT_BROWSER'], headless=True,
                 args=['--no-sandbox', '--disable-dev-shm-usage'])
@@ -41,11 +48,11 @@ class CompactUiBrowserTests(unittest.TestCase):
                 page = browser.new_page()
                 for width, size in ((1440, 'desktop'), (390, 'mobile')):
                     page.set_viewport_size(dict(width=width, height=1000))
-                    for name, html in (('behavior', detail), ('home', home), ('cases',cases)):
+                    for name, html in (('behavior', detail), ('home', home), ('cases',cases),('network',network)):
                         page.set_content(html)
                         self.assertLessEqual(page.evaluate('document.documentElement.scrollWidth'), width)
                         self.assertTrue(page.get_by_role('heading', level=1).is_visible())
-                        if name!='cases':self.assertIn('امکان برقراری ارتباط', page.locator('body').inner_text())
+                        if name in ('behavior','home'):self.assertIn('امکان برقراری ارتباط', page.locator('body').inner_text())
                         self.assertNotIn('نکتهٔ کیفیت', page.locator('body').inner_text())
                         if name == 'behavior':
                             self.assertIn('مشخصات ثبت‌شدهٔ درخواست', page.locator('body').inner_text())
@@ -63,8 +70,14 @@ class CompactUiBrowserTests(unittest.TestCase):
                         if name=='cases':
                             self.assertEqual(page.locator('nav[aria-label="نمای آنومالی‌ها"] a').count(),3)
                             self.assertTrue(page.get_by_label('تا روز (میلادی، تهران)').is_visible())
-                            self.assertEqual(page.locator('a[href^="/cases/"]').count(),1)
+                            self.assertEqual(page.locator('a[href^="/cases/"]').count(),3)
                             self.assertTrue(page.get_by_role('link',name='سیگنال‌های ضعیف و بررسی تخصصی ←').is_visible())
+                            self.assertIn('تلاش‌های یک IP',page.locator('body').inner_text())
+                        if name=='network':
+                            self.assertTrue(page.get_by_role('heading',name='تلاش‌های یک IP',exact=True).is_visible())
+                            self.assertIn('5 توکن',page.locator('body').inner_text())
+                            self.assertIn('IP مشترک',page.locator('body').inner_text())
+                            self.assertEqual(page.locator('a[href^="/sessions"]').count(),0)
                         folder = os.environ.get('P24_COMPACT_UI_SCREENSHOTS')
                         if folder:
                             Path(folder).mkdir(parents=True, exist_ok=True)

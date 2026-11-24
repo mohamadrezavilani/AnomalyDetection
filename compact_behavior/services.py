@@ -51,6 +51,19 @@ def meaningful_apis():
     return sorted(api for api in operation_catalog()["routes"] if meaningful(api))
 
 
+def foreground_apis(apis, roots):
+    """A reviewed timer trace can inherit a request's logging context.
+
+    Only its non-HTTP cleanup trace is supplementary to an actual HTTP root.
+    Preserve standalone jobs and every competing HTTP completion.
+    """
+    cleanup = 'HelperQueue.CleanupOldItems'
+    if (cleanup in apis and len(apis) > 1 and roots
+            and not any(r['api'] == cleanup for r in roots)):
+        return [api for api in apis if api != cleanup]
+    return apis
+
+
 def operation_label(api, service=None):
     target = service or api
     labels = {"WaterBills":"استعلام قبض آب", "GasBills":"استعلام قبض گاز", "ElectricBills":"استعلام قبض برق", "CellPhoneBills":"استعلام قبض تلفن همراه", "LandLinePhoneBills":"استعلام قبض تلفن ثابت"}

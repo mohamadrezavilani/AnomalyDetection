@@ -284,7 +284,7 @@ class Store:
                     state["issues"] = sorted(
                         set(state["issues"] + ["prior_fragments_expired"])
                     )
-                body = materialize(stream, state)
+                body = materialize(stream, state, context=merged_context)
                 if body is None:
                     signature = digest(state)
                     if not previous:
