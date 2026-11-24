@@ -55,7 +55,10 @@ def project(state, context=None):
     dispatch = state.get('dispatch', ())
     if any(x.get('kind') == 'service_request' for x in dispatch):
         return None  # Competing execution evidence must be reviewed separately.
-    actions = {x['value'] for x in dispatch if x.get('kind') == 'action'}
+    # The retained action grammar maps service-dispatch destinations to
+    # Services.*. Direct Core/Ewano APIs have their own public root; do not
+    # reinterpret their authorization action as an unknown Services endpoint.
+    actions = {x['value'] for x in dispatch if x.get('kind') == 'action'} if api == DISPATCH else set()
     if len(actions) > 1:
         return None
     requested = next(iter(actions), None)

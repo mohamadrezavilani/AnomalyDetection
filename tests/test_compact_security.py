@@ -97,6 +97,15 @@ class SecurityContractTests(unittest.TestCase):
         for records in bad:
             self.assertNotIn(security.FIELD,bodies(records)[0]['features'])
 
+    def test_direct_core_authorization_action_is_not_a_services_dispatch(self):
+        for kind in ('access_denied','invalid_session'):
+            records=attempts(kind,1,endpoint='Core.v1/InvoicePayment')[:1]
+            records.append(dict(records[0],CallPath='DBPath.pishkhan24.application.ud_prc_userSessionHasAccess',
+                                message='(SQL Parameters: @action=v1/InvoicePayment)'))
+            attempt=bodies(records)[0]['features'][security.FIELD]
+            self.assertEqual(attempt['scope'],'Core.v1/InvoicePayment')
+            self.assertIsNone(attempt['requested_service'])
+
     def test_ip_provenance_time_conflict_and_mapping(self):
         for ip in ('::ffff:192.0.2.1','192.0.2.1'):
             b=bodies(attempts('invalid_session',1,ip=ip))[0]
