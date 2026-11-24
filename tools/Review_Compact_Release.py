@@ -67,6 +67,8 @@ def snapshot(db,cfg,stream,baseline=None):
             fresh=db.conn.execute(f'''SELECT count(*) AS n FROM {s}.windows WHERE stream_id=%s
                 AND start_ns>=%s AND first_published_ns>=%s''',(stream,baseline['latest_received_end_ns'],baseline['observed_ns'])).fetchone()['n']
     fields=('source_backlog_windows','analysis_pending_windows','dirty_keys','reanalysis_windows',
+        'analysis_processing_p95_seconds','analysis_latency_example','analysis_latency_samples',
+        'analysis_latency_p95_seconds','first_analysis_latency_p95_seconds',
         'reference_pending_windows','analysis_timing_unconfirmed_windows','latest_received_end_ns',
         'latest_analyzed_end_ns','latest_analysis_timing_confirmed','latest_readiness','performance')
     return dict(observed_ns=now,observed_utc=datetime.fromtimestamp(now/1e9,timezone.utc).isoformat(),

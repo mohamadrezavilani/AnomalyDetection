@@ -17,5 +17,5 @@
 <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ f.revision }}">
 {% if case %}<input type="hidden" name="case_view" value="1"><input type="hidden" name="date" value="{{ date }}"><input type="hidden" name="days" value="{{ days }}">{% endif %}
 <label>نظر بررسی‌کننده <select name="verdict">{% for val,label in [('UNSURE','نیازمند بررسی'),('CONFIRMED','تأیید مورد'),('FALSE_POSITIVE','مثبت کاذب')] %}<option value="{{ val }}" {% if val==f.verdict %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-<label>یادداشت <input name="note" maxlength="2000" placeholder="اختیاری"></label><button>ثبت نظر</button></form>{% endif %}
+<label>یادداشت <textarea name="note" rows="1" maxlength="2000" placeholder="اختیاری"></textarea></label><button>ثبت نظر</button></form>{% endif %}
 </article>

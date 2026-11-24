@@ -257,7 +257,7 @@ class CompactRuntimeTests(unittest.TestCase):
                         self.assertIn("خروجی مشاهده‌شده", page.locator("body").inner_text())
                         page.set_viewport_size(dict(width=1400, height=1000))
                         page.goto(f"http://127.0.0.1:{port}/incidents")
-                        self.assertIn("آنومالی‌های دارای شواهد تقویتی", page.title())
+                        self.assertIn("پرونده‌های آنومالی", page.title())
                         page.get_by_role("link",name="سیگنال‌های ضعیف و بررسی تخصصی ←").click()
                         self.assertIn("همهٔ سیگنال‌های آماری", page.title())
                         page.locator("a[href^='/incident-groups/']").first.click()

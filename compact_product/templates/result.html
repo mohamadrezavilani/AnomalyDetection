@@ -2,7 +2,7 @@
 <div class="result"><code class="code-badge">{{ code or '—' }}</code>
 {% set entries=definitions.get(code,[]) %}
 {% if entries|length > 1 %}<p class="warn">چند تعریف مرجع برای این کد وجود دارد؛ انتساب قطعی نیست.</p>{% endif %}
-{% for entry in entries %}<p class="result-message">{{ entry.message_fa or 'برای این کد، شرح فارسی در فایل مرجع ثبت نشده است.' }}</p>{% if detailed %}<div class="provenance"><code>{{ entry.log_symbol or '—' }}</code><br>{% if entry.source.kind == "owner_definition" %}مرجع: {{ entry.source.description }} · <span class="ltr">{{ entry.source.confirmed_on }}</span>{% else %}مرجع: <code>{{ entry.source.file }}</code> · برگهٔ <code>{{ entry.source.sheet }}</code> · ردیف {{ entry.source.row }}{% endif %}</div>{% endif %}
+{% for entry in entries %}<p class="result-message">{{ entry.message_fa or 'برای این کد، شرح فارسی در فایل مرجع ثبت نشده است.' }}</p>{% if detailed %}<div class="provenance">{% if entry.log_symbol %}<code>{{ entry.log_symbol }}</code><br>{% endif %}{% if entry.source.kind == "owner_definition" %}مرجع: {{ entry.source.description }} · <span class="ltr">{{ entry.source.confirmed_on }}</span>{% else %}مرجع: <code>{{ entry.source.file }}</code> · برگهٔ <code>{{ entry.source.sheet }}</code> · ردیف {{ entry.source.row }}{% endif %}</div>{% endif %}
 {% else %}<p class="muted">{{ 'شرح مرجع برای این کد در دسترس نیست.' if code else 'کد نتیجه در شواهد موجود نیست یا قابل انتخاب نیست.' }}</p>{% endfor %}
 </div>
 {% endmacro %}

@@ -3,7 +3,7 @@
 <div class="case-controls"><nav class="tabs" aria-label="نمای آنومالی‌ها">{% for key,label in [('services','خدمت‌ها'),('sessions','نشست‌ها'),('cases','همهٔ پرونده‌ها')] %}<a {% if key==chosen %}aria-current="page"{% endif %} href="{{ url_for('incidents',date=date,days=span,tab=key) }}">{{ label }}</a>{% endfor %}</nav>
 <form class="review-filters" method="get"><label>تا روز (میلادی، تهران)<input type="date" name="date" value="{{ date }}" required></label><label>بازه<select name="days">{% for d in [1,3,7,30] %}<option value="{{ d }}" {{ 'selected' if d==span }}>{{ d }} روز</option>{% endfor %}</select></label><input type="hidden" name="tab" value="{{ chosen }}">{% if selected_service %}<input type="hidden" name="service" value="{{ selected_service }}">{% endif %}<button>نمایش</button></form></div>
 <div class="toolbar"><strong>{{ case_count }} پرونده{% if selected_service %} · <code>{{ selected_service }}</code>{% endif %}</strong><a href="{{ url_for('signals') }}">سیگنال‌های ضعیف و بررسی تخصصی ←</a></div>
-{% if truncated %}<p class="notice">نمایش این بازه به سقف رسیده است. برای فهرست کامل‌تر بازه را کوتاه کنید.</p>{% endif %}
+{% if truncated %}<p class="notice">تعدادها و فهرست این بازه کامل نیستند. برای دیدن بقیه، بازه را کوتاه کنید.</p>{% endif %}
 {% if chosen=='services' %}
 {% for g in service_groups %}{% set f=g.preview %}{% set ev=proof.get(f.finding_id,{}) %}
 <article class="card finding"><header class="finding-head"><h2><code>{{ g.service }}</code></h2><span>{{ g.cases|length }} پرونده</span></header>
