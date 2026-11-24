@@ -44,7 +44,7 @@ def stale_windows(store, stream, keys):
     return windows
 
 
-def republish(store, stream, start, end, states, count, expected):
+def republish(store, stream, start, end, states, count, expected, *, progress=None):
     """Fence the normal complete-window publisher; never publish sample subsets."""
     from compact_behavior.store import stream_lock
     if not expected or not set(expected).issubset(states):
@@ -60,7 +60,7 @@ def republish(store, stream, start, end, states, count, expected):
         # Do not replace a publication receipt with a diminished source snapshot.
         if count < existing['source_records'] or len(states) < existing['extracted_requests']:
             raise ValueError('source_window_shrank_no_repair_committed')
-        result = store.publish(stream, start, end, states, count)
+        result = store.publish(stream, start, end, states, count, progress=progress)
         if store.cursor(stream) != before:
             raise ValueError('repair_must_preserve_input_checkpoint')
         if stale_windows(store, stream, expected):

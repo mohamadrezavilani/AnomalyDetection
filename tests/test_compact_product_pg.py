@@ -166,6 +166,56 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.assertEqual(finding['result']['most_frequent_count'],10)
         self.assertEqual(finding['result']['distinct_targets'],4)
 
+    def test_inquiry_republication_repairs_old_projection_and_preserves_cursor_and_replay(self):
+        from psycopg.types.json import Jsonb
+        from compact_behavior import inquiry
+        from compact_behavior.extract import materialize
+        from compact_product import case_selection
+        from tools.Refresh_Compact_Inquiry_Case import ExistingInquiryWindow
+        from tools.Review_Compact_Inquiry_Session import review
+        raw=[]
+        for i, number in enumerate(['001']*10+['002']*8+['003']*7+['004']*5):
+            raw.extend([row('repair-cell-'+str(i),'fixture-session',path=inquiry.CELL_SERVICE),
+                        row('repair-cell-'+str(i),'fixture-session',path='ClientAyanCoInquiry.MCIMobileBillInquiry',
+                            message='Input:{"MobileNumber":"'+number+'"}')])
+        states=extract(raw)
+        self.db.publish('test',T,T+FIVE,states,len(raw))
+        self.db.publish('test',T+FIVE,T+2*FIVE,{},0)
+        s=self.config.source_schema
+        runtime_init(self.db.conn,s)
+        for role in ('ingest','analysis','history'):
+            self.db.conn.execute(f"""INSERT INTO {s}.runtime_roles
+                (role,token,backend_pid,backend_start,heartbeat_ns,info) VALUES (%s,'fixture',0,now(),0,%s)""",
+                (role,Jsonb({'package':{'source_sha256':'fixture-package'}})))
+        for state in states.values():
+            body=materialize('test',state)
+            body['features'].pop(inquiry.POLICY)
+            self.db.conn.execute(f'UPDATE {s}.behaviors SET features=%s,content_hash=%s WHERE behavior_id=%s',
+                (Jsonb(body['features']),digest([body,state]),body['behavior_id']))
+        witness=body['behavior_id']
+        original_windows=self.db.conn.execute(f'SELECT * FROM {s}.windows ORDER BY start_ns').fetchall()
+        before,_=review(self.db,'test',witness,inquiry.CELL_SERVICE,'MobileNumber')
+        self.assertEqual((before['stored']['covered'],before['retained_reconstruction']['covered']),(0,30))
+        target=ExistingInquiryWindow(self.db,body['request_id'],T,'fixture-package')
+        result=target.publish('test',T,T+FIVE,states,len(raw))
+        self.assertTrue(target.committed)
+        self.assertEqual(result['updated'],30)
+        self.assertEqual(self.db.cursor('test'),T+2*FIVE)
+        self.assertEqual(original_windows,self.db.conn.execute(f'SELECT * FROM {s}.windows ORDER BY start_ns').fetchall())
+        after,_=review(self.db,'test',witness,inquiry.CELL_SERVICE,'MobileNumber')
+        self.assertEqual(after['stored'],after['retained_reconstruction'])
+        self.assertEqual((after['stored']['covered'],after['stored']['distinct'],after['stored']['most_frequent_count']),(30,4,10))
+        self.analyze_at(T)
+        cases,_,truncated=case_selection.select(self.db.conn,self.config,'test',T,T+FIVE)
+        self.assertFalse(truncated)
+        self.assertEqual(len(cases),1)
+        self.assertEqual(cases[0]['findings'][0]['method'],'repeated_target')
+        self.assertEqual(target.publish('test',T,T+FIVE,states,len(raw))['updated'],0)
+        wrong=ExistingInquiryWindow(self.db,body['request_id'],T,'different-package')
+        with self.assertRaisesRegex(ValueError,'matching_installed_workers_required'):
+            wrong.publish('test',T,T+FIVE,states,len(raw))
+        self.assertFalse(wrong.committed)
+
     def test_evidence_case_page_keeps_revision_fences_and_same_revision_feedback(self):
         from copy import deepcopy
         from datetime import datetime

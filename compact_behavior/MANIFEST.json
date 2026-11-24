@@ -1,5 +1,5 @@
 {
-  "build_id": "COMPACT-BEHAVIOR-20261123-21",
+  "build_id": "COMPACT-BEHAVIOR-20261123-22",
   "contract": "compact-behavior-1",
   "files_sha256": {
     "__init__.py": "7a8bdf1c0a54dec96e1886b1004a662ef0d98d3693f08c31cb042624fd413dd5",
@@ -19,7 +19,7 @@
     "server_trial.py": "17ddc0f37629f924d7c7805b1e26acb930430d4d960f29e1ebb3dcd455a9c568",
     "services.py": "716e3e7aa07bfafa6ffe41dbbe29f57d44c089c8b472a77438154f090e63d0d1",
     "source.py": "5b1b3479171e470191b00932ac1ff8f2df8dbb2bfc8a5646771aed80424dd860",
-    "store.py": "fecf5e654d3a16ee2d94258ba0348f87c061df11502440b7fa92edc8de29c63f",
-    "version.py": "6b90292b3fd2301fa54465fd8d456b80c1d6ceaf24a2220cdd058efc8fe84cc6"
+    "store.py": "86ec3a2c21045e4fb23678c50f3fdae9fc64332c0f13c1e57ba5a2fe9748733a",
+    "version.py": "9439adb83efa228d046e445d34291b303949d7b302fe0ca689cd72c95a64e067"
   }
 }

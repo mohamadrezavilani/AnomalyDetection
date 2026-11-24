@@ -12,6 +12,28 @@ ALL = "@all"
 PENDING_WAIT_NS = 6 * FIVE
 EXPIRED_RETENTION_NS = 30 * 24 * 12 * FIVE
 NOTICE_RETENTION_NS = 7 * 24 * 12 * FIVE
+EXISTING_FETCH_ROWS = 128
+
+
+def existing_state_sql(schema):
+    # LIMIT 1 preserves each primary-key probe as a parameterized lookup. A
+    # plain join can choose a scan of the entire historical behavior/context
+    # table even though compact_keys contains only one publication's requests.
+    return f"""SELECT k.behavior_id,p.state,b.session_id,
+        b.observed_at_ns,b.content_hash,b.revision,NULL::text AS pending_status,c.context AS request_context
+        FROM compact_keys k
+        CROSS JOIN LATERAL(SELECT session_id,observed_at_ns,content_hash,revision
+            FROM {schema}.behaviors b WHERE b.behavior_id=k.behavior_id LIMIT 1) b
+        CROSS JOIN LATERAL(SELECT state FROM {schema}.behavior_payloads p
+            WHERE p.behavior_id=k.behavior_id LIMIT 1) p
+        LEFT JOIN LATERAL(SELECT context FROM {schema}.request_context c
+            WHERE c.behavior_id=k.behavior_id LIMIT 1) c ON true
+        UNION ALL SELECT k.behavior_id,p.state,NULL,NULL,p.content_hash,0::bigint,p.status,c.context
+        FROM compact_keys k
+        CROSS JOIN LATERAL(SELECT state,content_hash,status FROM {schema}.pending_requests p
+            WHERE p.behavior_id=k.behavior_id LIMIT 1) p
+        LEFT JOIN LATERAL(SELECT context FROM {schema}.request_context c
+            WHERE c.behavior_id=k.behavior_id LIMIT 1) c ON true"""
 
 
 def stream_lock(stream):
@@ -129,6 +151,7 @@ class Store:
         fault=None,
         allow_history=False,
         history_job=None,
+        progress=None,
     ):
         from psycopg.types.json import Jsonb
 
@@ -201,25 +224,30 @@ class Store:
             self.conn.execute("ANALYZE compact_keys")
             times['key_preparation_seconds'] = time.monotonic() - detail_phase
             detail_phase = time.monotonic()
-            old = {
-                r["behavior_id"]: r
-                for r in self.conn.execute(
-                    f"""SELECT k.behavior_id,p.state,b.session_id,
-                    b.observed_at_ns,b.content_hash,b.revision,NULL::text AS pending_status,c.context AS request_context FROM compact_keys k
-                    CROSS JOIN LATERAL(SELECT * FROM {s}.behavior_payloads p WHERE p.behavior_id=k.behavior_id LIMIT 1) p JOIN {s}.behaviors b ON b.behavior_id=k.behavior_id
-                    LEFT JOIN {s}.request_context c ON c.behavior_id=k.behavior_id
-                    UNION ALL SELECT k.behavior_id,p.state,NULL,NULL,p.content_hash,0::bigint,p.status,c.context FROM compact_keys k
-                    CROSS JOIN LATERAL(SELECT * FROM {s}.pending_requests p WHERE p.behavior_id=k.behavior_id LIMIT 1) p
-                    LEFT JOIN {s}.request_context c ON c.behavior_id=k.behavior_id"""
-                ).fetchall()
-            }
+            old = {}
+            # Each FETCH has its own statement deadline and at most 128 rows;
+            # do not return all retained JSON states in one timed statement.
+            if progress:
+                progress(phase="existing_lookup", loaded=0, requests=len(keyed))
+            with self.conn.cursor(name="compact_existing_states") as cur:
+                cur.itersize = EXISTING_FETCH_ROWS
+                cur.execute(existing_state_sql(s))
+                loaded = 0
+                for r in cur:
+                    old[r["behavior_id"]] = r
+                    loaded += 1
+                    if progress and loaded % EXISTING_FETCH_ROWS == 0:
+                        progress(phase="existing_lookup", loaded=loaded, requests=len(keyed))
+            if progress:
+                progress(phase="existing_lookup", loaded=loaded, requests=len(keyed))
             times['existing_lookup_seconds'] = time.monotonic() - detail_phase
             detail_phase = time.monotonic()
             tombstones = {
                 r["behavior_id"]
                 for r in self.conn.execute(
-                    f"""SELECT e.behavior_id FROM {s}.expired_fragments e
-                JOIN compact_keys k USING(behavior_id)"""
+                    f"""SELECT e.behavior_id FROM compact_keys k CROSS JOIN LATERAL
+                    (SELECT behavior_id FROM {s}.expired_fragments e
+                     WHERE e.behavior_id=k.behavior_id LIMIT 1) e"""
                 )
             }
             times['tombstone_lookup_seconds'] = time.monotonic() - detail_phase
@@ -331,6 +359,8 @@ class Store:
                     )
                 )
             times["merge_features_seconds"] = time.monotonic() - phase
+            if progress:
+                progress(phase="merged_features", changed=len(changed), requests=len(keyed))
             phase = time.monotonic()
             detail_phase = time.monotonic()
             self.conn.execute(
@@ -492,6 +522,8 @@ class Store:
             if history_job is not None:
                 from .history import advance_publication
                 advance_publication(self, history_job, end, source_records, not bool(existed), now)
+            if progress:
+                progress(phase="before_commit", changed=len(changed), requests=len(keyed))
             if fault:
                 fault("before_commit")
             phase = time.monotonic()
