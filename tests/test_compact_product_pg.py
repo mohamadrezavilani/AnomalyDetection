@@ -165,6 +165,19 @@ class CompactProductPostgresTests(unittest.TestCase):
         self.assertEqual(finding['method'],'repeated_target')
         self.assertEqual(finding['result']['most_frequent_count'],10)
         self.assertEqual(finding['result']['distinct_targets'],4)
+        client = create_app(self.config,self.database,'test').test_client()
+        for url in ('/incidents?date=2026-10-20&days=1',
+                    '/cases/'+cases[0]['case_id']+'?date=2026-10-20&days=1'):
+            response = client.get(url)
+            self.assertEqual(response.status_code,200,url)
+            html = response.get_data(as_text=True)
+            self.assertIn('class="key">001</bdi>',html)
+            self.assertNotIn('مشاهدهٔ پرونده‌های این خدمت',html)
+            if url.startswith('/cases/'):
+                self.assertIn('/feedback',html)
+                self.assertIn('درخواست‌های شاهد',html)
+                self.assertIn('MobileNumber',html)
+
 
     def test_inquiry_republication_repairs_old_projection_and_preserves_cursor_and_replay(self):
         from psycopg.types.json import Jsonb

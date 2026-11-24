@@ -67,6 +67,9 @@ def service_groups(cases):
             for finding in case['findings']:
                 if (finding['service']==service or case['domain']=='network_attempts'
                         and service in finding['result'].get('endpoints', ())):
+                    if ('preview' not in group or finding['start_ns']>group['preview']['start_ns']):
+                        group['preview']=finding
+                        group['preview_case_id']=case['case_id']
                     group['methods'].add(finding['method'])
                     group['last_ns']=max(group['last_ns'],finding['start_ns'])
     return sorted(groups.values(),key=lambda g:(g['last_ns'],g['service']),reverse=True)

@@ -1,0 +1,21 @@
+{% set r=f.result %}{% set ev=proof.get(f.finding_id,{}) %}
+<article class="card finding" id="f-{{ f.finding_id }}">
+<header class="finding-head"><h2>{{ f.method|method_label }}</h2>{% if f.service and f.service!='*' %}<code>{{ f.service }}</code>{% endif %}</header>
+<p class="muted ltr">{{ (r.get('period_start_ns') or f.start_ns)|tehran }} — {{ (r.get('period_end_ns') or r.get('window_end_ns') or f.start_ns+300000000000)|tehran }}</p>
+{% include 'finding_summary.html' %}
+{% if r.get('inquiry_pattern_policy') and f.method=='repeated_target' %}
+<p>قاعدهٔ تکرار موفق · حداقل ۳۰ درخواست، ۱۰ بار برای یک هدف و ۷۵٪ مراجعهٔ مجدد.{% if r.peer_count %} میانگین {{ r.peer_count }} نشست دیگر این خدمت {{ r.peer_mean_requests|metric }} درخواست بوده است.{% endif %}</p>
+{% endif %}
+{% if f.method=='invalid_session_attempts' and ev.ips %}{% if case %}<div class="actions"><a href="{{ url_for('case_detail',cid=case.case_id,date=date,days=days,service=service,page=page,context=f.finding_id,_anchor='f-'+f.finding_id) }}">رویدادهای هم‌زمان این IP</a> · {% endif %}<a href="{{ url_for('home',scope='all',ip=ev.ips[0],**ev.window) }}">همهٔ درخواست‌های IP در همین بازه ←</a>{% if case %}</div>{% endif %}
+{% if 'nearby' in ev %}<section><h3>آخرین درخواست‌های همان IP در این بازه</h3>
+{% if ev.nearby is none %}<p>دریافت رویدادهای هم‌زمان موقتاً ممکن نیست.</p>{% else %}<div class="table-wrap"><table><thead><tr><th>زمان تهران</th><th>API</th><th>نتیجه</th><th>RequestID</th></tr></thead><tbody>
+{% for w in ev.nearby %}<tr><td>{{ (w.observed_at_ns|tehran)[11:] }}</td><td><code>{{ w.api }}</code></td><td><code>{{ w.result_code or '—' }}</code></td><td><a href="{{ url_for('behavior',bid=w.behavior_id) }}"><code>{{ w.request_id }}</code></a></td></tr>{% else %}<tr><td colspan="4">درخواستی یافت نشد.</td></tr>{% endfor %}</tbody></table></div>{% endif %}</section>{% endif %}
+{% elif ev.ips %}<p>IP شاهد {% for ip in ev.ips[:8] %}<a class="key" href="{{ url_for('home',scope='all',ip=ip,**ev.window) }}">{{ ip }}</a> {% endfor %}</p>{% endif %}
+{% if ev.rows %}<h3>درخواست‌های شاهد</h3><div class="table-wrap"><table class="witnesses"><thead><tr><th>زمان تهران</th><th>API ثبت‌شده</th><th>نتیجه</th>{% if r.numeric_path and f.method in ('repeated_target','target_diversity') %}<th>{{ r.numeric_path }}</th>{% endif %}<th>RequestID</th></tr></thead><tbody>{% for w in ev.rows %}<tr><td><time>{{ (w.at|tehran)[11:] }}</time></td><td><code>{{ w.api }}</code>{% if w.service and w.api!=w.service %}<br><code>{{ w.service }}</code>{% endif %}</td><td><code>{{ w.code or '—' }}</code></td>{% if r.numeric_path and f.method in ('repeated_target','target_diversity') %}<td><bdi>{{ w.target if w.target is not none else '—' }}</bdi></td>{% endif %}<td><a href="{{ url_for('behavior',bid=w.bid) }}"><code>{{ w.request_id }}</code></a></td></tr>{% endfor %}</tbody></table></div>
+{% elif r.evidence %}<p>درخواست‌های ثبت‌شدهٔ شاهد</p>{% for bid in r.evidence %}<a href="{{ url_for('behavior',bid=bid) }}">شاهد {{ loop.index }}</a> {% endfor %}{% endif %}
+{% if csrf and f.revision %}<form class="verdict" method="post" action="{{ url_for('feedback',fid=f.finding_id) }}">
+<input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ f.revision }}">
+{% if case %}<input type="hidden" name="case_view" value="1"><input type="hidden" name="date" value="{{ date }}"><input type="hidden" name="days" value="{{ days }}">{% endif %}
+<label>نظر بررسی‌کننده <select name="verdict">{% for val,label in [('UNSURE','نیازمند بررسی'),('CONFIRMED','تأیید مورد'),('FALSE_POSITIVE','مثبت کاذب')] %}<option value="{{ val }}" {% if val==f.verdict %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+<label>یادداشت <input name="note" maxlength="2000" placeholder="اختیاری"></label><button>ثبت نظر</button></form>{% endif %}
+</article>

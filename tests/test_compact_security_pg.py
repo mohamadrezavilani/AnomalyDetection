@@ -41,6 +41,11 @@ class SecurityPostgresTests(unittest.TestCase):
             response=client.get('/cases/'+case['case_id']+'?date=2026-10-20&days=1')
             self.assertEqual(response.status_code,200)
             finding=case['findings'][0]
+            if case['domain']=='network_attempts':
+                html=response.get_data(as_text=True)
+                self.assertIn('رویدادهای هم‌زمان این IP',html)
+                self.assertIn('G00002',html)
+                self.assertIn('/feedback',html)
             self.db.conn.execute(f'INSERT INTO {self.config.ad_schema}.feedback(finding_id,finding_revision,verdict,note,recorded_at_ns) VALUES(%s,%s,%s,%s,%s)',
                                  (finding['finding_id'],finding['revision'],'FALSE_POSITIVE','fixture',1))
         self.assertFalse(case_selection.select(self.db.conn,self.config,'test',T,T+FIVE)[0])
