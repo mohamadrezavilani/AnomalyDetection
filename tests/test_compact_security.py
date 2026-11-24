@@ -6,7 +6,7 @@ from compact_behavior import context, security
 from compact_behavior.extract import materialize, iso
 from compact_ad.engine import summarize, evaluate
 from compact_ad.security import Aggregates
-from compact_product.cases import select_cases
+from compact_product.cases import select_cases, service_groups
 from tests.test_compact_extract import row, extract, T
 
 
@@ -61,6 +61,11 @@ class SecurityContractTests(unittest.TestCase):
         c=select_cases(case_rows(values))[0]
         self.assertEqual(c['domain'],'network_attempts')
         self.assertIsNone(c['session_id'])
+        groups=service_groups([c])
+        self.assertEqual(groups[0]['service'],'Services.v1/InvoiceRegister')
+        self.assertIn('invalid_session_attempts',groups[0]['methods'])
+        self.assertTrue(groups[0]['network'])
+        self.assertFalse(groups[0]['health'])
         self.assertNotIn('192.0.2.1',str(summary))
         self.assertNotIn('expired-',str(summary))
 

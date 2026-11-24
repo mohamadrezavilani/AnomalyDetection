@@ -35,6 +35,8 @@ class SecurityPostgresTests(unittest.TestCase):
         self.assertFalse(truncated)
         self.assertEqual({c['domain'] for c in cases},{'session','network_attempts'})
         client=create_app(self.config,self.database,'test').test_client()
+        landing=client.get('/incidents?date=2026-10-20&days=1').get_data(as_text=True)
+        self.assertIn('تلاش پرتکرار با نشست نامعتبر',landing)
         for case in cases:
             response=client.get('/cases/'+case['case_id']+'?date=2026-10-20&days=1')
             self.assertEqual(response.status_code,200)

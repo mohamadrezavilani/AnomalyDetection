@@ -62,8 +62,10 @@ def service_groups(cases):
             group['cases'].add(case['case_id'])
             if case['session_id']:group['sessions'].add(case['session_id'])
             elif case['domain']=='service_health':group['health']=True
+            if case['domain']=='network_attempts':group['network']=True
             for finding in case['findings']:
-                if finding['service']==service:
+                if (finding['service']==service or case['domain']=='network_attempts'
+                        and service in finding['result'].get('endpoints', ())):
                     group['methods'].add(finding['method'])
                     group['last_ns']=max(group['last_ns'],finding['start_ns'])
     return sorted(groups.values(),key=lambda g:(g['last_ns'],g['service']),reverse=True)
@@ -144,7 +146,9 @@ def select_cases(rows):
         c=cases.setdefault(key,dict(case_id=digest([CASE_ID_NAMESPACE,*key])[:32],domain=domain,
             session_id=row.get('session_id'),services=set(),methods=set(),reasons=set(),findings=[],
             first_ns=row['start_ns'],last_ns=row['start_ns']))
-        c['findings'].append(row);c['services'].add(row['service']);c['methods'].add(row['method'])
+        c['findings'].append(row)
+        c['services'].update(row['result'].get('endpoints') or ['*']) if network else c['services'].add(row['service'])
+        c['methods'].add(row['method'])
         c['reasons'].update(reasons[fid]);c['first_ns']=min(c['first_ns'],row['start_ns']);c['last_ns']=max(c['last_ns'],row['start_ns'])
     for c in cases.values():
         for k in ('services','methods','reasons'):c[k]=sorted(c[k])
