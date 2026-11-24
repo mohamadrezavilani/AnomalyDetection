@@ -264,6 +264,8 @@ class Store:
                 else set()
             )
             quality = Counter()
+            from .statistics import PacketStatistics
+            packet_statistics = PacketStatistics()
             inserted = updated = unchanged = 0
             active_delta = expired_delta = 0
             for key, incoming in keyed.items():
@@ -285,6 +287,11 @@ class Store:
                         set(state["issues"] + ["prior_fragments_expired"])
                     )
                 body = materialize(stream, state, context=merged_context)
+                # Reuse the materialization only when it represents this input
+                # packet too. A late fragment's packet can differ from the
+                # durable merged behavior and must retain its own statistics.
+                packet_statistics.observe(body if state is incoming or state == incoming
+                                          else materialize(stream, incoming))
                 if body is None:
                     signature = digest(state)
                     if not previous:
@@ -538,6 +545,7 @@ class Store:
             fault("after_commit")
         return dict(
             status="COMPACT_WINDOW_COMMITTED",
+            packet_statistics=packet_statistics.result(),
             fresh_publication=not bool(existed),
             start_ns=start,
             end_ns=end,

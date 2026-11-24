@@ -20,7 +20,9 @@ def signature_without_policy_stamp(body,state,digest):
         raise ValueError('unreviewed_benchmark_policy')
     if 'inquiry_subjects_v1' in normalized['features']:
         # The fixed WaterBillInquiry fixture carries precisely this single identifier.
-        if normalized['features'].pop('inquiry_subjects_v1') != {'WaterBillID': digest('123')}:
+        subjects=normalized['features'].pop('inquiry_subjects_v1')
+        unavailable=(subjects=={} and not normalized['features'].get('input_feature_eligibility',{}).get('targets'))
+        if subjects != {'WaterBillID': digest('123')} and not unavailable:
             raise ValueError('benchmark_inquiry_subject_mismatch')
     # Owner confirmed ExecutionTime is milliseconds on 2026-11-22. Only these
     # two provenance constants may differ; the measured value remains hashed.

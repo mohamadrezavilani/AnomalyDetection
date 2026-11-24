@@ -5,10 +5,10 @@ from pathlib import Path
 import time
 
 from compact_ad.inquiry_patterns import POLICY
+from compact_ad.inquiry_breadth import POLICY as BREADTH_POLICY
 from compact_behavior import FIVE
-from compact_behavior.__main__ import measure_window, notice
+from compact_behavior.__main__ import notice
 from compact_behavior.extract import instant
-from compact_behavior.source import ElasticWindow
 from compact_behavior.store import Store, stream_lock
 from compact_product import case_selection
 from compact_product.config import load
@@ -82,33 +82,38 @@ def main():
         with db.conn.transaction():
             db.conn.execute('SET TRANSACTION READ ONLY')
             db.conn.execute("SET LOCAL statement_timeout='10s'")
-            rows = db.conn.execute(f"""SELECT method,result->>'reason' AS reason,
+            rows = db.conn.execute(f"""SELECT finding_id,method,result->>'reason' AS reason,
                 result->'requests' AS requests,result->'distinct_targets' AS distinct_targets,
                 result->'most_frequent_count' AS most_frequent_count,
-                ({case_selection.publishable(cfg)}) AS current_for_review
+                ({case_selection.publishable(cfg)}) AS current_for_review,
+                (SELECT v.verdict FROM {cfg.ad_schema}.feedback v WHERE v.finding_id=f.finding_id
+                    AND v.finding_revision=f.revision ORDER BY feedback_id DESC LIMIT 1) AS verdict,
+                (SELECT r.timing_confirmed_revision=r.revision FROM {cfg.ad_schema}.window_results r
+                    WHERE r.stream_id=f.stream_id AND r.start_ns=f.start_ns) AS timing_confirmed
                 FROM {cfg.ad_schema}.findings f WHERE stream_id=%s AND start_ns=%s
                 AND f.status='ANOMALY' AND service=%s AND session_id=%s AND result->>'numeric_path'=%s
-                AND result->>'inquiry_pattern_policy'=%s""",
-                (*case_selection.eligible_args(),stream,start,args.service,anchor['session_id'],args.axis,POLICY)).fetchall()
+                AND (result->>'inquiry_pattern_policy'=%s OR result->>'inquiry_breadth_policy'=%s)""",
+                (*case_selection.eligible_args(),stream,start,args.service,anchor['session_id'],args.axis,POLICY,BREADTH_POLICY)).fetchall()
+            selected,_,truncated=case_selection.select(db.conn,cfg,stream,start,start+FIVE)
+            visible={f['finding_id'] for c in selected for f in c['findings']}
+            for row in rows:row['current_for_review']=bool(row['current_for_review'] and row['finding_id'] in visible)
+        human_rejected=bool(rows and all(r['verdict']=='FALSE_POSITIVE' for r in rows))
+        ready=any(r['current_for_review'] for r in rows)
+        review_state=('VISIBLE_OPERATOR_CASE' if ready else 'REJECTED_BY_REVIEWER' if human_rejected
+            else 'WAITING_FOR_TIMING_CONFIRMATION' if rows and any(r['timing_confirmed'] is False for r in rows)
+            else 'NEEDS_REANALYSIS')
         notice('INQUIRY_CASE_OBSERVED', stored=result['stored'], reconstructed=result['retained_reconstruction'],
-               findings=rows, database_modified=False)
-        if not args.apply or rows:
+               findings=rows, review_state=review_state,selection_truncated=truncated,database_modified=False)
+        if not args.apply or ready or human_rejected:
             return 0
-        if not result['retained_reconstruction']['distinct_is_exact']:
-            raise ValueError('complete_reconstructable_session_required')
+        if not result['retained_reconstruction']['covered']:
+            raise ValueError('no_reconstructable_inquiry_subjects')
         package = verify()['source_sha256']
         stage = 'CHECKING_INSTALLED_WRITERS'
         writers(db, package)
-        if not result['stored']['distinct_is_exact']:
-            source = ElasticWindow(settings['ELASTICSEARCH'], start, start+FIVE,
-                page_size=settings['ELASTICSEARCH'].get('compact_page_size',500),budget=cfg.ingest_budget_seconds)
-            target = ExistingInquiryWindow(db,anchor['request_id'],start,package)
-            stage = 'READING_AND_REPUBLISHING_ONE_WINDOW'
-            measure_window(target,stream,source,progress=lambda **kw: notice('READING_ONE_INQUIRY_WINDOW',**kw))
-            stage = 'VERIFYING_REPUBLISHED_COVERAGE'
-            after, _ = review(db,stream,args.witness,args.service,args.axis)
-            if not after['stored']['distinct_is_exact'] or after['stored'] != after['retained_reconstruction']:
-                raise ValueError('source_republished_verify_current_coverage')
+        # The analysis reader reconstructs legacy subjects from retained
+        # same-request evidence. A stale projection needs one AD job, not an
+        # Elasticsearch replay of the entire source window.
         stage = 'SUBMITTING_WINDOW_TO_AD'
         with db.conn.transaction():
             db.conn.execute("SET LOCAL lock_timeout='10s'")
@@ -119,7 +124,8 @@ def main():
                 SET version=q.version+1,updated_at_ns=excluded.updated_at_ns WHERE q.version=q.processed_version""",
                 (stream,start,time.time_ns()))
         reanalysis_requested = True
-        notice('INQUIRY_WINDOW_SUBMITTED_TO_AD', windows=1, from_utc=result['from_utc'])
+        notice('INQUIRY_WINDOW_SUBMITTED_TO_AD', windows=1, from_utc=result['from_utc'],
+               review_state='REANALYSIS_PENDING',database_modified=True)
     except Exception as exc:
         notice('INQUIRY_CASE_REFRESH_INCOMPLETE', stage=stage,
                failure_type=type(exc).__name__, sqlstate=getattr(exc, 'sqlstate', None),

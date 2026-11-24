@@ -7,8 +7,9 @@ from compact_behavior.extract import digest
 
 from compact_ad.inquiry_patterns import POLICY as INQUIRY_BURST
 from compact_ad.security import POLICY as SECURITY_POLICY
+from compact_ad.inquiry_breadth import POLICY as BREADTH_POLICY
 
-POLICY = 'qualified-review-7'
+POLICY = 'qualified-review-8'
 CASE_ID_NAMESPACE = 'qualified-review-4'  # Existing case URLs identify the session/service.
 LIMIT = 10000
 CONTEXT_METHODS = {'isolation_forest', 'repeated_target'}
@@ -87,6 +88,13 @@ def select_cases(rows):
     for row in rows:
         if row.get('verdict')=='CONFIRMED':accept([row],'HUMAN_CONFIRMED')
         r=row['result']
+        if (row.get('session_id') and row['method']=='target_diversity'
+                and r.get('inquiry_breadth_policy')==BREADTH_POLICY and r.get('single_signal_review_eligible') is True
+                and r.get('subject_policy')==inquiry.POLICY
+                and r.get('numeric_path') in {axis for axis,_ in inquiry.ROUTES.get(row['service'],())}
+                and r.get('requests',0)>=r.get('covered_requests',0)>=r.get('distinct_targets',0)>=10
+                and len(set(r.get('evidence') or []))>=3):
+            accept([row],'ENUMERATED_REQUESTED_TARGETS')
         if (row['method'] in ('access_denied_attempts', 'invalid_session_attempts')
                 and r.get('security_policy') == SECURITY_POLICY
                 and r.get('single_signal_review_eligible') is True
@@ -161,6 +169,7 @@ def select_cases(rows):
 
 
 REASONS={
+ 'ENUMERATED_REQUESTED_TARGETS':'یک نشست در بازهٔ کوتاه هدف‌های متفاوتی را برای یک خدمت درخواست کرده است؛ موفق، ناموفق و نامعلوم بودن پاسخ جدا نمایش داده می‌شود.',
  'REPEATED_ACCESS_DENIALS':'در پنج دقیقه، تلاش‌های معتبر و پرتکرار برای خدمت بدون مجوز ثبت شده است؛ مجوز و تکرارهای برنامه باید بررسی شوند.',
  'REPEATED_INVALID_SESSION_ATTEMPTS':'از یک IP مشاهده‌شده، تلاش‌های پرتکرار با نشست نامعتبر ثبت شده است. نشست منقضی، خطای برنامه و IP مشترک هم ممکن‌اند؛ حدس‌زدن توکن اثبات نشده است.',
  'REPEATED_VERIFIED_INQUIRIES':'یک نشست در پنج دقیقه بارها با ورودی‌های یکسان استعلام موفق گرفته است.',

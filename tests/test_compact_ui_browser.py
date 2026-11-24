@@ -34,10 +34,20 @@ class CompactUiBrowserTests(unittest.TestCase):
         from tests.test_compact_security import attempts, results, case_rows
         _,security_results=results(attempts()+attempts('invalid_session',30))
         signals.extend(case_rows(security_results))
+        from tests.test_compact_audit35 import inquiry_rows
+        from tests.test_compact_extract import extract, T
+        from compact_behavior import FIVE
+        from compact_behavior.extract import materialize
+        from compact_ad.engine import summarize, evaluate
+        summary,services,actors=summarize([materialize('preview',s) for s in extract(inquiry_rows(12,unknown_last=True,outcome='mixed')).values()],cutoff_ns=T+FIVE)
+        breadth_results=evaluate(T,summary,services,actors,[])
+        extra=case_rows([r for r in breadth_results if r.get('inquiry_breadth_policy')])
+        for r in extra:r['finding_id']='breadth-'+r['finding_id']
+        signals.extend(extra)
         selected=select_cases(signals)
         with app.test_request_context('/incidents?date=2026-11-22'):
             cases=render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',rows=selected,
-                date='2026-11-22',page=1,has_next=False,case_count=3,signal_count=4,truncated=False,reasons=REASONS)
+                date='2026-11-22',page=1,has_next=False,case_count=4,signal_count=5,truncated=False,reasons=REASONS)
         with app.test_request_context('/cases/synthetic?date=2026-11-22'):
             network=render_template('case.html',title='بررسی تلاش‌ها',case=next(c for c in selected if c['domain']=='network_attempts'),
                 date='2026-11-22',days=1,truncated=False,reasons=REASONS,ips=['192.0.2.1'],ip_range={})
@@ -70,7 +80,8 @@ class CompactUiBrowserTests(unittest.TestCase):
                         if name=='cases':
                             self.assertEqual(page.locator('nav[aria-label="نمای آنومالی‌ها"] a').count(),3)
                             self.assertTrue(page.get_by_label('تا روز (میلادی، تهران)').is_visible())
-                            self.assertEqual(page.locator('a[href^="/cases/"]').count(),3)
+                            self.assertEqual(page.locator('a[href^="/cases/"]').count(),4)
+                            self.assertIn('حداقل 12 هدف',page.locator('body').inner_text())
                             self.assertTrue(page.get_by_role('link',name='سیگنال‌های ضعیف و بررسی تخصصی ←').is_visible())
                             self.assertIn('تلاش‌های یک IP',page.locator('body').inner_text())
                         if name=='network':

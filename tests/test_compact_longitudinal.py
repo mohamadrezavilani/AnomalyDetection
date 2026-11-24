@@ -171,6 +171,32 @@ class LongitudinalPostgresTests(unittest.TestCase):
         self.assertEqual(result['state'],'READY')
         return self.db.conn.execute(f'SELECT * FROM {self.a}.findings').fetchone()
 
+    def test_old_limit_eight_thousand_actors_is_retried_by_indexed_evaluator(self):
+        self.seed()
+        for day in range(3):
+            profile={str(i):dict(count=7,days=1,invalid=False,evidence=['a','b','c'],
+                fields={'WaterBillID':dict(tokens=[digest([i,j]) for j in range(day*7,day*7+7)],covered=7,overflow=False)}) for i in range(8000)}
+            self.db.conn.execute(f'''UPDATE {self.a}.long_days SET payload=%s,signature=%s
+                WHERE stream_id='test' AND day_ns=%s''',(long.pack(profile),digest(profile),DAY+day*long.DAY))
+        self.db.conn.execute(f"UPDATE {self.a}.long_runs SET state='LIMIT',retry_ns=0,details='{{}}'::jsonb")
+        result=long_store.run_period(self.db,'test')
+        self.assertEqual(result['state'],'READY')
+        self.assertEqual(result['actors'],8000)
+
+    def test_comparison_cursor_is_fenced_and_publishes_only_after_completion(self):
+        from unittest.mock import patch
+        self.seed()
+        original=long.evaluate
+        def pause(actors,**kwargs):
+            values=original(actors,**kwargs)
+            raise long.ComparisonPending(len(actors),values,kwargs['diagnostics'])
+        with patch.object(long,'evaluate',side_effect=pause):
+            self.assertEqual(long_store.run_period(self.db,'test')['state'],'WAITING')
+        self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {self.a}.findings').fetchone()['n'],0)
+        self.db.conn.execute(f'UPDATE {self.a}.long_runs SET retry_ns=0')
+        self.assertEqual(long_store.run_period(self.db,'test')['state'],'READY')
+        self.assertEqual(self.db.conn.execute(f'SELECT count(*) AS n FROM {self.a}.findings').fetchone()['n'],1)
+
     def test_day_folding_source_fences_idempotency_feedback_and_web(self):
         from compact_product.web import create_app
         self.seed();finding=self.ready();self.assertIsNotNone(finding)

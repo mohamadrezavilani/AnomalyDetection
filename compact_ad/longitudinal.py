@@ -111,90 +111,127 @@ def merge(chunks, *, active_days=False):
     return actors
 
 
-def evaluate(actors, *, service, end, span, signature, diagnostics=None):
-    """Contemporaneous peer comparison at a completed event-time cutoff.
+EVALUATION_POLICY = 'indexed-peer-distribution-1'
 
-    A conservative rank and effect-size rule, not a fraud probability. Peers
-    share service, typed field, span, activity days and comparable request
-    volume. A single well-supported content reason can open a review case.
+
+class ComparisonPending(Exception):
+    def __init__(self, resume_index, results, diagnostics):
+        self.resume_index, self.results, self.diagnostics = resume_index, results, diagnostics
+
+
+def weighted_median(histogram):
+    n=sum(histogram.values())
+    positions=((n-1)//2,n//2)
+    found=[];seen=0
+    for value,count in sorted(histogram.items()):
+        if count<=0:continue
+        for position in positions[len(found):]:
+            if seen<=position<seen+count:found.append(value)
+            else:break
+        seen+=count
+        if len(found)==2:break
+    return found[0] if n%2 else (found[0]+found[1])/2
+
+
+def evaluate(actors, *, service, end, span, signature, diagnostics=None, resume_index=0, budget_seconds=5):
+    """Indexed volume ranges and cached weighted leave-one-out distributions.
+
+    The distribution is identical to the former expanded peer list. No peer
+    identity list is rebuilt for each actor. A soft deadline yields a fenced
+    actor cursor; publication waits until the whole comparison finishes.
     """
-    results = []
-    diagnostics = diagnostics if diagnostics is not None else {}
-    diagnostics.update(eligible_comparisons=0,insufficient_peer_comparisons=0,
-                       censored_peer_comparisons=0)
-    began = time.monotonic()
-    # Build sorted volume indexes once; avoid all-actor squared comparisons.
-    import bisect
-    indexes = defaultdict(list)
-    for number, (session, a) in enumerate(actors.items()):
-        if number % 100 == 0 and time.monotonic()-began > 5:
-            raise CapacityExceeded('longitudinal_comparison_time_budget')
-        if a["invalid"]:
-            continue
-        for path, field in a["fields"].items():
-            if field["covered"] == a["count"]:
-                indexes[(path, a["days"])].append((a["count"], session, len(field["tokens"]),field['overflow']))
-    for values in indexes.values():
-        values.sort()
-    # Rank correction is over tested typed fields/spans, not activity buckets.
-    comparisons = max(1, len({path for path, _ in indexes})) * len(SPANS)
-    for number, (session, a) in enumerate(actors.items()):
-        if number % 100 == 0 and time.monotonic()-began > 5:
-            raise CapacityExceeded('longitudinal_comparison_time_budget')
-        if a["invalid"] or a["days"] < (3 if span <= 7 else 7):
-            continue
-        for path, field in a["fields"].items():
-            if field["covered"] != a["count"]:
-                continue
-            observed = len(field["tokens"]) + int(field["overflow"])
-            if observed <= 20:
-                continue
-            peers = []
-            for days in range(max(1, a["days"] - 1), a["days"] + 2):
-                values = indexes.get((path, days), [])
-                left = bisect.bisect_left(values, (a["count"] / 2, "", -1))
-                right = bisect.bisect_right(values, (a["count"] * 2, chr(0x10ffff), 10**20))
-                peers.extend((v,limited) for _, identity, v, limited in values[left:right] if identity != session)
-            basis='VOLUME_AND_ACTIVITY_MATCHED'
-            if len(peers)<100:
-                # Conditioning only on an already-unusual volume/activity can
-                # leave the very crawler of interest without any peers. Fall
-                # back explicitly to the service population, scaling distinct
-                # breadth to the target's active-day exposure. This is a review
-                # model, not an assertion that the peers had identical usage.
-                basis='SERVICE_POPULATION_ACTIVE_DAY_SCALED'
-                peers=[(v*a['days']/days,limited)
-                       for (candidate_path,days),values in indexes.items() if candidate_path==path
-                       for _,identity,v,limited in values if identity!=session]
-            if any(limited for _,limited in peers):
-                diagnostics['censored_peer_comparisons']+=1
-                continue
-            peers=[v for v,_ in peers]
-            if len(peers) < 100:
-                diagnostics['insufficient_peer_comparisons']+=1
+    from bisect import bisect_left, bisect_right
+    from collections import Counter
+    from functools import lru_cache
+    import math
+    results=[]
+    diagnostics=diagnostics if diagnostics is not None else {}
+    diagnostics.update(eligible_comparisons=0,insufficient_peer_comparisons=0,censored_peer_comparisons=0)
+    began=time.monotonic()
+    indexes=defaultdict(lambda:defaultdict(list))
+    censored=defaultdict(list)
+    for (session,a) in actors.items():
+        if a['invalid']:continue
+        for path,field in a['fields'].items():
+            if field['covered']==a['count']:
+                indexes[(path,a['days'])][len(field['tokens'])].append(a['count'])
+                if field['overflow']:censored[(path,a['days'])].append(a['count'])
+    for widths in indexes.values():
+        for counts in widths.values():counts.sort()
+    for counts in censored.values():counts.sort()
+    comparisons=max(1,len({path for path,_ in indexes}))*len(SPANS)
+
+    @lru_cache(maxsize=256)
+    def matched(path,days,count):
+        hist=Counter();limited=0
+        for active in range(max(1,days-1),days+2):
+            for width,counts in indexes.get((path,active),{}).items():
+                n=bisect_right(counts,count*2)-bisect_left(counts,count/2)
+                if n:hist[width]+=n
+            values=censored.get((path,active),())
+            limited+=bisect_right(values,count*2)-bisect_left(values,count/2)
+        return hist,limited
+
+    @lru_cache(maxsize=32)
+    def population(path,days):
+        hist=Counter();limited=0
+        for (candidate,active),widths in indexes.items():
+            if candidate==path:
+                for width,counts in widths.items():hist[width*days/active]+=len(counts)
+                limited+=len(censored.get((candidate,active),()))
+        return hist,limited
+
+    @lru_cache(maxsize=512)
+    def distribution(path,days,count,width,overflow):
+        hist,limited=matched(path,days,count)
+        basis='VOLUME_AND_ACTIVITY_MATCHED'
+        if sum(hist.values())-1<100:
+            hist,limited=population(path,days)
+            basis='SERVICE_POPULATION_ACTIVE_DAY_SCALED'
+        hist=hist.copy();hist[width]-=1
+        if hist[width]==0:del hist[width]
+        limited-=int(overflow)
+        n=sum(hist.values())
+        if limited:return None,'censored'
+        if n<100:return None,'insufficient'
+        median=weighted_median(hist)
+        deviations=Counter()
+        for value,number in hist.items():deviations[abs(value-median)]+=number
+        mad=weighted_median(deviations)
+        maximum=max(hist)
+        limit=max(20,5,median*3,median+6*1.4826*mad+4*math.sqrt(max(1,median)),maximum+1)
+        values=sorted(hist);prefix=[0]
+        for value in values:prefix.append(prefix[-1]+hist[value])
+        return (n,median,maximum,limit,values,prefix,basis),None
+
+    ordered=sorted(actors.items())
+    for number,(session,a) in enumerate(ordered):
+        if number<resume_index:continue
+        if number>resume_index and number%100==0 and time.monotonic()-began>budget_seconds:
+            raise ComparisonPending(number,results,dict(diagnostics))
+        if a['invalid'] or a['days']<(3 if span<=7 else 7):continue
+        for path,field in sorted(a['fields'].items()):
+            if field['covered']!=a['count']:continue
+            observed=len(field['tokens'])+int(field['overflow'])
+            if observed<=20:continue
+            stats,missing=distribution(path,a['days'],a['count'],len(field['tokens']),field['overflow'])
+            if missing:
+                diagnostics['censored_peer_comparisons' if missing=='censored' else 'insufficient_peer_comparisons']+=1
                 continue
             diagnostics['eligible_comparisons']+=1
-            limit = max(20, upper(peers), max(peers) + 1)
-            rank = min(1, comparisons * (1 + sum(v >= observed for v in peers)) / (1 + len(peers)))
-            if observed <= limit or rank > .05:
-                continue
-            candidate = dict(
-                method=METHOD, service=service, session_id=session, status="ANOMALY",
-                observed=observed, observed_is_lower_bound=field["overflow"],
-                baseline=statistics.median(peers), threshold=limit,
-                peer_count=len(peers), peer_max=max(peers), adjusted_tail_rank=rank,
-                peer_basis=basis,
-                comparisons=comparisons, active_days=a["days"], requests=a["count"],
-                numeric_path=path, horizon_days=span, period_start_ns=end-span*DAY,
-                period_end_ns=end, reference_windows=span*288,
-                reference_cutoff_ns=end, reference_signature=signature,
-                reference_policy="SAME_COMPLETED_PERIOD_TYPED_FIELD_VOLUME_ACTIVITY_PEERS",
-                model_version=VERSION, feature_version=FEATURES,
-                window_start_ns=end-FIVE, window_end_ns=end,
-                evidence=a["evidence"], single_signal_review_eligible=True,
-                reason="QUALIFIED_MULTI_DAY_TARGET_ENUMERATION",
-                next_action="تنوع شناسه‌ها و درخواست‌های شاهد را بررسی کنید؛ رتبهٔ آماری احتمال تخلف نیست.",
-            )
-            if len(set(candidate["evidence"])) >= 3:
-                results.append(candidate)
+            n,median,maximum,limit,values,prefix,basis=stats
+            tail=n-prefix[bisect_left(values,observed)]
+            rank=min(1,comparisons*(1+tail)/(1+n))
+            if observed<=limit or rank>.05:continue
+            candidate=dict(method=METHOD,service=service,session_id=session,status='ANOMALY',
+                observed=observed,observed_is_lower_bound=field['overflow'],baseline=median,threshold=limit,
+                peer_count=n,peer_max=maximum,adjusted_tail_rank=rank,peer_basis=basis,
+                comparisons=comparisons,active_days=a['days'],requests=a['count'],numeric_path=path,
+                horizon_days=span,period_start_ns=end-span*DAY,period_end_ns=end,reference_windows=span*288,
+                reference_cutoff_ns=end,reference_signature=signature,
+                reference_policy='SAME_COMPLETED_PERIOD_TYPED_FIELD_VOLUME_ACTIVITY_PEERS',
+                model_version=VERSION,feature_version=FEATURES,window_start_ns=end-FIVE,window_end_ns=end,
+                evidence=a['evidence'],single_signal_review_eligible=True,reason='QUALIFIED_MULTI_DAY_TARGET_ENUMERATION',
+                next_action='تنوع شناسه‌ها و درخواست‌های شاهد را بررسی کنید؛ رتبهٔ آماری احتمال تخلف نیست.')
+            if len(set(candidate['evidence']))>=3:results.append(candidate)
     return results

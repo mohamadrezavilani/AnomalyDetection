@@ -36,6 +36,8 @@ PROVIDERS = {
     postal.SERVICE: "ClientAyanCoInquiry.PostalCodeToAddress",
     "Services.v1/WaterBills": "ClientAyanCoInquiry.WaterBillInquiry",
     "Services.v1/GasBills": "ClientAyanCoInquiry.GasBillInquiry",
+    "Services.v2/GasBills": "ClientAyanCoInquiry.GasBillInquiry",
+    "Services.v1/ElectricBills": "ClientAyanCoInquiry.ElectricityBillInquiry",
     # PostPackagesStatusHandler.CallService invokes exactly this provider.
     "Services.v1/PostPackagesStatus": "ClientAyanCoInquiry.PostTrackingInquiry",
     # Reviewed CallService methods; OTP/login are prerequisites, not results.
@@ -817,9 +819,11 @@ def materialize(stream, state, *, context=None):
             body['features']['postal_cache_returned_at_ns'] = cache[0]['observed_at_ns']
         elif cache:
             body['quality'] = sorted(issues | {'postal_cache_result_unconfirmed'})
-    if service in inquiry.ROUTES and body['features']['input_feature_eligibility']['targets']:
-        matched = next(iter(iv.values()))
-        body['features'][inquiry.POLICY] = inquiry.subjects(service, api, input_basis, matched)
+    if service in inquiry.ROUTES:
+        body['features'][inquiry.POLICY] = {}
+        if body['features']['input_feature_eligibility']['targets']:
+            matched = next(iter(iv.values()))
+            body['features'][inquiry.POLICY] = inquiry.subjects(service, api, input_basis, matched)
     if (api == 'Services.v1/InvoiceRegister' and binding == 'UNRESOLVED_DISPATCH'
             and code == 'GR0004' and usable):
         actions = {v['value'] for v in state.get('dispatch', []) if v['kind']=='action'}

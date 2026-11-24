@@ -29,6 +29,8 @@ MEANINGS = {
     'gateway': 'درگاه واردشده معتبر یا تحت پوشش نیست.',
 }
 NOTES = {
+    'RightelMobileBillInquiry': 'MidTerm و FinalTerm شامل BillID، PaymentID، Amount و ExtraInfo هستند.',
+    'NajiServiceDrivingLicenseValidateInquiry': 'StatusCode: صفر فاقد گواهینامه، یک ممنوعیت رانندگی، دو اعتبار منقضی، سه دارای گواهینامه تا تاریخ اعلام‌شده است.',
     'TopUpProductReserve': 'رزرو محصول انجام می‌شود. کلید خرید برای مرحلهٔ بعد صادر می‌شود.',
     'DoesBillAlreadyPaid': 'مقدار Paid وضعیت پرداخت در همین سامانه را گزارش می‌کند.',
     'BillPaymentInquiry': 'نتیجه به درگاه‌های استعلام‌شده محدود است.',
@@ -62,13 +64,17 @@ def initialize(db, schema):
 def observed_contract(body, state):
     """Match a provider exchange to its exact path. Outer success and provider result remain independent."""
     from compact_behavior import inquiry
-    if state['parse_errors'] or state['issues'] or len(state['outputs']) != 1:
+    if state['issues']:
         return None
-    output = state['outputs'][0]
+    candidates = [o for o in state['outputs'] if o['path'] in BY_CLIENT]
+    if len(candidates) != 1:
+        return None
+    output = candidates[0]
     path = output['path']
     rule = BY_CLIENT.get(path)
     inputs = [i for i in state['inputs'] if i['path'] == path]
-    if (not rule or len(inputs) != 1 or output.get('observed_at_ns') is None
+    if (not rule or len(inputs) != 1 or any(e['path']==path for e in state['parse_errors'])
+            or output.get('observed_at_ns') is None
             or inputs[0].get('observed_at_ns') != output['observed_at_ns']):
         return None
     value = output.get('value')
