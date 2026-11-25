@@ -21,6 +21,9 @@ class SecurityPostgresTests(unittest.TestCase):
     def test_both_groups_reach_operator_and_feedback_without_source_replay(self):
         from psycopg.types.json import Jsonb
         raw=attempts()+attempts('invalid_session',30)
+        from compact_behavior.extract import iso
+        raw.append(dict(row('same-ip-success', 'N/A', path='Core.v2/DeviceRegister',
+                    at=iso(T+120*10**9)), IP='192.0.2.1'))
         self.publish(raw)
         # Simulate build-33 projections; the new analysis reads only retained
         # candidate payload/context primary keys, with no source write or rewind.
@@ -41,6 +44,18 @@ class SecurityPostgresTests(unittest.TestCase):
             response=client.get('/cases/'+case['case_id']+'?date=2026-10-20&days=1')
             self.assertEqual(response.status_code,200)
             finding=case['findings'][0]
+            if case['domain']=='network_attempts':
+                html=response.get_data(as_text=True)
+                self.assertIn('رویدادهای هم‌زمان این IP',html)
+                self.assertIn('G00002',html)
+                self.assertIn('/feedback',html)
+                self.assertNotIn('Core.v2/DeviceRegister',html)
+                from compact_product.search import prepare_index
+                prepare_index(self.db.conn,s)
+                related=client.get('/cases/'+case['case_id']+'?date=2026-10-20&days=1&context='+finding['finding_id'])
+                self.assertEqual(related.status_code,200)
+                self.assertIn('Core.v2/DeviceRegister',related.get_data(as_text=True))
+                self.assertEqual(finding['result']['observed'],30)
             self.db.conn.execute(f'INSERT INTO {self.config.ad_schema}.feedback(finding_id,finding_revision,verdict,note,recorded_at_ns) VALUES(%s,%s,%s,%s,%s)',
                                  (finding['finding_id'],finding['revision'],'FALSE_POSITIVE','fixture',1))
         self.assertFalse(case_selection.select(self.db.conn,self.config,'test',T,T+FIVE)[0])

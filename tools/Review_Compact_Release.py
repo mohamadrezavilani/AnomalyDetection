@@ -70,6 +70,9 @@ def snapshot(db,cfg,stream,baseline=None):
         'reference_pending_windows','analysis_timing_unconfirmed_windows','latest_received_end_ns',
         'latest_analyzed_end_ns','latest_analysis_timing_confirmed','latest_readiness','performance')
     return dict(observed_ns=now,observed_utc=datetime.fromtimestamp(now/1e9,timezone.utc).isoformat(),
+        operator_status_latency={k:value.get(k) for k in (
+            'analysis_processing_p95_seconds','analysis_latency_example','analysis_latency_samples',
+            'analysis_latency_p95_seconds','first_analysis_latency_p95_seconds')},
         **{k:value.get(k) for k in fields},roles={role:{k:r.get(k) for k in ('running','state','heartbeat_age_seconds','build','failure')}
             for role,r in value['roles'].items()},operator_cases=len(selected),operator_methods=dict(counts),
         selected_signals=signals,operator_selection_truncated=truncated,finding_samples=samples,

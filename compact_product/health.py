@@ -1,5 +1,6 @@
 """Indexed freshness and readiness, not full evidence/queue scans."""
 
+import math
 import time
 from compact_behavior import FIVE, FEATURES
 from compact_behavior.extract import Limits
@@ -79,6 +80,7 @@ def health(db, config, stream):
     ).fetchone()["n"]
     samples = db.execute(
         f"""SELECT GREATEST(0,(first_analyzed_ns-first_source_ns)/1e9::float) AS first_analysis_seconds,
+        start_ns,revision,analysis_seconds,
         GREATEST(0,(analyzed_at_ns-work_cause_ns)/1e9::float) AS revision_analysis_seconds
         FROM {a}.window_results WHERE stream_id=%s AND feature_version=%s AND model_version=%s AND first_analyzed_ns>0
         AND timing_confirmed_revision=revision ORDER BY analyzed_at_ns DESC LIMIT 288""",
@@ -90,7 +92,14 @@ def health(db, config, stream):
     ).fetchone()["n"]
     def p95(field):
         values = sorted(r[field] for r in samples)
-        return values[max(0, __import__("math").ceil(len(values) * 0.95) - 1)] if values else None
+        return values[max(0, math.ceil(len(values) * 0.95) - 1)] if values else None
+    latency_example = None
+    if samples:
+        ordered = sorted(samples,key=lambda row: row['revision_analysis_seconds'])
+        sample = ordered[math.ceil(.95*len(ordered))-1]
+        latency_example = dict(start_ns=sample['start_ns'],revision=sample['revision'],
+            processing_seconds=sample['analysis_seconds'],
+            outside_processing_seconds=max(0,sample['revision_analysis_seconds']-sample['analysis_seconds']))
     closed = (now - config.source_lag_seconds * 10**9) // FIVE * FIVE
     from .performance import recent
     prior_models = db.execute(f'''SELECT count(*) AS n FROM {a}.window_results
@@ -125,6 +134,8 @@ def health(db, config, stream):
         first_analysis_latency_p95_seconds=p95("first_analysis_seconds"),
         analysis_latency_scope="LATEST_REVISION_CAUSE_PRECOMMIT_TO_ANALYSIS_POSTCOMMIT; FIRST_ANALYSIS_REPORTED_SEPARATELY; INCLUDING_INSUFFICIENT_OR_INVALID; UNCONFIRMED_EXCLUDED",
         analysis_latency_samples=len(samples),
+        analysis_processing_p95_seconds=p95("analysis_seconds"),
+        analysis_latency_example=latency_example,
         latest_readiness=analyzed["readiness"] if analyzed else {},
         methods=METHODS,
         out_of_scope=OUT_OF_SCOPE,

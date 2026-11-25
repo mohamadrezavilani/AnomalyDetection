@@ -31,7 +31,7 @@ from .presentation import ROLES, data_note
 from .request_context import observed_context
 from compact_ad.methods import METHODS
 from compact_ad import MODEL
-from . import case_selection
+from . import case_selection, case_evidence
 from compact_ad import long_store, longitudinal
 from compact_behavior.services import meaningful_apis, operation_label, operation_role
 
@@ -91,6 +91,10 @@ def create_app(config, database, stream, *, secret=None):
             if isinstance(value, dict)
             else value
         )
+
+    @app.template_filter("seconds")
+    def seconds(value):
+        return f"{value:,.1f}" if isinstance(value, (int, float)) else "—"
 
     @app.template_filter("metric")
     def metric(value):
@@ -174,12 +178,9 @@ def create_app(config, database, stream, *, secret=None):
             cursor_args=[int(request.args['before']),request.args['id']]
         with connection() as db:
             value=health(db,config,stream) if request.path=='/status' else None
-            coverage=None;rows=[];code_definitions={}
+            rows=[];code_definitions={}
             if request.path=='/status':
-                value['postal_health'] = postal_health.report(db,config,stream)
                 value['longitudinal']=long_store.status(db,config.source_schema,config.ad_schema,stream)
-                coverage=db.execute(f"SELECT summary FROM {config.ad_schema}.window_results WHERE stream_id=%s AND start_ns=%s",
-                    (stream,value['latest_analyzed_end_ns']-FIVE if value['latest_analyzed_end_ns'] is not None else None)).fetchone()
             else:
                 join=''
                 if values['ip']:
@@ -200,7 +201,7 @@ def create_app(config, database, stream, *, secret=None):
                 before=rows[29]['observed_at_ns'],id=rows[29]['behavior_id'])
         return render_template('status.html' if request.path=='/status' else 'home.html',
             title='وضعیت پردازش' if request.path=='/status' else 'رفتارهای مشاهده‌شده',
-            health=value,code_definitions=code_definitions,rows=rows[:30],coverage=coverage['summary'] if coverage else {},
+            health=value,code_definitions=code_definitions,rows=rows[:30],
             scope=scope,filters=values,next_page=nxt)
 
     @app.get("/sessions")
@@ -256,6 +257,10 @@ def create_app(config, database, stream, *, secret=None):
             body = materialize(stream, row["state"])
             row['quality']=body['quality']
             code_definitions = definitions(db, config.source_schema, [row["result_code"]])
+            from compact_behavior.security import project
+            refusal = project(row['state'],row['collected_context'])
+            if refusal and not code_definitions.get(row['result_code']):
+                row['terminal_symbol'] = refusal['symbol']
             provider = provider_contracts.observed_contract(body, row["state"])
             if provider:
                 document, operation, code = provider
@@ -277,14 +282,13 @@ def create_app(config, database, stream, *, secret=None):
             "behavior.html", title="جزئیات رفتار", row=row, body=body, code_definitions=code_definitions, request_context=observed_context(row["state"], row.get("collected_context"))
         )
 
-    def case_rows():
+    def case_rows(db):
         try:
             days = int(request.args.get('days', '30'))
             day, start, end = case_selection.bounds(request.args.get('date'), days)
         except (ValueError, OverflowError):
             abort(400, description='تاریخ میلادی معتبر وارد کنید.')
-        with connection() as db:
-            selected, signals, truncated = case_selection.select(db, config, stream, start, end)
+        selected, signals, truncated = case_selection.select(db, config, stream, start, end)
         service = request.args.get('service')
         if service:
             selected = [case for case in selected if service in case['services']]
@@ -292,41 +296,59 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.get('/incidents')
     def incidents():
-        day,days,rows,signals,truncated=case_rows()
         tab=request.args.get('tab','services')
         if tab not in ('services','sessions','cases'):abort(400)
-        all_count=len(rows)
-        if tab=='sessions':rows=[c for c in rows if c['session_id']]
-        services=cases.service_groups(rows) if tab=='services' else []
-        items=services if tab=='services' else rows
+        page = page_number()
+        service = request.args.get('service','')
+        with connection() as db, db.transaction():
+            db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            day,days,rows,signals,truncated=case_rows(db)
+            if tab=='sessions':rows=[c for c in rows if c['session_id']]
+            items = cases.service_groups(rows) if tab=='services' else rows
+            visible = items[(page-1)*30:page*30]
+            previews = []
+            if tab=='services':
+                for group in visible:
+                    previews.append(group['preview'])
+            else:
+                for case in visible:
+                    case['preview'] = next((f for f in case['findings'] if not service or
+                        f['service']==service or service in f['result'].get('endpoints',())),case['findings'][0])
+                    previews.append(case['preview'])
+            proof=case_evidence.evidence(db,config.source_schema,stream,previews,per_finding=2)
+        return render_template('cases.html',title='پرونده‌های آنومالی',
+            rows=visible if tab!='services' else [],service_groups=visible if tab=='services' else [],
+            date=day,days=days,tab=tab,page=page,has_next=len(items)>page*30,
+            case_count=len(rows),signal_count=signals,truncated=truncated,proof=proof,selected_service=service)
+
+    def page_number():
         try:page=int(request.args.get('page','1'))
         except ValueError:abort(400)
         if not 1<=page<=1000:abort(400)
-        return render_template('cases.html',title='آنومالی‌های دارای شواهد تقویتی',
-            rows=rows[(page-1)*30:page*30],service_groups=services[(page-1)*30:page*30],
-            date=day,days=days,tab=tab,page=page,has_next=len(items)>page*30,
-            case_count=all_count,signal_count=signals,truncated=truncated,reasons=cases.REASONS,
-            selected_service=request.args.get('service',''))
+        return page
 
     @app.get('/cases/<cid>')
     def case_detail(cid):
         if not request.args.get('date'):abort(400)
-        day,days,rows,signals,truncated=case_rows()
-        selected=next((c for c in rows if c['case_id']==cid),None)
-        ips=[]
-        ip_range={}
-        if selected:
-            first=min(f['result'].get('period_start_ns',f['start_ns']) for f in selected['findings'])
-            last=max(f['result'].get('period_end_ns',f['start_ns']+FIVE) for f in selected['findings'])
-            ip_range={k:datetime.fromtimestamp(v/1e9,ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%dT%H:%M:%S')
-                      for k,v in [('from',first),('to',last)]}
-            witnesses=list(dict.fromkeys(b for f in selected['findings'][:30] for b in f['result'].get('evidence',[])))[:36]
-            with connection() as db:
-                contexts=db.execute(f'''SELECT context FROM {config.source_schema}.request_context
-                    WHERE behavior_id=ANY(%s) LIMIT 36''',(witnesses,)).fetchall()
-            ips=sorted({v['value'] for c in contexts for v in c['context'].get('values',{}).get('ip',[])})[:8]
-        return render_template('case.html',title='شواهد مورد',case=selected,date=day,days=days,ips=ips,ip_range=ip_range,
-            truncated=truncated,reasons=cases.REASONS)
+        page=page_number()
+        service=request.args.get('service','')
+        with connection() as db, db.transaction():
+            db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
+            day,days,rows,_,truncated=case_rows(db)
+            selected=next((c for c in rows if c['case_id']==cid),None)
+            findings=selected['findings'] if selected else []
+            if service:
+                findings=[f for f in findings if f['service']==service or service in f['result'].get('endpoints',())]
+            visible=findings[(page-1)*8:page*8]
+            proof=case_evidence.evidence(db,config.source_schema,stream,visible,per_finding=12)
+            related=request.args.get('context')
+            if related in proof and proof[related]['ips'] and selected['domain']=='network_attempts':
+                item=proof[related]
+                item['nearby']=case_evidence.nearby(db,config.source_schema,stream,item['ips'][0],item['window'])
+        session.setdefault('csrf',secrets.token_urlsafe(24))
+        return render_template('case.html',title='بررسی پرونده',case=selected,date=day,days=days,
+            visible=visible,page=page,has_next=len(findings)>page*8,service=service,
+            proof=proof,csrf=session['csrf'],truncated=truncated)
 
     @app.get("/signals")
     def signals():
@@ -383,7 +405,8 @@ def create_app(config, database, stream, *, secret=None):
 
     @app.get("/incidents/<fid>")
     def incident(fid):
-        with connection() as db:
+        with connection() as db, db.transaction():
+            db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
             finding = db.execute(
                 f"SELECT * FROM {config.ad_schema}.findings WHERE stream_id=%s AND finding_id=%s",
                 (stream, fid),
@@ -402,9 +425,10 @@ def create_app(config, database, stream, *, secret=None):
                 f"SELECT * FROM {config.ad_schema}.finding_history WHERE finding_id=%s ORDER BY revision DESC LIMIT 30",
                 (fid,),
             ).fetchall()
+            proof=case_evidence.evidence(db,config.source_schema,stream,[finding],per_finding=12) if ready else {}
         session.setdefault("csrf", secrets.token_urlsafe(24))
         return render_template(
-            "incident.html",
+            "incident.html", proof=proof,
             title="بررسی مورد",
             finding=finding,
             ready=ready,
@@ -445,6 +469,8 @@ def create_app(config, database, stream, *, secret=None):
                 VALUES(%s,%s,%s,%s,%s)""",
                 (fid, reviewed_revision, verdict, note, time.time_ns()),
             )
+        if request.form.get('case_view')=='1':
+            return redirect(url_for('incidents',tab='cases',date=request.form.get('date'),days=request.form.get('days')))
         return redirect(url_for("incident", fid=fid))
 
     return app

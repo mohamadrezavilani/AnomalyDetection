@@ -1,0 +1,22 @@
+{% set r=f.result %}
+{% if f.method=='invalid_session_attempts' %}
+<p class="evidence-lead">از {% if ev.ips %}IP <bdi class="key">{{ ev.ips[0] }}</bdi>{% else %}یک IP{% endif %}، <strong>{{ r.observed }}</strong> درخواست با <code>G00002</code> در {{ r.span_seconds|metric }} ثانیه رد شد.</p>
+<p class="facts"><span>آستانه {{ r.threshold|metric }}</span><span>{{ r.distinct_presented_tokens }} توکن متمایزِ ثبت‌شده</span></p>
+<p>APIهای دارای رد نشست در این شمارش {% for api in r.endpoints %}<code>{{ api }}</code>{% if not loop.last %}، {% endif %}{% endfor %}</p>
+{% elif f.method=='access_denied_attempts' %}
+<p class="evidence-lead"><strong>{{ r.observed }}</strong> درخواست بدون مجوز برای <code>{{ f.service }}</code> در {{ r.span_seconds|metric }} ثانیه · <code>G00010</code></p>
+<p class="facts"><span>آستانه {{ r.threshold|metric }}</span><span>نشست <bdi>{{ f.session_id }}</bdi></span></p>
+{% elif r.get('inquiry_pattern_policy') and f.method=='repeated_target' %}
+<p class="evidence-lead"><strong>{{ r.requests }}</strong> استعلام موفق برای {{ r.distinct_targets }} شناسه در پنج دقیقه؛ یک شناسه <strong>{{ r.most_frequent_count }}</strong> بار استعلام شد.</p>
+<p>{% if ev.targets|length==1 %}شناسهٔ پرتکرار <code>{{ r.numeric_path }}</code> <bdi class="key">{{ ev.targets[0] }}</bdi>{% else %}{{ r.numeric_path }} · مقدار قطعی شناسهٔ پرتکرار در شواهد قابل نمایش نیست.{% endif %}</p>
+{% elif r.get('inquiry_breadth_policy') %}
+<p class="evidence-lead">{% if r.observed_is_lower_bound %}حداقل {% endif %}<strong>{{ r.distinct_targets }}</strong> هدف متمایز در {{ r.span_seconds|metric }} ثانیه · <code>{{ r.numeric_path }}</code></p>
+<p class="facts"><span>{{ r.covered_requests }} ورودی قابل شمارش از {{ r.requests }} درخواست</span><span>{{ r.successful_requests }} موفق</span><span>{{ r.failed_requests }} ناموفق</span></p>
+{% if ev.targets %}<p>نمونهٔ شناسه‌ها {% for value in ev.targets[:3] %}<bdi class="key">{{ value }}</bdi> {% endfor %}</p>{% endif %}
+{% elif r.get('horizon_days') %}
+<p class="evidence-lead">{% if r.observed_is_lower_bound %}دست‌کم {% endif %}<strong>{{ r.observed|metric }}</strong> هدف متمایز در {{ r.horizon_days }} روز · <code>{{ r.numeric_path }}</code></p>
+<p class="facts"><span>{{ r.active_days }} روز فعالیت</span><span>{{ r.requests }} درخواست</span><span>{{ r.peer_count }} نشست مرجع</span></p>
+{% else %}
+<p class="evidence-lead">{{ f.method|method_label }} · <strong>{{ r.observed|metric }}</strong>{% if f.method=='service_latency' %} میلی‌ثانیه{% endif %}</p>
+<p class="facts"><span>مبنا {{ r.baseline|metric }}</span><span>آستانه {{ r.threshold|metric }}</span>{% if r.numeric_path %}<code>{{ r.numeric_path }}</code>{% endif %}</p>
+{% endif %}

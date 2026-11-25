@@ -87,7 +87,8 @@ class CompactUiBrowserTests(unittest.TestCase):
                         if name=='network':
                             self.assertTrue(page.get_by_role('heading',name='تلاش‌های یک IP',exact=True).is_visible())
                             self.assertIn('5 توکن',page.locator('body').inner_text())
-                            self.assertIn('IP مشترک',page.locator('body').inner_text())
+                            self.assertIn('G00002',page.locator('body').inner_text())
+                            self.assertNotIn('تلاش برای حدس توکن',page.locator('body').inner_text())
                             self.assertEqual(page.locator('a[href^="/sessions"]').count(),0)
                         folder = os.environ.get('P24_COMPACT_UI_SCREENSHOTS')
                         if folder:
