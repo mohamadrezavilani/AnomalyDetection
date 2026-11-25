@@ -30,7 +30,8 @@ class ContextUpgradeTests(unittest.TestCase):
             (0,{}),(0,{}),(0,{}),(0,{}),(0,{})])
         self.assertEqual(result['status'],'COMPACT_CONTEXT_CORE_AND_HISTORY_UPGRADED')
         self.assertEqual(calls[3][1],Path('history-old'))
-        self.assertIn('--check-only',calls[4][0])
+        self.assertIn('--drain-launcher',calls[4][0])
+        self.assertIn('2026-11-20T00:00:00+03:30',calls[4][0])
         self.assertEqual(calls[6][0][0],Path('new/tools/Repair_Compact_History_Task.py'))
     def test_stop_failure_and_completed_history(self):
         result,calls=self.run_steps([(0,{'source_sha256':'old-sha'}),(0,{'history_state':'ACTIVE','from_tehran':'2026-11-20T00:00:00+03:30'}),(0,{}),(2,{})])

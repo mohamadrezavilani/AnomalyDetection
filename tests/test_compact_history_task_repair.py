@@ -36,18 +36,43 @@ class TaskRepairTests(unittest.TestCase):
             s=self.snapshot();s['state_code']=value
             with self.assertRaises(ValueError):self.validate(s)
 
-    def wait(self, snapshots, timeout=2):
+    def wait(self, snapshots, timeout=2, **options):
         now=[0];reads=[]
         def read():
             item=snapshots[min(len(reads),len(snapshots)-1)];reads.append(item);return item
         def sleep(seconds):now[0]+=seconds
         return wait_for_stopped_task(read,r'E:\P24\pishkhan24',r'E:\P24\pishkhan24\.venv\Scripts\python.exe',
-            timeout=timeout,clock=lambda:now[0],sleep=sleep)
+            timeout=timeout,clock=lambda:now[0],sleep=sleep,**options)
 
     def test_worker_stops_before_launcher_and_scheduler(self):
         running=self.snapshot();running['state']='4'
         self.assertEqual(self.wait([running,self.snapshot()])['state'],'Disabled')
         with self.assertRaises(TimeoutError):self.wait([running])
+
+    def test_upgrade_drains_once_and_waits_for_confirmed_exit(self):
+        busy=dict(self.snapshot(),state_code=4,instances=1)
+        stopping=dict(self.snapshot(),state_code=1,instances=1)
+        calls=[]
+        def drain(snapshot):
+            calls.append(snapshot)
+            return True
+        self.wait([busy,busy,stopping,self.snapshot()],drain=drain)
+        self.assertEqual(calls,[busy])
+        calls.clear()
+        self.wait([self.snapshot()],drain=drain)
+        self.assertFalse(calls)
+        with self.assertRaises(TimeoutError):
+            self.wait([stopping],drain=drain,settle=5)
+        self.assertEqual(calls,[stopping])
+
+    def test_guarded_drain_retries_busy_worker_and_revalidates_owner(self):
+        from unittest.mock import Mock
+        busy=dict(self.snapshot(),state_code=4)
+        drain=Mock(side_effect=[False,True])
+        self.wait([busy]*3+[self.snapshot()],drain=drain)
+        self.assertEqual(drain.call_count,2)
+        with self.assertRaises(ValueError):
+            self.wait([busy,dict(busy,enabled=True)],drain=lambda _:self.fail('ownership guard bypassed'))
 
     def test_task_change_during_drain_is_rejected(self):
         running=self.snapshot();running['state']='Running'
@@ -89,6 +114,45 @@ Disable-ScheduledTask -TaskName 'P24-CompactHistory' | Out-Null
             self.assertEqual(r.returncode,17)
         finally:
             ps("Get-ScheduledTask -TaskName 'P24-CompactHistory' -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false")
+
+    @unittest.skipUnless(os.name == 'nt', 'native Windows Task Scheduler required')
+    def test_native_drain_stops_only_the_disabled_launcher(self):
+        import tempfile
+        from pathlib import Path
+        from tools.Repair_Compact_History_Task import DRAIN, SNAPSHOT
+        from viewer_performance.financial_screen.host import powershell
+        name='P24-DrainTest-'+uuid.uuid4().hex
+        def run(script):
+            return powershell(script.replace('P24-CompactHistory',name),env)
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            (root/'compact_product').mkdir()
+            (root/'compact_product/History_Compact_Product.ps1').write_text(
+                "param($Action,$Project,$Python)\nSet-Content -LiteralPath (Join-Path $Project 'started') -Value yes\nStart-Sleep 150",
+                encoding='utf-8')
+            python=os.path.join(folder,'dummy.exe')
+            env=dict(P24_OLD_ROOT=folder,P24_OLD_ARGS=worker_args(folder,folder,python),P24_DRAIN_PROJECT=folder)
+            try:
+                run(r"""
+$a=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $env:P24_OLD_ARGS -WorkingDirectory $env:P24_OLD_ROOT
+Register-ScheduledTask -TaskPath '\' -TaskName 'P24-CompactHistory' -Action $a -User 'SYSTEM' -RunLevel Highest -Force | Out-Null
+Start-ScheduledTask -TaskPath '\' -TaskName 'P24-CompactHistory'
+for($i=0;$i -lt 70;$i++){if(Test-Path (Join-Path $env:P24_OLD_ROOT 'started')){break};Start-Sleep -Milliseconds 200}
+if(!(Test-Path (Join-Path $env:P24_OLD_ROOT 'started'))){throw 'test launcher did not start'}
+Disable-ScheduledTask -TaskPath '\' -TaskName 'P24-CompactHistory' | Out-Null
+""")
+                first=run(SNAPSHOT)
+                self.assertFalse(first['enabled'])
+                self.assertGreater(first['instances'],0)
+                self.assertEqual(run(DRAIN)['status'],'OWNED_LAUNCHER_STOP_REQUESTED')
+                final=wait_for_stopped_task(lambda:run(SNAPSHOT),folder,python,timeout=30)
+                self.assertEqual(final['instances'],0)
+                self.assertEqual(run(DRAIN)['status'],'ALREADY_DRAINED')
+            finally:
+                run(r"""
+$t=Get-ScheduledTask -TaskPath '\' -TaskName 'P24-CompactHistory' -ErrorAction SilentlyContinue
+if($t){Stop-ScheduledTask -InputObject $t -ErrorAction SilentlyContinue;Unregister-ScheduledTask -InputObject $t -Confirm:$false}
+""")
 
     @unittest.skipUnless(os.name == 'nt', 'native Windows PowerShell required')
     def test_native_powershell_parses_migration_and_snapshot(self):
