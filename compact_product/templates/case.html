@@ -1,8 +1,8 @@
 {% extends 'base.html' %}{% block content %}
-<a href="{{ url_for('incidents',date=date,days=days,tab='cases') }}">بازگشت به پرونده‌ها ←</a>
+<a href="{{ url_for('incidents',date=date,period=period|default(none),days=days,tab='cases') }}">بازگشت به پرونده‌ها ←</a>
 {% if case %}<header class="case-title"><h2>{{ 'تلاش‌های یک IP' if case.domain=='network_attempts' else 'رفتار نشست' if case.session_id else 'سلامت خدمت' }}</h2>{% if case.session_id %}<a href="{{ url_for('sessions',q=case.session_id) }}"><bdi>{{ case.session_id }}</bdi> · رفتارهای نشست</a>{% endif %}</header>
 {% set proof=proof|default({}) %}{% for f in visible|default(case.findings) %}{% include 'finding_review.html' %}{% else %}<p>یافته‌ای در این صفحه وجود ندارد.</p>{% endfor %}
-<div class="actions">{% if page|default(1)>1 %}<a href="{{ url_for('case_detail',cid=case.case_id,date=date,days=days,service=service,page=page-1) }}">یافته‌های قبلی</a>{% endif %}{% if has_next %}<a href="{{ url_for('case_detail',cid=case.case_id,date=date,days=days,service=service,page=page+1) }}">یافته‌های بعدی</a>{% endif %}</div>
+<div class="actions">{% if page|default(1)>1 %}<a href="{{ url_for('case_detail',cid=case.case_id,date=date,period=period|default(none),days=days,service=service,page=page-1) }}">یافته‌های قبلی</a>{% endif %}{% if has_next %}<a href="{{ url_for('case_detail',cid=case.case_id,date=date,period=period|default(none),days=days,service=service,page=page+1) }}">یافته‌های بعدی</a>{% endif %}</div>
 {% else %}<p class="notice">پرونده در بازهٔ انتخابی آمادهٔ بررسی نیست. وضعیت بازتحلیل یا نظر ثبت‌شده ممکن است تغییر کرده باشد.</p>{% endif %}
 {% if truncated %}<p class="notice">فهرست نتایج این بازه به سقف نمایش رسیده است.</p>{% endif %}
 {% endblock %}

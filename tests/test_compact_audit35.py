@@ -42,6 +42,30 @@ class AuditContracts(unittest.TestCase):
             b=materialize('test',extract(records)['req-1'])
             self.assertEqual(b['features'][inquiry.POLICY],{axis:inquiry.token('fixture')})
 
+    def test_witness_groups_are_transitive_but_keep_disjoint_sessions_axes_and_intervals(self):
+        from compact_product.review_groups import groups
+        def member(key,start,end,session='A',axis='ParticipateCode'):
+            return dict(finding_id=key,start_ns=start,session_id=session,service='Services.v2/GasBills',
+                        method='target_diversity',result=dict(period_start_ns=start,period_end_ns=end,
+                        numeric_path=axis,inquiry_breadth_policy='rolling'))
+        rows = [member('a',0,10),member('b',9,20),member('c',19,25),member('d',25,30),
+                member('e',4,8,session='B'),member('f',1,15,axis='GasBillID')]
+        merged = groups(list(reversed(rows)))
+        self.assertEqual({tuple(r['finding_id'] for r in g) for g in merged},
+                         {('c','b','a'),('d',),('e',),('f',)})
+
+    def test_raw_target_requires_typed_digest_in_selected_same_request_input(self):
+        from compact_product.case_evidence import verified_targets
+        service = 'Services.v2/GasBills'
+        axis = 'ParticipateCode'
+        state = extract([row(path=service),row(path='ClientAyanCoInquiry.GasBillInquiry',
+                        message='Input:{"ParticipateCode":"00012"}')])['req-1']
+        b = materialize('test',state)
+        saved = dict(api=service,result_code='G00000',features=b['features'],security_state=state)
+        self.assertEqual(verified_targets(saved,{(service,axis)})[service,axis][0],'00012')
+        b['features'][inquiry.POLICY][axis] = inquiry.token(12)
+        self.assertEqual(verified_targets(saved,{(service,axis)}),{})
+
     def test_consistent_sql_does_not_hide_independent_provider_contract(self):
         records=[row(path=inquiry.CELL_SERVICE),
             row(path=provider_contracts.MCI,message='Input:{"MobileNumber":"fixture"} Output:[{"Status":{"Code":"GD2048"},"Parameters":null}]')]

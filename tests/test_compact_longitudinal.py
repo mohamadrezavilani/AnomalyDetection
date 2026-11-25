@@ -213,6 +213,10 @@ class LongitudinalPostgresTests(unittest.TestCase):
         detail=client.get('/cases/'+cid+'?date='+date+'&days=3')
         self.assertEqual(detail.status_code,200)
         self.assertIn('110',detail.get_data(as_text=True))
+        multi = client.get('/incidents?period=multi&tab=cases&date='+date+'&days=3')
+        self.assertEqual(multi.status_code,200)
+        self.assertIn('crawler',multi.get_data(as_text=True))
+        self.assertIn('864',multi.get_data(as_text=True))
         self.assertEqual(client.get('/incidents?date='+date+'&tab=services').status_code,200)
         # A later five-minute reanalysis must not retire an independent method.
         from compact_ad.engine import evaluate

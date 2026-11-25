@@ -1,22 +1,25 @@
 {% extends 'base.html' %}{% block content %}
 {% set chosen=tab|default('cases') %}{% set span=days|default(7) %}{% set proof=proof|default({}) %}
-<div class="case-controls"><nav class="tabs" aria-label="نمای آنومالی‌ها">{% for key,label in [('services','خدمت‌ها'),('sessions','نشست‌ها'),('cases','همهٔ پرونده‌ها')] %}<a {% if key==chosen %}aria-current="page"{% endif %} href="{{ url_for('incidents',date=date,days=span,tab=key) }}">{{ label }}</a>{% endfor %}</nav>
-<form class="review-filters" method="get"><label>تا روز (میلادی، تهران)<input type="date" name="date" value="{{ date }}" required></label><label>بازه<select name="days">{% for d in [1,3,7,30] %}<option value="{{ d }}" {{ 'selected' if d==span }}>{{ d }} روز</option>{% endfor %}</select></label><input type="hidden" name="tab" value="{{ chosen }}">{% if selected_service %}<input type="hidden" name="service" value="{{ selected_service }}">{% endif %}<button>نمایش</button></form></div>
+<div class="case-controls"><nav class="tabs" aria-label="نمای آنومالی‌ها">{% for key,label in [('services','خدمت‌ها'),('sessions','نشست‌ها'),('cases','همهٔ پرونده‌ها')] %}<a {% if key==chosen %}aria-current="page"{% endif %} href="{{ url_for('incidents',date=date,period=period|default(none),days=span,tab=key) }}">{{ label }}</a>{% endfor %}</nav>
+<form class="review-filters" method="get"><label>تا روز (میلادی، تهران)<input type="date" name="date" value="{{ date }}" required></label><label>بازه<select name="days">{% for d in [1,3,7,30] %}<option value="{{ d }}" {{ 'selected' if d==span }}>{{ d }} روز</option>{% endfor %}</select></label>{% if period=='multi' %}<input type="hidden" name="period" value="multi">{% endif %}<input type="hidden" name="tab" value="{{ chosen }}">{% if selected_service %}<input type="hidden" name="service" value="{{ selected_service }}">{% endif %}<button>نمایش</button></form></div>
+<div class="actions">{% if period=='multi' %}<strong>تحلیل چندروزه</strong><a href="{{ url_for('incidents',tab=chosen,date=date,days=span) }}">همهٔ روش‌ها</a>{% else %}<a href="{{ url_for('incidents',tab='cases',period='multi',date=date,days=span) }}">پرونده‌ها و اجرای تحلیل چندروزه ←</a>{% endif %}</div>
+{% if period=='multi' %}<section class="card"><h2>نمونهٔ آخرین دورهٔ تکمیل‌شده در هر افق</h2>
+{% for run in runs %}<p><strong>{{ run.span }} روز</strong> · <code>{{ run.service }}</code> · پایان {{ run.end_ns|tehran }} · {{ run.windows }} پنجره · {{ run.actors }} نشست · {{ run.comparisons if run.comparisons is not none else 'ثبت‌نشده' }} مقایسهٔ واجد شرایط</p>{% else %}<p>دورهٔ تکمیل‌شده‌ای در این بازه ثبت نشده است.</p>{% endfor %}</section>{% endif %}
 <div class="toolbar"><strong>{{ case_count }} پرونده{% if selected_service %} · <code>{{ selected_service }}</code>{% endif %}</strong><a href="{{ url_for('signals') }}">سیگنال‌های ضعیف و بررسی تخصصی ←</a></div>
 {% if truncated %}<p class="notice">تعدادها و فهرست این بازه کامل نیستند. برای دیدن بقیه، بازه را کوتاه کنید.</p>{% endif %}
 {% if chosen=='services' %}
 {% for g in service_groups %}{% set f=g.preview %}{% set ev=proof.get(f.finding_id,{}) %}
 <article class="card finding"><header class="finding-head"><h2><code>{{ g.service }}</code></h2><span>{{ g.cases|length }} پرونده</span></header>
 <div class="kicker">{{ f.method|method_label }} <time>{{ f.start_ns|tehran }}</time></div>
-{% include 'finding_summary.html' %}
-<div class="actions"><a class="button" href="{{ url_for('case_detail',cid=g.preview_case_id,date=date,days=span,service=g.service) }}">بررسی پرونده و شاهدها ←</a>{% if g.cases|length>1 %}<a href="{{ url_for('incidents',date=date,days=span,tab='cases',service=g.service) }}">همهٔ {{ g.cases|length }} پروندهٔ خدمت</a>{% endif %}</div></article>
+{% include 'finding_summary.html' %}{% if ev.read_canceled %}<p class="muted">خواندن نمونهٔ شاهد در این نوبت لغو شد (57014).</p>{% endif %}
+<div class="actions"><a class="button" href="{{ url_for('case_detail',cid=g.preview_case_id,date=date,period=period|default(none),days=span,service=g.service) }}">بررسی پرونده و شاهدها ←</a>{% if g.cases|length>1 %}<a href="{{ url_for('incidents',date=date,period=period|default(none),days=span,tab='cases',service=g.service) }}">همهٔ {{ g.cases|length }} پروندهٔ خدمت</a>{% endif %}</div></article>
 {% else %}<p class="empty">پروندهٔ مرتبط با خدمتی در این بازه دیده نشد.</p>{% endfor %}
 {% else %}
 {% for c in rows %}{% set f=c.preview|default(c.highlights|first) %}{% set ev=proof.get(f.finding_id,{}) %}
 <article class="card finding"><header class="finding-head"><h2>{{ 'تلاش‌های یک IP' if c.domain=='network_attempts' else 'رفتار نشست' if c.session_id else 'سلامت خدمت' }}</h2>{% if f.service!='*' %}<code>{{ f.service }}</code>{% endif %}</header>
 <div class="kicker">{{ f.method|method_label }} <time>{{ f.start_ns|tehran }}</time>{% if c.session_id %}<code>{{ c.session_id }}</code>{% endif %}</div>
-{% include 'finding_summary.html' %}
-<div class="actions"><a class="button" href="{{ url_for('case_detail',cid=c.case_id,date=date,days=span,service=selected_service|default(none) or none) }}">بررسی پرونده و شاهدها ←</a>{% if c.findings|length>1 %}<span>{{ c.findings|length }} یافته در پرونده</span>{% endif %}</div></article>
+{% include 'finding_summary.html' %}{% if ev.read_canceled %}<p class="muted">خواندن نمونهٔ شاهد در این نوبت لغو شد (57014).</p>{% endif %}
+<div class="actions"><a class="button" href="{{ url_for('case_detail',cid=c.case_id,date=date,period=period|default(none),days=span,service=selected_service|default(none) or none) }}">بررسی پرونده و شاهدها ←</a>{% if c.findings|length>1 %}<span>{{ c.findings|length }} یافته در پرونده</span>{% endif %}</div></article>
 {% else %}<p class="empty">پرونده‌ای برای بررسی در این بازه وجود ندارد.</p>{% endfor %}{% endif %}
-<div class="actions">{% if page>1 %}<a href="{{ url_for('incidents',date=date,days=span,tab=chosen,service=selected_service,page=page-1) }}">صفحهٔ قبل</a>{% endif %}{% if has_next %}<a href="{{ url_for('incidents',date=date,days=span,tab=chosen,service=selected_service,page=page+1) }}">صفحهٔ بعد</a>{% endif %}</div>
+<div class="actions">{% if page>1 %}<a href="{{ url_for('incidents',date=date,period=period|default(none),days=span,tab=chosen,service=selected_service,page=page-1) }}">صفحهٔ قبل</a>{% endif %}{% if has_next %}<a href="{{ url_for('incidents',date=date,period=period|default(none),days=span,tab=chosen,service=selected_service,page=page+1) }}">صفحهٔ بعد</a>{% endif %}</div>
 {% endblock %}

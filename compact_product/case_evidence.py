@@ -1,7 +1,10 @@
 """Resolve only visible witness IDs, on demand, without changing detector records."""
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from psycopg.types.json import Jsonb
+from collections import defaultdict
+import logging
+from psycopg.errors import QueryCanceled
+from compact_behavior.extract import selected
 from compact_behavior import FIVE, inquiry, security
 from . import search
 from .search import source_ids
@@ -15,21 +18,67 @@ def clock_input(ns):
     return datetime.fromtimestamp(ns // 10**9, ZoneInfo('Asia/Tehran')).strftime('%Y-%m-%dT%H:%M:%S')
 
 
-def evidence(db, schema, stream, findings, *, per_finding):
-    """One batch for identity, one for selected target scalars. No searches over IP or payloads."""
-    ids = {}
-    projections = {}
-    for f in findings:
-        witnesses = list(dict.fromkeys(f['result'].get('evidence', ())))[:per_finding]
-        ids[f['finding_id']] = witnesses
-        service, axis = f['service'], f['result'].get('numeric_path')
-        field = dict(inquiry.ROUTES.get(service, ())).get(axis)
-        if f['method'] not in ('repeated_target','target_diversity') or not field:
+TARGET_METHODS = ('repeated_target', 'target_diversity', 'long_target_enumeration')
+
+
+def verified_targets(row, axes):
+    """Match original typed values to the projection consumed by the detector."""
+    state = row.get('security_state')
+    if not state:
+        return {}
+    # Use the same legacy-service repair as AD only when its SQL would fetch
+    # retained state. Current witnesses already have the authoritative digest.
+    features = row['features']
+    if inquiry.POLICY not in features or features.get('service_binding') == 'UNRESOLVED_DISPATCH':
+        features = next(security.legacy_rows([dict(row)]))['features']
+    service = features.get('service_key')
+    if (not features.get('input_feature_eligibility', {}).get('targets')
+            or type(features.get('input_asof_ns')) is not int):
+        return {}
+    subjects = features.get(inquiry.POLICY) or {}
+    entries, basis = selected(state, 'inputs', row['api'], service)
+    found = {}
+    for entry in entries:
+        if basis == 'reviewed_same_request_provider':
+            fields = inquiry.PROVIDER_FIELDS.get((service, entry['path']), ())
+        elif basis == 'business_parameters' or (basis == 'public_api' and row['api'] == service):
+            fields = inquiry.ROUTES.get(service, ())
+        else:
             continue
-        providers = {path: dict(fields)[axis] for (s,path),fields in inquiry.PROVIDER_FIELDS.items()
-                     if s == service and axis in dict(fields)}
-        for bid in witnesses:
-            projections[bid,service,axis] = dict(bid=bid,service=service,axis=axis,field=field,providers=providers)
+        for axis, field in fields:
+            if (service, axis) not in axes or not subjects.get(axis):
+                continue
+            values = [obj[field] for obj in inquiry.containers(entry.get('value')) if field in obj]
+            if entry.get('representation') == 'FEATURES_ONLY_V1':
+                saved = (entry.get('feature_snapshot') or {}).get('targets', {})
+                values = [v.get('value') for name in (field, 'Parameters.'+field) for v in saved.get(name, ())]
+            for value in values:
+                if inquiry.token(value) == subjects[axis]:
+                    found[service, axis] = (value, features['input_asof_ns'])
+    return found
+
+
+def evidence(db, schema, stream, findings, *, per_finding, selected_ids=None):
+    try:
+        with db.transaction():
+            return load_evidence(db, schema, stream, findings, per_finding=per_finding, selected_ids=selected_ids)
+    except QueryCanceled:
+        logging.getLogger('compact.web').warning('web component=case_witnesses sqlstate=57014')
+        return {f['finding_id']: dict(read_canceled=True) for f in findings}
+
+
+def load_evidence(db, schema, stream, findings, *, per_finding, selected_ids):
+    """Resolve only recorded witness IDs. Never search surrounding requests."""
+    ids = {}
+    projections = defaultdict(set)
+    for f in findings:
+        key = f['finding_id']
+        witnesses = list(dict.fromkeys(f['result'].get('evidence') or ()))
+        ids[key] = (selected_ids[key] if selected_ids is not None else witnesses[:per_finding])
+        service, axis = f['service'], f['result'].get('numeric_path')
+        if f['method'] in TARGET_METHODS and axis in dict(inquiry.ROUTES.get(service, ())):
+            for bid in ids[key]:
+                projections[bid].add((service, axis))
     wanted = list({bid for group in ids.values() for bid in group})
     if not wanted:
         return {}
@@ -37,32 +86,24 @@ def evidence(db, schema, stream, findings, *, per_finding):
             b.features->>'service_key' AS service,p.state->'raw_request_ids' AS originals,
             c.context->'values'->'ip' AS ip_entries,c.context->'limited' AS limited,
             c.context->>'version' AS context_version
-        FROM {schema}.behaviors b LEFT JOIN {schema}.behavior_payloads p USING(behavior_id)
+        FROM {schema}.behaviors b JOIN {schema}.behavior_payloads p USING(behavior_id)
         LEFT JOIN {schema}.request_context c USING(behavior_id)
         WHERE b.stream_id=%s AND b.behavior_id=ANY(%s)""",(stream,wanted)).fetchall()
     by_id = {r['behavior_id']:r for r in records}
     targets = {}
     if projections:
-        # Project only the explicitly reviewed axis, including its provider-specific spelling.
-        rows = db.execute(f"""SELECT x.bid,x.service,x.axis,b.features->%s::text->>x.axis AS fingerprint,
-                b.features->>'input_asof_ns' AS asof,
-                v.value AS value FROM jsonb_to_recordset(%s) x(bid text,service text,axis text,field text,providers jsonb)
-            JOIN {schema}.behaviors b ON b.behavior_id=x.bid AND b.stream_id=%s
-            JOIN {schema}.behavior_payloads p ON p.behavior_id=x.bid
-            CROSS JOIN LATERAL jsonb_array_elements(p.state->'inputs') e
-            CROSS JOIN LATERAL (SELECT CASE WHEN jsonb_typeof(e->'value')='array'
-              THEN CASE WHEN jsonb_array_length(e->'value')=1 THEN e->'value'->0 END ELSE e->'value' END obj,
-              CASE WHEN b.features->>'input_basis'='reviewed_same_request_provider' THEN x.providers->>(e->>'path')
-              WHEN e->>'basis'='business_parameters' AND b.features->>'input_basis'='business_parameters' THEN x.field
-              WHEN e->>'basis'='public_api' AND b.features->>'input_basis'='public_api'
-                    AND e->>'path'=x.service AND b.api=x.service THEN x.field END name) chosen
-            CROSS JOIN LATERAL (VALUES (obj->name),(obj->'Parameters'->name)) v(value)
-            WHERE b.features->>'service_key'=x.service AND b.features->'input_feature_eligibility'->>'targets'='true'
-              AND jsonb_typeof(v.value) IN ('number','string') AND length(v.value::text)<=1026""",
-            (inquiry.POLICY,Jsonb(list(projections.values())),stream)).fetchall()
-        for r in rows:
-            if r['asof'] and inquiry.token(r['value']) == r['fingerprint']:
-                targets[r['bid'],r['service'],r['axis']] = (r['value'],int(r['asof']))
+        # Do not load all response payloads into the Python web process at once.
+        with db.cursor(name='compact_review_input') as cur:
+            cur.itersize = 4
+            cur.execute(f"""SELECT b.behavior_id,b.api,b.result_code,b.features,
+                    p.state AS security_state,c.context AS security_context
+                FROM {schema}.behaviors b JOIN {schema}.behavior_payloads p USING(behavior_id)
+                LEFT JOIN {schema}.request_context c USING(behavior_id)
+                WHERE b.stream_id=%s AND b.behavior_id=ANY(%s)""", (stream,list(projections)))
+            for record in cur:
+                bid = record['behavior_id']
+                for (service, axis), value in verified_targets(record, projections[bid]).items():
+                    targets[bid, service, axis] = value
     output = {}
     for f in findings:
         result = f['result']
@@ -86,13 +127,16 @@ def evidence(db, schema, stream, findings, *, per_finding):
                         data['ips'].append(ip['value'])
             target = targets.get((bid,f['service'],result.get('numeric_path')))
             value = None
-            if (target and target[1]<end and row['session_id']==f['session_id']
+            cutoff = f['start_ns'] + FIVE
+            if f['method'] == 'long_target_enumeration' and row['observed_at_ns'] is not None:
+                cutoff = (row['observed_at_ns'] // FIVE + 1) * FIVE
+            if (target and target[1]<cutoff and row['session_id']==f['session_id']
                     and row['observed_at_ns'] is not None and start<=row['observed_at_ns']<end):
                 value = target[0]
                 if value not in data['targets']:
                     data['targets'].append(value)
             data['rows'].append(dict(bid=bid,request_id=raw[0] if raw else row['request_id'],
-                                     api=row['api'],service=row['service'],at=row['observed_at_ns'],
+                                     api=row['api'],service=f['service'] if value is not None else row['service'],at=row['observed_at_ns'],
                                      code=row['result_code'],target=value))
         output[f['finding_id']] = data
     return output

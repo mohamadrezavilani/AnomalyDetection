@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import secrets
+import logging
 import threading
 import time
 from zoneinfo import ZoneInfo
@@ -31,7 +32,7 @@ from .presentation import ROLES, data_note
 from .request_context import observed_context
 from compact_ad.methods import METHODS
 from compact_ad import MODEL
-from . import case_selection, case_evidence
+from . import case_selection, case_evidence, review_groups
 from compact_ad import long_store, longitudinal
 from compact_behavior.services import meaningful_apis, operation_label, operation_role
 
@@ -144,11 +145,21 @@ def create_app(config, database, stream, *, secret=None):
 
         if isinstance(exc, HTTPException):
             return exc
-        app.logger.error("web endpoint=%s exception=%s sqlstate=%s", request.endpoint, type(exc).__name__, getattr(exc, "sqlstate", None))
-        return (
-            render_template("error.html", title="دریافت اطلاعات موقتاً ممکن نیست"),
-            503,
-        )
+        from psycopg import OperationalError
+        state = getattr(exc, 'sqlstate', None)
+        reference = secrets.token_hex(4)
+        logging.getLogger("compact.web").error("web ref=%s endpoint=%s exception=%s sqlstate=%s", reference,
+                         request.endpoint, type(exc).__name__, state)
+        if state == '57014':
+            reason = 'پایگاه داده خواندن اطلاعات را لغو کرد. محدودیت زمان پاسخ این صفحه ۳ ثانیه است.'
+        elif state == '55P03':
+            reason = 'قفل پایگاه داده اجازهٔ خواندن اطلاعات را در زمان مقرر نداد.'
+        elif isinstance(exc, OperationalError):
+            reason = 'ارتباط با پایگاه داده برای این درخواست کامل نشد.'
+        else:
+            reason = 'هنگام آماده‌سازی صفحه خطای داخلی رخ داد.'
+        return render_template("error.html", title="دریافت اطلاعات موقتاً ممکن نیست",
+                               reason=reason, reference=reference, endpoint=request.endpoint, state=state), 503
 
     @app.get("/healthz")
     def live():
@@ -288,7 +299,8 @@ def create_app(config, database, stream, *, secret=None):
             day, start, end = case_selection.bounds(request.args.get('date'), days)
         except (ValueError, OverflowError):
             abort(400, description='تاریخ میلادی معتبر وارد کنید.')
-        selected, signals, truncated = case_selection.select(db, config, stream, start, end)
+        selector = case_selection.multi_day if request.args.get('period') == 'multi' else case_selection.select
+        selected, signals, truncated = selector(db, config, stream, start, end)
         service = request.args.get('service')
         if service:
             selected = [case for case in selected if service in case['services']]
@@ -303,6 +315,11 @@ def create_app(config, database, stream, *, secret=None):
         with connection() as db, db.transaction():
             db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
             day,days,rows,signals,truncated=case_rows(db)
+            period = 'multi' if request.args.get('period') == 'multi' else None
+            runs = []
+            if period:
+                _, start, end = case_selection.bounds(day, days)
+                runs = case_selection.completed_periods(db,config,stream,start,end)
             if tab=='sessions':rows=[c for c in rows if c['session_id']]
             items = cases.service_groups(rows) if tab=='services' else rows
             visible = items[(page-1)*30:page*30]
@@ -319,10 +336,10 @@ def create_app(config, database, stream, *, secret=None):
         return render_template('cases.html',title='پرونده‌های آنومالی',
             rows=visible if tab!='services' else [],service_groups=visible if tab=='services' else [],
             date=day,days=days,tab=tab,page=page,has_next=len(items)>page*30,
-            case_count=len(rows),signal_count=signals,truncated=truncated,proof=proof,selected_service=service)
+            period=period,runs=runs,case_count=len(rows),signal_count=signals,truncated=truncated,proof=proof,selected_service=service)
 
-    def page_number():
-        try:page=int(request.args.get('page','1'))
+    def page_number(name='page'):
+        try:page=int(request.args.get(name,'1'))
         except ValueError:abort(400)
         if not 1<=page<=1000:abort(400)
         return page
@@ -339,16 +356,19 @@ def create_app(config, database, stream, *, secret=None):
             findings=selected['findings'] if selected else []
             if service:
                 findings=[f for f in findings if f['service']==service or service in f['result'].get('endpoints',())]
-            visible=findings[(page-1)*8:page*8]
-            proof=case_evidence.evidence(db,config.source_schema,stream,visible,per_finding=12)
+            grouped = review_groups.groups(findings)
+            batches = grouped[(page-1)*8:page*8]
+            visible = [members[0] for members in batches]
+            proof = review_groups.page_evidence(db,config.source_schema,stream,batches,
+                                                request.args.get('focus'),page_number('wpage'))
             related=request.args.get('context')
             if related in proof and proof[related]['ips'] and selected['domain']=='network_attempts':
                 item=proof[related]
                 item['nearby']=case_evidence.nearby(db,config.source_schema,stream,item['ips'][0],item['window'])
         session.setdefault('csrf',secrets.token_urlsafe(24))
         return render_template('case.html',title='بررسی پرونده',case=selected,date=day,days=days,
-            visible=visible,page=page,has_next=len(findings)>page*8,service=service,
-            proof=proof,csrf=session['csrf'],truncated=truncated)
+            visible=visible,page=page,has_next=len(grouped)>page*8,service=service,
+            proof=proof,csrf=session['csrf'],truncated=truncated,period=request.args.get('period'))
 
     @app.get("/signals")
     def signals():
