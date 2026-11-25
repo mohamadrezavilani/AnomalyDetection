@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import secrets
+import logging
 import threading
 import time
 from zoneinfo import ZoneInfo
@@ -147,7 +148,7 @@ def create_app(config, database, stream, *, secret=None):
         from psycopg import OperationalError
         state = getattr(exc, 'sqlstate', None)
         reference = secrets.token_hex(4)
-        app.logger.error("web ref=%s endpoint=%s exception=%s sqlstate=%s", reference,
+        logging.getLogger("compact.web").error("web ref=%s endpoint=%s exception=%s sqlstate=%s", reference,
                          request.endpoint, type(exc).__name__, state)
         if state == '57014':
             reason = 'پایگاه داده خواندن اطلاعات را لغو کرد. محدودیت زمان پاسخ این صفحه ۳ ثانیه است.'

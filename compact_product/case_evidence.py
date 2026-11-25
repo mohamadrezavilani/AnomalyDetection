@@ -63,7 +63,7 @@ def evidence(db, schema, stream, findings, *, per_finding, selected_ids=None):
         with db.transaction():
             return load_evidence(db, schema, stream, findings, per_finding=per_finding, selected_ids=selected_ids)
     except QueryCanceled:
-        logging.getLogger('compact_product.web').warning('web component=case_witnesses sqlstate=57014')
+        logging.getLogger('compact.web').warning('web component=case_witnesses sqlstate=57014')
         return {f['finding_id']: dict(read_canceled=True) for f in findings}
 
 

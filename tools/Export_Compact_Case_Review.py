@@ -12,7 +12,7 @@ import time
 from compact_behavior import FEATURES, FIVE, inquiry
 from compact_behavior.store import Store
 from compact_behavior.services import operation_role
-from compact_product import case_selection, cases
+from compact_product import case_selection, cases, case_evidence, review_groups
 from compact_product.config import load
 
 # Result fields are an allowlist. No free-text feedback, source payload, literal
@@ -66,7 +66,7 @@ def evidence(row, secret):
                 actor_eligible=in_actor, inquiry_targets=targets)
 
 
-def collect(conn, cfg, stream, date, days, *, budget_seconds=90):
+def collect(conn, cfg, stream, date, days, *, budget_seconds=90, display_service=None):
     day, start, end = case_selection.bounds(date, days)
     selected, signal_count, truncated = case_selection.select(conn, cfg, stream, start, end)
     secret = secrets.token_bytes(32)
@@ -74,6 +74,22 @@ def collect(conn, cfg, stream, date, days, *, budget_seconds=90):
     result = dict(date_tehran=day, days=days, start_ns=start, end_exclusive_ns=end,
                   policy=cases.POLICY, visible_cases=len(selected), eligible_signals=signal_count,
                   ui_candidate_limit_reached=truncated, cases=[], witnesses={}, session_windows=[])
+    if display_service:
+        # Use exactly the web path and cap total rows. Export counts only.
+        result['display_check'] = dict(service=display_service, sample=[], groups_matched=0)
+        check = result['display_check']
+        for case in selected:
+            for members in review_groups.groups([f for f in case['findings'] if f['service']==display_service
+                                                 and f['method'] in case_evidence.TARGET_METHODS]):
+                check['groups_matched'] += 1
+                if len(check['sample']) >= 8 or time.monotonic() >= clock_end:
+                    continue
+                f = members[0]
+                page = review_groups.page_evidence(conn,cfg.source_schema,stream,[members],None,1)[f['finding_id']]
+                check['sample'].append(dict(case_id=case['case_id'], method=f['method'], field=f['result'].get('numeric_path'),
+                    windows=len(members), referenced=page['total'], resolved_on_first_page=len(page['rows']),
+                    target_verified_on_first_page=sum(w['target'] is not None for w in page['rows']),
+                    read_canceled=bool(page.get('read_canceled'))))
     witness_groups = []
     contexts = []
     for case in selected:
@@ -159,6 +175,7 @@ def main():
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--date', help='Last Tehran calendar date, YYYY-MM-DD')
     parser.add_argument('--days', type=int, default=30, choices=range(1,31), metavar='1..30')
+    parser.add_argument('--check-display-service', help='Also check the first witness page of up to eight target groups for this service')
     args = parser.parse_args()
     now = datetime.now(timezone.utc)
     output = args.project / 'AnomalyDetection/reports' / f"Compact_Case_Review_{now:%Y%m%d_%H%M%S}_{secrets.token_hex(3)}.json"
@@ -172,7 +189,7 @@ def main():
             db.conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')
             db.conn.execute("SET LOCAL statement_timeout='30s'")
             db.conn.execute("SET LOCAL lock_timeout='2s'")
-            report.update(collect(db.conn, cfg, stream, args.date, args.days))
+            report.update(collect(db.conn, cfg, stream, args.date, args.days, display_service=args.check_display_service))
         report['status'] = 'READ_ONLY_CASE_REVIEW_COMPLETE'
     except Exception as exc:
         report.update(status='READ_ONLY_CASE_REVIEW_INCOMPLETE', failure_type=type(exc).__name__,
@@ -184,7 +201,8 @@ def main():
     output.write_text(json.dumps(report,ensure_ascii=False,indent=2), encoding='utf-8')
     print(json.dumps(dict(status=report['status'], output=str(output), cases=report.get('visible_cases'),
                           ui_truncated=report.get('ui_candidate_limit_reached'), failure_type=report.get('failure_type'),
-                          sqlstate=report.get('sqlstate'), database_modified=False)), flush=True)
+                          sqlstate=report.get('sqlstate'), database_modified=False,
+                          **({'display_check': report['display_check']} if 'display_check' in report else {}))), flush=True)
     return int(report['status'].endswith('INCOMPLETE')) * 2
 
 

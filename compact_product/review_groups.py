@@ -1,5 +1,6 @@
 """Display overlapping rolls together while retaining every revision and verdict."""
 from collections import defaultdict
+from compact_behavior.inquiry import token
 from .case_evidence import clock_input, evidence
 
 WITNESS_PAGE = 24
@@ -64,8 +65,11 @@ def page_evidence(db, schema, stream, groups, focused, witness_page):
         if len(members) > 1:
             start = min(f['result']['period_start_ns'] for f in members)
             end = max(f['result']['period_end_ns'] for f in members)
-            item.update(members=members, start=start, end=end,
-                        distinct_floor=max(f['result']['distinct_targets'] for f in members),
+            lower_bound = max(f['result']['distinct_targets'] for f in members)
+            if expected == total:
+                verified = {token(row['target']) for row in rows.values() if row['target'] is not None}
+                lower_bound = max(lower_bound, len(verified))
+            item.update(members=members, start=start, end=end, distinct_floor=lower_bound,
                         window=dict(to=clock_input(((end+10**9-1)//10**9)*10**9),
                                     **{'from':clock_input(start)}))
     return proof
