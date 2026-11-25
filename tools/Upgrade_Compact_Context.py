@@ -101,7 +101,7 @@ def upgrade(project, root, old, history, sha, *, execute=run):
         stopped=step('history_stop',['-m','compact_product','history-stop','--project',project],history)
         if stopped is None:return report
         checked=step('history_launcher_drain',[root/'tools/Repair_Compact_History_Task.py',
-            '--project',project,'--code-root',history,'--check-only'],history)
+            '--project',project,'--code-root',history,'--drain-launcher','--expected-from',floor],history)
         if checked is None:return report
     core=step('core_upgrade',[root/'tools/Upgrade_Compact_Product.py','--project',project,'--code-root',root,'--old-code-root',old,'--expected-source-sha',sha],root)
     if core is None:

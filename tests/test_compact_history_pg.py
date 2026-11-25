@@ -53,6 +53,37 @@ class HistoryPostgresTests(unittest.TestCase):
     publish=fixture.CompactProductPostgresTests.publish
     analyze_at=fixture.CompactProductPostgresTests.analyze_at
 
+    def test_launcher_drain_excludes_running_history_and_checks_job(self):
+        from tools.Repair_Compact_History_Task import drain_with_lease
+        from compact_product.runtime import role_key
+        self.publish()
+        expected=prepare(self.db,'test',T-2*FIVE)
+        cursor=self.db.cursor('test')
+        key=role_key(self.config,'test','history')
+        other=Store(self.database,schema=self.config.source_schema)
+        def acquire():
+            return other.conn.execute('SELECT pg_try_advisory_lock(%s) AS ok',(key,)).fetchone()['ok']
+        def unlock():
+            other.conn.execute('SELECT pg_advisory_unlock(%s)',(key,))
+        def while_draining():
+            self.assertFalse(acquire())
+            return {'status':'OWNED_LAUNCHER_STOP_REQUESTED'}
+        def drain(job):
+            return drain_with_lease(self.db,key,job,lambda:latest(self.db,'test'),while_draining)
+        try:
+            self.assertTrue(acquire())
+            self.assertEqual(drain(expected)['status'],'WAITING_FOR_HISTORY_LEASE')
+            unlock()
+            with self.assertRaisesRegex(ValueError,'CHECKPOINT'):
+                drain(dict(expected,job_id='different'))
+            self.assertEqual(drain(expected)['status'],'OWNED_LAUNCHER_STOP_REQUESTED')
+            self.assertTrue(acquire())
+            unlock()
+            self.assertEqual(latest(self.db,'test'),expected)
+            self.assertEqual(self.db.cursor('test'),cursor)
+        finally:
+            other.close()
+
     def test_narrow_scope_is_atomic_preserves_live_and_fences_old_workers(self):
         from psycopg.errors import CheckViolation
         from compact_behavior.store import stream_lock

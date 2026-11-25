@@ -44,19 +44,21 @@ def state_code(snapshot):
 
 def validate_task(snapshot, project, python):
     old = validate_owner(snapshot, project, python)
-    if snapshot.get('enabled') is not False or state_code(snapshot) != 1:
+    if snapshot.get('enabled') is not False or state_code(snapshot) != 1 or snapshot.get('instances', 0) != 0:
         raise ValueError('HISTORY_TASK_MUST_BE_STOPPED_AND_DISABLED')
     return old
 
 
 def wait_for_stopped_task(read, project, python, *, timeout=30,
-                          clock=time.monotonic, sleep=time.sleep):
+                          clock=time.monotonic, sleep=time.sleep, drain=None, settle=60):
     """Worker lease has stopped; allow its PowerShell launcher to finish too.
 
-    Never stop processes or weaken ownership/disabled checks. Revalidate every
-    snapshot and fail closed if another controller changes the task.
+    The upgrade alone may request a guarded stop after the grace period.
+    Revalidate ownership after every wait and require scheduler confirmation.
     """
-    deadline = clock() + timeout
+    grace = clock() + timeout
+    deadline = grace + (settle if drain is not None else 0)
+    stop_requested = False
     first_owner = None
     while True:
         snapshot = read()
@@ -67,39 +69,94 @@ def wait_for_stopped_task(read, project, python, *, timeout=30,
             raise ValueError('HISTORY_TASK_OWNER_CHANGED_WHILE_WAITING')
         if snapshot.get('enabled') is not False:
             raise ValueError('HISTORY_TASK_MUST_BE_STOPPED_AND_DISABLED')
-        if state_code(snapshot) == 1:
+        if state_code(snapshot) == 1 and snapshot.get('instances', 0) == 0:
             validate_task(snapshot, project, python)
             return snapshot
-        if state_code(snapshot) not in (2, 4):
+        if state_code(snapshot) not in (1, 2, 4):
             raise ValueError('HISTORY_TASK_MUST_BE_STOPPED_AND_DISABLED')
         if clock() >= deadline:
             raise TimeoutError('HISTORY_TASK_LAUNCHER_STILL_RUNNING')
-        sleep(0.5)
+        if drain is not None and not stop_requested and clock() >= grace:
+            stop_requested = drain(snapshot)
+        sleep(2 if drain is not None else 0.5)
 
 
-SNAPSHOT = r'''
+# Read the running instances of this exact registered task as well as its CIM state.
+TASK = r'''
 $ErrorActionPreference='Stop'
-$t=Get-ScheduledTask -TaskName 'P24-CompactHistory' -ErrorAction Stop
-@{actions=@($t.Actions | Select-Object Execute,Arguments,WorkingDirectory);enabled=[bool]$t.Settings.Enabled;state=[string]$t.State;state_code=[int]$t.State;xml=(Export-ScheduledTask -TaskName 'P24-CompactHistory')} | ConvertTo-Json -Depth 6 -Compress
+$name='P24-CompactHistory'
+$t=Get-ScheduledTask -TaskPath '\' -TaskName $name -ErrorAction Stop
+$scheduler=New-Object -ComObject 'Schedule.Service'
+$scheduler.Connect()
+$registered=$scheduler.GetFolder('\').GetTask($name)
+$instances=[int]$registered.GetInstances(0).Count
 '''
 
-CHANGE = r'''
-$ErrorActionPreference='Stop'
-$t=Get-ScheduledTask -TaskName 'P24-CompactHistory' -ErrorAction Stop
+SNAPSHOT = TASK + r'''
+@{actions=@($t.Actions | Select-Object Execute,Arguments,WorkingDirectory);enabled=[bool]$t.Settings.Enabled;state=[string]$t.State;state_code=[int]$t.State;instances=$instances;xml=(Export-ScheduledTask -TaskPath '\' -TaskName $name)} | ConvertTo-Json -Depth 6 -Compress
+'''
+
+OWNER_GUARD = r'''
 $a=@($t.Actions)
 if($a.Count -ne 1 -or $a[0].Execute -ne 'powershell.exe' -or $a[0].Arguments -cne $env:P24_OLD_ARGS -or $a[0].WorkingDirectory -cne $env:P24_OLD_ROOT){throw 'History task changed since inspection'}
-if($t.Settings.Enabled -or [int]$t.State -ne 1){throw 'History task must remain disabled'}
+if($t.Settings.Enabled){throw 'History task must remain disabled'}
+'''
+
+DRAIN = TASK + OWNER_GUARD + r'''
+if([int]$t.State -eq 1 -and $instances -eq 0){
+    @{status='ALREADY_DRAINED'} | ConvertTo-Json -Compress
+    return
+}
+if([int]$t.State -notin @(1,2,4)){throw 'Unexpected disabled task state'}
+# A worker can still be unwinding after losing its database connection.
+$busy=@(Get-CimInstance Win32_Process -Filter "Name='python.exe' OR Name='pythonw.exe'" -OperationTimeoutSec 8 | Where-Object {
+    (-not $_.CommandLine) -or ($_.CommandLine -match '\bhistory-worker\b' -and
+        $_.CommandLine.IndexOf($env:P24_DRAIN_PROJECT,[StringComparison]::OrdinalIgnoreCase) -ge 0)
+} | Select-Object -ExpandProperty ProcessId)
+if($busy.Count){
+    @{status='WAITING_FOR_PYTHON_EXIT';pids=@($busy | Select-Object -First 8)} | ConvertTo-Json -Compress
+    return
+}
+''' + TASK + OWNER_GUARD + r'''
+if([int]$t.State -eq 1 -and $instances -eq 0){
+    @{status='ALREADY_DRAINED'} | ConvertTo-Json -Compress
+    return
+}
+if([int]$t.State -notin @(1,2,4)){throw 'Unexpected disabled task state'}
+Stop-ScheduledTask -InputObject $t -ErrorAction Stop
+@{status='OWNED_LAUNCHER_STOP_REQUESTED'} | ConvertTo-Json -Compress
+'''
+
+CHANGE = TASK + OWNER_GUARD + r'''
+if([int]$t.State -ne 1 -or $instances -ne 0){throw 'History task must remain disabled and idle'}
 $new=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $env:P24_NEW_ARGS -WorkingDirectory $env:P24_NEW_ROOT
-Set-ScheduledTask -TaskName 'P24-CompactHistory' -Action $new | Out-Null
+Set-ScheduledTask -TaskPath '\' -TaskName $name -Action $new | Out-Null
 @{status='HISTORY_TASK_ACTION_MIGRATED'} | ConvertTo-Json -Compress
 '''
+
+
+def drain_with_lease(store, key, expected, read_job, stop):
+    # The same exclusive key must be acquired by every history worker before publishing.
+    with store.conn.transaction():
+        store.conn.execute("SET TRANSACTION READ ONLY")
+        locked = store.conn.execute("SELECT pg_try_advisory_xact_lock(%s) AS ok", (key,)).fetchone()['ok']
+        if not locked:
+            return {'status': 'WAITING_FOR_HISTORY_LEASE'}
+        current = read_job()
+        if (not current or any(current[k] != expected[k] for k in ('job_id', 'from_ns', 'target_ns'))
+                or current['next_ns'] < expected['next_ns']):
+            raise ValueError('HISTORY_CHECKPOINT_MISMATCH')
+        return stop()
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project',type=Path,required=True)
     parser.add_argument('--code-root',type=Path,required=True)
-    parser.add_argument('--check-only',action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--check-only', action='store_true')
+    mode.add_argument('--drain-launcher', action='store_true',
+                      help='During an upgrade, drain the disabled task at --code-root without migrating it')
     parser.add_argument('--expected-from')
     parser.add_argument('--resume-existing', action='store_true',
                         help='Require the existing task to belong to this very release')
@@ -132,23 +189,49 @@ def main():
                 current = powershell(SNAPSHOT)
                 result['task_snapshot'] = {k: v for k, v in current.items() if k != 'xml'}
                 return current
-            mark('CHECKING_DISABLED_TASK')
-            snapshot=wait_for_stopped_task(read_snapshot,str(project),sys.executable)
-            old=validate_task(snapshot,str(project),sys.executable)
-            if not (Path(old)/'compact_product/History_Compact_Product.ps1').is_file():
-                raise ValueError('PREVIOUS_HISTORY_SCRIPT_MISSING')
             job=before.get('job')
             if not job or job['state']=='COMPLETE':
                 raise ValueError('ACTIVE_HISTORY_JOB_REQUIRED')
             if args.expected_from and instant(args.expected_from) != job['from_ns']:
                 raise ValueError('HISTORY_RANGE_CHANGED')
-            if args.resume_existing and Path(old).resolve() != root:
+            if args.drain_launcher and not args.expected_from:
+                raise ValueError('HISTORY_RANGE_REQUIRED_FOR_DRAIN')
+            def drain(snapshot):
+                from compact_behavior.history import latest
+                from compact_behavior.store import Store
+                from compact_product.config import load
+                from compact_product.runtime import role_key
+                old = validate_owner(snapshot, str(project), sys.executable)
+                if Path(old).resolve() != root:
+                    raise ValueError('PREVIOUS_HISTORY_TASK_ROOT_CHANGED')
+                mark('DRAINING_DISABLED_HISTORY_LAUNCHER')
+                cfg, settings, stream = load(project)
+                store = Store(settings['DATABASE'], schema=cfg.source_schema, application='history.launcher-drain')
+                try:
+                    env = dict(P24_OLD_ARGS=worker_args(old,str(project),sys.executable),
+                               P24_OLD_ROOT=old, P24_DRAIN_PROJECT=str(project))
+                    outcome = drain_with_lease(store,role_key(cfg,stream,'history'),job,
+                        lambda: latest(store,stream), lambda: powershell(DRAIN,env))
+                finally:
+                    store.close()
+                result['launcher_drain'] = outcome
+                return outcome['status'] in ('ALREADY_DRAINED','OWNED_LAUNCHER_STOP_REQUESTED')
+
+            mark('CHECKING_DISABLED_TASK')
+            snapshot=wait_for_stopped_task(read_snapshot,str(project),sys.executable,
+                drain=drain if args.drain_launcher else None)
+            old=validate_task(snapshot,str(project),sys.executable)
+            if not (Path(old)/'compact_product/History_Compact_Product.ps1').is_file():
+                raise ValueError('PREVIOUS_HISTORY_SCRIPT_MISSING')
+            if (args.resume_existing or args.drain_launcher) and Path(old).resolve() != root:
                 raise ValueError('PREVIOUS_HISTORY_TASK_ROOT_CHANGED')
             result.update(previous_code_root=old,new_code_root=str(root),before=job)
             backup=report.with_suffix('.task.xml')
             backup.write_text(snapshot['xml'],encoding='utf-8')
             result['task_backup']=str(backup)
-            if args.check_only:
+            if args.drain_launcher:
+                result['status']='HISTORY_TASK_DRAINED_AND_VERIFIED'
+            elif args.check_only:
                 result['status']='HISTORY_TASK_MIGRATION_CHECKED_NO_CHANGE'
             else:
                 if Path(old).resolve() != root:
@@ -171,8 +254,10 @@ def main():
             # Preserve the migrated task and original XML for inspection. Never
             # overwrite another task or attempt a second unverified migration.
         report.write_text(json.dumps(result,ensure_ascii=False,indent=2,default=str),encoding='utf-8')
-    print(json.dumps(dict(status=result['status'],output=str(report),failure=result.get('failure')),ensure_ascii=True),flush=True)
-    return 0 if result['status'] in ('COMPACT_HISTORY_TASK_REPAIRED_AND_STARTED','HISTORY_TASK_MIGRATION_CHECKED_NO_CHANGE') else 2
+    print(json.dumps(dict(status=result['status'],output=str(report),failure=result.get('failure'),
+        scheduler_state=(result.get('task_snapshot') or {}).get('state_code'),
+        instances=(result.get('task_snapshot') or {}).get('instances'),launcher_drain=result.get('launcher_drain')),ensure_ascii=True),flush=True)
+    return 0 if result['status'] in ('COMPACT_HISTORY_TASK_REPAIRED_AND_STARTED','HISTORY_TASK_MIGRATION_CHECKED_NO_CHANGE','HISTORY_TASK_DRAINED_AND_VERIFIED') else 2
 
 
 if __name__=='__main__':
