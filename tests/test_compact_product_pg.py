@@ -37,6 +37,42 @@ def crash_analysis(config, schema, ad_schema, start, point):
 
 @unittest.skipUnless(os.environ.get("P24_DELTA_PG_HOST"), "native PostgreSQL required")
 class CompactProductPostgresTests(unittest.TestCase):
+    def test_grouped_legacy_gas_witnesses_and_missing_reference(self):
+        from compact_behavior import inquiry
+        from compact_behavior.extract import behavior_id
+        from compact_product import review_groups
+        from flask import render_template
+        service, axis = 'Services.v2/GasBills', 'ParticipateCode'
+        records = [row(path=service),row(path='ClientAyanCoInquiry.GasBillInquiry',
+                   message='Input:{"ParticipateCode":"0001234"}',at='2026-10-20T08:20:12Z')]
+        state = extract(records)
+        self.db.publish('test',T,T+FIVE,state,len(records))
+        self.db.conn.execute(f"UPDATE {self.config.source_schema}.behaviors SET features=features-%s",(inquiry.POLICY,))
+        bid = behavior_id('test','req-1')
+        def finding(key, offset, ids):
+            return dict(finding_id=key,session_id='session-1',service=service,method='target_diversity',
+                        start_ns=T,revision=1,verdict='UNSURE',
+                        result=dict(period_start_ns=T+offset,period_end_ns=T+11*10**9,
+                                    inquiry_breadth_policy='rolling',numeric_path=axis,distinct_targets=12,
+                                    evidence=ids))
+        rows = [finding('f1',0,[bid]),finding('f2',1,[bid,'missing'])]
+        groups = review_groups.groups(rows)
+        self.assertEqual(len(groups),1)
+        with self.db.conn.transaction():
+            proof = review_groups.page_evidence(self.db.conn,self.config.source_schema,'test',groups,None,1)
+        ev = proof['f2']
+        self.assertEqual((ev['total'],ev['missing'],ev['distinct_floor']),(2,1,12))
+        self.assertEqual([r['target'] for r in ev['rows']],['0001234'])
+        app = create_app(self.config,self.database,'test')
+        with app.test_request_context('/cases/synthetic'):
+            html = render_template('case.html',title='test',case=dict(case_id='synthetic',session_id='session-1'),
+                                   visible=[groups[0][0]],proof=proof,page=1,days=1,date='2026-10-20')
+        self.assertEqual(html.count('class="card finding"'),1)
+        self.assertEqual(html.count('/behaviors/'+bid),1)
+        self.assertIn('0001234',html)
+        self.assertNotIn('/behaviors/missing',html)
+        self.assertIn('پیدا نشد',html)
+
     def test_access_denial_repair_and_scopes_preserve_execution_counts_and_cursor(self):
         from tests.test_compact_extract import access_denied_rows
         from compact_product.dispatch_review import inspect, DispatchWindowWriter

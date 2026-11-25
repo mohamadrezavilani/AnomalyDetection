@@ -1,1 +1,1 @@
-{% extends 'base.html' %}{% block content %}<p>دریافت اطلاعات کامل نشد. صفحه را دوباره بارگیری کنید و در صورت تکرار، وضعیت Workerها را بررسی کنید.</p>{% endblock %}
+{% extends 'base.html' %}{% block content %}<p>{{ reason }}</p><p>کد پیگیری <code>{{ reference }}</code> · <code>{{ endpoint }}</code>{% if state %} · <code>{{ state }}</code>{% endif %}</p>{% endblock %}
