@@ -4,7 +4,7 @@
 
 **مأموریت فعلی این ایجنت WP00 است.** مالک عبارت فاز ۰۱ را به WP00 اصلاح کرده و ادغام تغییرات لازم روی main را مجاز دانسته است. این تحویل معماری و قرارداد است؛ تغییر runtime، DB یا سرویس تولید را فعال نمی‌کند.
 
-مرجع جاری نسخهٔ ۱٫۳: [MASTER_PLAN_FA](docs/userid/MASTER_PLAN_FA.md). [معماری](docs/userid/ARCHITECTURE_FA.md)، [قرارداد داده](docs/userid/DATA_CONTRACT_FA.md) و [هماهنگی](docs/userid/COORDINATION_FA.md) برای همهٔ بسته‌ها مشترک‌اند.
+مرجع جاری نسخهٔ ۱٫۴: [MASTER_PLAN_FA](docs/userid/MASTER_PLAN_FA.md). [معماری](docs/userid/ARCHITECTURE_FA.md)، [قرارداد داده](docs/userid/DATA_CONTRACT_FA.md) و [هماهنگی](docs/userid/COORDINATION_FA.md) برای همهٔ بسته‌ها مشترک‌اند.
 
 ## بسته‌ها و ترتیب
 
@@ -22,7 +22,7 @@
 
 ## دروازهٔ WP00
 
-قرارداد p24-userid-1 با identity و feature نسخه‌دار، هشت نوع مرزی، schema و مثال مصنوعی و conformance check ارائه می‌شود. دقت Int64، جداسازی نوع/وضعیت هویت، کلید مستقل RequestID، مراجع علّی، fence منبع/مرجع و جداسازی نصب‌ها باید در قرارداد روشن باشند.
+قرارداد p24-userid-2 با identity و feature نسخه‌دار، هشت نوع مرزی، schema و مثال مصنوعی و conformance check ارائه می‌شود. دقت Int64، جداسازی نوع/وضعیت هویت، کلید مستقل RequestID، مراجع علّی، fence منبع/مرجع و جداسازی نصب‌ها باید در قرارداد روشن باشند.
 
 قبولی این فاز به بررسی قرارداد، آزمون مرتبط و ادغام main محدود است. شروع/توقف سرویس‌ها، native PostgreSQL، مرورگر، نصب روی ۵۰۲۲ و سنجش دقت تولید متعلق به مراحل بعدند. گزارش این آزمون‌های اجرا‌نشده NOT_RUN می‌ماند.
 

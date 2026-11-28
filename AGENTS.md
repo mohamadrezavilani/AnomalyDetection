@@ -3,7 +3,7 @@
 The owner corrected the active assignment to **WP00 architecture and integration**.
 Read `Pishkhan24_Project_Roadmap.md` and `docs/userid/MASTER_PLAN_FA.md`,
 then the assigned work package. The UserID rebuild contracts live in
-`contracts/userid/v1/`; schema, semantic validator and examples are one contract.
+`contracts/userid/v2/`; schema, semantic validator and examples are one contract.
 
 - WP00 may audit, define contracts, update integration documentation, test its
   changes and merge the reviewed result to main, as explicitly requested.

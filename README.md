@@ -14,8 +14,8 @@ architecture and integration first. WP01-WP06 are separate work packages.
 | [Architecture audit](docs/userid/ARCHITECTURE_FA.md) | Existing dependencies, new module boundaries and lifecycle |
 | [Data contracts](docs/userid/DATA_CONTRACT_FA.md) | UserID meaning, precision, versioning and integration DTOs |
 | [Coordination](docs/userid/COORDINATION_FA.md) | Ownership, decisions, integration order and handoff |
-| [JSON schema](contracts/userid/v1/schema.json) | Normalized boundary structure |
-| [Synthetic examples](contracts/userid/v1/examples.json) | Shared fixtures without private captures |
+| [JSON schema](contracts/userid/v2/schema.json) | Normalized boundary structure |
+| [Synthetic examples](contracts/userid/v2/examples.json) | Shared fixtures without private captures |
 | [Legacy Compact runbook](compact_product/README_FA.md) | Existing installation and its historical behavior |
 
 The new web will use port **5022** and an independent database. The old web

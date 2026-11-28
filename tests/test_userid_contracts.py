@@ -6,7 +6,7 @@ import unittest
 
 from contracts.userid.validate import (
     ROOT, SCHEMA, ContractViolation, Draft202012Validator,
-    key, validate_record,
+    canonical_request_id, document_key, key, validate_record,
 )
 
 EXAMPLES = json.loads((ROOT / "examples.json").read_text(encoding="utf-8"))
@@ -125,7 +125,7 @@ class UserIDContracts(unittest.TestCase):
         r["identity"]["kind"] = "ACCOUNT"
         self.rejected(r)
         auth = deepcopy(r["identity"]["evidence"][0])
-        auth.update(source="SOURCE_AUTH_STATE", field="source.verified")
+        auth.update(source="SOURCE_AUTH_STATE", field="source.identity_kind", observed_kind="ACCOUNT")
         r["identity"]["kind_evidence"] = [auth]
         validate_record(r)
         auth["observed_user_id"] = "42"
@@ -305,6 +305,258 @@ class UserIDContracts(unittest.TestCase):
         for same in ("c:/p24/userid/CODE", "C:/P24/UserID/code/."):
             r["data_root"] = same
             self.rejected(r)
+
+    def test_frozen_v1_is_distinguishable_from_active_schema(self):
+        from contracts.userid import CONTRACT_VERSION, FEATURE_VERSION, IDENTITY_POLICY_VERSION
+        frozen = json.loads((ROOT.parent / "v1" / "examples.json").read_text(encoding="utf-8"))
+        for name, record in EXAMPLES.items():
+            self.assertEqual(record["contract_version"], CONTRACT_VERSION)
+            self.rejected(frozen[name])
+        self.assertEqual(EXAMPLES["FeatureSet"]["feature_version"], FEATURE_VERSION)
+        self.assertEqual(EXAMPLES["RequestIdentity"]["identity"]["identity_policy_version"],
+                         IDENTITY_POLICY_VERSION)
+        for name, field in (("Behavior", "behavior_key"), ("RequestIdentity", "request_key")):
+            self.assertEqual(frozen[name][field], EXAMPLES[name][field])
+
+    def test_document_origin_and_metadata_witness_belong_to_request(self):
+        for field in ("_index", "_id"):
+            raw = self.sample("SourceRecord")
+            raw["origin"][field] += "-other"
+            self.rejected(raw)
+        for kind in ("Behavior", "RequestIdentity"):
+            for field, value in (("document_key", None), ("request_key", "a" * 64)):
+                record = self.sample(kind)
+                record["identity"]["evidence"][0][field] = value
+                self.rejected(record)
+
+    def test_conflict_takes_precedence_over_an_invalid_observation(self):
+        r = self.sample("RequestIdentity")
+        i = r["identity"]
+        i["candidate_user_ids"].append("42")
+        i["evidence"].append(dict(i["evidence"][0], observed_user_id="42", document_key="d" * 64))
+        i.update(user_id=None, actor_key=None, identity_as_of_ns=None,
+                 status="INVALID", invalid_reasons=["BAD_TYPE"])
+        self.rejected(r)
+        i["status"] = "CONFLICT"
+        validate_record(r)
+
+    def test_auth_claim_requires_actual_observed_kind_and_dated_origin(self):
+        r = self.sample()
+        identity = r["identity"]
+        proof = dict(identity["evidence"][0], source="SOURCE_AUTH_STATE",
+                     field="source.identity_kind", observed_kind="GUEST")
+        identity.update(kind="GUEST", kind_evidence=[proof])
+        validate_record(r)
+        for field, bad in (("observed_kind", "ACCOUNT"), ("field", "source.verified"),
+                           ("document_key", None), ("event_time_ns", None), ("request_key", "a"*64)):
+            altered = deepcopy(r)
+            altered["identity"]["kind_evidence"][0][field] = bad
+            self.rejected(altered)
+        identity["kind_evidence"].append(dict(proof, observed_kind="ACCOUNT", document_key="c"*64))
+        self.rejected(r)
+        identity["kind"] = "UNDETERMINED"
+        validate_record(r)
+        r["features"]["account_eligible"] = True
+        self.rejected(r)
+
+    def test_late_identity_is_used_only_in_the_revision_that_knows_it(self):
+        r = self.sample()
+        later = str(int(r["known_at_ns"]) + 17)
+        r["identity"]["evidence"][0]["seen_at_ns"] = later
+        self.rejected(r)
+        r.update(known_at_ns=later, revision=2)
+        validate_record(r)
+
+    def test_account_proof_after_operation_does_not_backdate_account_activity(self):
+        r = self.sample()
+        i = r["identity"]
+        later = str(int(r["occurred_at_ns"]) + 1)
+        r.update(known_at_ns=later, revision=2)
+        proof = dict(i["evidence"][0], source="SOURCE_AUTH_STATE",
+                     field="source.identity_kind", observed_kind="ACCOUNT",
+                     seen_at_ns=later, event_time_ns=later)
+        i.update(kind="ACCOUNT", kind_evidence=[proof])
+        validate_record(r)
+        r["features"]["account_eligible"] = True
+        self.rejected(r)
+        proof["event_time_ns"] = r["occurred_at_ns"]
+        validate_record(r)
+
+    def test_future_content_cannot_leak_into_earlier_revision(self):
+        r = self.sample()
+        later = str(int(r["known_at_ns"]) + 1)
+        r["features"]["input"]["observed_at_ns"] = later
+        self.rejected(r)
+        r["known_at_ns"] = later
+        validate_record(r)
+        r["occurred_at_ns"] = str(int(later) + 1)
+        self.rejected(r)
+
+    def test_distinct_input_targets_independent_of_outcome(self):
+        r = self.sample()
+        tokens = ["a"*64, "b"*64, "b"*64]
+        r["features"]["input"]["data"] = {"targets": {"WaterBillID": tokens}}
+        for code, name, outcome, eligible in (("G00000", "Successful", "REPORTED_SUCCESS", True),
+                                               ("GD2068", None, "REPORTED_FAILURE", True),
+                                               (None, None, "UNKNOWN", False)):
+            r["result"].update(api_code=code, api_name=name, api_outcome=outcome)
+            r["features"]["result_eligible"] = eligible
+            validate_record(r)
+            self.assertEqual(r["features"]["input"]["data"]["targets"]["WaterBillID"], tokens)
+        r["service_key"] = None
+        self.rejected(r)
+        r["features"]["service_eligible"] = False
+        validate_record(r)
+
+    def test_incomplete_axis_does_not_mask_an_independent_valid_axis(self):
+        r = self.sample("FeatureSet")
+        c = r["input"]
+        c.update(status="PARTIAL", limitations=["NUMERIC_LIMIT"])
+        validate_record(r)
+        c["limitations"] = []
+        self.rejected(r)
+        c.update(status="AVAILABLE", data={})
+        self.rejected(r)
+        for invalid in ({}, {"WaterBillID":[]}, {"WaterBillID":["12345"]}):
+            c["data"] = {"targets": invalid}
+            self.rejected(r)
+
+    def test_eligible_numeric_and_shape_require_their_own_payload(self):
+        r = self.sample("FeatureSet")
+        comp = r["input"]
+        stats = {"min": 1, "max": 3, "mean": 2, "count": 2}
+        comp.update(eligibility={"shape": True, "numeric": True, "targets": False},
+                    data={"shape_hash":"a"*64, "numeric":{"a[]":stats}})
+        validate_record(r)
+        stats["max"] = 0
+        self.rejected(r)
+        stats["max"] = 3
+        stats["mean"] = 1000
+        self.rejected(r)
+        stats["mean"] = 2
+        del comp["data"]["shape_hash"]
+        self.rejected(r)
+        comp["eligibility"]["shape"] = False
+        validate_record(r)
+
+    def test_terminal_outcomes_must_match_the_reported_code(self):
+        for code, name, outcome in (("G00000", "SuccessfulX", "REPORTED_SUCCESS"),
+                                    ("G00000", "Successful", "REPORTED_FAILURE"),
+                                    (None, None, "REPORTED_FAILURE")):
+            r = self.sample()
+            r["result"].update(api_code=code, api_name=name, api_outcome=outcome)
+            r["features"]["result_eligible"] = False
+            self.rejected(r)
+
+    def test_normal_needs_a_real_comparison_and_analyzed_closed_window(self):
+        r = self.anomaly()
+        r.update(status="NORMAL", reason_code="WITHIN_REFERENCE", observed=0, witnesses=[])
+        validate_record(r)  # Empty observed activity can have a real reference.
+        for field, value in (("threshold", None), ("observed", None),
+                             ("analyzed_at_ns", r["window_start_ns"])):
+            altered = dict(r, **{field: value})
+            self.rejected(altered)
+        for state in ("NORMAL", "ANOMALY"):
+            for field, value in (("basis","UNAVAILABLE"), ("windows",0), ("samples",0),
+                                 ("fingerprint",None), ("basis","ENGINEERING_FLOOR")):
+                altered = self.anomaly()
+                altered["status"] = state
+                altered["reference"][field] = value
+                self.rejected(altered)
+
+    def test_case_feedback_ownership_and_superseded_anomaly(self):
+        r = self.sample("CaseView")
+        f = self.anomaly()
+        r.update(findings=[f], state="ACTIVE")
+        validate_record(r)
+        r["actor_key"] = None
+        self.rejected(r)
+        r["actor_key"] = f["actor_key"]
+        note = {"finding_revision":1,"finding_key":"f"*64,"verdict":"DISMISSED",
+                "note":"","recorded_at_ns":f["analyzed_at_ns"]}
+        r["feedback"] = [note]
+        self.rejected(r)
+        note.update(finding_key=f["finding_key"], finding_revision=2)
+        self.rejected(r)
+        note["finding_revision"] = 1
+        validate_record(r)
+        r["findings"].insert(0, dict(f, finding_revision=2, status="NORMAL", observed=1))
+        self.rejected(r)
+        r["state"] = "RESOLVED"
+        validate_record(r)
+        r["findings"].append(deepcopy(f))
+        self.rejected(r)
+
+    def test_non_actor_cases_do_not_pool_service_or_network_entities(self):
+        r = self.sample("CaseView")
+        f = self.anomaly("service_rate")
+        f.update(entity_type="SERVICE", actor_key=None, entity_key=f["service_key"])
+        r.update(state="ACTIVE", actor_key=None, findings=[f])
+        validate_record(r)
+        r["findings"].append(dict(f, entity_key="Services-other", service_key="Services-other",
+                                  finding_key="f"*64))
+        self.rejected(r)
+
+    def test_runtime_roots_are_absolute_and_disjoint_on_one_platform(self):
+        for code, data in (("C:/p24", "c:/P24/data"), ("C:/p24/app/code", "C:/p24"),
+                           ("C:app", "C:/files"), ("/srv/code", "C:/files"),
+                           ("/srv/code", "/srv/code/logs"), ("code", "data"),
+                           (r"\\server\share\code", r"\\server\share\CODE\data")):
+            r = self.sample("RuntimeConfig")
+            r.update(code_root=code, data_root=data)
+            self.rejected(r)
+        for code, data in (("C:/p24/code", "D:/p24/data"), ("/srv/p24", "/srv/p24-data"),
+                           (r"\\server\share\code", r"\\server\share\data")):
+            r = self.sample("RuntimeConfig")
+            r.update(code_root=code, data_root=data)
+            validate_record(r)
+
+    def test_record_rejects_non_json_objects_and_trailing_control_character(self):
+        r = self.sample("SourceRecord")
+        r["metadata"]["invalid"] = {1,2}
+        self.rejected(r)
+        r = self.sample("RuntimeConfig")
+        r["database_name"] += "\n"
+        self.rejected(r)
+
+    def test_real_guid_forms_preserve_scope_key_and_never_share_an_empty_guid(self):
+        canonical = "13adc2a245fc4c24be765bf462ddabce"
+        source = "13adc2a2-45fc-4c24-be76-5bf462ddabce"
+        for value in (source, source.upper(), canonical, canonical.upper()):
+            self.assertEqual(canonical_request_id(value), canonical)
+        for bad in (source+" ", source+"\n", "{"+source+"}", "0"*32, None,
+                    "00000000-0000-0000-0000-000000000000", canonical[:9]+"-"+canonical[9:]):
+            with self.assertRaises(ContractViolation):
+                canonical_request_id(bad)
+        r = self.sample("RequestIdentity")
+        r.update(request_id="0"*32, request_key=key("userid-request-1", r["source_scope"], "0"*32))
+        self.rejected(r)
+
+    def test_real_success_spelling_and_cross_record_example(self):
+        import hashlib
+        import re
+
+        raw = self.sample("SourceRecord")
+        identity, behavior = self.sample("RequestIdentity"), self.sample()
+        scope = raw["source_scope"]
+        guid = canonical_request_id(raw["metadata"]["RequestID"])
+        self.assertEqual(guid, behavior["request_id"])
+        proof = identity["identity"]["evidence"][0]
+        self.assertEqual(proof["document_key"], document_key(scope, raw["origin"]["_index"],
+                                                             raw["origin"]["_id"]))
+        self.assertEqual(proof["request_key"], key("userid-request-1", scope, guid))
+        self.assertEqual(proof["observed_user_id"], raw["metadata"]["UserID"])
+        code, name = re.search(r"\(([A-Z0-9]+) \| ([a-zA-Z]+)\)", raw["message"]).groups()
+        self.assertEqual((code, name), (behavior["result"]["api_code"], behavior["result"]["api_name"]))
+        source_target = json.loads(raw["message"].split("Input: ", 1)[1])["Parameters"]["Identifier"]
+        expected = hashlib.sha256(json.dumps(source_target, ensure_ascii=False).encode()).hexdigest()
+        self.assertEqual(behavior["features"]["input"]["data"]["targets"]["WaterBillID"], [expected])
+        for symbol in ("successful", "Successful", "SUCCESSFUL"):
+            behavior["result"]["api_name"] = symbol
+            validate_record(behavior)
+        for symbol in ("succeſsful", "successful ", "successfulX"):
+            behavior["result"]["api_name"] = symbol
+            self.rejected(behavior)
 
     def test_normalized_contracts_do_not_import_or_bootstrap_runtime(self):
         root = ROOT.parents[2]
