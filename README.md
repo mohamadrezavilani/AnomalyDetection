@@ -1,10 +1,10 @@
 # Pishkhan24 — Compact Behavior and Independent AD
 
-The owner and manager changed the product scope on 21 November 2026: extract observed API executions with the input, output and features needed for behavior analysis. Raw-log archival, financial relationship reconstruction and migration of the old anomaly models are outside the new product scope. RequestID identity, authoritative Session continuity, explicit uncertainty and late corrections remain required.
+The owner and manager changed the product scope on 21 November 2026: extract observed API executions with the input, output and features needed for behavior analysis. Raw-log archival, financial relationship reconstruction and migration of the old anomaly models are outside the new product scope. The preserved generation identifies login sessions through evidence recorded before masking. The account generation uses the structured Core UserID across logins. RequestID, explicit uncertainty and late corrections remain required.
 
 Start with the [current Persian roadmap](Pishkhan24_Project_Roadmap.md) and [product contract, Windows deployment and rollback runbook](compact_product/README_FA.md).
 
-The current code package is `COMPACT-PRODUCT-20261121-6`: independent ingestion, eight explainable compact AD methods (model compact-ad-robust-2), version-fenced dirty consumption, pending lifecycle, manual-refresh web and supervised roles. It uses fresh `p24_compact_v2` / `p24_compact_ad_v2` schemas and fresh model references; legacy tables and feedback are retained.
+The latest session-based package on the migration baseline is `COMPACT-PRODUCT-20261125-38` (main PR #89). The new account generation has a distinct database and identity contract. The current Persian roadmap defines agent ownership, performance comparisons, the operating mode for the previous application and the start time. `tools/Start_UserID_Transition.ps1` starts source sampling and the controlled transition on Windows.
 
 Features preserve typed array multiplicity, explicit per-component completeness and selected-evidence parse validity. Nested duplicate JSON keys cannot silently overwrite targets. Empty object structure is represented. Both Core and Services AddUserData/GetUserData are automatic support observations, excluded from business-rate methods. InvoiceRegister dispatch requires reviewed same-request evidence.
 
