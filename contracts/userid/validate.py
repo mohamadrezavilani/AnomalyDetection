@@ -10,15 +10,16 @@ import json
 import math
 import ntpath
 import posixpath
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-CONTRACT = "p24-userid-1"
+from . import CONTRACT_VERSION as CONTRACT
+
 FIVE = 300_000_000_000
 MAX_INT64 = 2**63 - 1
-ROOT = Path(__file__).with_name("v1")
+ROOT = Path(__file__).with_name("v2")
 SCHEMA = json.loads((ROOT / "schema.json").read_text(encoding="utf-8"))
 FORMATS = FormatChecker()
 
@@ -50,11 +51,17 @@ def require(condition, code):
         raise ContractViolation(code)
 
 
-def key(namespace, source_scope, value):
-    """Canonical UTF-8 JSON array of three strings, then lowercase SHA-256."""
-    data = json.dumps([namespace, source_scope, value], ensure_ascii=False,
-                      separators=(",", ":"), allow_nan=False)
+def _digest(parts):
+    data = json.dumps(parts, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def key(namespace, source_scope, value):
+    return _digest([namespace, source_scope, value])
+
+
+def document_key(scope, index, document_id):
+    return _digest(["userid-document-1", scope, index, document_id])
 
 
 def _finite(value, depth=0, budget=None):
@@ -70,18 +77,15 @@ def _finite(value, depth=0, budget=None):
     elif isinstance(value, list):
         for child in value:
             _finite(child, depth + 1, budget)
+    else:
+        require(value is None or isinstance(value, (str, bool, int)), "non_json_value")
 
 
-def _identity(identity, scope):
+def _identity(identity, scope, request_key):
+    require(all(e["request_key"] == request_key for e in identity["evidence"] + identity["kind_evidence"]),
+            "identity_witness_belongs_to_another_request")
     require(all(e["source"] == "LOG_METADATA" for e in identity["evidence"]),
             "identity_must_come_from_log_metadata")
-    for evidence in identity["evidence"] + identity["kind_evidence"]:
-        if evidence["source"] == "LOG_METADATA":
-            require(evidence["field"] in ("_source.UserID", "fields.UserID", "log.UserID"),
-                    "metadata_evidence_field_mismatch")
-        else:
-            require(evidence["field"] in ("source.verified", "source.identity_kind"),
-                    "auth_evidence_field_mismatch")
     candidates = identity["candidate_user_ids"]
     observed = {e["observed_user_id"] for e in identity["evidence"]
                 if e["observed_user_id"] is not None}
@@ -95,16 +99,27 @@ def _identity(identity, scope):
                  if e["observed_user_id"] == uid and e["event_time_ns"] is not None]
         expected = str(min(times)) if times else None
         require(identity["identity_as_of_ns"] == expected, "identity_as_of_evidence_mismatch")
-        if identity["kind"] != "UNDETERMINED":
-            require(all(e["source"] == "SOURCE_AUTH_STATE"
-                        and e["observed_user_id"] == uid
-                        for e in identity["kind_evidence"]),
-                    "identity_kind_needs_matching_auth_evidence")
+        proofs = identity["kind_evidence"]
+        if proofs:
+            require(all(e["source"] == "SOURCE_AUTH_STATE" and e["observed_user_id"] == uid
+                        for e in proofs), "identity_kind_needs_matching_auth_evidence")
+            kinds = {e["observed_kind"] for e in proofs}
+            expected_kind = next(iter(kinds)) if len(kinds) == 1 else "UNDETERMINED"
+            require(identity["kind"] == expected_kind, "identity_kind_evidence_mismatch")
 
 
 def _features(features):
     for direction in ("input", "output"):
         component = features[direction]
+        for summary in component["data"].get("numeric", {}).values():
+            low, high, mean = summary["min"], summary["max"], summary["mean"]
+            require(low <= high, "numeric_summary_inverted_range")
+            # A binary float computed as sum/count can round one ULP past an endpoint.
+            inside = low <= mean <= high
+            if not inside and isinstance(mean, float):
+                inside = (math.nextafter(mean, -math.inf) <= high
+                          and math.nextafter(mean, math.inf) >= low)
+            require(inside, "numeric_mean_outside_range")
         if any(component["eligibility"].values()):
             require(component["status"] in ("AVAILABLE", "PARTIAL")
                     and component["observed_at_ns"] is not None
@@ -141,24 +156,71 @@ def _analysis(record):
         if record["entity_key"] is not None:
             require(re.fullmatch(r"[a-f0-9]{64}", record["entity_key"]) is not None,
                     "network_entity_requires_fingerprint")
-    if record["status"] in ("NORMAL", "ANOMALY"):
-        require(record["entity_key"] is not None, "evaluated_result_needs_entity")
     require(begin < end, "analysis_window_order")
     require(int(reference["cutoff_ns"]) <= begin, "reference_must_not_use_future")
     require(reference["model_version"] == record["model_version"],
             "reference_model_version_mismatch")
-    if record["status"] in ("NORMAL", "ANOMALY") and record["method"] in ACTOR_METHODS:
-        require(record["actor_key"] is not None, "actor_method_requires_actor")
-    if record["status"] == "ANOMALY":
-        require(record["observed"] is not None and record["threshold"] is not None
-                and record["witnesses"], "anomaly_needs_measurement_threshold_and_witness")
-        require(reference["basis"] != "UNAVAILABLE", "anomaly_needs_reference_basis")
+    if record["status"] in ("NORMAL", "ANOMALY"):
+        require(record["entity_key"] is not None, "evaluated_result_needs_entity")
+        require(int(record["analyzed_at_ns"]) >= end, "decision_before_window_close")
+        require(record["observed"] is not None and record["threshold"] is not None,
+                "decision_needs_measurement_and_threshold")
+        require(reference["basis"] != "UNAVAILABLE", "decision_needs_reference_basis")
         if reference["basis"] == "PAST_DATA":
-            require(reference["windows"] > 0 and reference["samples"] > 0,
-                    "statistical_anomaly_needs_past_samples")
+            require(reference["windows"] > 0 and reference["samples"] > 0
+                    and reference["fingerprint"] is not None,
+                    "statistical_decision_needs_pinned_past_samples")
         else:
             require(record["method"] in ("access_denied_attempts", "invalid_session_attempts"),
                     "engineering_floor_policy_not_defined_for_method")
+        if record["status"] == "ANOMALY":
+            require(record["witnesses"], "anomaly_needs_versioned_witness")
+
+
+def _case(record):
+    revisions = {}
+    current = {}
+    entities = set()
+    for finding in record["findings"]:
+        _analysis(finding)
+        require(finding["source_scope"] == record["source_scope"], "case_source_scope_mismatch")
+        require(finding["actor_key"] == record["actor_key"], "case_actor_mismatch")
+        entities.add((finding["entity_type"], finding["entity_key"]))
+        fid, rev = finding["finding_key"], finding["finding_revision"]
+        seen = revisions.setdefault(fid, set())
+        require(rev not in seen, "duplicate_finding_revision")
+        seen.add(rev)
+        if fid not in current or rev > current[fid]["finding_revision"]:
+            current[fid] = finding
+    require(len(entities) == 1, "case_entity_mismatch")
+    for note in record["feedback"]:
+        finding = current.get(note["finding_key"])
+        require(finding is not None and note["finding_revision"] <= finding["finding_revision"],
+                "feedback_must_reference_case_finding_revision")
+    if record["state"] == "ACTIVE":
+        require(any(f["status"] == "ANOMALY" for f in current.values()),
+                "active_case_needs_current_anomaly")
+
+
+def _runtime_roots(record):
+    paths = (record["code_root"], record["data_root"])
+    windows = [bool(PureWindowsPath(p).drive or "\\" in p) for p in paths]
+    require(windows[0] == windows[1], "runtime_path_styles_must_match")
+    pathmod = ntpath if windows[0] else posixpath
+    pure_path = PureWindowsPath if windows[0] else PurePosixPath
+    roots = []
+    for path in paths:
+        root = pure_path(pathmod.normpath(path))
+        require(root.is_absolute() and chr(0) not in path, "runtime_path_must_be_absolute")
+        if windows[0]:
+            require(not root.as_posix().startswith(("//?/", "//./")),
+                    "runtime_path_needs_drive_or_unc_share")
+            require(all(not part.endswith((" ", ".")) and ":" not in part
+                        for part in root.parts[1:]), "ambiguous_windows_path_component")
+        roots.append(root)
+    code, data = roots
+    require(not code.is_relative_to(data) and not data.is_relative_to(code),
+            "immutable_code_and_mutable_data_must_be_disjoint")
 
 
 def validate_record(record):
@@ -167,21 +229,38 @@ def validate_record(record):
     if error:
         raise ContractViolation("schema_violation")
     kind = record["record_type"]
-    if kind == "SourceWindow":
+    if kind == "SourceRecord":
+        origin = record["origin"]
+        require(record["document_key"] == document_key(record["source_scope"], origin["_index"], origin["_id"]),
+                "document_key_mismatch")
+    elif kind == "SourceWindow":
         begin, end = int(record["window_start_ns"]), int(record["window_end_ns"])
         require(begin % FIVE == 0 and end - begin == FIVE, "aligned_five_minute_window_required")
     elif kind == "RequestIdentity":
         require(record["request_key"] == key("userid-request-1", record["source_scope"],
                                             record["request_id"]), "request_key_mismatch")
-        _identity(record["identity"], record["source_scope"])
+        _identity(record["identity"], record["source_scope"], record["request_key"])
     elif kind == "FeatureSet":
         _features(record)
     elif kind == "Behavior":
         require(record["behavior_key"] == key("userid-behavior-1", record["source_scope"],
                                              record["request_id"]), "behavior_key_mismatch")
         identity, features = record["identity"], record["features"]
-        _identity(identity, record["source_scope"])
+        _identity(identity, record["source_scope"],
+                  key("userid-request-1", record["source_scope"], record["request_id"]))
         _features(features)
+        known = int(record["known_at_ns"])
+        require(all(int(e["seen_at_ns"]) <= known
+                    for e in identity["evidence"] + identity["kind_evidence"]),
+                "identity_witness_not_known_at_revision")
+        require(all(int(e["event_time_ns"]) <= known for e in identity["kind_evidence"]),
+                "auth_state_not_known_at_revision")
+        for side in ("input", "output"):
+            observed_at = features[side]["observed_at_ns"]
+            require(observed_at is None or int(observed_at) <= known,
+                    "feature_not_known_at_revision")
+        if record["occurred_at_ns"] is not None:
+            require(int(record["occurred_at_ns"]) <= known, "operation_not_known_at_revision")
         if features["actor_eligible"]:
             require(identity["status"] == "VALID" and record["state"] == "COMPLETE"
                     and record["operation_role"] in ("business", "user_management")
@@ -192,6 +271,10 @@ def validate_record(record):
                     "actor_identity_after_operation")
         if features["account_eligible"]:
             require(identity["kind"] == "ACCOUNT", "account_kind_unverified")
+            require(any(int(e["event_time_ns"]) <= int(record["occurred_at_ns"])
+                        for e in identity["kind_evidence"]), "account_proof_after_operation")
+        if features["service_eligible"]:
+            require(record["service_key"] is not None, "eligible_service_needs_service_key")
         if features["service_eligible"] or features["result_eligible"]:
             require(record["state"] == "COMPLETE"
                     and record["operation_role"] in ("business", "user_management")
@@ -199,27 +282,19 @@ def validate_record(record):
                     "service_eligibility_needs_complete_operation")
         if features["result_eligible"]:
             require(record["result"]["api_code"] is not None, "result_code_unavailable")
-        if record["result"]["api_outcome"] == "REPORTED_SUCCESS":
-            require(record["result"]["api_code"] == "G00000"
-                    and (record["result"]["api_name"] or "").lower() == "successful",
+        result = record["result"]
+        if result["api_outcome"] == "REPORTED_SUCCESS":
+            require((result["api_code"], result["api_name"]) == ("G00000", "Successful"),
                     "reported_success_needs_exact_code_and_name")
+        elif result["api_outcome"] == "REPORTED_FAILURE":
+            require(result["api_code"] not in (None, "G00000"),
+                    "reported_failure_needs_failure_code")
     elif kind == "AnalysisResult":
         _analysis(record)
     elif kind == "CaseView":
-        for finding in record["findings"]:
-            _analysis(finding)
-            require(finding["source_scope"] == record["source_scope"], "case_source_scope_mismatch")
-            if record["actor_key"] is not None:
-                require(finding["actor_key"] == record["actor_key"], "case_actor_mismatch")
-        if record["state"] == "ACTIVE":
-            require(any(x["status"] == "ANOMALY" for x in record["findings"]),
-                    "active_case_needs_anomaly")
+        _case(record)
     elif kind == "RuntimeConfig":
-        def canonical_path(path):
-            windows = re.match(r"^[A-Za-z]:", path) or chr(92) in path
-            return ntpath.normcase(ntpath.normpath(path)) if windows else posixpath.normpath(path)
-        require(canonical_path(record["code_root"]) != canonical_path(record["data_root"]),
-                "immutable_code_and_mutable_data_must_be_separate")
+        _runtime_roots(record)
 
 
 def main():
