@@ -1,3 +1,29 @@
+# Current owner assignment 2026-11-28
+
+The owner corrected the active assignment to **WP00 architecture and integration**.
+Read `Pishkhan24_Project_Roadmap.md` and `docs/userid/MASTER_PLAN_FA.md`,
+then the assigned work package. The UserID rebuild contracts live in
+`contracts/userid/v1/`; schema, semantic validator and examples are one contract.
+
+- WP00 may audit, define contracts, update integration documentation, test its
+  changes and merge the reviewed result to main, as explicitly requested.
+- WP01-WP06 are not automatically assigned by this document. Do not implement
+  their source extractor, storage, detector, UI or deployment work implicitly.
+- Preserve the current Compact runtime bytes and its manifests in WP00.
+  The current version must remain available for presentation. Do not start or
+  stop collectors, change production DBs, create a new DB, or deploy this phase.
+- New identity is metadata UserID, namespaced by source scope. Never put it in
+  the legacy session_id field or manufacture an account from masked Session/IP.
+- Missing identity, invalid/conflicting identity, and unknown guest/account kind
+  are distinct. Preserve logical RequestID, late evidence, revisions and human
+  feedback. Keep real evidence and configuration private.
+- Use independent branches/worktrees and the shared contract change protocol.
+  A merge is not a deployment. Report actual CI results and NOT_RUN separately.
+- Current documents below apply to the preserved legacy Viewer/Compact scope;
+  their historical Session-based phase does not redefine the new UserID design.
+
+# Preserved legacy instructions
+
 # Current Viewer phase override
 
 Follow Pishkhan24_Project_Roadmap.md and VIEWER_README_FA.md. The current deliverable excludes detector, incident, collector and production cutover. Keep all evidence private, unknown semantics unknown, and guarded p24_design_* database. All native/browser tests not actually run MUST be NOT_RUN.

@@ -1,0 +1,299 @@
+{
+  "SourceRecord": {
+    "record_type": "SourceRecord",
+    "contract_version": "p24-userid-1",
+    "source_scope": "pishkhan24:production:core",
+    "source_profile": "p24-core-userid-v1",
+    "document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "event_time_ns": "1795851000000000000",
+    "seen_at_ns": "1795851000000000000",
+    "metadata": {
+      "RequestID": "11111111111141118111111111111111",
+      "UserID": "9007199254740993",
+      "CallPath": "Services.v1/WaterBills",
+      "IP": "N/A",
+      "UserAgent": "N/A"
+    },
+    "message": "POST https://example.test/api HTTP/1.1 (G00000 | Successful)"
+  },
+  "SourceWindow": {
+    "record_type": "SourceWindow",
+    "contract_version": "p24-userid-1",
+    "source_scope": "pishkhan24:production:core",
+    "source_profile": "p24-core-userid-v1",
+    "window_start_ns": "1795851000000000000",
+    "window_end_ns": "1795851300000000000",
+    "source_records": 1,
+    "complete": true,
+    "completeness_basis": "EXPORTED_COUNT_AND_ORIGIN_CHECKED",
+    "source_finality": "NOT_ESTABLISHED"
+  },
+  "RequestIdentity": {
+    "record_type": "RequestIdentity",
+    "contract_version": "p24-userid-1",
+    "source_scope": "pishkhan24:production:core",
+    "request_id": "11111111111141118111111111111111",
+    "request_key": "cdc9de985290c5bc284a69ed7f88bb3068bad97454e385d4bebf79142cc654f6",
+    "identity": {
+      "identity_policy_version": "userid-identity-1",
+      "status": "VALID",
+      "kind": "UNDETERMINED",
+      "user_id": "9007199254740993",
+      "actor_key": "9b45ef823a96b743e853cca52804ec5e9ec0d2e72a9a1c64b2d7dcc6f7d53d64",
+      "candidate_user_ids": [
+        "9007199254740993"
+      ],
+      "identity_as_of_ns": "1795851000000000000",
+      "missing_observed": true,
+      "invalid_reasons": [],
+      "evidence": [
+        {
+          "source": "LOG_METADATA",
+          "document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "field": "_source.UserID",
+          "event_time_ns": "1795851000000000000",
+          "seen_at_ns": "1795851000000000000",
+          "observed_user_id": "9007199254740993"
+        }
+      ],
+      "kind_evidence": []
+    }
+  },
+  "FeatureSet": {
+    "record_type": "FeatureSet",
+    "contract_version": "p24-userid-1",
+    "feature_version": "userid-features-1",
+    "identity_policy_version": "userid-identity-1",
+    "actor_eligible": true,
+    "account_eligible": false,
+    "service_eligible": true,
+    "result_eligible": true,
+    "input": {
+      "status": "MISSING",
+      "basis": "UNAVAILABLE",
+      "observed_at_ns": null,
+      "eligibility": {
+        "targets": false,
+        "numeric": false,
+        "shape": false
+      },
+      "limitations": [
+        "CONTENT_NOT_OBSERVED"
+      ],
+      "data": {}
+    },
+    "output": {
+      "status": "MISSING",
+      "basis": "UNAVAILABLE",
+      "observed_at_ns": null,
+      "eligibility": {
+        "targets": false,
+        "numeric": false,
+        "shape": false
+      },
+      "limitations": [
+        "CONTENT_NOT_OBSERVED"
+      ],
+      "data": {}
+    }
+  },
+  "Behavior": {
+    "record_type": "Behavior",
+    "contract_version": "p24-userid-1",
+    "source_scope": "pishkhan24:production:core",
+    "request_id": "11111111111141118111111111111111",
+    "behavior_key": "34c5b2f878bdd38c41cdc49b905319f00a99e562280a591ac458d68b5de6723f",
+    "revision": 1,
+    "identity": {
+      "identity_policy_version": "userid-identity-1",
+      "status": "VALID",
+      "kind": "UNDETERMINED",
+      "user_id": "9007199254740993",
+      "actor_key": "9b45ef823a96b743e853cca52804ec5e9ec0d2e72a9a1c64b2d7dcc6f7d53d64",
+      "candidate_user_ids": [
+        "9007199254740993"
+      ],
+      "identity_as_of_ns": "1795851000000000000",
+      "missing_observed": true,
+      "invalid_reasons": [],
+      "evidence": [
+        {
+          "source": "LOG_METADATA",
+          "document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "field": "_source.UserID",
+          "event_time_ns": "1795851000000000000",
+          "seen_at_ns": "1795851000000000000",
+          "observed_user_id": "9007199254740993"
+        }
+      ],
+      "kind_evidence": []
+    },
+    "api": "Services.v1/WaterBills",
+    "service_key": "Services.v1/WaterBills",
+    "operation_role": "business",
+    "state": "COMPLETE",
+    "occurred_at_ns": "1795851000000000000",
+    "known_at_ns": "1795851000000000000",
+    "result": {
+      "api_code": "G00000",
+      "api_name": "Successful",
+      "api_outcome": "REPORTED_SUCCESS",
+      "business_state": "UNKNOWN",
+      "financial_state": "OUT_OF_SCOPE"
+    },
+    "features": {
+      "record_type": "FeatureSet",
+      "contract_version": "p24-userid-1",
+      "feature_version": "userid-features-1",
+      "identity_policy_version": "userid-identity-1",
+      "actor_eligible": true,
+      "account_eligible": false,
+      "service_eligible": true,
+      "result_eligible": true,
+      "input": {
+        "status": "MISSING",
+        "basis": "UNAVAILABLE",
+        "observed_at_ns": null,
+        "eligibility": {
+          "targets": false,
+          "numeric": false,
+          "shape": false
+        },
+        "limitations": [
+          "CONTENT_NOT_OBSERVED"
+        ],
+        "data": {}
+      },
+      "output": {
+        "status": "MISSING",
+        "basis": "UNAVAILABLE",
+        "observed_at_ns": null,
+        "eligibility": {
+          "targets": false,
+          "numeric": false,
+          "shape": false
+        },
+        "limitations": [
+          "CONTENT_NOT_OBSERVED"
+        ],
+        "data": {}
+      }
+    },
+    "quality": []
+  },
+  "AnalysisResult": {
+    "record_type": "AnalysisResult",
+    "contract_version": "p24-userid-1",
+    "source_scope": "pishkhan24:production:core",
+    "finding_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "finding_revision": 1,
+    "method": "actor_rate",
+    "model_version": "userid-ad-1",
+    "identity_policy_version": "userid-identity-1",
+    "feature_version": "userid-features-1",
+    "actor_key": "9b45ef823a96b743e853cca52804ec5e9ec0d2e72a9a1c64b2d7dcc6f7d53d64",
+    "service_key": "Services.v1/WaterBills",
+    "window_start_ns": "1795851000000000000",
+    "window_end_ns": "1795851300000000000",
+    "status": "INSUFFICIENT_DATA",
+    "observed": 1,
+    "threshold": null,
+    "reason_code": "REFERENCE_WARMUP",
+    "reference": {
+      "basis": "UNAVAILABLE",
+      "cutoff_ns": "1795851000000000000",
+      "windows": 0,
+      "samples": 0,
+      "fingerprint": null,
+      "identity_policy_version": "userid-identity-1",
+      "feature_version": "userid-features-1",
+      "model_version": "userid-ad-1"
+    },
+    "witnesses": [
+      {
+        "behavior_key": "34c5b2f878bdd38c41cdc49b905319f00a99e562280a591ac458d68b5de6723f",
+        "behavior_revision": 1
+      }
+    ],
+    "entity_type": "ACTOR",
+    "entity_key": "9b45ef823a96b743e853cca52804ec5e9ec0d2e72a9a1c64b2d7dcc6f7d53d64",
+    "dimension": null,
+    "source_epoch": 1,
+    "reference_epoch": 0,
+    "source_window_revision": 1,
+    "analyzed_at_ns": "1795851300000000000"
+  },
+  "CaseView": {
+    "record_type": "CaseView",
+    "contract_version": "p24-userid-1",
+    "source_scope": "pishkhan24:production:core",
+    "case_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "revision": 1,
+    "state": "ARCHIVED",
+    "actor_key": "9b45ef823a96b743e853cca52804ec5e9ec0d2e72a9a1c64b2d7dcc6f7d53d64",
+    "title": "Synthetic contract example",
+    "explanation": "Transport example only; reference data is insufficient.",
+    "findings": [
+      {
+        "record_type": "AnalysisResult",
+        "contract_version": "p24-userid-1",
+        "source_scope": "pishkhan24:production:core",
+        "finding_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "finding_revision": 1,
+        "method": "actor_rate",
+        "model_version": "userid-ad-1",
+        "identity_policy_version": "userid-identity-1",
+        "feature_version": "userid-features-1",
+        "actor_key": "9b45ef823a96b743e853cca52804ec5e9ec0d2e72a9a1c64b2d7dcc6f7d53d64",
+        "service_key": "Services.v1/WaterBills",
+        "window_start_ns": "1795851000000000000",
+        "window_end_ns": "1795851300000000000",
+        "status": "INSUFFICIENT_DATA",
+        "observed": 1,
+        "threshold": null,
+        "reason_code": "REFERENCE_WARMUP",
+        "reference": {
+          "basis": "UNAVAILABLE",
+          "cutoff_ns": "1795851000000000000",
+          "windows": 0,
+          "samples": 0,
+          "fingerprint": null,
+          "identity_policy_version": "userid-identity-1",
+          "feature_version": "userid-features-1",
+          "model_version": "userid-ad-1"
+        },
+        "witnesses": [
+          {
+            "behavior_key": "34c5b2f878bdd38c41cdc49b905319f00a99e562280a591ac458d68b5de6723f",
+            "behavior_revision": 1
+          }
+        ],
+        "entity_type": "ACTOR",
+        "entity_key": "9b45ef823a96b743e853cca52804ec5e9ec0d2e72a9a1c64b2d7dcc6f7d53d64",
+        "dimension": null,
+        "source_epoch": 1,
+        "reference_epoch": 0,
+        "source_window_revision": 1,
+        "analyzed_at_ns": "1795851300000000000"
+      }
+    ],
+    "feedback": []
+  },
+  "RuntimeConfig": {
+    "record_type": "RuntimeConfig",
+    "contract_version": "p24-userid-1",
+    "instance_id": "userid-test",
+    "source_scope": "pishkhan24:production:core",
+    "database_name": "p24_userid_test_contracts",
+    "web_port": 5022,
+    "task_prefix": "P24-UserID",
+    "code_root": "C:/P24/UserID/code",
+    "data_root": "C:/P24/UserID/data",
+    "enabled_roles": [
+      "web"
+    ],
+    "overlap_windows": 2,
+    "pending_wait_windows": 6,
+    "source_lag_seconds": 60
+  }
+}
