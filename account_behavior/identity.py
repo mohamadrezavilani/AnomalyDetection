@@ -61,8 +61,13 @@ class Evidence:
 
     @classmethod
     def from_row(cls,row,at):
-        uid,reason=observed(row)
-        return cls(((at,uid),)) if uid is not None else cls((),at if reason=='CONFLICT' else None)
+        return cls.from_observation(*observed(row), at)
+
+    @classmethod
+    def from_observation(cls, uid, reason, at):
+        if uid is not None:
+            return cls(((at, uid),))
+        return cls(conflict_at=at if reason == 'CONFLICT' else None)
 
     def merge(self,other):
         earliest={}

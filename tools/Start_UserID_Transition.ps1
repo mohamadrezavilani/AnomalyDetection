@@ -9,10 +9,11 @@ $py = Join-Path $Project '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $py)) { throw 'Project Python environment was not found.' }
 $release = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $oldPath = $env:PYTHONPATH
-$sourceTask = Get-ScheduledTask -TaskPath '\' -TaskName 'P24-CompactProduct' -ErrorAction Stop
-$sourceAction = @($sourceTask.Actions)
-if ($sourceAction.Count -ne 1 -or -not $sourceAction[0].WorkingDirectory) { throw 'Cannot identify the installed Compact release.' }
-$oldCode = (Resolve-Path -LiteralPath $sourceAction[0].WorkingDirectory).Path
+$sourceTask = Get-ScheduledTask -TaskPath '\' -TaskName 'P24-CompactProduct' -ErrorAction SilentlyContinue
+$sourceAction = @($sourceTask.Actions | Where-Object { $_ })
+$oldCode = $release
+$knownCore = $sourceAction.Count -eq 1 -and $sourceAction[0].WorkingDirectory -and (Test-Path -LiteralPath $sourceAction[0].WorkingDirectory)
+if ($knownCore) { $oldCode = (Resolve-Path -LiteralPath $sourceAction[0].WorkingDirectory).Path }
 $env:PYTHONPATH = $oldCode
 $stateDir = Join-Path $Project 'compact_runtime\presentation'
 $historyTask = Get-ScheduledTask -TaskPath '\' -TaskName 'P24-CompactHistory' -ErrorAction SilentlyContinue
@@ -39,6 +40,7 @@ function Save-Json($object, $dest) {
     else { [IO.File]::Move($tmp,$dest) }
 }
 function Presentation {
+    if (-not $knownCore) { throw 'Cannot identify the installed Compact release. Other preparation steps can continue.' }
     $principal = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Use an elevated PowerShell to change the installed scheduled tasks.' }
     $null = New-Item -ItemType Directory -Force -Path $stateDir

@@ -94,9 +94,10 @@ def scan(source,start):
         raw,_=field(hit,'RequestID');request=identity(raw)
         value,_=field(hit,'@timestamp');at=instant(value)
         if not start<=at<start+FIVE:raise ValueError('record_outside_source_window')
-        quality[observed(hit)[1]]+=1
+        uid, reason = observed(hit)
+        quality[reason] += 1
         if not request or set(request)=={'*'}:continue
-        evidence=Evidence.from_row(hit,at)
+        evidence = Evidence.from_observation(uid, reason, at)
         old=fragments.get(request)
         fragments[request]=Fragment(min(at,old.first),max(at,old.last),old.evidence.merge(evidence)) if old else Fragment(at,at,evidence)
     count=sum(quality.values());m=source.metadata

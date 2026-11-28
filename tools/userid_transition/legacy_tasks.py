@@ -44,6 +44,8 @@ if __name__ == "__main__":
     p.add_argument("--guardian",required=True)
     args = p.parse_args()
     roots = installed(args.project,sys.executable,json.loads(args.tasks.read_text(encoding="utf-8-sig")))
+    # The code directory belongs to the original scheduled task, even when its build differs from the tooling.
+    sys.path.insert(0, roots["core"])
     from compact_product.version import verify
     package = verify(roots["core"])
     roots.update(build=package["build_id"],sha=package["source_sha256"])
