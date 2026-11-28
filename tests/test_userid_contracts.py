@@ -6,7 +6,7 @@ import unittest
 
 from contracts.userid.validate import (
     ROOT, SCHEMA, ContractViolation, Draft202012Validator,
-    key, validate_record,
+    canonical_request_id, document_key, key, validate_record,
 )
 
 EXAMPLES = json.loads((ROOT / "examples.json").read_text(encoding="utf-8"))
@@ -440,7 +440,7 @@ class UserIDContracts(unittest.TestCase):
         validate_record(r)
 
     def test_terminal_outcomes_must_match_the_reported_code(self):
-        for code, name, outcome in (("G00000", "successful", "REPORTED_SUCCESS"),
+        for code, name, outcome in (("G00000", "SuccessfulX", "REPORTED_SUCCESS"),
                                     ("G00000", "Successful", "REPORTED_FAILURE"),
                                     (None, None, "REPORTED_FAILURE")):
             r = self.sample()
@@ -518,6 +518,45 @@ class UserIDContracts(unittest.TestCase):
         r = self.sample("RuntimeConfig")
         r["database_name"] += "\n"
         self.rejected(r)
+
+    def test_real_guid_forms_preserve_scope_key_and_never_share_an_empty_guid(self):
+        canonical = "13adc2a245fc4c24be765bf462ddabce"
+        source = "13adc2a2-45fc-4c24-be76-5bf462ddabce"
+        for value in (source, source.upper(), canonical, canonical.upper()):
+            self.assertEqual(canonical_request_id(value), canonical)
+        for bad in (source+" ", source+"\n", "{"+source+"}", "0"*32, None,
+                    "00000000-0000-0000-0000-000000000000", canonical[:9]+"-"+canonical[9:]):
+            with self.assertRaises(ContractViolation):
+                canonical_request_id(bad)
+        r = self.sample("RequestIdentity")
+        r.update(request_id="0"*32, request_key=key("userid-request-1", r["source_scope"], "0"*32))
+        self.rejected(r)
+
+    def test_real_success_spelling_and_cross_record_example(self):
+        import hashlib
+        import re
+
+        raw = self.sample("SourceRecord")
+        identity, behavior = self.sample("RequestIdentity"), self.sample()
+        scope = raw["source_scope"]
+        guid = canonical_request_id(raw["metadata"]["RequestID"])
+        self.assertEqual(guid, behavior["request_id"])
+        proof = identity["identity"]["evidence"][0]
+        self.assertEqual(proof["document_key"], document_key(scope, raw["origin"]["_index"],
+                                                             raw["origin"]["_id"]))
+        self.assertEqual(proof["request_key"], key("userid-request-1", scope, guid))
+        self.assertEqual(proof["observed_user_id"], raw["metadata"]["UserID"])
+        code, name = re.search(r"\(([A-Z0-9]+) \| ([a-zA-Z]+)\)", raw["message"]).groups()
+        self.assertEqual((code, name), (behavior["result"]["api_code"], behavior["result"]["api_name"]))
+        source_target = json.loads(raw["message"].split("Input: ", 1)[1])["Parameters"]["Identifier"]
+        expected = hashlib.sha256(json.dumps(source_target, ensure_ascii=False).encode()).hexdigest()
+        self.assertEqual(behavior["features"]["input"]["data"]["targets"]["WaterBillID"], [expected])
+        for symbol in ("successful", "Successful", "SUCCESSFUL"):
+            behavior["result"]["api_name"] = symbol
+            validate_record(behavior)
+        for symbol in ("succeſsful", "successful ", "successfulX"):
+            behavior["result"]["api_name"] = symbol
+            self.rejected(behavior)
 
     def test_normalized_contracts_do_not_import_or_bootstrap_runtime(self):
         root = ROOT.parents[2]

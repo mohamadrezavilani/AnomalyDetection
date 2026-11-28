@@ -50,7 +50,10 @@
     },
     "RequestID": {
       "type": "string",
-      "pattern": "^[a-f0-9]{32}(?![\\s\\S])"
+      "pattern": "^[a-f0-9]{32}(?![\\s\\S])",
+      "not": {
+        "const": "00000000000000000000000000000000"
+      }
     },
     "Code": {
       "type": "string",

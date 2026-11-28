@@ -60,6 +60,17 @@ def key(namespace, source_scope, value):
     return _digest([namespace, source_scope, value])
 
 
+def canonical_request_id(value):
+    """Accepted Core GUID spellings. Separators are removable only at GUID positions."""
+    hex_group = r"[0-9a-fA-F]"
+    require(isinstance(value, str) and re.fullmatch(
+        rf"{hex_group}{{32}}|{hex_group}{{8}}(?:-{hex_group}{{4}}){{3}}-{hex_group}{{12}}", value),
+        "invalid_request_guid")
+    canonical = value.replace("-", "").lower()
+    require(canonical != "0" * 32, "empty_request_guid")
+    return canonical
+
+
 def document_key(scope, index, document_id):
     return _digest(["userid-document-1", scope, index, document_id])
 
@@ -284,7 +295,8 @@ def validate_record(record):
             require(record["result"]["api_code"] is not None, "result_code_unavailable")
         result = record["result"]
         if result["api_outcome"] == "REPORTED_SUCCESS":
-            require((result["api_code"], result["api_name"]) == ("G00000", "Successful"),
+            name = result["api_name"] or ""
+            require(result["api_code"] == "G00000" and name.isascii() and name.lower() == "successful",
                     "reported_success_needs_exact_code_and_name")
         elif result["api_outcome"] == "REPORTED_FAILURE":
             require(result["api_code"] not in (None, "G00000"),
