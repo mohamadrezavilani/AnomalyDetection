@@ -1,6 +1,6 @@
-# قرارداد داده و یکپارچه‌سازی UserID نسخهٔ ۱
+# قرارداد داده و یکپارچه‌سازی UserID نسخهٔ ۱٫۱
 
-شناسهٔ قرارداد p24-userid-1، هویت userid-identity-1 و ویژگی userid-features-1 است. این قرارداد مرز اجزای جدید را تعریف می‌کند؛ parser، Detector، migration یا نصب اجرایی نیست.
+شناسهٔ جاری قرارداد p24-userid-1.1، هویت userid-identity-1 و ویژگی userid-features-1 است. CR-001 به Behavior زمینه و attempt نسخه‌دار اضافه کرده است. مسیر v1 خانوادهٔ اصلی قرارداد است. WP01، parser و producer مستقل این مرزها را پیاده‌سازی کرده؛ Detector، migration و نصب متعلق به بسته‌های بعدند.
 
 [Schema](../../contracts/userid/v1/schema.json) و [مثال‌های مصنوعی](../../contracts/userid/v1/examples.json) در contracts/userid/v1 ریشهٔ مخزن هستند. اعتبارسنج مرجع در contracts/userid/validate.py فقط ابزار conformance آفلاین است؛ خودبه‌خود به runtime وصل نمی‌شود.
 
@@ -68,6 +68,14 @@ actor_eligible به هویت VALID و زمان‌دار، عملیات COMPLETE 
 
 REPORTED_SUCCESS برای پایان API به جفت دقیق G00000/Successful وابسته است. business_state مستقل است و نتیجهٔ مالی در برنامهٔ پایه OUT_OF_SCOPE می‌ماند. پاسخ موفق provider جانبی، نتیجهٔ نهایی را عوض نمی‌کند.
 
+## observations و CR-001
+
+Behavior اکنون observations با version=userid-observations-1، service_binding، request_context و attempt دارد. زمینه با userid-request-context-1، مقادیر کراندار و منشأ و زمان رشته‌ای نگهداری می‌شود. دادهٔ بدنه جای header احراز‌شده نیست؛ missing/limited/چندمقداری باید توسط مصرف‌کننده حفظ شود. IP و UA actor یا نوع حساب تعیین نمی‌کنند.
+
+attempt تنها با پایان عمومی هم‌زمان و جفت دقیق کد/نام نسخه‌دار قابل ادعاست: ACCESS_DENIED، INVALID_SESSION، VALIDATION_REJECTED یا RATE_LIMIT. requested_service مقصد درخواست‌شده است، نه اجرای آن. در attempt، actor/account/service/result و همهٔ eligibilityهای محتوا برای اجرای عادی خاموش‌اند. WP03 برای تحلیل اقدام ردشده، هویت و تاریخ و منشأ مناسب همان روش را جدا بررسی می‌کند. هم‌زمانی dispatch قطعی و رد پیش از اجرا، تعارض شواهد است.
+
+نسخهٔ قبلی p24-userid-1 توسط validator جاری پذیرفته نمی‌شود. هیچ دادهٔ نسخهٔ جدید هنوز در تولید ذخیره نشده است؛ تولیدکننده و fixtureها با CR-001 یکجا ارتقا یافتند. معنای UID، namespace کلید، سیاست identity و نسخهٔ features تغییر نکرده‌اند.
+
 ## تحلیل، مرجع و پرونده
 
 AnalysisResult، source_epoch و source_window_revision و reference_epoch و نسخهٔ مدل/ویژگی/هویت را دارد. نتیجه/ACK باید علیه همین نسخه‌ها بررسی و اتمیک commit شوند. cutoff مرجع از شروع پنجرهٔ مورد تحلیل جلوتر نیست.
@@ -85,8 +93,8 @@ consumer باید نسخهٔ ناشناخته را رد یا به مسیر نا�
 فرمان‌های بررسی توسعه:
 
 ```text
-python -m pip install jsonschema==4.25.1
-python -B -m unittest -v tests.test_userid_contracts
+python -m pip install -r requirements-userid.txt
+python -B -m unittest -v tests.test_userid_contracts tests.test_userid_extraction
 python -B -m contracts.userid.validate
 ```
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mohamadrezavilani/AnomalyDetection/contracts/userid/v1/schema.json",
-  "title": "P24 UserID normalized integration contract v1",
+  "title": "P24 UserID normalized integration contract v1.1",
   "description": "Normalized boundaries, not a raw source identity parser or a production migration. Validate formats and semantic invariants with contracts.userid.validate.",
   "oneOf": [
     {
@@ -377,7 +377,7 @@
           "const": "SourceWindow"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "source_scope": {
           "$ref": "#/$defs/Scope"
@@ -431,7 +431,7 @@
           "const": "SourceRecord"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "source_scope": {
           "$ref": "#/$defs/Scope"
@@ -483,7 +483,7 @@
           "const": "RequestIdentity"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "source_scope": {
           "$ref": "#/$defs/Scope"
@@ -663,7 +663,7 @@
           "const": "FeatureSet"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "feature_version": {
           "const": "userid-features-1"
@@ -763,7 +763,7 @@
           "const": "Behavior"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "source_scope": {
           "$ref": "#/$defs/Scope"
@@ -849,6 +849,9 @@
           },
           "maxItems": 64,
           "uniqueItems": true
+        },
+        "observations": {
+          "$ref": "#/$defs/Observations"
         }
       },
       "required": [
@@ -867,7 +870,8 @@
         "known_at_ns",
         "result",
         "features",
-        "quality"
+        "quality",
+        "observations"
       ],
       "additionalProperties": false
     },
@@ -952,7 +956,7 @@
           "const": "AnalysisResult"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "source_scope": {
           "$ref": "#/$defs/Scope"
@@ -1179,7 +1183,7 @@
           "const": "CaseView"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "source_scope": {
           "$ref": "#/$defs/Scope"
@@ -1258,7 +1262,7 @@
           "const": "RuntimeConfig"
         },
         "contract_version": {
-          "const": "p24-userid-1"
+          "const": "p24-userid-1.1"
         },
         "instance_id": {
           "type": "string",
@@ -1332,6 +1336,161 @@
         "overlap_windows",
         "pending_wait_windows",
         "source_lag_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "Observations": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "userid-observations-1"
+        },
+        "service_binding": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "request_context": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "userid-request-context-1"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "ip",
+                  "user_agent",
+                  "application",
+                  "platform",
+                  "app_version",
+                  "origin",
+                  "device_id",
+                  "http_method"
+                ]
+              },
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "maxLength": 1024
+                    },
+                    "sources": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 256
+                      },
+                      "maxItems": 2,
+                      "minItems": 1,
+                      "uniqueItems": true
+                    },
+                    "first_ns": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/Nanoseconds"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "undated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "sources",
+                    "first_ns",
+                    "undated"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 4
+              }
+            },
+            "limited": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "maxItems": 32,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "version",
+            "values",
+            "limited"
+          ],
+          "additionalProperties": false
+        },
+        "attempt": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "ACCESS_DENIED",
+                    "INVALID_SESSION",
+                    "VALIDATION_REJECTED",
+                    "RATE_LIMIT"
+                  ]
+                },
+                "requested_service": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 160
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "result_code": {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                "symbol": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "at_ns": {
+                  "$ref": "#/$defs/Nanoseconds"
+                },
+                "stage": {
+                  "const": "REJECTED_BEFORE_CONFIRMED_EXECUTION"
+                }
+              },
+              "required": [
+                "kind",
+                "requested_service",
+                "result_code",
+                "symbol",
+                "at_ns",
+                "stage"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "service_binding",
+        "request_context",
+        "attempt"
       ],
       "additionalProperties": false
     }

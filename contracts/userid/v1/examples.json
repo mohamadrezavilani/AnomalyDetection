@@ -1,7 +1,7 @@
 {
   "SourceRecord": {
     "record_type": "SourceRecord",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "source_scope": "pishkhan24:production:core",
     "source_profile": "p24-core-userid-v1",
     "document_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -18,7 +18,7 @@
   },
   "SourceWindow": {
     "record_type": "SourceWindow",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "source_scope": "pishkhan24:production:core",
     "source_profile": "p24-core-userid-v1",
     "window_start_ns": "1795851000000000000",
@@ -30,7 +30,7 @@
   },
   "RequestIdentity": {
     "record_type": "RequestIdentity",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "source_scope": "pishkhan24:production:core",
     "request_id": "11111111111141118111111111111111",
     "request_key": "cdc9de985290c5bc284a69ed7f88bb3068bad97454e385d4bebf79142cc654f6",
@@ -61,7 +61,7 @@
   },
   "FeatureSet": {
     "record_type": "FeatureSet",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "feature_version": "userid-features-1",
     "identity_policy_version": "userid-identity-1",
     "actor_eligible": true,
@@ -99,7 +99,7 @@
   },
   "Behavior": {
     "record_type": "Behavior",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "source_scope": "pishkhan24:production:core",
     "request_id": "11111111111141118111111111111111",
     "behavior_key": "34c5b2f878bdd38c41cdc49b905319f00a99e562280a591ac458d68b5de6723f",
@@ -143,7 +143,7 @@
     },
     "features": {
       "record_type": "FeatureSet",
-      "contract_version": "p24-userid-1",
+      "contract_version": "p24-userid-1.1",
       "feature_version": "userid-features-1",
       "identity_policy_version": "userid-identity-1",
       "actor_eligible": true,
@@ -179,11 +179,21 @@
         "data": {}
       }
     },
-    "quality": []
+    "quality": [],
+    "observations": {
+      "version": "userid-observations-1",
+      "service_binding": "DIRECT_API",
+      "request_context": {
+        "version": "userid-request-context-1",
+        "values": {},
+        "limited": []
+      },
+      "attempt": null
+    }
   },
   "AnalysisResult": {
     "record_type": "AnalysisResult",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "source_scope": "pishkhan24:production:core",
     "finding_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "finding_revision": 1,
@@ -225,7 +235,7 @@
   },
   "CaseView": {
     "record_type": "CaseView",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "source_scope": "pishkhan24:production:core",
     "case_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "revision": 1,
@@ -236,7 +246,7 @@
     "findings": [
       {
         "record_type": "AnalysisResult",
-        "contract_version": "p24-userid-1",
+        "contract_version": "p24-userid-1.1",
         "source_scope": "pishkhan24:production:core",
         "finding_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "finding_revision": 1,
@@ -281,7 +291,7 @@
   },
   "RuntimeConfig": {
     "record_type": "RuntimeConfig",
-    "contract_version": "p24-userid-1",
+    "contract_version": "p24-userid-1.1",
     "instance_id": "userid-test",
     "source_scope": "pishkhan24:production:core",
     "database_name": "p24_userid_test_contracts",

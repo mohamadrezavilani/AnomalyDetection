@@ -1,6 +1,6 @@
 # تصمیم‌های معماری و برنامهٔ ادغام
 
-نسخهٔ مرجع مشترک ۱٫۳؛ این تصمیم‌ها در دامنهٔ WP00 تثبیت شده‌اند. تصمیم جدید مالک و CR پذیرفته‌شده می‌توانند آن‌ها را نسخه‌دار اصلاح کنند. وجود این فایل، مأموریت اجرایی تازه‌ای برای بسته‌های تخصیص‌نیافته ایجاد نمی‌کند.
+نسخهٔ مرجع مشترک ۱٫۴؛ تصمیم‌های WP00 حفظ و CR-001 برای تحویل WP01 پذیرفته شده است. WP01 با دستور بعدی مالک اجرا می‌شود؛ وجود این فایل، مأموریت اجرایی WP02 تا WP06 ایجاد نمی‌کند.
 
 ## تصمیم‌ها
 
@@ -40,6 +40,8 @@ Q01 تا Q06 در MASTER_PLAN_FA ثبت‌اند. نبود metadata نوع هو�
 
 هر PR باید WP، نسخهٔ قرارداد، commit مبنا، اثر بر نصب قدیمی، migration لازم یا NONE، آزمون واقعی و NOT_RUN را بیان کند. ادغام main طبق اجازهٔ مالک پس از بررسی تغییر و موفقیت بررسی‌های مرتبط انجام می‌شود. main جدید به معنی نصب روی سرور نیست.
 
+تحویل producer و رابط ذخیرهٔ WP01 در [EXTRACTION_FA](EXTRACTION_FA.md) است. WP02 از extract_window/merge/materialize و دو امضای state_hash و behavior_hash استفاده می‌کند؛ persistence، revision پایدار، dirty/retraction، cursor و recovery را خودش فراهم می‌کند.
+
 ## مرز مالکیت و پیشگیری از تداخل
 
 | فایل یا قلمرو مشترک | هماهنگ‌کنندهٔ تغییر |
@@ -58,16 +60,25 @@ Q01 تا Q06 در MASTER_PLAN_FA ثبت‌اند. نبود metadata نوع هو�
 
 CR شامل شناسه، علت و شاهد، نسخهٔ فعلی/جدید، بسته‌های متأثر، اثر بر داده و rollback، راه سازگاری و آزمون است. یک پیشنهاد، تصمیم پذیرفته‌شده یا کار انجام‌شده محسوب نمی‌شود. تغییر enum/meaning/key/eligibility بدون به‌روزرسانی schema، مثال و تست مصرف‌کننده ادغام نمی‌شود.
 
+### CR-001 — پذیرفته‌شده در WP00/WP01
+
+- علت: schema اولیهٔ Behavior برای IP/UA با provenance و ردهای پیش از dispatch محل انتقال مستقل نداشت؛ حذف این شواهد، ورودی روش invalid_session_attempts و توضیح intent را از مصرف‌کننده می‌گرفت.
+- نسخه: p24-userid-1 → p24-userid-1.1؛ افزودن observations اجباری و versionهای userid-observations-1 و userid-request-context-1. schema، semantic validator، هشت fixture، producer و آزمون‌ها یکجا تغییر می‌کنند.
+- اثر: WP01 producer و WP02/WP03/WP04 مصرف‌کنندگان آینده؛ identity policy، feature version، کلیدها و RuntimeConfig ثابت‌اند. kind حساب از IP/UA یا Login استنتاج نمی‌شود.
+- سازگاری: consumer نسخهٔ ۱ را به ۱٫۱ تغییرنام نمی‌دهد؛ نسخهٔ ناشناخته صریح رد می‌شود. WP02 تا WP06 هنوز تخصیص/استقرار ندارند و دادهٔ تولید UserID برای migration وجود ندارد. migration=NONE.
+- rollback: بازگشت commitهای همین بسته فقط producer/قرارداد جدید را برمی‌گرداند؛ نصب قدیمی، فایل‌های runtime و manifestهایش تغییر نکرده‌اند. پس از ساخت مصرف‌کننده/DB جدید، rollback باید آن وابستگی‌ها را نیز نسخه‌دار لحاظ کند.
+- آزمون: انطباق همهٔ fixtureها، بازپخش چهار capture واقعی، جفت کد/نام دقیق، خاموش‌بودن eligibility اجرای عادی برای attempt، زمینهٔ نامعتبر/جای‌نگهدار، حفظ منشأ و زمان، و رد نسخهٔ قدیمی.
+
 ## قالب گزارش
 
 ```yaml
 document: P24-USERID-REBUILD-MASTER
-document_version: "1.3"
+document_version: "1.4"
 work_package: WPxx
 agent: assigned-by-owner
 base_commit: exact-sha
 result_commit: exact-sha-or-NOT_CREATED
-contract_versions: p24-userid-1 / userid-identity-1 / userid-features-1
+contract_versions: p24-userid-1.1 / userid-identity-1 / userid-features-1
 status: READY | IN_PROGRESS | BLOCKED | REVIEW | VERIFIED | INTEGRATED
 files_changed: paths
 contract_changes: NONE-or-CR-id

@@ -1,15 +1,17 @@
 # Current owner assignment 2026-11-28
 
-The owner corrected the active assignment to **WP00 architecture and integration**.
+WP00 architecture was integrated in PR 91. The owner's next instruction assigns
+**WP01 source, metadata UserID identity and extraction** to this conversation.
 Read `Pishkhan24_Project_Roadmap.md` and `docs/userid/MASTER_PLAN_FA.md`,
 then the assigned work package. The UserID rebuild contracts live in
 `contracts/userid/v1/`; schema, semantic validator and examples are one contract.
 
-- WP00 may audit, define contracts, update integration documentation, test its
-  changes and merge the reviewed result to main, as explicitly requested.
-- WP01-WP06 are not automatically assigned by this document. Do not implement
-  their source extractor, storage, detector, UI or deployment work implicitly.
-- Preserve the current Compact runtime bytes and its manifests in WP00.
+- WP01 may implement `userid_product/source.py`, `identity.py`, `extraction.py`,
+  offline replay, their tests and documentation, and coordinate CR-001 with WP00.
+  Test and merge the reviewed result to main under the owner's authorization.
+- WP02-WP06 are not automatically assigned. Do not implement storage, detectors,
+  UI, production collectors or deployment implicitly.
+- Preserve the current Compact runtime bytes and its manifests in WP01.
   The current version must remain available for presentation. Do not start or
   stop collectors, change production DBs, create a new DB, or deploy this phase.
 - New identity is metadata UserID, namespaced by source scope. Never put it in
