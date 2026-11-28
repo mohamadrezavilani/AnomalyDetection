@@ -360,7 +360,7 @@ class SourceTests(unittest.TestCase):
                          '{"logs":[' + json.dumps(hit()) + '],"complete":true,"count":2}',
                          '{"logs":[' + json.dumps(hit()) + ']'):
                 path = Path(directory) / "partial.json"
-                path.write_text(text)
+                path.write_text(text, encoding="utf-8")
                 with self.assertRaises(ValueError):
                     extract_window(source.WindowFile(path), SCOPE, SEEN)
 
@@ -374,7 +374,7 @@ class SourceTests(unittest.TestCase):
     def test_duplicate_json_key_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "duplicate.json"
-            path.write_text('{"logs":[{"_source":{"UserID":"12","UserID":"13"}}]}')
+            path.write_text('{"logs":[{"_source":{"UserID":"12","UserID":"13"}}]}', encoding="utf-8")
             with self.assertRaisesRegex(identity.BoundaryError, "DUPLICATE"):
                 list(source.WindowFile(path).records())
 
@@ -396,7 +396,7 @@ class SourceTests(unittest.TestCase):
 
     def test_contract_source_example_is_consumable(self):
         from contracts.userid.validate import ROOT
-        example = json.loads((ROOT / "examples.json").read_text())["SourceRecord"]
+        example = json.loads((ROOT / "examples.json").read_text(encoding="utf-8"))["SourceRecord"]
         state = fragment(example)
         self.assertEqual(state["identity"]["user_id"], "9007199254740993")
         self.assertEqual(materialize(state)["state"], "COMPLETE")
@@ -409,7 +409,7 @@ class SourceTests(unittest.TestCase):
             first = self.export(directory, [hit(ABSENT, at="2026-11-28T09:54:59Z")])
             second = Path(directory) / "second.json"
             second.write_text(json.dumps(dict(logs=[hit("12", doc="late", at="2026-11-28T09:55:01Z", message="Input:{}")],
-                count=1, complete=True, window_start="2026-11-28T09:55:00Z", window_end="2026-11-28T10:00:00Z")))
+                count=1, complete=True, window_start="2026-11-28T09:55:00Z", window_end="2026-11-28T10:00:00Z")), encoding="utf-8")
             report = replay([first, second], SCOPE, seen_at_ns=SEEN)
             self.assertEqual(report["logical_requests"], 1)
             self.assertEqual(report["repeated_request_window_memberships"], 1)
