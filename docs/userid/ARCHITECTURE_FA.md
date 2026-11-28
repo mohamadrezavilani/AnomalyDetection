@@ -43,7 +43,7 @@ Core/Shared در CreateScope یک RequestID تازه و UserID nullable ایجا
 | userid_product/runtime | WP05 | کنترل lifecycle، نصب، Task، پورت و recovery |
 | contracts/userid و docs/userid | WP00 | قرارداد و تصمیم و نسخهٔ مشترک |
 
-این مسیرها طرح هدف‌اند؛ ایجاد scaffold یا implementation آن‌ها جزو WP00 نیست. فایل __init__ ریشهٔ package، dependencyهای مشترک و قراردادها نباید هم‌زمان و بدون هماهنگی در چند بسته تغییر کنند.
+WP00 این مسیرها را تعریف کرد؛ اکنون source/identity/extraction/replay در WP01 پیاده‌سازی شده‌اند و سایر مسیرها هدف بسته‌های بعدند. [تحویل WP01](EXTRACTION_FA.md) رابط واقعی و بودجه‌ها را توضیح می‌دهد. فایل __init__ ریشه، dependencyها و قراردادها نباید هم‌زمان و بدون هماهنگی در چند بسته تغییر کنند.
 
 ## جریان داده و مسئولیت commit
 

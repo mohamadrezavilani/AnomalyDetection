@@ -1,0 +1,2 @@
+# WP01 pure/offline boundary dependency; installation/startup is owned by WP05.
+jsonschema==4.25.1

@@ -15,7 +15,7 @@ import re
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-CONTRACT = "p24-userid-1"
+CONTRACT = "p24-userid-1.1"
 FIVE = 300_000_000_000
 MAX_INT64 = 2**63 - 1
 ROOT = Path(__file__).with_name("v1")
@@ -39,6 +39,11 @@ def nonnegative_int64(value):
 
 Draft202012Validator.check_schema(SCHEMA)
 VALIDATOR = Draft202012Validator(SCHEMA, format_checker=FORMATS)
+BOUNDARY_VALIDATORS = {
+    ref["$ref"].rsplit("/", 1)[1]: Draft202012Validator(
+        {"$ref": ref["$ref"], "$defs": SCHEMA["$defs"]}, format_checker=FORMATS)
+    for ref in SCHEMA["oneOf"]
+}
 
 
 class ContractViolation(ValueError):
@@ -163,7 +168,10 @@ def _analysis(record):
 
 def validate_record(record):
     _finite(record)
-    error = next(VALIDATOR.iter_errors(record), None)
+    require(isinstance(record, dict) and isinstance(record.get("record_type"), str), "schema_violation")
+    validator = BOUNDARY_VALIDATORS.get(record["record_type"])
+    require(validator is not None, "schema_violation")
+    error = next(validator.iter_errors(record), None)
     if error:
         raise ContractViolation("schema_violation")
     kind = record["record_type"]
@@ -203,6 +211,22 @@ def validate_record(record):
             require(record["result"]["api_code"] == "G00000"
                     and (record["result"]["api_name"] or "").lower() == "successful",
                     "reported_success_needs_exact_code_and_name")
+        attempt = record["observations"]["attempt"]
+        if attempt is not None:
+            pairs = {"ACCESS_DENIED": ("G00010", "UserAccessObjectsDoesNotContainAccessObject"),
+                     "INVALID_SESSION": ("G00002", "SessionIsNotValid"),
+                     "VALIDATION_REJECTED": ("G00003", "NullCheckError"),
+                     "RATE_LIMIT": ("GR0004", "RequestRateLimiting")}
+            require((attempt["result_code"], attempt["symbol"]) == pairs[attempt["kind"]],
+                    "attempt_needs_reviewed_code_and_symbol")
+            require(record["state"] == "COMPLETE" and record["occurred_at_ns"] == attempt["at_ns"]
+                    and record["result"]["api_code"] == attempt["result_code"]
+                    and record["result"]["api_name"] == attempt["symbol"],
+                    "attempt_needs_matching_public_completion")
+            require(not any(features[k] for k in ("actor_eligible", "account_eligible", "service_eligible", "result_eligible"))
+                    and not any(features[d]["eligibility"][k] for d in ("input", "output")
+                                for k in ("targets", "numeric", "shape")),
+                    "terminal_refusal_is_not_executed_business")
     elif kind == "AnalysisResult":
         _analysis(record)
     elif kind == "CaseView":
