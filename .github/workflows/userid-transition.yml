@@ -1,0 +1,34 @@
+name: Account identity transition
+on:
+  push:
+    branches: [main, 'feature/core-userid-*']
+    paths: ['account_behavior/**', 'tools/userid_transition/**', 'tools/Start_UserID_Transition.ps1', 'tests/test_userid*', '.github/workflows/userid-transition.yml']
+  pull_request:
+    paths: ['account_behavior/**', 'tools/userid_transition/**', 'tools/Start_UserID_Transition.ps1', 'tests/test_userid*', '.github/workflows/userid-transition.yml']
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env: { POSTGRES_PASSWORD: disposable-fixture }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m pip install -r requirements-compact.txt
+      - run: python -B -m unittest -v tests.test_userid_transition
+        env: { P24_DELTA_PG_HOST: 127.0.0.1, P24_DELTA_PG_PORT: '5432', P24_DELTA_PG_USER: postgres, PGPASSWORD: disposable-fixture }
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m unittest -v tests.test_userid_windows
